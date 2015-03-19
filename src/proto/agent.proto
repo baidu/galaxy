@@ -1,0 +1,20 @@
+
+package galaxy
+
+option cc_generic_services = true
+
+
+message RunTaskRequest {
+    optional int64 task_id = 1;
+    optional bytes task_raw = 2;
+    optional string cmd_line = 3;
+}
+
+message RunTaskResponse {
+    optional int status = 1;
+}
+
+service Agent {
+    rpc RunTask(RunTaskRequest) returns(RunTaskResponse);
+}
+
