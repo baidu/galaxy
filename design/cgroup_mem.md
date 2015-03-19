@@ -40,6 +40,9 @@ TODO
 #### cgroup.event_control 文件
 事件通知文件, 在memory子系统有个功能就是设置一个内存阀值，当应用内存达到这个值，可以从这个文件获取事件通知
 
+### reference
+* [memory.txt](https://www.kernel.org/doc/Documentation/cgroups/memory.txt)
+
 
 
 
