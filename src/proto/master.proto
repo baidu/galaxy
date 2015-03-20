@@ -4,29 +4,42 @@ package galaxy;
 option cc_generic_services = true;
 
 message HeartBeatRequest {
-    optional string agent_addr = 2;
-    optional int32 agent_id = 3;
+    required string agent_addr = 1;
+    required int32 agent_id = 2;
+    repeated TaskStatus task_status_list = 3;
+    // the total_resource is a list which includes 
+    // memory and cpu 
+    repeated ResourceItem total_resource_list = 4;
+    // the used_resource counts memory ,cpu and port
+    repeated ResourceItem used_resource_list = 5;
+    
 }
 message HeartBeatResponse {
-    optional int32 agent_id = 2;
+    optional int32 agent_id = 1;
+    repeated TaskInfo task_list = 2; 
 }
 
-message TaskInfo {
-    optional int64 task_id = 1;
-    optional int32 task_status = 2;
+message TaskInfo{
+    required int64 task_id = 1 ;
+    required string package_src = 2;
+    required string cmd_line = 3 ;
 }
 
-message TaskReportRequest {
-    optional int32 agent_id = 2;
-    repeated TaskInfo task_info = 3;
+message TaskStatus{
+    required int64 task_id = 1 ;
+    //deploying,starting,running,error
+    required int32 status = 2;
 }
 
-message TaskReportResponse {
-    optional int64 status = 2;
+message ResourceItem{
+    //Name could  be memory,cpu or port 
+    required string name = 1;
+    required int64 value = 2;
 }
+
+
 
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
-    rpc TaskReport(TaskReportRequest) returns(TaskReportResponse);
 }
 
