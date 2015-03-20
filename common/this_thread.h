@@ -13,8 +13,10 @@
 #include <time.h>
 #include <unistd.h>
 
-namespace common {
+__thread int THREAD_ID = 0;
 
+namespace common {
+    
 class ThisThread {
 public:
     /// Sleep in ms
@@ -26,12 +28,16 @@ public:
     }
     /// Get thread id
     static int GetId() {
-        return syscall(__NR_gettid);
+        if (THREAD_ID == 0) {
+            THREAD_ID = syscall(__NR_gettid);
+        }
+        return THREAD_ID;
     }
     /// Yield cpu
     static void Yield() {
         sched_yield();
     }
+    
 };
 
 } // namespace common
