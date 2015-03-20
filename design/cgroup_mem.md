@@ -35,8 +35,9 @@ cat /sys/fs/cgroup/memory/0/memory.limit_in_bytes
 #### memory.stat 文件
 当需要监控内存使用情况的时候可以使用这个文件，比如计算当前内存使用情况 mem_used=rss+cache(+swap),memory.usage_in_bytes也是内存使用情况，但是这个不准确，具体见[memory controller](https://www.kernel.org/doc/Documentation/cgroups/memory.txt)
 
-#### OOM Control
-TODO
+#### memory.oom_control 
+文件属性为读写,开启oom control 设置oom_kill_disable 0,如果设置为1为关闭
+ 
 #### cgroup.event_control 文件
 事件通知文件, 在memory子系统有个功能就是设置一个内存阀值，当应用内存达到这个值，可以从这个文件获取事件通知
 
