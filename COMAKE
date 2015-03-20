@@ -41,11 +41,13 @@ CONFIGS('public/sofa-pbrpc@trunk@comake')
 #CONFIGS_64('lib2-64/ullib')
 
 agent_sources='src/flags.cc src/proto/agent.proto src/agent/agent_impl.cc src/agent/agent_main.cc'
+master_sources='src/flags.cc src/proto/master.proto src/master/master_impl.cc src/master/master_main.cc'
 user_headers=''
 
 #可执行文件
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
+Application('master',Sources(master_sources))
 #静态库
 #StaticLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
 #共享库

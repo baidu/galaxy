@@ -1,0 +1,32 @@
+
+package galaxy;
+
+option cc_generic_services = true;
+
+message HeartBeatRequest {
+    optional string agent_addr = 2;
+    optional int32 agent_id = 3;
+}
+message HeartBeatResponse {
+    optional int32 agent_id = 2;
+}
+
+message TaskInfo {
+    optional int64 task_id = 1;
+    optional int32 task_status = 2;
+}
+
+message TaskReportRequest {
+    optional int32 agent_id = 2;
+    repeated TaskInfo task_info = 3;
+}
+
+message TaskReportResponse {
+    optional int64 status = 2;
+}
+
+service Master {
+    rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
+    rpc TaskReport(TaskReportRequest) returns(TaskReportResponse);
+}
+
