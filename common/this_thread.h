@@ -13,8 +13,6 @@
 #include <time.h>
 #include <unistd.h>
 
-__thread int THREAD_ID = 0;
-
 namespace common {
     
 class ThisThread {
@@ -28,10 +26,11 @@ public:
     }
     /// Get thread id
     static int GetId() {
-        if (THREAD_ID == 0) {
-            THREAD_ID = syscall(__NR_gettid);
+        static __thread int s_thread_id = 0;
+        if (s_thread_id == 0) {
+            s_thread_id = syscall(__NR_gettid);
         }
-        return THREAD_ID;
+        return s_thread_id;
     }
     /// Yield cpu
     static void Yield() {
