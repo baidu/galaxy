@@ -12,10 +12,10 @@ PROTOC=$(PROTOC_PATH)protoc
 PROTO_FILES = $(wildcard src/proto/*.proto)
 
 proto: $(PROTO_FILES)
-	$(PROTOC) --proto_path=./src/proto --proto_path=/usr/local/include \
-		      --proto_path=$(PBRPC_PATH)/output/include/ \
-		      --proto_path=$(PROTOBUF_PATH)/include \
-		      --cpp_out=./src/proto/ $(PROTO_FILES)
+        $(PROTOC) --proto_path=./src/proto --proto_path=/usr/local/include \
+                  --proto_path=$(PBRPC_PATH)/output/include/ \
+                  --proto_path=$(PROTOBUF_PATH)/include \
+                  --cpp_out=./src/proto/ $(PROTO_FILES)
 
 agent:
 	echo "Make done"
