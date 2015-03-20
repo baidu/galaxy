@@ -1,8 +1,7 @@
 
-package galaxy
+package galaxy;
 
-option cc_generic_services = true
-
+option cc_generic_services = true;
 
 message RunTaskRequest {
     optional int64 task_id = 1;
@@ -11,7 +10,7 @@ message RunTaskRequest {
 }
 
 message RunTaskResponse {
-    optional int status = 1;
+    optional int32 status = 1;
 }
 
 service Agent {
