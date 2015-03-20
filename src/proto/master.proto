@@ -3,6 +3,13 @@ package galaxy;
 
 option cc_generic_services = true;
 
+enum MasterCommandType {
+    HEART_BEAT = 0,
+    // Task control
+    LAUNCH_TASK = 1,
+    TERMINATE_TASK = 2,
+};
+
 message HeartBeatRequest {
     required string agent_addr = 1;
     required int32 agent_id = 2;
@@ -16,7 +23,7 @@ message HeartBeatRequest {
 }
 message HeartBeatResponse {
     optional int32 agent_id = 1;
-    repeated TaskInfo task_list = 2; 
+    optional MasterCommandType = 2;
 }
 
 message TaskInfo{
