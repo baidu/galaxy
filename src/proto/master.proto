@@ -38,7 +38,7 @@ message HeartBeatRequest {
 message HeartBeatResponse {
     optional int64 seq_id = 1;
     optional int32 status = 2;
-    optional MasterCommandType = 3 [default = HEART_BEAT];
+    optional MasterCommandType type = 3[default = HEART_BEAT];
     optional LaunchTaskRequest launch_task_request = 4;
     optional KillTaskRequest kill_task_request = 5;
 }
