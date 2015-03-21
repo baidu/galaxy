@@ -43,6 +43,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
+    LOG(INFO, "Run Task %s %s", request->task_raw().c_str(), request->cmd_line().c_str());
     done->Run();
 }
 

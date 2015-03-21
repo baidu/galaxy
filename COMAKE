@@ -43,8 +43,9 @@ CONFIGS('public/sofa-pbrpc@trunk@comake')
 agent_sources='src/flags.cc \
                src/proto/task.proto src/proto/agent.proto src/proto/master.proto \
                src/agent/agent_impl.cc src/agent/agent_main.cc'
-master_sources='src/flags.cc src/proto/task.proto src/proto/master.proto src/master/master_impl.cc src/master/master_main.cc'
-sdk_sources='src/sdk/galaxy.cc'
+master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto\
+                src/master/master_impl.cc src/master/master_main.cc'
+sdk_sources='src/sdk/galaxy.cc src/proto/task.proto src/proto/master.proto'
 sdk_headers='src/sdk/galaxy.h'
 client_sources='src/client/galaxy_client.cc'
 

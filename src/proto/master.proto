@@ -28,7 +28,7 @@ message KillTaskRequest {
 
 message HeartBeatRequest {
     optional int64 seq_id = 1;      // id for communicate
-    optional int64 agent_id = 2;
+    optional int64 agent_id = 2 [default = -1];
     optional string agent_addr = 3;
     repeated ResourceItem total_resource_list = 4;
     repeated ResourceItem used_resource_list = 5;
