@@ -1,19 +1,19 @@
 package galaxy;
 
 message AgentId {
-    optional int64 id;
+    optional int64 id = 1;
 }
 
 message JobId {
-    optional int64 id;
+    optional int64 id = 1;
 }
 
 message TaskId {
-    optional int64 id;
+    optional int64 id = 1;
 }
 
 message ContainerId {
-    optional int64 id;
+    optional int64 id = 1;
 }
 
 message ResourceStatistics {
@@ -37,9 +37,9 @@ message AgentInfo {
 }
 
 enum AgentState {
-    RUNNING = 0,
-    FROZEN = 1,      // just like safe mode, not allow launch task
-    REGISTERING = 2  // reload persistence data, and deal with Lost Task
+    RUNNING = 0;
+    FROZEN = 1;       // just like safe mode, not allow launch task
+    REGISTERING = 2;  // reload persistence data, and deal with Lost Task
 }
 
 message AgentStatus {
@@ -49,21 +49,21 @@ message AgentStatus {
 }
 
 enum ResourceType {
-    CPU = 0,
-    MEMORY = 1,
-    NETWORK_BIND = 2,
-    DISK_QUOTA = 3
+    CPU = 0;
+    MEMORY = 1;
+    NETWORK_BIND = 2;
+    DISK_QUOTA = 3;
 }
 
 enum TaskState {
-    TASK_STARTING = 1,  
-    TASK_DEPLOYING = 2,
-    TASK_RUNNING = 3,
-    TASK_FINISHED = 4,   // Terminate successfully
-    TASK_FAILED = 5,     // Terminate failed, may be core or others
-    TASK_KILLED = 6,     // Terminate killed proactive
-    TASK_LOST = 7,       // Not terminate, may be Agent restart, can reschduler
-    TASK_ERROR = 8       // Failed before Running, may be deploy failed, or other descript error
+    TASK_STARTING = 1;  
+    TASK_DEPLOYING = 2;
+    TASK_RUNNING = 3;
+    TASK_FINISHED = 4;   // Terminate successfully
+    TASK_FAILED = 5;     // Terminate failed, may be core or others
+    TASK_KILLED = 6;     // Terminate killed proactive
+    TASK_LOST = 7;       // Not terminate, may be Agent restart, can reschduler
+    TASK_ERROR = 8;      // Failed before Running, may be deploy failed, or other descript error
 }
 
 message JobStatistics {
@@ -82,8 +82,8 @@ message TaskInfo {
 
 message TaskStatus {
     enum TaskErrorCode {
-        NO_ERROR = 0,
-        ERROR_COMMAND_EXECUTE_FAILED = 1
+        NO_ERROR = 0;
+        ERROR_COMMAND_EXECUTE_FAILED = 1;
     }
     required TaskId task_id = 1;
     optional TaskState state = 2;
@@ -93,10 +93,10 @@ message TaskStatus {
 
 message Value {
     enum Type {
-        SCALAR = 0,
-        RANGES = 1,
-        SET = 2,
-        TEXT = 3
+        SCALAR = 0;
+        RANGES = 1;
+        SET = 2;
+        TEXT = 3;
     }
 
     message Scalar {
@@ -123,7 +123,7 @@ message Value {
     optional Text text = 5;
 }
 
-message ResourcItem {
+message ResourceItem {
     optional string name = 1;
     optional ResourceType resource_type = 2;
     optional Value value = 3;
