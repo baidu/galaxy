@@ -8,19 +8,30 @@
 #define  GALAXY_AGENT_IMPL_H_
 
 #include "proto/agent.pb.h"
+#include "proto/master.pb.h"
+
+#include "common/thread_pool.h"
 
 namespace galaxy {
+
+class RpcClient;
 
 class AgentImpl : public Agent {
 public:
     AgentImpl();
     virtual ~AgentImpl();
 public:
+    void Report();
+
+    /// Services
     virtual void RunTask(::google::protobuf::RpcController* controller,
                          const ::galaxy::RunTaskRequest* request,
                          ::galaxy::RunTaskResponse* response,
                          ::google::protobuf::Closure* done);
- 
+private:
+    common::ThreadPool thread_pool_;
+    RpcClient* rpc_client_;
+    Master_Stub* master_;
 };
 
 } // namespace galaxy

@@ -12,6 +12,7 @@
 #include <signal.h>
 
 extern std::string FLAGS_agent_port;
+extern std::string FLAGS_master_addr;
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
@@ -25,6 +26,8 @@ int main(int argc, char* argv[])
         char s[1024];
         if (sscanf(argv[i], "--port=%s", s) == 1) {
             FLAGS_agent_port = s;
+        } else if (sscanf(argv[i], "--master=%s", s) == 1) {
+            FLAGS_master_addr = s;
         } else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);

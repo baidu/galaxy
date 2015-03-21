@@ -6,12 +6,15 @@
 
 #include "master_impl.h"
 
+#include "common/logging.h"
+
 namespace galaxy {
 
 void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
                            const ::galaxy::HeartBeatRequest* request,
                            ::galaxy::HeartBeatResponse* response,
                            ::google::protobuf::Closure* done) {
+    LOG(INFO, "HeartBeat from %s", request->agent_addr().c_str());
     done->Run();
 }
 
