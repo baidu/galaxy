@@ -40,8 +40,8 @@ CONFIGS('public/sofa-pbrpc@trunk@comake')
 #CONFIGS_32('lib2/ullib')
 #CONFIGS_64('lib2-64/ullib')
 
-agent_sources='src/flags.cc src/proto/agent.proto src/agent/agent_impl.cc src/agent/agent_main.cc'
-master_sources='src/flags.cc src/proto/master.proto src/master/master_impl.cc src/master/master_main.cc'
+agent_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/agent/agent_impl.cc src/agent/agent_main.cc'
+master_sources='src/flags.cc src/proto/task.proto src/proto/master.proto src/master/master_impl.cc src/master/master_main.cc'
 sdk_sources='src/sdk/galaxy.cc'
 sdk_headers='src/sdk/galaxy.h'
 client_sources='src/client/galaxy_client.cc'

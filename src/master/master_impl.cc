@@ -14,12 +14,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
                            ::google::protobuf::Closure* done) {
     done->Run();
 }
-void MasterImpl::TaskReport(::google::protobuf::RpcController* controller,
-                            const ::galaxy::TaskReportRequest* request,
-                            ::galaxy::TaskReportResponse* response,
-                            ::google::protobuf::Closure* done) {
-    done->Run();
-}
 
 } // namespace galasy
 

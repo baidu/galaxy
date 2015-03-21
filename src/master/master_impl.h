@@ -20,11 +20,6 @@ public:
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
                    ::google::protobuf::Closure* done);
-    void TaskReport(::google::protobuf::RpcController* controller,
-                    const ::galaxy::TaskReportRequest* request,
-                    ::galaxy::TaskReportResponse* response,
-                    ::google::protobuf::Closure* done);
- 
 };
 
 } // namespace galaxy
