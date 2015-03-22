@@ -11,6 +11,8 @@
 #include <fcntl.h>
 
 #include <boost/bind.hpp>
+#include <errno.h>
+#include <string.h>
 
 #include "common/util.h"
 #include "rpc/rpc_client.h"
@@ -59,29 +61,70 @@ void AgentImpl::OpenProcess(const std::string& task_name,
     }
     LOG(INFO, "Write %d bytes to %s", len, task_path.c_str());
     close(fd);
-    /* FILE* fp = fopen(task_name.c_str(), "w");
-    fwrite(task_raw.data(), task_raw.size(), 1, fp);
-    fclose(fp);
-    */
-    LOG(INFO,"Fork to run %s", task_name.c_str());
+
+    LOG(INFO, "Fork to Run %s", task_name.c_str());
     pid_t pid = fork();
     if (pid != 0) {
         return;
     }
-    
-    // change stdout/stderr
-    std::string task_stdout = FLAGS_agent_work_dir + "./stdout";
-    std::string task_stderr = FLAGS_agent_work_dir + "./stdout";
+    std::string root_path = FLAGS_agent_work_dir;
+    RunInnerChildProcess(root_path, cmd_line);
+    return;
+}
 
+void AgentImpl::RunInnerChildProcess(const std::string& root_path,
+                                     const std::string& cmd_line) {
+    // do some prepare
+    // 1. change stdout/stderr
+    std::string task_stdout = root_path + "./stdout";
+    std::string task_stderr = root_path + "./stderr";
     int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     dup2(stdout_fd, STDOUT_FILENO);
     dup2(stderr_fd, STDERR_FILENO);
-    execl("/bin/sh", "sh", "-c", task_path.c_str(), NULL);
+    common::util::CloseOnExec(stdout_fd);
+    common::util::CloseOnExec(stderr_fd);
+
+    // 2. change PWD
+    //std::map<std::string, std::string> env;
+    //common::util::GetEnviron(env);
+    //std::map<std::string, std::string>::iterator it = env.find("PWD");
+    //if (it != env.end()) {
+    //    it->second = root_path;     
+    //}
+    //
+    //it = env.begin();
+    //const char* envp[env.size() + 1];
+    //for (int i = 0;it != env.end(); ++i, ++it) {
+    //    envp[i] = it->second.c_str();
+    //}
+    //envp[env.size()] = NULL;
+
+    //if (setenv("PWD", root_path.c_str(), 1) != 0) {
+    //    LOG(INFO, "set pwd failed %d %s", errno, strerror(errno));     
+    //}
+
+    // 3. close on exec
+    int pid = getpid();
+    std::vector<int> fds;
+    common::util::GetProcessFdList(pid, fds);
+    for (size_t i = 3; i < fds.size(); i++) {
+        common::util::CloseOnExec(fds[i]);
+    }
+    chdir(root_path.c_str());
+
+    LOG(INFO, "RunInnerChildProcess task %s", cmd_line.c_str());
+
+    int ret = execl("/bin/sh", "sh", "-c", cmd_line.c_str(), NULL);
+    if (ret != 0) {
+        LOG(INFO, "exec failed %d %s", errno, strerror(errno));
+    }
+
     /* Exit the child process if execl fails */
     assert(0);
     _exit(127);
 }
+
 void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
