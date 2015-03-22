@@ -62,6 +62,7 @@ void MasterImpl::NewTask(::google::protobuf::RpcController* controller,
     }
     RunTaskRequest rt_request;
     rt_request.set_task_id(next_task_id_++);
+    rt_request.set_task_name(request->task_name());
     rt_request.set_task_raw(request->task_raw());
     rt_request.set_cmd_line(request->cmd_line());
     RunTaskResponse rt_response;

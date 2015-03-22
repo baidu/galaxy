@@ -19,7 +19,8 @@ public:
         rpc_client_->GetStub(master_addr, &master_);
     }
     virtual ~GalaxyImpl() {}
-    bool NewTask(const std::string& task_raw,
+    bool NewTask(const std::string& task_name,
+                 const std::string& task_raw,
                  const std::string& cmd_line,
                  int32_t count);
 private:
@@ -27,10 +28,12 @@ private:
     Master_Stub* master_;
 };
 
-bool GalaxyImpl::NewTask(const std::string& task_raw,
+bool GalaxyImpl::NewTask(const std::string& task_name,
+                         const std::string& task_raw,
                          const std::string& cmd_line,
                          int32_t count) {
     NewTaskRequest request;
+    request.set_task_name(task_name);
     request.set_task_raw(task_raw);
     request.set_cmd_line(cmd_line);
     request.set_replic_count(count);

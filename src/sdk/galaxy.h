@@ -14,9 +14,10 @@ namespace galaxy {
 class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
-    virtual bool NewTask(const std::string& task_raw,
-                 const std::string& cmd_line,
-                 int32_t count) = 0;
+    virtual bool NewTask(const std::string& task_name,
+                         const std::string& task_raw,
+                         const std::string& cmd_line,
+                         int32_t count) = 0;
 };
 
 } // namespace galaxy

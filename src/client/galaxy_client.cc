@@ -11,8 +11,21 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "%s master_addr task_raw cmd_line replia_count\n", argv[0]);
         return -1;
     }
+    FILE* fp = fopen(argv[2], "r");
+    if (fp == NULL) {
+        fprintf(stderr, "Open %s for read fail\n", argv[2]);
+        return -2;
+    }
+    std::string task_raw;
+    char buf[1024];
+    int len = 0;
+    while ((len = fread(buf, 1, 1024, fp)) > 0) {
+        task_raw.append(buf, len);
+    }
+    fclose(fp);
+    printf("Task binary len %lu\n", task_raw.size());
     galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-    galaxy->NewTask(argv[2], argv[3], atoi(argv[4]));
+    galaxy->NewTask(argv[2], task_raw, argv[3], atoi(argv[4]));
     return 0;
 }
 
