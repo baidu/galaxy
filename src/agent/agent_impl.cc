@@ -14,7 +14,7 @@
 
 #include "common/util.h"
 #include "rpc/rpc_client.h"
-
+#include "agent/workspace.h"
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
 
@@ -46,6 +46,7 @@ void AgentImpl::Report() {
 void AgentImpl::OpenProcess(const std::string& task_name,
                             const std::string& task_raw,
                             const std::string& cmd_line) {
+
     std::string task_path = "/home/" + task_name;
     int fd = open(task_path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     if (fd < 0) {
