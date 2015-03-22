@@ -17,7 +17,7 @@ session --
 ### 创建一个进程
 当创建一个进程时，如果不设置gid，子进程默认使用父进程gid
 
-### 一个问题，如果方便的结束一个process tree
+### 一个问题，如何方便的结束一个process tree
 当运行一个task时，task可能会创建复杂结构的process tree, 如果一个一个process去kill很麻烦，但是使用process group去kill却非常方便
 * fork 一个leader process
 * 在子进程里面设置gid
