@@ -15,8 +15,7 @@ CFLAGS=-g \
   -fPIC
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
-  -DVERSION=\"1.9.8.7\" \
-  -DAGENT_WORK_DIR=\"test\/\"
+  -DVERSION=\"1.9.8.7\"
 INCPATH=-I. \
   -I./src \
   -I./output/include
@@ -43,7 +42,7 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=14c409dbb859dce26f527c781604f4fe  COMAKE
+COMAKE_MD5=27aadbd415e13c3f287dd448714c6f5d  COMAKE
 
 
 .PHONY:all

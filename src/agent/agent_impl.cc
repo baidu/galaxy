@@ -68,6 +68,15 @@ void AgentImpl::OpenProcess(const std::string& task_name,
     if (pid != 0) {
         return;
     }
+    
+    // change stdout/stderr
+    std::string task_stdout = FLAGS_agent_work_dir + "./stdout";
+    std::string task_stderr = FLAGS_agent_work_dir + "./stdout";
+
+    int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    dup2(stdout_fd, STDOUT_FILENO);
+    dup2(stderr_fd, STDERR_FILENO);
     execl("/bin/sh", "sh", "-c", task_path.c_str(), NULL);
     /* Exit the child process if execl fails */
     assert(0);
