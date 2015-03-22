@@ -7,6 +7,9 @@
 #ifndef  COMMON_UTIL_H_
 #define  COMMON_UTIL_H_
 
+#include <unistd.h>
+#include <fcntl.h>
+
 namespace common {
 namespace util {
 
@@ -18,6 +21,12 @@ std::string GetLocalHostName() {
     }
     std::string hostname(str);
     return hostname;
+}
+
+void CloseOnExec(int fd) {
+    int flags = fcntl(fd, F_GETFD);
+    flags |= FD_CLOEXEC;
+    fcntl(fd, F_SETFD, flags);
 }
 
 }

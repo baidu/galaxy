@@ -17,6 +17,7 @@
 
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
+extern std::string FLAGS_agent_work_dir;
 
 namespace galaxy {
 
@@ -46,7 +47,7 @@ void AgentImpl::Report() {
 void AgentImpl::OpenProcess(const std::string& task_name,
                             const std::string& task_raw,
                             const std::string& cmd_line) {
-    std::string task_path = "/home/" + task_name;
+    std::string task_path = FLAGS_agent_work_dir + task_name;
     int fd = open(task_path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     if (fd < 0) {
         LOG(WARNING, "Open %s sor write fail", task_path.c_str());

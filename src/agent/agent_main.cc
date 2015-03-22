@@ -28,7 +28,10 @@ int main(int argc, char* argv[])
             FLAGS_agent_port = s;
         } else if (sscanf(argv[i], "--master=%s", s) == 1) {
             FLAGS_master_addr = s;
-        } else {
+        } else if (sscanf(argv[i], "--work_dir=%s", s) == 1) {
+            FLAGS_agent_work_dir = s; 
+        } 
+        else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);
         }
