@@ -13,6 +13,7 @@
 
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_master_addr;
+extern std::string FLAGS_agent_work_dir;
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
