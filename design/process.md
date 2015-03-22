@@ -1,6 +1,6 @@
-## Linux Process µ÷ÑĞ
+## Linux Process è°ƒç ”
 
-### ²ã¼¶¹ØÏµ
+### å±‚çº§å…³ç³»
 
 ```
 session --
@@ -13,16 +13,16 @@ session --
                                 |
                                  \ thread 2
 ```
-Ã¿¸ö¶ÔÏó¶¼ÓĞ×Ô¼ºµÄid sid,gid,pid,tid 
-### ´´½¨Ò»¸ö½ø³Ì
-µ±´´½¨Ò»¸ö½ø³ÌÊ±£¬Èç¹û²»ÉèÖÃgid£¬×Ó½ø³ÌÄ¬ÈÏÊ¹ÓÃ¸¸½ø³Ìgid
+æ¯ä¸ªå¯¹è±¡éƒ½æœ‰è‡ªå·±çš„id sid,gid,pid,tid 
+### åˆ›å»ºä¸€ä¸ªè¿›ç¨‹
+å½“åˆ›å»ºä¸€ä¸ªè¿›ç¨‹æ—¶ï¼Œå¦‚æœä¸è®¾ç½®gidï¼Œå­è¿›ç¨‹é»˜è®¤ä½¿ç”¨çˆ¶è¿›ç¨‹gid
 
-### Ò»¸öÎÊÌâ£¬Èç¹û·½±ãµÄ½áÊøÒ»¸öprocess tree
-µ±ÔËĞĞÒ»¸ötaskÊ±£¬task¿ÉÄÜ»á´´½¨¸´ÔÓ½á¹¹µÄprocess tree, Èç¹ûÒ»¸öÒ»¸öprocessÈ¥killºÜÂé·³£¬µ«ÊÇÊ¹ÓÃprocess groupÈ¥killÈ´·Ç³£·½±ã
-* fork Ò»¸öleader process
-* ÔÚ×Ó½ø³ÌÀïÃæÉèÖÃgid
+### ä¸€ä¸ªé—®é¢˜ï¼Œå¦‚æœæ–¹ä¾¿çš„ç»“æŸä¸€ä¸ªprocess tree
+å½“è¿è¡Œä¸€ä¸ªtaskæ—¶ï¼Œtaskå¯èƒ½ä¼šåˆ›å»ºå¤æ‚ç»“æ„çš„process tree, å¦‚æœä¸€ä¸ªä¸€ä¸ªprocesså»killå¾ˆéº»çƒ¦ï¼Œä½†æ˜¯ä½¿ç”¨process groupå»killå´éå¸¸æ–¹ä¾¿
+* fork ä¸€ä¸ªleader process
+* åœ¨å­è¿›ç¨‹é‡Œé¢è®¾ç½®gid
 * killpg
-ÑùÀı´úÂë
+æ ·ä¾‹ä»£ç 
 ```
 #include <unistd.h>
 #include <signal.h>
@@ -42,6 +42,6 @@ int main ()
 }
 ```
 
-### referenc
+### reference
 [processes](http://www.win.tue.nl/~aeb/linux/lk/lk-10.html)
                   
