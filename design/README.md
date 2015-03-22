@@ -1,6 +1,9 @@
 #学习&思考&总结
 * [cgroup_层级关系.md](cgroup_层级关系.md)
 * [cgroup_mem.md](cgroup_mem.md)
+* [process.md](process.md)
+* [master_design](Master_design.md)
+* [agent_design](agent_design.md)
 
 
 #Agent
