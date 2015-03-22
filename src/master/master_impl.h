@@ -9,22 +9,42 @@
 
 #include "proto/master.pb.h"
 
+#include <map>
+
+#include "common/mutex.h"
+
 namespace galaxy {
+
+class Agent_Stub;
+struct AgentInfo {
+    int64_t id;
+    std::string addr;
+    int32_t task_num;
+    Agent_Stub* stub;
+};
+
+class RpcClient;
 
 class MasterImpl : public Master {
 public:
-    MasterImpl() {}
+    MasterImpl();
     ~MasterImpl() {}
 public:
     void HeartBeat(::google::protobuf::RpcController* controller,
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
                    ::google::protobuf::Closure* done);
-    void TaskReport(::google::protobuf::RpcController* controller,
-                    const ::galaxy::TaskReportRequest* request,
-                    ::galaxy::TaskReportResponse* response,
-                    ::google::protobuf::Closure* done);
- 
+    void NewTask(::google::protobuf::RpcController* controller,
+                 const ::galaxy::NewTaskRequest* request,
+                 ::galaxy::NewTaskResponse* response,
+                 ::google::protobuf::Closure* done);
+private:
+    std::map<std::string, AgentInfo> agents_;
+    int64_t next_agent_id_;
+    int64_t next_task_id_;
+    Mutex agent_lock_;
+
+    RpcClient* rpc_client_;
 };
 
 } // namespace galaxy

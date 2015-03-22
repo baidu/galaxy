@@ -7,5 +7,6 @@
 #include <string>
 std::string FLAGS_master_port = "8101";
 std::string FLAGS_agent_port = "8102";
+std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
