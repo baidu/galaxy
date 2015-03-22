@@ -12,3 +12,20 @@ Agent作为单机Demon程序，主要从如下角度进行管理工作：
  
 
 **TODO** ： 以上内容待讨论整理
+
+### Agent 设计
+
+#### 运行task设计
+运行一个task主要使用一下几大对象：
+* TaskRunner 每个task都会有一个TaskRunner,包含Start,Stop,IsRunning(health check),State(任务消耗资源情况)方法
+* TaskManager 全局就一个TaskManager,管理所有的TaskRunner，负责TaskRunner的创建 启动，销毁 
+* Workspace 每个task都会有个一个Workspace,包含Create,Clean,IsExpire(用于资源GC),GetPath(工作目录跟路径)
+* WorkspaceManager 全局一个WorkspaceManager,管理所有Workspace 
+
+
+#### TaskRunner
+针对不同的执行方式可以实现CommandTaskRunner ContainerTaskRunner.
+目前CommandTaskRunner实现方式：
+* Start , fork 一个子进程，在子进程执行execl task的命令
+* Stop , 在第一步fork是记住pid,作为任务的父pid,通过pid获取 process tree,如何优雅停止process tree,自上而下，还是自下而上？
+* IsRuning , 目前实现方式是检查父pid是否存在
