@@ -9,11 +9,13 @@
 #include <sstream>
 #include <unistd.h>
 #include "agent/workspace.h"
+#include "common/logging.h"
 
 namespace galaxy{
 namespace agent{
 
 int DefaultWorkspace::Create(){
+    LOG(INFO,"create workspace for task %d",m_task_info.task_name());
     if(m_has_created){
         return 0;
     }
@@ -24,7 +26,7 @@ int DefaultWorkspace::Create(){
     }
     //TODO safe path join
     std::stringstream ss;
-    ss << m_root_path << "/" << m_task_info->task_name();
+    ss << m_root_path << "/" << m_task_info.task_name();
     m_task_root_path = ss.str();
     int status ;
     status = mkdir(m_task_root_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);

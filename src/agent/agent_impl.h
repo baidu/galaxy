@@ -9,9 +9,10 @@
 
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
-
+#include "agent/workspace_manager.h"
+#include "agent/task_manager.h"
 #include "common/thread_pool.h"
-
+#include "agent/workspace.h"
 namespace galaxy {
 
 class RpcClient;
@@ -32,11 +33,14 @@ private:
     /// Start a new process
     void OpenProcess(const std::string& task_name,
                      const std::string& task_raw,
-                     const std::string& cmd_line);
+                     const std::string& cmd_line,
+                     const std::string& task_root_path);
 private:
     common::ThreadPool thread_pool_;
     RpcClient* rpc_client_;
     Master_Stub* master_;
+    ::galaxy::agent::WorkspaceManager * ws_mgr_;
+    ::galaxy::agent::TaskManager * task_mgr_;
 };
 
 } // namespace galaxy

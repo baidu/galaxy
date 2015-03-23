@@ -7,9 +7,12 @@
 
 #ifndef AGENT_TASK_MANAGER_H
 #define AGENT_TASK_MANAGER_H
-#include <vector>
-#include "proto/master.pb.h"
-#include "common/mutex"
+#include <map>
+#include <stdint.h>
+#include "proto/task.pb.h"
+#include "common/mutex.h"
+#include "agent/task_runner.h"
+#include "agent/workspace.h"
 namespace galaxy{
 namespace agent{
 
@@ -17,19 +20,20 @@ class TaskManager{
 
 public:
     TaskManager(){
-        m_mutex = new Mutex();
+        m_mutex = new common::Mutex();
     }
     ~TaskManager(){
         if(m_mutex != NULL){
             delete m_mutex;
         }
     }
-    int Add(const TaskInfo &task_info);
-    int Remove(const TaskInfo &task_info);
-    int Status(std::vector<TaskStatus> * task_status_vector);
+    int Add(const ::galaxy::TaskInfo &task_info,
+            const DefaultWorkspace &workspace);
+    int Remove(const ::galaxy::TaskInfo &task_info);
+    int Status(std::vector<TaskStatus> task_status_vector);
 private:
-    Mutex * m_mutex;
-    std::vector<TaskRunner> * m_task_runner_vector;
+    common::Mutex * m_mutex;
+    std::map<int64_t,TaskRunner*> m_task_runner_map;
 };
 }
 }

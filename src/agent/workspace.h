@@ -8,7 +8,7 @@
 #ifndef AGENT_WORKSPACE_H
 #define AGENT_WORKSPACE_H
 #include <string>
-#include "proto/master.pb.h"
+#include "proto/task.pb.h"
 #include "common/mutex.h"
 
 namespace galaxy{
@@ -41,7 +41,7 @@ public:
 class DefaultWorkspace:public Workspace{
 
 public:
-    DefaultWorkspace(TaskInfo * _task_info,
+    DefaultWorkspace(const ::galaxy::TaskInfo &_task_info,
                      std::string _root_path)
                      :m_task_info(_task_info),
                      m_root_path(_root_path),
@@ -53,12 +53,14 @@ public:
     bool IsExpire();
     std::string GetPath();
     ~DefaultWorkspace(){
+        //清除工作目录下面的文件
+        Clean();
         if(m_mutex != NULL){
             delete m_mutex;
         }
     }
 private:
-    TaskInfo * m_task_info;
+    ::galaxy::TaskInfo m_task_info;
     std::string m_root_path;
     std::string m_task_root_path;
     bool m_has_created;
