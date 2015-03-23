@@ -33,6 +33,8 @@ private:
     void OpenProcess(const std::string& task_name,
                      const std::string& task_raw,
                      const std::string& cmd_line);
+    void RunInnerChildProcess(const std::string& root_path, 
+                              const std::string& cmd_line);
 private:
     common::ThreadPool thread_pool_;
     RpcClient* rpc_client_;
