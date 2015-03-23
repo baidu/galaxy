@@ -29,6 +29,7 @@ session --
 #include <signal.h>
 int main ()
 {
+    //fork出来pid不会和存在的的process group id相同
     pid_t pid = fork();
     if(pid==0){
         pid_t my_pid = getpid()
