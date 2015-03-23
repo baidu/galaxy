@@ -25,16 +25,18 @@ session --
 样例代码
 ```
 #include <unistd.h>
+#include <stdio.h>
 #include <signal.h>
 int main ()
 {
     pid_t pid = fork();
     if(pid==0){
+        pid_t my_pid = getpid()
+        setpgid(pid,pid);
         FILE *fd = popen("python -m SimpleHTTPServer 12345","r");
         pclose(fd);
         return 0;
     }else{
-        setpgid(pid,pid);
         killpg(pid,9);
     }   
     return 0;
