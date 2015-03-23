@@ -23,6 +23,11 @@ public:
         m_mutex = new common::Mutex();
     }
     ~TaskManager(){
+        std::map<int64_t,TaskRunner*>::iterator it = m_task_runner_map.begin();
+        for(;it!=m_task_runner_map.end();++it){
+            it->second->Stop();
+            delete it->second;
+        }
         if(m_mutex != NULL){
             delete m_mutex;
         }

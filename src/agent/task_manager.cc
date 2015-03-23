@@ -8,7 +8,6 @@
 #include "agent/task_manager.h"
 #include "common/logging.h"
 
-
 namespace galaxy{
 namespace agent{
 
