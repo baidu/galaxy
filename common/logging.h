@@ -27,13 +27,13 @@ enum LogLevel {
 
 #define LOG(level, fmt, args...) Log(level, "[%s:%d] "fmt, __FILE__, __LINE__, ##args)
 
-int g_log_level = 4;
+static int g_log_level = 4;
 
-void SetLogLevel(int level) {
+static void SetLogLevel(int level) {
     g_log_level = level;
 }
 
-void Logv(const char* format, va_list ap) {
+static void Logv(const char* format, va_list ap) {
     const uint64_t thread_id = syscall(__NR_gettid);
 
     // We try twice: the first time with a fixed-size stack allocated buffer,
@@ -99,7 +99,7 @@ void Logv(const char* format, va_list ap) {
     }
 }
 
-void Log(int level, const char* fmt, ...) {
+static void Log(int level, const char* fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
 
