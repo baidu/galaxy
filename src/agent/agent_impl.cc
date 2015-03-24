@@ -11,11 +11,14 @@
 #include <fcntl.h>
 
 #include <boost/bind.hpp>
+#include <errno.h>
+#include <string.h>
 #include "common/util.h"
 #include "rpc/rpc_client.h"
 
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
+extern std::string FLAGS_agent_work_dir;
 
 namespace galaxy {
 
@@ -56,37 +59,7 @@ void AgentImpl::Report() {
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
 }
 
-void AgentImpl::OpenProcess(const std::string& task_name,
-                            const std::string& task_raw,
-                            const std::string& cmd_line,
-                            const std::string& task_root_path) {
 
-    std::string task_path = task_root_path + task_name;
-    int fd = open(task_path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    if (fd < 0) {
-        LOG(WARNING, "Open %s sor write fail", task_path.c_str());
-        return ;
-    }
-    int len = write(fd, task_raw.data(), task_raw.size());
-    if (len < 0) {
-        LOG(WARNING, "Write fail : %s", strerror(errno));
-    }
-    LOG(INFO, "Write %d bytes to %s", len, task_path.c_str());
-    close(fd);
-    /* FILE* fp = fopen(task_name.c_str(), "w");
-    fwrite(task_raw.data(), task_raw.size(), 1, fp);
-    fclose(fp);
-    */
-    LOG(INFO,"Fork to run %s", task_name.c_str());
-    pid_t pid = fork();
-    if (pid != 0) {
-        return;
-    }
-    execl("/bin/sh", "sh", "-c", task_path.c_str(), NULL);
-    /* Exit the child process if execl fails */
-    assert(0);
-    _exit(127);
-}
 void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,

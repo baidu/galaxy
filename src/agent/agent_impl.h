@@ -30,12 +30,6 @@ public:
                          ::galaxy::RunTaskResponse* response,
                          ::google::protobuf::Closure* done);
 private:
-    /// Start a new process
-    void OpenProcess(const std::string& task_name,
-                     const std::string& task_raw,
-                     const std::string& cmd_line,
-                     const std::string& task_root_path);
-private:
     common::ThreadPool thread_pool_;
     RpcClient* rpc_client_;
     Master_Stub* master_;
