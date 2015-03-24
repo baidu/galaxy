@@ -22,9 +22,9 @@ extern std::string FLAGS_agent_work_dir;
 
 namespace galaxy {
 
-AgentImpl::AgentImpl() {
+AgentImpl::AgentImpl(const std::string _workspace_root_path) {
     rpc_client_ = new RpcClient();
-    ws_mgr_ = new WorkspaceManager("/tmp");
+    ws_mgr_ = new WorkspaceManager(_workspace_root_path);
     task_mgr_ = new TaskManager();
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
@@ -58,7 +58,6 @@ void AgentImpl::Report() {
                                 &request, &response, 5, 1);
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
 }
-
 
 void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
                         const ::galaxy::RunTaskRequest* request,

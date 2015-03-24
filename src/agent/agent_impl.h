@@ -19,7 +19,7 @@ class RpcClient;
 
 class AgentImpl : public Agent {
 public:
-    AgentImpl();
+    AgentImpl(const std::string _workspace_root_path);
     virtual ~AgentImpl();
 public:
     void Report();
@@ -35,6 +35,8 @@ private:
     Master_Stub* master_;
     WorkspaceManager* ws_mgr_;
     TaskManager* task_mgr_;
+    //agent workspace 根目录
+    std::string workspace_root_path_;
 };
 
 } // namespace galaxy

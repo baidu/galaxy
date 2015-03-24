@@ -41,9 +41,17 @@ int CommandTaskRunner::Start(){
         m_mutex->Unlock();
         return -1;
     }
+    std::string task_stdout = m_workspace.GetPath() + "./stdout";
+    std::string task_stderr = m_workspace.GetPath() + "./stderr";
+    int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    int cur_pid = getpid();
+    std::vector<int> fds;
+    common::util::GetProcessFdList(cur_pid, fds);
     m_child_pid = fork();
     //child
     if(m_child_pid == 0){
+
         pid_t my_pid = getpid();
         int ret = setpgid(my_pid,my_pid);
         if(ret != 0 ){
@@ -51,8 +59,21 @@ int CommandTaskRunner::Start(){
         }
         pid_t pgid = getpgid(my_pid);
         LOG(INFO,"start task in process %d , group %d",my_pid,pgid);
+        while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
+        while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
+        for (size_t i = 0; i < fds.size(); i++) {
+            if (fds[i] == STDOUT_FILENO
+                || fds[i] == STDERR_FILENO
+                || fds[i] == STDIN_FILENO) {
+            // do not deal with std input/output
+               continue;
+           }
+           close(fds[i]);
+        }
         RunInnerChildProcess(m_workspace.GetPath(),m_task_info.cmd_line());
     }else{
+        close(stdout_fd);
+        close(stderr_fd);
         m_mutex->Unlock();
         m_group_pid = m_child_pid;
         return 0;
@@ -70,20 +91,6 @@ int CommandTaskRunner::Stop(){
 
 void CommandTaskRunner::RunInnerChildProcess(const std::string &root_path,
                                             const std::string &cmd_line){
-    std::string task_stdout = root_path + "./stdout";
-    std::string task_stderr = root_path + "./stderr";
-    int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    dup2(stdout_fd, STDOUT_FILENO);
-    dup2(stderr_fd, STDERR_FILENO);
-    common::util::CloseOnExec(stdout_fd);
-    common::util::CloseOnExec(stderr_fd);
-    int pid = getpid();
-    std::vector<int> fds;
-    common::util::GetProcessFdList(pid, fds);
-    for (size_t i = 3; i < fds.size(); i++) {
-        common::util::CloseOnExec(fds[i]);
-    }
     chdir(root_path.c_str());
     LOG(INFO, "RunInnerChildProcess task %s", cmd_line.c_str());
     int ret = execl("/bin/sh", "sh", "-c", cmd_line.c_str(), NULL);

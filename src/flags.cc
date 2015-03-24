@@ -9,12 +9,7 @@ std::string FLAGS_master_port = "8101";
 std::string FLAGS_agent_port = "8102";
 std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
 
-#ifdef AGENT_WORK_DIR
-const char* work_dir = AGENT_WORK_DIR;
-std::string FLAGS_agent_work_dir(work_dir);
-#else 
-std::string FLAGS_agent_work_dir;
-#endif
+std::string FLAGS_agent_work_dir = "/tmp";
 
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
