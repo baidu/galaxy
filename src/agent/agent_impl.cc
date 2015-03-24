@@ -74,7 +74,6 @@ void AgentImpl::OpenProcess(const std::string& task_name,
     int cur_pid = getpid();
     std::vector<int> fds;
     common::util::GetProcessFdList(cur_pid, fds);
-    // put last two fd for child process, dup
 
     pid_t pid = fork();
     if (pid != 0) {
@@ -83,7 +82,8 @@ void AgentImpl::OpenProcess(const std::string& task_name,
         return;
     }
 
-    // do in child process
+    // do in child process, 
+    // all interface called in child process should be async-safe. 
     // NOTE if dup2 will return errno == EINTR?  
     while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
     while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
@@ -101,6 +101,7 @@ void AgentImpl::OpenProcess(const std::string& task_name,
     chdir(root_path.c_str());
 
     int ret = execl("/bin/sh", "sh", "-c", cmd_line.c_str(), NULL);
+    // here maybe locked, and keep it for debug
     if (ret != 0) {
         LOG(INFO, "exec failed %d %s", errno, strerror(errno));
     }
