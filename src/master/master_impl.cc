@@ -5,6 +5,7 @@
 // Author: yanshiguang02@baidu.com
 
 #include "master_impl.h"
+
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 

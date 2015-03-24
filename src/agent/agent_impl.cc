@@ -22,9 +22,9 @@ extern std::string FLAGS_agent_work_dir;
 
 namespace galaxy {
 
-AgentImpl::AgentImpl(const std::string _workspace_root_path) {
+AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
-    ws_mgr_ = new WorkspaceManager(_workspace_root_path);
+    ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);

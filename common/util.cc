@@ -22,9 +22,11 @@ namespace util {
 static const uint32_t kMaxHostNameSize = 255;
 std::string GetLocalHostName() {
     char str[kMaxHostNameSize + 1];
+
     if (0 != gethostname(str, kMaxHostNameSize + 1)) {
         return "";
     }
+
     std::string hostname(str);
     return hostname;
 }
@@ -39,16 +41,20 @@ void GetEnviron(std::map<std::string, std::string>& env) {
     char** cur_environ = environ;
 
     env.clear();
+
     for (int index = 0; cur_environ[index] != NULL; index++) {
         // split =
         std::string env_item(cur_environ[index]);
         size_t pos = env_item.find_first_of('=');
+
         if (pos == std::string::npos) {
             // invalid format
             continue;
         }
+
         env[env_item.substr(0, pos)] = env_item.substr(pos + 1);
     }
+
     return;
 }
 
@@ -60,6 +66,7 @@ void GetProcessFdList(int pid, std::vector<int>& fds) {
     proc_path.append("/fd/");
 
     DIR* dir = opendir(proc_path.c_str());
+
     if (dir == NULL) {
         return;
     }
@@ -67,16 +74,21 @@ void GetProcessFdList(int pid, std::vector<int>& fds) {
     fds.push_back(0);
 
     struct dirent* entry;
+
     while ((entry = readdir(dir)) != NULL) {
         if (strncmp(entry->d_name, ".", 1) == 0) {
             continue;
         }
+
         int fd = atoi(entry->d_name);
+
         if (fd == 0) {
             continue;
         }
+
         fds.push_back(fd);
     }
+
     closedir(dir);
 }
 

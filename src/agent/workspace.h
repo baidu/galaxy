@@ -1,8 +1,8 @@
-/* workspace.h
- * Copyright (C) 2015 wangtaize <wangtaize@baidu.com>
- *
- * Distributed under terms of the MIT license.
- */
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: wangtaize@baidu.com
 
 #ifndef AGENT_WORKSPACE_H
 #define AGENT_WORKSPACE_H

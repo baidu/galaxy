@@ -19,7 +19,7 @@ class RpcClient;
 
 class AgentImpl : public Agent {
 public:
-    AgentImpl(const std::string _workspace_root_path);
+    AgentImpl();
     virtual ~AgentImpl();
 public:
     void Report();

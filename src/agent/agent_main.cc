@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
-    galaxy::AgentImpl* agent_service = new galaxy::AgentImpl(FLAGS_agent_work_dir);
+    galaxy::AgentImpl* agent_service = new galaxy::AgentImpl();
 
     if (!rpc_server.RegisterService(agent_service)) {
             return EXIT_FAILURE;
