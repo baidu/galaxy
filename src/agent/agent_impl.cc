@@ -44,7 +44,7 @@ void AgentImpl::Report() {
     HeartBeatResponse response;
     std::string addr = common::util::GetLocalHostName() + ":" + FLAGS_agent_port;
     std::vector< ::galaxy::TaskStatus > status_vector;
-    task_mgr_->Status(status_vector);
+    task_mgr_->Status(&status_vector);
     std::vector< ::galaxy::TaskStatus>::iterator it = status_vector.begin();
     for(;it != status_vector.end();++it){
         ::galaxy::TaskStatus * req_status = request.add_task_status();
@@ -53,7 +53,7 @@ void AgentImpl::Report() {
     }
     request.set_agent_addr(addr);
 
-    LOG(INFO, "Reprot to master %s", addr.c_str());
+    LOG(INFO, "Reprot to master %s,task count %d", addr.c_str(),request.task_status_size());
     rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
