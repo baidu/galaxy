@@ -63,66 +63,51 @@ void AgentImpl::OpenProcess(const std::string& task_name,
     close(fd);
 
     LOG(INFO, "Fork to Run %s", task_name.c_str());
+    std::string root_path = FLAGS_agent_work_dir;
+
+    // do prepare, NOTE, root_path should be unqic
+    std::string task_stdout = root_path + "./stdout";
+    std::string task_stderr = root_path + "./stderr"; 
+    int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    int stderr_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+
+    int cur_pid = getpid();
+    std::vector<int> fds;
+    common::util::GetProcessFdList(cur_pid, fds);
+
     pid_t pid = fork();
     if (pid != 0) {
+        close(stdout_fd);
+        close(stderr_fd);
         return;
     }
-    std::string root_path = FLAGS_agent_work_dir;
-    RunInnerChildProcess(root_path, cmd_line);
-    return;
-}
 
-void AgentImpl::RunInnerChildProcess(const std::string& root_path,
-                                     const std::string& cmd_line) {
-    // do some prepare
-    // 1. change stdout/stderr
-    std::string task_stdout = root_path + "./stdout";
-    std::string task_stderr = root_path + "./stderr";
-    int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    dup2(stdout_fd, STDOUT_FILENO);
-    dup2(stderr_fd, STDERR_FILENO);
-    common::util::CloseOnExec(stdout_fd);
-    common::util::CloseOnExec(stderr_fd);
+    // do in child process, 
+    // all interface called in child process should be async-safe. 
+    // NOTE if dup2 will return errno == EINTR?  
+    while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
+    while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
 
-    // 2. change PWD
-    //std::map<std::string, std::string> env;
-    //common::util::GetEnviron(env);
-    //std::map<std::string, std::string>::iterator it = env.find("PWD");
-    //if (it != env.end()) {
-    //    it->second = root_path;     
-    //}
-    //
-    //it = env.begin();
-    //const char* envp[env.size() + 1];
-    //for (int i = 0;it != env.end(); ++i, ++it) {
-    //    envp[i] = it->second.c_str();
-    //}
-    //envp[env.size()] = NULL;
-
-    //if (setenv("PWD", root_path.c_str(), 1) != 0) {
-    //    LOG(INFO, "set pwd failed %d %s", errno, strerror(errno));     
-    //}
-
-    // 3. close on exec
-    int pid = getpid();
-    std::vector<int> fds;
-    common::util::GetProcessFdList(pid, fds);
-    for (size_t i = 3; i < fds.size(); i++) {
-        common::util::CloseOnExec(fds[i]);
+    for (size_t i = 0; i < fds.size(); i++) {
+        if (fds[i] == STDOUT_FILENO 
+                || fds[i] == STDERR_FILENO 
+                || fds[i] == STDIN_FILENO) {
+            // do not deal with std input/output
+            continue; 
+        } 
+        close(fds[i]);
     }
+    
     chdir(root_path.c_str());
 
-    LOG(INFO, "RunInnerChildProcess task %s", cmd_line.c_str());
-
     int ret = execl("/bin/sh", "sh", "-c", cmd_line.c_str(), NULL);
+    // here maybe locked, and keep it for debug
     if (ret != 0) {
         LOG(INFO, "exec failed %d %s", errno, strerror(errno));
     }
-
-    /* Exit the child process if execl fails */
     assert(0);
     _exit(127);
+    return;
 }
 
 void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
