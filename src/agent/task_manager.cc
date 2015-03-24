@@ -37,7 +37,7 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
 int TaskManager::Remove(const TaskInfo& task_info) {
     return 0;
 }
-int TaskManager::Status(std::vector< TaskStatus >  task_status_vector) {
+int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
     std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
 
     for (; it != m_task_runner_map.end(); ++it) {

@@ -22,7 +22,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
     LOG(INFO, "HeartBeat from %s", agent_addr.c_str());
-    LOG(INFO,"task status from %s %d",agent_addr.c_str(),request->task_status_size());
+    LOG(INFO,"task count from %s %d",agent_addr.c_str(),request->task_status_size());
     MutexLock lock(&agent_lock_);
     if (agents_.find(agent_addr) == agents_.end()) {
         AgentInfo& agent = agents_[agent_addr];

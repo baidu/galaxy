@@ -53,7 +53,7 @@ void AgentImpl::Report() {
     }
     request.set_agent_addr(addr);
 
-    LOG(INFO, "Reprot to master %s", addr.c_str());
+    LOG(INFO, "Reprot to master %s,task count %d", addr.c_str(),request.task_status_size());
     rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));

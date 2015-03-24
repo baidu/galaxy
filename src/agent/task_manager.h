@@ -29,7 +29,7 @@ public:
     int Add(const ::galaxy::TaskInfo &task_info,
             const DefaultWorkspace &workspace);
     int Remove(const ::galaxy::TaskInfo &task_info);
-    int Status(std::vector<TaskStatus> task_status_vector);
+    int Status(std::vector<TaskStatus>& task_status_vector);
 private:
     common::Mutex * m_mutex;
     std::map<int64_t,TaskRunner*> m_task_runner_map;
