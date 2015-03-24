@@ -30,8 +30,8 @@ int main(int argc, char* argv[])
         } else if (sscanf(argv[i], "--master=%s", s) == 1) {
             FLAGS_master_addr = s;
         } else if (sscanf(argv[i], "--work_dir=%s", s) == 1) {
-            FLAGS_agent_work_dir = s; 
-        } 
+            FLAGS_agent_work_dir = s;
+        }
         else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);
@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {
         sleep(1);
-    }   
+    }
 
     return EXIT_SUCCESS;
 }
