@@ -21,8 +21,8 @@ namespace galaxy {
 
 AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
-    ws_mgr_ = new ::galaxy::agent::WorkspaceManager("/tmp");
-    task_mgr_ = new ::galaxy::agent::TaskManager();
+    ws_mgr_ = new WorkspaceManager("/tmp");
+    task_mgr_ = new TaskManager();
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }
@@ -31,9 +31,8 @@ AgentImpl::AgentImpl() {
 }
 
 AgentImpl::~AgentImpl() {
-    if(ws_mgr_ != NULL){
-        delete ws_mgr_;
-    }
+    delete ws_mgr_;
+    delete task_mgr_;
 
 }
 
@@ -93,9 +92,11 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
     LOG(INFO, "Run Task %s %s", request->task_name().c_str(), request->cmd_line().c_str());
-    ::galaxy::TaskInfo task_info;
-    task_info.set_task_name(9527);
-    task_info.set_cmd_line("python -m SimpleHTTPServer 8189");
+    TaskInfo task_info;
+    task_info.set_task_id(request->task_id());
+    task_info.set_task_name(request->task_name());
+    task_info.set_cmd_line(request->cmd_line());
+    task_info.set_task_raw(request->task_raw());
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
     int ret = ws_mgr_->Add(task_info);
     if(ret != 0 ){
@@ -103,7 +104,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
         done->Run();
     }else{
         LOG(INFO,"start  task for %s",request->task_name().c_str());
-        ::galaxy::agent::DefaultWorkspace * workspace ;
+        DefaultWorkspace * workspace ;
         workspace = ws_mgr_->GetWorkspace(task_info);
         ret = task_mgr_->Add(task_info,*workspace);
         if (ret != 0){

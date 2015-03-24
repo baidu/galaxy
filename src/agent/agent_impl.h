@@ -39,8 +39,8 @@ private:
     common::ThreadPool thread_pool_;
     RpcClient* rpc_client_;
     Master_Stub* master_;
-    ::galaxy::agent::WorkspaceManager * ws_mgr_;
-    ::galaxy::agent::TaskManager * task_mgr_;
+    WorkspaceManager* ws_mgr_;
+    TaskManager* task_mgr_;
 };
 
 } // namespace galaxy

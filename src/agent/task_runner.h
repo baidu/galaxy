@@ -4,7 +4,6 @@
 #include "common/mutex.h"
 #include "agent/workspace.h"
 namespace galaxy{
-namespace agent{
 
 class TaskRunner{
 
@@ -29,7 +28,7 @@ public:
 class CommandTaskRunner:public TaskRunner{
 
 public:
-    CommandTaskRunner(const ::galaxy::TaskInfo &_task_info,
+    CommandTaskRunner(const TaskInfo &_task_info,
                       const DefaultWorkspace &_workspace)
                       :m_task_info(_task_info),
                       m_child_pid(-1),
@@ -45,7 +44,7 @@ public:
     int Stop();
     int IsRunning();
 private:
-    ::galaxy::TaskInfo m_task_info;
+    TaskInfo m_task_info;
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
@@ -57,7 +56,6 @@ private:
 };
 
 
-}//agent
 }//galaxy
 
 #endif /* !AGENT_TASK_RUNNER_H */

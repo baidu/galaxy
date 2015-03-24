@@ -7,19 +7,27 @@
 #ifndef  COMMON_UTIL_H_
 #define  COMMON_UTIL_H_
 
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <dirent.h>
+
+#include <map>
+#include <sstream>
+#include <string>
+
+// use only in linux
+extern char** environ;
+
 namespace common {
 namespace util {
 
 static const uint32_t kMaxHostNameSize = 255;
-std::string GetLocalHostName() {
-    char str[kMaxHostNameSize + 1];
-    if (0 != gethostname(str, kMaxHostNameSize + 1)) {
-        return "";
-    }
-    std::string hostname(str);
-    return hostname;
-}
-
+std::string GetLocalHostName();
+void CloseOnExec(int fd);
+void GetEnviron(std::map<std::string, std::string>& env);
+void GetProcessFdList(int pid, std::vector<int>& fds);
 }
 }
 

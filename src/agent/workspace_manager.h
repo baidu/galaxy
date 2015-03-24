@@ -14,7 +14,6 @@
 #include "common/mutex.h"
 #include "proto/task.pb.h"
 namespace galaxy{
-namespace agent{
 
 class WorkspaceManager{
 public:
@@ -46,6 +45,5 @@ private:
     std::string m_root_path;
 };
 
-}
 }
 #endif /* !AGENT_WORKSPACE_MANAGER_H */

@@ -1,5 +1,4 @@
-/*
- * workspace.h
+/* workspace.h
  * Copyright (C) 2015 wangtaize <wangtaize@baidu.com>
  *
  * Distributed under terms of the MIT license.
@@ -12,8 +11,12 @@
 #include "common/mutex.h"
 
 namespace galaxy{
-namespace agent{
 
+class Fetcher{
+
+public:
+    virtual int Fetch() = 0;
+};
 //work space 根据 task info中元数据生成好一个
 //可运行的workspace
 class Workspace{
@@ -41,7 +44,7 @@ public:
 class DefaultWorkspace:public Workspace{
 
 public:
-    DefaultWorkspace(const ::galaxy::TaskInfo &_task_info,
+    DefaultWorkspace(const TaskInfo &_task_info,
                      std::string _root_path)
                      :m_task_info(_task_info),
                      m_root_path(_root_path),
@@ -66,6 +69,6 @@ private:
     bool m_has_created;
     common::Mutex * m_mutex;
 };
-}
+
 }
 #endif /* !AGENT_WORKSPACE_H */

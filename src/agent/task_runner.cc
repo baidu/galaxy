@@ -14,7 +14,6 @@
 #include "common/logging.h"
 #include "common/util.h"
 namespace galaxy{
-namespace agent{
 
 
 //check process with m_child_pid
@@ -23,7 +22,7 @@ int CommandTaskRunner::IsRunning(){
         return -1;
     }
     int ret = ::kill(m_child_pid,0);
-    LOG(INFO,"check task %d ret %d",m_task_info.task_name(),ret);
+    LOG(INFO,"check task %d ret %d",m_task_info.task_id(),ret);
     return ret;
 }
 
@@ -32,9 +31,9 @@ int CommandTaskRunner::IsRunning(){
 //2. exec command in the subprocess A
 //TODO add workspace
 int CommandTaskRunner::Start(){
-    LOG(INFO,"start a task with id %d",m_task_info.task_name());
+    LOG(INFO,"start a task with id %d",m_task_info.task_id());
     if (m_child_pid != -1){
-        LOG(WARNING,"task with id %d has existed",m_task_info.task_name());
+        LOG(WARNING,"task with id %d has existed",m_task_info.task_id());
         return -1;
     }
     m_mutex->Lock("start task lock");
@@ -93,7 +92,6 @@ void CommandTaskRunner::RunInnerChildProcess(const std::string &root_path,
     }
 }
 
-}
 }
 
 

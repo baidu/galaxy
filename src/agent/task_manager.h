@@ -14,10 +14,7 @@
 #include "agent/task_runner.h"
 #include "agent/workspace.h"
 namespace galaxy{
-namespace agent{
-
 class TaskManager{
-
 public:
     TaskManager(){
         m_mutex = new common::Mutex();
@@ -28,9 +25,7 @@ public:
             it->second->Stop();
             delete it->second;
         }
-        if(m_mutex != NULL){
-            delete m_mutex;
-        }
+        delete m_mutex;
     }
     int Add(const ::galaxy::TaskInfo &task_info,
             const DefaultWorkspace &workspace);
@@ -41,7 +36,4 @@ private:
     std::map<int64_t,TaskRunner*> m_task_runner_map;
 };
 }
-}
-
-
 #endif /* !AGENT_TASK_MANAGER_H */
