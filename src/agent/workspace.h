@@ -49,25 +49,18 @@ public:
                      :m_task_info(_task_info),
                      m_root_path(_root_path),
                      m_has_created(false){
-        m_mutex = new common::Mutex();
     }
     int Create();
     int Clean();
     bool IsExpire();
     std::string GetPath();
     ~DefaultWorkspace(){
-        //清除工作目录下面的文件
-        Clean();
-        if(m_mutex != NULL){
-            delete m_mutex;
-        }
     }
 private:
-    ::galaxy::TaskInfo m_task_info;
+    TaskInfo m_task_info;
     std::string m_root_path;
     std::string m_task_root_path;
     bool m_has_created;
-    common::Mutex * m_mutex;
 };
 
 }

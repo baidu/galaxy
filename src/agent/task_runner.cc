@@ -6,6 +6,7 @@
 
 #include "agent/task_runner.h"
 
+#include <sys/wait.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -23,8 +24,22 @@ int CommandTaskRunner::IsRunning() {
     if (m_child_pid == -1) {
         return -1;
     }
-
+    // check process exist
     int ret = ::kill(m_child_pid, 0);
+    if(ret == 0 ){
+        //check process status
+        pid_t pid = waitpid(m_child_pid,&ret,WNOHANG);
+        if(pid == -1 ){
+            LOG(WARNING,"check process %d state error",m_child_pid);
+            return -1;
+        }else if(pid==0){
+            LOG(INFO,"process %d is running",m_child_pid);
+        }else{
+            LOG(WARNING,"process %d has gone",m_child_pid);
+            //restart
+            return -1;
+        }
+    }
     LOG(INFO, "check task %d ret %d", m_task_info.task_id(), ret);
     return ret;
 }
@@ -35,40 +50,26 @@ int CommandTaskRunner::IsRunning() {
 //TODO add workspace
 int CommandTaskRunner::Start() {
     LOG(INFO, "start a task with id %d", m_task_info.task_id());
-
-    if (m_child_pid != -1) {
+    if (IsRunning() == 0) {
         LOG(WARNING, "task with id %d has existed", m_task_info.task_id());
         return -1;
     }
-
-    m_mutex->Lock("start task lock");
-
-    if (m_child_pid != -1) {
-        m_mutex->Unlock();
-        return -1;
-    }
-
-    std::string task_stdout = m_workspace.GetPath() + "./stdout";
-    std::string task_stderr = m_workspace.GetPath() + "./stderr";
+    std::string task_stdout = m_workspace->GetPath() + "/./stdout";
+    std::string task_stderr = m_workspace->GetPath() + "/./stderr";
     int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
     int cur_pid = getpid();
     std::vector<int> fds;
     common::util::GetProcessFdList(cur_pid, fds);
     m_child_pid = fork();
-
     //child
     if (m_child_pid == 0) {
-
         pid_t my_pid = getpid();
         int ret = setpgid(my_pid, my_pid);
 
         if (ret != 0) {
             return ret;
         }
-
-        pid_t pgid = getpgid(my_pid);
-
         // do in child process,
         // all interface called in child process should be async-safe.
         // NOTE if dup2 will return errno == EINTR?
@@ -87,14 +88,18 @@ int CommandTaskRunner::Start() {
             close(fds[i]);
         }
 
-        RunInnerChildProcess(m_workspace.GetPath(), m_task_info.cmd_line());
+        RunInnerChildProcess(m_workspace->GetPath(), m_task_info.cmd_line());
     } else {
         close(stdout_fd);
         close(stderr_fd);
-        m_mutex->Unlock();
         m_group_pid = m_child_pid;
         return 0;
     }
+}
+
+int CommandTaskRunner::ReStart(){
+
+
 }
 
 
@@ -102,8 +107,19 @@ int CommandTaskRunner::Stop() {
     if (IsRunning() != 0) {
         return 0;
     }
-
+    LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
+    if(ret != 0){
+        LOG(WARNING,"fail to kill process group %d",m_group_pid);
+    }
+    pid_t killed_pid = wait(&ret);
+    if(killed_pid == -1){
+        LOG(FATAL,"fail to kill process group %d",m_group_pid);
+    }else{
+        LOG(INFO,"kill child process %d successfully",killed_pid);
+    }
+    m_child_pid = -1;
+    m_group_pid = -1;
     return ret;
 }
 

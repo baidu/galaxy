@@ -78,7 +78,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
         LOG(INFO,"start  task for %s",request->task_name().c_str());
         DefaultWorkspace * workspace ;
         workspace = ws_mgr_->GetWorkspace(task_info);
-        ret = task_mgr_->Add(task_info,*workspace);
+        ret = task_mgr_->Add(task_info,workspace);
         if (ret != 0){
            LOG(FATAL,"fail to start task");
         }
@@ -87,7 +87,18 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
     //OpenProcess(request->task_name(), request->task_raw(), request->cmd_line(),"/tmp");
     //done->Run();
 }
-
+void AgentImpl::KillTask(::google::protobuf::RpcController* controller,
+                         const ::galaxy::KillTaskRequest* request,
+                         ::galaxy::KillTaskResponse* response,
+                         ::google::protobuf::Closure* done){
+    LOG(INFO,"kill task %d",request->task_id());
+    int status = task_mgr_->Remove(request->task_id());
+    LOG(INFO,"kill task %d status %d",request->task_id(),status);
+    status = ws_mgr_->Remove(request->task_id());
+    LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
+    response->set_status(status);
+    done->Run();
+}
 } // namespace galxay
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

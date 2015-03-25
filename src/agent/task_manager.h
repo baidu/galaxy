@@ -27,8 +27,8 @@ public:
         delete m_mutex;
     }
     int Add(const ::galaxy::TaskInfo &task_info,
-            const DefaultWorkspace &workspace);
-    int Remove(const ::galaxy::TaskInfo &task_info);
+            DefaultWorkspace* workspace);
+    int Remove(const int64_t& task_info_id);
     int Status(std::vector<TaskStatus>& task_status_vector);
 private:
     common::Mutex * m_mutex;
