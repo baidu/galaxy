@@ -19,15 +19,7 @@ namespace galaxy {
 
 int DefaultWorkspace::Create() {
     LOG(INFO, "create workspace for task %d", m_task_info.task_id());
-
     if (m_has_created) {
-        return 0;
-    }
-
-    m_mutex->Lock();
-
-    if (m_has_created) {
-        m_mutex->Unlock();
         return 0;
     }
 
@@ -37,7 +29,6 @@ int DefaultWorkspace::Create() {
     m_task_root_path = ss.str();
     int status ;
     status = mkdir(m_task_root_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
     if (status == 0) {
         //TODO move to fetcher,safe path join
         std::string package_path = m_task_root_path + "/tmp.tar.gz";
@@ -62,8 +53,6 @@ int DefaultWorkspace::Create() {
         }
         m_has_created = true;
     }
-
-    m_mutex->Unlock();
     return status;
 }
 
@@ -74,13 +63,6 @@ std::string DefaultWorkspace::GetPath() {
 int DefaultWorkspace::Clean() {
     LOG(INFO,"clean task %d workspace",m_task_info.task_id());
     if (!m_has_created) {
-        return 0;
-    }
-
-    m_mutex->Lock();
-
-    if (!m_has_created) {
-        m_mutex->Unlock();
         return 0;
     }
 
@@ -98,7 +80,6 @@ int DefaultWorkspace::Clean() {
         }
     }
 
-    m_mutex->Unlock();
     return ret;
 }
 bool DefaultWorkspace::IsExpire() {

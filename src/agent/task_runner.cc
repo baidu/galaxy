@@ -50,9 +50,7 @@ int CommandTaskRunner::IsRunning() {
 //TODO add workspace
 int CommandTaskRunner::Start() {
     LOG(INFO, "start a task with id %d", m_task_info.task_id());
-    m_mutex->Lock("start task lock");
-    if (IsRunning()) {
-        m_mutex->Unlock();
+    if (IsRunning() == 0) {
         LOG(WARNING, "task with id %d has existed", m_task_info.task_id());
         return -1;
     }
@@ -94,7 +92,6 @@ int CommandTaskRunner::Start() {
     } else {
         close(stdout_fd);
         close(stderr_fd);
-        m_mutex->Unlock();
         m_group_pid = m_child_pid;
         return 0;
     }
@@ -107,9 +104,7 @@ int CommandTaskRunner::ReStart(){
 
 
 int CommandTaskRunner::Stop() {
-    m_mutex->Lock();
     if (IsRunning() != 0) {
-        m_mutex->Unlock();
         return 0;
     }
     LOG(INFO,"start to kill process group %d",m_group_pid);
@@ -125,7 +120,6 @@ int CommandTaskRunner::Stop() {
     }
     m_child_pid = -1;
     m_group_pid = -1;
-    m_mutex->Unlock();
     return ret;
 }
 

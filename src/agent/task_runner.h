@@ -44,10 +44,8 @@ public:
                       :m_task_info(_task_info),
                       m_child_pid(-1),
                       m_workspace(_workspace){
-        m_mutex = new common::Mutex();
     }
     ~CommandTaskRunner(){
-        delete m_mutex;
     }
     int Start();
     int ReStart();
@@ -58,7 +56,6 @@ private:
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
-    common::Mutex * m_mutex;
     DefaultWorkspace * m_workspace;
 private:
     void RunInnerChildProcess(const std::string &root_path,

@@ -9,10 +9,8 @@
 namespace galaxy {
 
 int WorkspaceManager::Add(const TaskInfo& task_info) {
-    m_mutex->Lock();
-
+    MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info.task_id()) != m_workspace_map.end()) {
-        m_mutex->Unlock();
         return 0;
     }
 
@@ -23,13 +21,11 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
         m_workspace_map[task_info.task_id()] = ws;
     }
 
-    m_mutex->Unlock();
     return status;
 }
 
 int WorkspaceManager::Remove(const int64_t& task_info_id) {
-    m_mutex->Lock();
-
+    MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
         m_mutex->Unlock();
         return 0;
