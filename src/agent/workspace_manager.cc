@@ -24,7 +24,7 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
     return status;
 }
 
-int WorkspaceManager::Remove(const int64_t& task_info_id) {
+int WorkspaceManager::Remove(int64_t task_info_id) {
     MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
         return 0;
