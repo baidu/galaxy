@@ -27,7 +27,6 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
 int WorkspaceManager::Remove(const int64_t& task_info_id) {
     MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
-        m_mutex->Unlock();
         return 0;
     }
 
@@ -35,19 +34,14 @@ int WorkspaceManager::Remove(const int64_t& task_info_id) {
 
     if (ws != NULL) {
         int status =  ws->Clean();
-
         if (status != 0) {
-            m_mutex->Unlock();
             return status;
         }
 
         m_workspace_map.erase(task_info_id);
         delete ws;
-        m_mutex->Unlock();
         return 0;
     }
-
-    m_mutex->Unlock();
     return -1;
 
 }
