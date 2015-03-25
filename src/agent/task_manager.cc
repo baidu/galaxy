@@ -52,7 +52,12 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
     for (; it != m_task_runner_map.end(); ++it) {
         TaskStatus status;
         status.set_task_id(it->first);
-        status.set_status(it->second->IsRunning());
+        if(it->second->IsRunning()){
+            status.set_status(RUNNING);
+        }else{
+            status.set_status(ERROR);
+        }
+
         task_status_vector.push_back(status);
     }
     return 0;
