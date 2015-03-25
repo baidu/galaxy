@@ -8,11 +8,9 @@
 
 namespace galaxy {
 
-int WorkspaceManager::Add(const ::galaxy::TaskInfo& task_info) {
-    m_mutex->Lock();
-
+int WorkspaceManager::Add(const TaskInfo& task_info) {
+    MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info.task_id()) != m_workspace_map.end()) {
-        m_mutex->Unlock();
         return 0;
     }
 
@@ -23,35 +21,27 @@ int WorkspaceManager::Add(const ::galaxy::TaskInfo& task_info) {
         m_workspace_map[task_info.task_id()] = ws;
     }
 
-    m_mutex->Unlock();
     return status;
 }
 
-int WorkspaceManager::Remove(const ::galaxy::TaskInfo& task_info) {
-    m_mutex->Lock();
-
-    if (m_workspace_map.find(task_info.task_id()) == m_workspace_map.end()) {
-        m_mutex->Unlock();
+int WorkspaceManager::Remove(int64_t task_info_id) {
+    MutexLock lock(m_mutex);
+    if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
         return 0;
     }
 
-    Workspace* ws = m_workspace_map[task_info.task_id()];
+    Workspace* ws = m_workspace_map[task_info_id];
 
     if (ws != NULL) {
         int status =  ws->Clean();
-
         if (status != 0) {
-            m_mutex->Unlock();
             return status;
         }
 
-        m_workspace_map.erase(task_info.task_id());
+        m_workspace_map.erase(task_info_id);
         delete ws;
-        m_mutex->Unlock();
         return 0;
     }
-
-    m_mutex->Unlock();
     return -1;
 
 }

@@ -29,6 +29,10 @@ public:
                          const ::galaxy::RunTaskRequest* request,
                          ::galaxy::RunTaskResponse* response,
                          ::google::protobuf::Closure* done);
+   virtual void KillTask(::google::protobuf::RpcController* controller,
+                         const ::galaxy::KillTaskRequest* request,
+                         ::galaxy::KillTaskResponse* response,
+                         ::google::protobuf::Closure* done);
 private:
     common::ThreadPool thread_pool_;
     RpcClient* rpc_client_;
