@@ -18,6 +18,11 @@ public:
     * start task
     * */
    virtual int Start() = 0 ;
+
+   /**
+    * restart
+    * */
+   virtual int ReStart() = 0 ;
    /**
     *stop task
     * */
@@ -45,6 +50,7 @@ public:
         delete m_mutex;
     }
     int Start();
+    int ReStart();
     int Stop();
     int IsRunning();
 private:

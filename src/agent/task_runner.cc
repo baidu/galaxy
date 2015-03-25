@@ -24,8 +24,22 @@ int CommandTaskRunner::IsRunning() {
     if (m_child_pid == -1) {
         return -1;
     }
-
+    // check process exist
     int ret = ::kill(m_child_pid, 0);
+    if(ret == 0 ){
+        //check process status
+        pid_t pid = waitpid(m_child_pid,&ret,WNOHANG);
+        if(pid == -1 ){
+            LOG(WARNING,"check process %d state error",m_child_pid);
+            return -1;
+        }else if(pid==0){
+            LOG(INFO,"process %d is running",m_child_pid);
+        }else{
+            LOG(WARNING,"process %d has gone",m_child_pid);
+            //restart
+            return -1;
+        }
+    }
     LOG(INFO, "check task %d ret %d", m_task_info.task_id(), ret);
     return ret;
 }
@@ -36,19 +50,12 @@ int CommandTaskRunner::IsRunning() {
 //TODO add workspace
 int CommandTaskRunner::Start() {
     LOG(INFO, "start a task with id %d", m_task_info.task_id());
-
-    if (m_child_pid != -1) {
+    m_mutex->Lock("start task lock");
+    if (IsRunning()) {
+        m_mutex->Unlock();
         LOG(WARNING, "task with id %d has existed", m_task_info.task_id());
         return -1;
     }
-
-    m_mutex->Lock("start task lock");
-
-    if (m_child_pid != -1) {
-        m_mutex->Unlock();
-        return -1;
-    }
-
     std::string task_stdout = m_workspace->GetPath() + "/./stdout";
     std::string task_stderr = m_workspace->GetPath() + "/./stderr";
     int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
@@ -57,10 +64,8 @@ int CommandTaskRunner::Start() {
     std::vector<int> fds;
     common::util::GetProcessFdList(cur_pid, fds);
     m_child_pid = fork();
-
     //child
     if (m_child_pid == 0) {
-
         pid_t my_pid = getpid();
         int ret = setpgid(my_pid, my_pid);
 
@@ -95,9 +100,16 @@ int CommandTaskRunner::Start() {
     }
 }
 
+int CommandTaskRunner::ReStart(){
+
+
+}
+
 
 int CommandTaskRunner::Stop() {
+    m_mutex->Lock();
     if (IsRunning() != 0) {
+        m_mutex->Unlock();
         return 0;
     }
     LOG(INFO,"start to kill process group %d",m_group_pid);
@@ -111,6 +123,9 @@ int CommandTaskRunner::Stop() {
     }else{
         LOG(INFO,"kill child process %d successfully",killed_pid);
     }
+    m_child_pid = -1;
+    m_group_pid = -1;
+    m_mutex->Unlock();
     return ret;
 }
 
