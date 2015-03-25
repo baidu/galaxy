@@ -127,12 +127,17 @@ void MasterImpl::NewTask(::google::protobuf::RpcController* controller,
     MutexLock lock(&agent_lock_);
     std::string agent_addr;
 
-    int low_load = 1;
+    int low_load = 1 << 30;
     ///TODO: Use priority queue
     std::map<std::string, AgentInfo>::iterator it = agents_.begin();
     for (; it != agents_.end(); ++it) {
         AgentInfo& ai = it->second;
         if (ai.task_num < low_load) {
+            // keep task_name equal not in same agent
+            if (ai.tasks.find(request->task_name()) 
+                    != ai.tasks.end()) {
+                continue; 
+            }
             low_load = ai.task_num;
             agent_addr = ai.addr;
         }

@@ -10,6 +10,7 @@
 #include "proto/master.pb.h"
 
 #include <map>
+#include <set>
 
 #include "common/mutex.h"
 
@@ -21,6 +22,7 @@ struct AgentInfo {
     std::string addr;
     int32_t task_num;
     Agent_Stub* stub;
+    std::set<std::string> tasks;
 };
 
 class RpcClient;
