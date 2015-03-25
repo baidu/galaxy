@@ -6,6 +6,13 @@ message ResourceItem {
     optional int64 value = 2;
 }
 
+enum TaskState {
+    DEPLOYING = 0;
+    STARTING = 1;
+    RUNNING = 2;
+    ERROR = 3;
+}
+
 message TaskStatus{
     optional int64 task_id = 1;
     optional int32 status = 2;  //deploying,starting,running,error
@@ -16,4 +23,10 @@ message TaskInfo{
     optional string task_name = 2;
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
+}
+
+message TaskInstance {
+    optional TaskStatus status = 1;
+    optional TaskInfo info = 2;
+    optional string agent_addr = 3;
 }

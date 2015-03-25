@@ -14,7 +14,16 @@ message RunTaskResponse {
     optional int32 status = 1;
 }
 
+message KillTaskRequest {
+    optional int64 task_id = 2;
+}
+
+message KillTaskResponse {
+    optional int32 status = 2;
+}
+
 service Agent {
     rpc RunTask(RunTaskRequest) returns(RunTaskResponse);
+    rpc KillTask(KillTaskRequest) returns(KillTaskResponse);
 }
 
