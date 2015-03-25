@@ -54,6 +54,7 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* controller,
         LOG(WARNING, "Kill failed agent= %s", agent_addr.c_str()); 
         response->set_status(-2);
     } else {
+        agent_task_pair_.erase(it);
         response->set_status(0); 
     }
     done->Run();
@@ -111,6 +112,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
             // @NOTE only update status in heartbeat
             instance.mutable_status()->CopyFrom(request->task_status(ind));
             instance.set_agent_addr(agent_addr);
+            LOG(INFO, "%s run task %d %d", agent_addr.c_str(), task_id, request->task_status(ind).status());
         }
     }
 

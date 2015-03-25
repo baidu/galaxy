@@ -10,7 +10,8 @@ enum TaskState {
     DEPLOYING = 0;
     STARTING = 1;
     RUNNING = 2;
-    ERROR = 3;
+    KILLED = 3;
+    ERROR = 4;
 }
 
 message TaskStatus{
