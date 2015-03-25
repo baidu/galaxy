@@ -102,6 +102,9 @@ int CommandTaskRunner::Stop() {
     }
     LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
+    if(ret != 0){
+        LOG(WARNING,"fail to kill process group %d",m_group_pid);
+    }
     pid_t killed_pid = wait(&ret);
     if(killed_pid == -1){
         LOG(FATAL,"fail to kill process group %d",m_group_pid);
