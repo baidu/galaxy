@@ -8,7 +8,7 @@
 
 namespace galaxy {
 
-int WorkspaceManager::Add(const ::galaxy::TaskInfo& task_info) {
+int WorkspaceManager::Add(const TaskInfo& task_info) {
     m_mutex->Lock();
 
     if (m_workspace_map.find(task_info.task_id()) != m_workspace_map.end()) {

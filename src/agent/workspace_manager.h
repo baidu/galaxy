@@ -35,7 +35,7 @@ public:
         }
     }
     //根据task info 创建一个workspace
-    int Add(const ::galaxy::TaskInfo &task_info);
+    int Add(const TaskInfo &task_info);
     int Remove(const int64_t& task_info_id);
     DefaultWorkspace* GetWorkspace(const ::galaxy::TaskInfo &task_info);
 private:
