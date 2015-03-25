@@ -1,2 +1,3 @@
 #!/usr/bin/env sh
-curl -d '{"task_id":0}' http://localhost:8202/galaxy.Agent.KillTask
+rm -rf /tmp/0
+../output/bin/galaxy_client localhost:8102 kill $1

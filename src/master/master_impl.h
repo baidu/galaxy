@@ -38,11 +38,24 @@ public:
                  const ::galaxy::NewTaskRequest* request,
                  ::galaxy::NewTaskResponse* response,
                  ::google::protobuf::Closure* done);
+
+    void TerminateTask(::google::protobuf::RpcController* controller,
+                 const ::galaxy::TerminateTaskRequest* request,
+                 ::galaxy::TerminateTaskResponse* response,
+                 ::google::protobuf::Closure* done);
+
+    void ListTask(::google::protobuf::RpcController* controller,
+                 const ::galaxy::ListTaskRequest* request,
+                 ::galaxy::ListTaskResponse* response,
+                 ::google::protobuf::Closure* done);
+
 private:
     std::map<std::string, AgentInfo> agents_;
     int64_t next_agent_id_;
     int64_t next_task_id_;
     Mutex agent_lock_;
+
+    std::map<int64_t, TaskInstance> agent_task_pair_; 
 
     RpcClient* rpc_client_;
 };
