@@ -22,10 +22,6 @@ message LaunchTaskRequest {
     optional TaskInfo task_info = 2;
 }
 
-message KillTaskRequest {
-    optional int64 task_id = 1;
-}
-
 message HeartBeatRequest {
     optional int64 seq_id = 1;      // id for communicate
     optional int64 agent_id = 2 [default = -1];
@@ -40,7 +36,6 @@ message HeartBeatResponse {
     optional int32 status = 2;
     optional MasterCommandType type = 3[default = HEART_BEAT];
     optional LaunchTaskRequest launch_task_request = 4;
-    optional KillTaskRequest kill_task_request = 5;
 }
 
 message NewTaskRequest {

@@ -27,15 +27,15 @@ int WorkspaceManager::Add(const ::galaxy::TaskInfo& task_info) {
     return status;
 }
 
-int WorkspaceManager::Remove(const ::galaxy::TaskInfo& task_info) {
+int WorkspaceManager::Remove(const int64_t& task_info_id) {
     m_mutex->Lock();
 
-    if (m_workspace_map.find(task_info.task_id()) == m_workspace_map.end()) {
+    if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
         m_mutex->Unlock();
         return 0;
     }
 
-    Workspace* ws = m_workspace_map[task_info.task_id()];
+    Workspace* ws = m_workspace_map[task_info_id];
 
     if (ws != NULL) {
         int status =  ws->Clean();
@@ -45,7 +45,7 @@ int WorkspaceManager::Remove(const ::galaxy::TaskInfo& task_info) {
             return status;
         }
 
-        m_workspace_map.erase(task_info.task_id());
+        m_workspace_map.erase(task_info_id);
         delete ws;
         m_mutex->Unlock();
         return 0;

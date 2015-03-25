@@ -56,14 +56,10 @@ public:
     bool IsExpire();
     std::string GetPath();
     ~DefaultWorkspace(){
-        //清除工作目录下面的文件
-        Clean();
-        if(m_mutex != NULL){
-            delete m_mutex;
-        }
+        delete m_mutex;
     }
 private:
-    ::galaxy::TaskInfo m_task_info;
+    TaskInfo m_task_info;
     std::string m_root_path;
     std::string m_task_root_path;
     bool m_has_created;

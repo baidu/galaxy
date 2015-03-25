@@ -58,7 +58,7 @@ int DefaultWorkspace::Create() {
         std::string tar = "cd " + m_task_root_path +" && tar -zxf tmp.tar.gz";
         int status = system(tar.c_str());
         if(status != 0){
-            LOG(FATAL,"fail to extract package %s",package_path);
+            LOG(FATAL,"fail to extract package %s",package_path.c_str());
         }
         m_has_created = true;
     }
@@ -72,6 +72,7 @@ std::string DefaultWorkspace::GetPath() {
 }
 
 int DefaultWorkspace::Clean() {
+    LOG(INFO,"clean task %d workspace",m_task_info.task_id());
     if (!m_has_created) {
         return 0;
     }
@@ -91,8 +92,8 @@ int DefaultWorkspace::Clean() {
         std::string rm_cmd ;
         rm_cmd = "rm -rf " + m_task_root_path;
         ret = system(rm_cmd.c_str());
-
         if (ret == 0) {
+            LOG(INFO,"clean task %d workspace successfully",m_task_info.task_id());
             m_has_created = false;
         }
     }
