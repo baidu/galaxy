@@ -142,11 +142,15 @@ void MasterImpl::NewTask(::google::protobuf::RpcController* controller,
             agent_addr = ai.addr;
         }
     }
+
     if (agent_addr.empty()) {
         response->set_status(-1);
         done->Run();
         return;
     }
+
+    it = agents_.find(agent_addr);
+    it->second.tasks.insert(request->task_name());
 
     AgentInfo& agent = agents_[agent_addr];
     if (agent.stub == NULL) {
