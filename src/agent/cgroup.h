@@ -87,6 +87,8 @@ public:
         delete _cpu_ctrl;
     }
 private:
+    void PutToCGroup();
+private:
     std::string _cg_root;
     CGroupCtrl* _cg_ctrl;
     MemoryCtrl* _mem_ctrl;

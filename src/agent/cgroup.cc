@@ -156,6 +156,28 @@ int ContainerTaskRunner::Prepare() {
     return 0;
 }
 
+void ContainerTaskRunner::PutToCGroup(){
+    int64_t mem_size = 1024 * 1024 * 1024;//1G
+    int64_t cpu_share = 1000;
+    std::string mem_key = "memory";
+    std::string cpu_key = "cpu";
+    for(size_t i = 0; i< m_task_info.resource_list_size();i++){
+        ResourceItem item = m_task_info.resource_list(i);
+        if(mem_key.compare(item.name())==0 && item.value() > 0){
+            mem_size = item.value();
+            continue;
+        }
+        if(cpu_key.compare(item.name())==0 && item.value() >0){
+            cpu_share = item.value();
+        }
+
+    }
+    _mem_ctrl->SetLimit(mem_size);
+    _cpu_ctrl->SetCpuShare(cpu_share);
+    pid_t my_pid = getpid();
+    _mem_ctrl->AttachTask(my_pid);
+    _cpu_ctrl->AttachTask(my_pid);
+}
 
 int ContainerTaskRunner::Start() {
     LOG(INFO, "start a task with id %d", m_task_info.task_id());
@@ -171,11 +193,7 @@ int ContainerTaskRunner::Start() {
     m_child_pid = fork();
 
     if (m_child_pid == 0) {
-        _mem_ctrl->SetLimit(1073741824);
-        _cpu_ctrl->SetCpuShare(1000000);
-        pid_t my_pid = getpid();
-        _mem_ctrl->AttachTask(my_pid);
-        _cpu_ctrl->AttachTask(my_pid);
+        PutToCGroup();
         StartTaskAfterFork(fds, stdout_fd, stderr_fd);
     } else {
         close(stdout_fd);
