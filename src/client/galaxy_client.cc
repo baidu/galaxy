@@ -5,7 +5,8 @@
 // Author: yanshiguang02@baidu.com
 
 #include "sdk/galaxy.h"
-
+#include <cstdio>
+#include <cstdlib>
 int main(int argc, char* argv[]) {
     if (argc < 5) {
         fprintf(stderr, "%s master_addr task_raw cmd_line replia_count\n", argv[0]);

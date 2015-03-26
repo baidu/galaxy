@@ -44,6 +44,7 @@ agent_sources='src/flags.cc\
                common/logging.cc common/util.cc\
                src/proto/task.proto src/proto/agent.proto src/proto/master.proto \
                src/agent/task_runner.cc src/agent/task_manager.cc\
+               src/agent/cgroup.cc\
                src/agent/workspace.cc src/agent/workspace_manager.cc \
                src/agent/agent_impl.cc src/agent/agent_main.cc'
 

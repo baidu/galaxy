@@ -7,6 +7,7 @@
 #include "agent/task_manager.h"
 
 #include "common/logging.h"
+#include "agent/cgroup.h"
 
 namespace galaxy {
 int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
@@ -17,8 +18,13 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         LOG(WARNING, "task with id %d has exist", task_info.task_id());
         return 0;
     }
-    TaskRunner* runner = new CommandTaskRunner(task_info, workspace);
-    int ret = runner->Start();
+    TaskRunner* runner = new ContainerTaskRunner(task_info,"/cgroup", workspace);
+    int ret = runner->Prepare();
+    if(ret != 0 ){
+        LOG(INFO,"fail to prepare runner ,ret is %d",ret);
+        return ret;
+    }
+    ret = runner->Start();
     if (ret == 0) {
         LOG(INFO, "add task with id %d successfully", task_info.task_id());
         m_task_runner_map[task_info.task_id()] = runner;
