@@ -128,12 +128,12 @@ void MasterImpl::NewTask(::google::protobuf::RpcController* /*controller*/,
     std::vector<std::string> agent_addrs;
     {
         MutexLock lock(&agent_lock_);
-        std::string agent_addr;
         int replicate_count = 1;
         if (request->has_replic_count()) {
             replicate_count = request->replic_count(); 
         }
         for (int ind = 0; ind < replicate_count; ind++) {
+            std::string agent_addr;
             int low_load = 1 << 30;
             ///TODO: Use priority queue
             std::map<std::string, AgentInfo>::iterator it = agents_.begin();
