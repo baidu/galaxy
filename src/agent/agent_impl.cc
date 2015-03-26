@@ -59,7 +59,7 @@ void AgentImpl::Report() {
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
 }
 
-void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
+void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
@@ -73,6 +73,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
     int ret = ws_mgr_->Add(task_info);
     if(ret != 0 ){
         LOG(FATAL,"fail to prepare workspace ");
+        response->set_status(-2);
         done->Run();
     }else{
         LOG(INFO,"start  task for %s",request->task_name().c_str());
@@ -81,13 +82,15 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* controller,
         ret = task_mgr_->Add(task_info,workspace);
         if (ret != 0){
            LOG(FATAL,"fail to start task");
+           response->set_status(-1);
         }
+        response->set_status(0);
         done->Run();
     }
     //OpenProcess(request->task_name(), request->task_raw(), request->cmd_line(),"/tmp");
     //done->Run();
 }
-void AgentImpl::KillTask(::google::protobuf::RpcController* controller,
+void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::KillTaskRequest* request,
                          ::galaxy::KillTaskResponse* response,
                          ::google::protobuf::Closure* done){

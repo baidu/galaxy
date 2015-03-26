@@ -17,7 +17,7 @@ MasterImpl::MasterImpl()
     rpc_client_ = new RpcClient();
 }
 
-void MasterImpl::TerminateTask(::google::protobuf::RpcController* controller,
+void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/,
                  const ::galaxy::TerminateTaskRequest* request,
                  ::galaxy::TerminateTaskResponse* response,
                  ::google::protobuf::Closure* done) {
@@ -55,12 +55,13 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* controller,
         response->set_status(-2);
     } else {
         agent_task_pair_.erase(it);
+        agents_[agent_addr].tasks.erase(it->second.info().task_name());
         response->set_status(0); 
     }
     done->Run();
 }
 
-void MasterImpl::ListTask(::google::protobuf::RpcController* controller,
+void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done) {
@@ -87,9 +88,9 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
+void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            const ::galaxy::HeartBeatRequest* request,
-                           ::galaxy::HeartBeatResponse* response,
+                           ::galaxy::HeartBeatResponse* /*response*/,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
     LOG(INFO, "HeartBeat from %s", agent_addr.c_str());
@@ -120,62 +121,80 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::NewTask(::google::protobuf::RpcController* controller,
+void MasterImpl::NewTask(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewTaskRequest* request,
                          ::galaxy::NewTaskResponse* response,
                          ::google::protobuf::Closure* done) {
-    MutexLock lock(&agent_lock_);
-    std::string agent_addr;
+    std::vector<std::string> agent_addrs;
+    {
+        MutexLock lock(&agent_lock_);
+        std::string agent_addr;
+        int replicate_count = 1;
+        if (request->has_replic_count()) {
+            replicate_count = request->replic_count(); 
+        }
+        for (int ind = 0; ind < replicate_count; ind++) {
+            int low_load = 1 << 30;
+            ///TODO: Use priority queue
+            std::map<std::string, AgentInfo>::iterator it = agents_.begin();
+            for (; it != agents_.end(); ++it) {
+                AgentInfo& ai = it->second;
+                if (ai.task_num < low_load) {
+                    // keep task_name equal not in same agent
+                    if (ai.tasks.find(request->task_name()) 
+                            != ai.tasks.end()) {
+                        continue; 
+                    }
+                    low_load = ai.task_num;
+                    agent_addr = ai.addr;
 
-    int low_load = 1 << 30;
-    ///TODO: Use priority queue
-    std::map<std::string, AgentInfo>::iterator it = agents_.begin();
-    for (; it != agents_.end(); ++it) {
-        AgentInfo& ai = it->second;
-        if (ai.task_num < low_load) {
-            // keep task_name equal not in same agent
-            if (ai.tasks.find(request->task_name()) 
-                    != ai.tasks.end()) {
-                continue; 
+                }
             }
-            low_load = ai.task_num;
-            agent_addr = ai.addr;
+
+            if (agent_addr.empty()) {
+                // empty no need to continue
+                break;
+            }
+
+            it = agents_.find(agent_addr);
+            it->second.tasks.insert(request->task_name());
+            agent_addrs.push_back(agent_addr);
         }
     }
 
-    if (agent_addr.empty()) {
-        response->set_status(-1);
+    if (agent_addrs.size() == 0) {
+        response->set_status(-1); 
         done->Run();
         return;
-    }
+    } 
 
-    it = agents_.find(agent_addr);
-    it->second.tasks.insert(request->task_name());
-
-    AgentInfo& agent = agents_[agent_addr];
-    if (agent.stub == NULL) {
-        bool ret = rpc_client_->GetStub(agent_addr, &agent.stub);
-        assert(ret);
+    for (size_t ind = 0; ind < agent_addrs.size(); ind++) {
+        std::string agent_addr = agent_addrs[ind];
+        AgentInfo& agent = agents_[agent_addr];
+        if (agent.stub == NULL) {
+            bool ret = rpc_client_->GetStub(agent_addr, &agent.stub);
+            assert(ret);
+        }
+        RunTaskRequest rt_request;
+        rt_request.set_task_id(next_task_id_++);
+        rt_request.set_task_name(request->task_name());
+        rt_request.set_task_raw(request->task_raw());
+        rt_request.set_cmd_line(request->cmd_line());
+        RunTaskResponse rt_response;
+        LOG(INFO, "RunTask on %s", agent_addr.c_str());
+        bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
+                                            &rt_request, &rt_response, 5, 1);
+        if (!ret) {
+            LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
+        } else {
+            TaskInstance& instance = agent_task_pair_[rt_request.task_id()];
+            instance.mutable_info()->set_task_name(request->task_name());
+            instance.set_agent_addr(agent_addr);
+        }
     }
-    RunTaskRequest rt_request;
-    rt_request.set_task_id(next_task_id_++);
-    rt_request.set_task_name(request->task_name());
-    rt_request.set_task_raw(request->task_raw());
-    rt_request.set_cmd_line(request->cmd_line());
-    RunTaskResponse rt_response;
-    LOG(INFO, "RunTask on %s", agent_addr.c_str());
-    bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
-                                        &rt_request, &rt_response, 5, 1);
-    if (!ret) {
-        LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
-        response->set_status(-2);
-    } else {
-        TaskInstance& instance = agent_task_pair_[rt_request.task_id()];
-        instance.mutable_info()->set_task_name(request->task_name());
-        instance.set_agent_addr(agent_addr);
-        response->set_status(0);
-    }
+    response->set_status(0);
     done->Run();
+    return;
 }
 } // namespace galasy
 
