@@ -80,9 +80,10 @@ public:
     int Prepare();
     int Start();
     int ReStart();
+    int Stop();
     ~ContainerTaskRunner(){
         delete _cg_ctrl;
-        delete _mem_ctrl
+        delete _mem_ctrl;
         delete _cpu_ctrl;
     }
 private:

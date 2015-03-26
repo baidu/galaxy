@@ -53,6 +53,11 @@ int CGroupCtrl::Destroy(int64_t task_id) {
     for (; it != _support_cg.end(); ++it) {
         std::stringstream ss ;
         ss << _cg_root << "/" << *it << "/" << task_id;
+        int status = rmdir(ss.str().c_str());
+        if(status != 0 ){
+            LOG(FATAL,"fail to delete subsystem %s status %d",ss.str().c_str(),status);
+            return status;
+        }
     }
 
     return 0;
@@ -63,7 +68,7 @@ int AbstractCtrl::AttachTask(pid_t pid) {
     int ret = common::util::WriteIntToFile(task_file, pid);
 
     if (ret < 0) {
-        LOG(FATAL, "fail to attach pid  %d for %s", pid, _my_cg_root);
+        LOG(FATAL, "fail to attach pid  %d for %s", pid, _my_cg_root.c_str());
         return -1;
     }
 
@@ -87,7 +92,7 @@ int MemoryCtrl::SetSoftLimit(int64_t soft_limit) {
     int ret = common::util::WriteIntToFile(soft_limit_file, soft_limit);
 
     if (ret < 0) {
-        LOG(FATAL, "fail to set soft limt %lld for %s", soft_limit, _my_cg_root);
+        LOG(FATAL, "fail to set soft limt %lld for %s", soft_limit, _my_cg_root.c_str());
         return -1;
     }
 
@@ -100,19 +105,35 @@ int CpuCtrl::SetCpuShare(int64_t cpu_share) {
     int ret = common::util::WriteIntToFile(cpu_share_file, cpu_share);
 
     if (ret < 0) {
-        LOG(FATAL, "fail to set cpu share %lld for %s", cpu_share, _my_cg_root);
+        LOG(FATAL, "fail to set cpu share %lld for %s", cpu_share, _my_cg_root.c_str());
         return -1;
     }
 
     return 0;
 
 }
-int SetCpuPeriod(int64_t cpu_period) {
+int CpuCtrl::SetCpuPeriod(int64_t cpu_period) {
+    std::string cpu_period_file = _my_cg_root + "/" + "cpu.cfs_period_us";
+    int ret = common::util::WriteIntToFile(cpu_period_file, cpu_period);
+    if (ret < 0) {
+        LOG(FATAL, "fail to set cpu period %lld for %s", cpu_period, _my_cg_root.c_str());
+        return -1;
+    }
+
     return 0;
+
 }
 
-int SetCpuQuota(int64_t cpu_quota) {
+int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
+    std::string cpu_quota_file = _my_cg_root + "/" + "cpu.cfs_quota_us";
+    int ret = common::util::WriteIntToFile(cpu_quota_file, cpu_quota);
+    if (ret < 0) {
+        LOG(FATAL, "fail to set cpu quota  %lld for %s", cpu_quota, _my_cg_root.c_str());
+        return -1;
+    }
+
     return 0;
+
 }
 
 int ContainerTaskRunner::Prepare() {
@@ -166,4 +187,16 @@ int ContainerTaskRunner::Start() {
 int ContainerTaskRunner::ReStart() {
     return 0;
 }
+
+int ContainerTaskRunner::Stop(){
+    int status = AbstractTaskRunner::Stop();
+    LOG(INFO,"stop  task %d  with status %d",m_task_info.task_id(),status);
+    if(status != 0 ){
+        return status;
+    }
+    status = _cg_ctrl->Destroy(m_task_info.task_id());
+    LOG(INFO,"destroy cgroup for task %d with status %s",m_task_info.task_id(),status);
+    return status;
+}
+
 }
