@@ -1,0 +1,22 @@
+ <!--service list start -->
+ <div class="service-list">
+  <button type="button" ng-click="open()" class="btn btn-primary">创建服务</button>
+  <table class="table service-table">
+    <thead>
+      <tr>
+
+        <th>服务名称</th>
+        <th>创建人</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="service in serviceList">
+        <td><a href="/#/service/{{service.dbService.name}}">{{service.dbService.name}}</a></td>
+        <td>{{service.matrixService.userName}}</td>
+        <th><a href="" ng-click="deleteService(service.dbService.id)"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a></th>
+      </tr>
+    </tbody>
+  </table>  
+</div>
+<!--service list end -->

@@ -1,0 +1,41 @@
+<div class="modal-header" ng-class="instance.state" style="padding: 4px;">
+<button type="button" class="close"  ng-click="cancel()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+   <h4>{{instance.data.offset}}.{{instance.data.serviceName}}</h4>
+</div>
+<div class="modal-body"> 
+    <table class="table table-condensed">
+      <tbody>
+        <tr>
+          <th>hostip</th>
+          <td><a target="__blank" href="http://{{config.matrix.host}}:{{config.matrix.webPort}}/agentdetail.jsp?hostId={{instance.data.hostIp}}">{{instance.data.hostIp}}</a></td>
+       
+        </tr>
+        <tr>
+          <th>hostname</th>
+          <td><a  target="__blank" href="http://{{config.matrix.host}}:{{config.matrix.webPort}}/agentdetail.jsp?hostId={{instance.data.hostIp}}">{{instance.data.hostName}}</a></td>
+          
+        </tr>
+         <tr>
+          <th>instance</th>
+          <td><a  target="__blank" href="http://{{config.matrix.host}}:{{config.matrix.webPort}}/instancedetail.jsp?serviceName={{instance.data.serviceName}}&offset={{instance.data.offset}}">实例详情</a></td>
+          
+        </tr>
+        <tr>
+          <th>cadvisor</th>
+          <td><a  target="__blank" href="http://{{instance.data.hostName}}:8123/containers/{{instance.data.offset}}.{{instance.data.serviceName}}">资源使用详情</a></td>
+          
+        </tr>
+        <tr>
+          <th>container</th>
+          <td>ssh --matrix {{instance.data.offset}}.{{instance.data.serviceName}} -l {{instance.data.meta.user}}</td>
+        </tr>
+      </tbody>
+    </table>
+</div>
+<!--<div class="modal-footer">
+    <a tooltip="更新实例"><span class="glyphicon glyphicon-edit" aria-hidden="true"></span></a>
+    <a tooltip="删除实例"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a>
+</div>-->
+
+
+
