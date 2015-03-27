@@ -20,9 +20,8 @@ extern int FLAGS_task_retry_times;
 
 namespace galaxy {
 
-//check process with m_child_pid
-int CommandTaskRunner::IsRunning() {
-    if (m_child_pid == -1) {
+int AbstractTaskRunner::IsRunning(){
+   if (m_child_pid == -1) {
         return -1;
     }
     // check process exist
@@ -41,99 +40,21 @@ int CommandTaskRunner::IsRunning() {
             return -1;
         }
     }
-    LOG(INFO, "check task %d error[%d:%s] ", 
-            m_task_info.task_id(), 
+    LOG(INFO, "check task %d error[%d:%s] ",
+            m_task_info.task_id(),
             errno,
             strerror(errno));
     return ret;
 }
 
-//start process
-//1. fork a subprocess A
-//2. exec command in the subprocess A
-//TODO add workspace
-int CommandTaskRunner::Start() {
-    LOG(INFO, "start a task with id %d", m_task_info.task_id());
-    if (IsRunning() == 0) {
-        LOG(WARNING, "task with id %d has existed", m_task_info.task_id());
-        return -1;
-    }
-    std::string task_stdout = m_workspace->GetPath() + "/./stdout";
-    std::string task_stderr = m_workspace->GetPath() + "/./stderr";
-    int stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    int stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    int cur_pid = getpid();
-    std::vector<int> fds;
-    common::util::GetProcessFdList(cur_pid, fds);
-    m_child_pid = fork();
-    //child
-    if (m_child_pid == 0) {
-        pid_t my_pid = getpid();
-        int ret = setpgid(my_pid, my_pid);
-
-        if (ret != 0) {
-            return ret;
-        }
-        // do in child process,
-        // all interface called in child process should be async-safe.
-        // NOTE if dup2 will return errno == EINTR?
-        while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
-
-        while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
-
-        for (size_t i = 0; i < fds.size(); i++) {
-            if (fds[i] == STDOUT_FILENO
-                    || fds[i] == STDERR_FILENO
-                    || fds[i] == STDIN_FILENO) {
-                // do not deal with std input/output
-                continue;
-            }
-
-            close(fds[i]);
-        }
-
-        RunInnerChildProcess(m_workspace->GetPath(), m_task_info.cmd_line());
-    }         
-
-    // avoid of warning
-    close(stdout_fd);
-    close(stderr_fd);
-    m_group_pid = m_child_pid;
-    return 0;
-}
-
-int CommandTaskRunner::ReStart(){
-    int max_retry_times = FLAGS_task_retry_times;
-    if (m_task_info.has_fail_retry_times()) {
-        max_retry_times = m_task_info.fail_retry_times(); 
-    }
-    if (m_has_retry_times 
-            >= max_retry_times) {
-        return -1; 
-    }
-
-    m_has_retry_times ++;
-    if (IsRunning() == 0) {
-        if (!Stop()) {
-            return -1;         
-        }
-    }
-
-    return Start();
-}
-
-
-int CommandTaskRunner::Stop() {
+int AbstractTaskRunner::Stop(){
     if (IsRunning() != 0) {
         return 0;
     }
     LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
     if(ret != 0){
-        LOG(WARNING,"fail to kill process group %d err[%d:%s]",
-                m_group_pid,
-                errno,
-                strerror(errno));
+        LOG(WARNING,"fail to kill process group %d",m_group_pid);
     }
     pid_t killed_pid = wait(&ret);
     if(killed_pid == -1){
@@ -144,14 +65,87 @@ int CommandTaskRunner::Stop() {
     m_child_pid = -1;
     m_group_pid = -1;
     return ret;
+
 }
 
-void CommandTaskRunner::RunInnerChildProcess(const std::string& root_path,
-        const std::string& cmd_line) {
-    chdir(root_path.c_str());
-    execl("/bin/sh", "sh", "-c", cmd_line.c_str(), NULL);
+void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd){
+    pid_t current_pid = getpid();
+    common::util::GetProcessFdList(current_pid, fd_vector);
+    std::string task_stdout = m_workspace->GetPath() + "/./stdout";
+    std::string task_stderr = m_workspace->GetPath() + "/./stderr";
+    *stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+}
+
+void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd){
+    pid_t my_pid = getpid();
+    int ret = setpgid(my_pid, my_pid);
+    if (ret != 0) {
+        return ;
+    }
+   // do in child process,
+   // all interface called in child process should be async-safe.
+   // NOTE if dup2 will return errno == EINTR?
+   while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
+   while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
+   for (size_t i = 0; i < fd_vector.size(); i++) {
+        if (fd_vector[i] == STDOUT_FILENO
+                    || fd_vector[i] == STDERR_FILENO
+                    || fd_vector[i] == STDIN_FILENO) {
+                // do not deal with std input/output
+            continue;
+         }
+         close(fd_vector[i]);
+    }
+    chdir(m_workspace->GetPath().c_str());
+    execl("/bin/sh", "sh", "-c", m_task_info.cmd_line().c_str(), NULL);
     assert(0);
     _exit(127);
+}
+
+//start process
+//1. fork a subprocess A
+//2. exec command in the subprocess A
+//TODO add workspace
+int CommandTaskRunner::Start() {
+    LOG(INFO, "start a task with id %d", m_task_info.task_id());
+    if (IsRunning() == 0) {
+        LOG(WARNING, "task with id %d has been runing", m_task_info.task_id());
+        return -1;
+    }
+    int stdout_fd,stderr_fd;
+    std::vector<int> fds;
+    PrepareStart(fds,&stdout_fd,&stderr_fd);
+    m_child_pid = fork();
+    //child
+    if (m_child_pid == 0) {
+        StartTaskAfterFork(fds,stdout_fd,stderr_fd);
+    } else {
+        close(stdout_fd);
+        close(stderr_fd);
+        m_group_pid = m_child_pid;
+        return 0;
+    }
+}
+
+int CommandTaskRunner::ReStart(){
+    int max_retry_times = FLAGS_task_retry_times;
+    if (m_task_info.has_fail_retry_times()) {
+        max_retry_times = m_task_info.fail_retry_times();
+    }
+    if (m_has_retry_times
+            >= max_retry_times) {
+        return -1;
+    }
+
+    m_has_retry_times ++;
+    if (IsRunning() == 0) {
+        if (!Stop()) {
+            return -1;
+        }
+    }
+
+    return Start();
 }
 
 }

@@ -8,6 +8,7 @@
 #define  GALAXY_GALAXY_H_
 
 #include <string>
+#include <stdint.h>
 
 namespace galaxy {
 

@@ -8,7 +8,7 @@ Galaxy
 2. 控制台与Web界面  
    可以看到当前集群上所有任务的状态，实例数。  
    Web管理界面，支持任务的提交（上传或提交一个可wget的地址），任务状态的查看，实例数的增减，资源限制调整。
-3. Agent的资源限制与隔离功能
+3. Agent的资源限制与隔离功能(开启cgroup agent启动参数加上--container=cgroup 默认是cmd)
 4. 支持NFS的chunkserver和tera的tabletserver部署。
 
 ###非主线：

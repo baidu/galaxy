@@ -28,6 +28,8 @@ std::string GetLocalHostName();
 void CloseOnExec(int fd);
 void GetEnviron(std::map<std::string, std::string>& env);
 void GetProcessFdList(int pid, std::vector<int>& fds);
+
+int WriteIntToFile(const std::string filename,int64_t value);
 }
 }
 

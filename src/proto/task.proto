@@ -25,7 +25,8 @@ message TaskInfo{
     optional string task_name = 2;
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
-    optional int32 fail_retry_times = 5;
+    repeated ResourceItem resource_list = 5;
+    optional int32 fail_retry_times = 6;
 }
 
 message TaskInstance {
