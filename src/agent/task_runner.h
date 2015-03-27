@@ -41,11 +41,13 @@ class CommandTaskRunner:public TaskRunner{
 public:
     CommandTaskRunner(const TaskInfo &_task_info,
                       DefaultWorkspace * _workspace)
-                      :m_task_info(_task_info),
-                      m_child_pid(-1),
-                      m_workspace(_workspace){
+                        :m_task_info(_task_info),
+                         m_child_pid(-1),
+                         m_workspace(_workspace),
+                         m_has_retry_times(0) {
     }
-    ~CommandTaskRunner(){
+
+    ~CommandTaskRunner() {
     }
     int Start();
     int ReStart();
@@ -57,6 +59,7 @@ private:
     pid_t  m_child_pid;
     pid_t  m_group_pid;
     DefaultWorkspace * m_workspace;
+    int m_has_retry_times;
 private:
     void RunInnerChildProcess(const std::string &root_path,
                               const std::string &cmd_line);

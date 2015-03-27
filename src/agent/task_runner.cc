@@ -16,8 +16,9 @@
 #include "common/logging.h"
 #include "common/util.h"
 
-namespace galaxy {
+extern int FLAGS_task_retry_times;
 
+namespace galaxy {
 
 //check process with m_child_pid
 int CommandTaskRunner::IsRunning() {
@@ -29,10 +30,10 @@ int CommandTaskRunner::IsRunning() {
     if(ret == 0 ){
         //check process status
         pid_t pid = waitpid(m_child_pid,&ret,WNOHANG);
-        if(pid == -1 ){
+        if(pid == -1){
             LOG(WARNING,"check process %d state error",m_child_pid);
             return -1;
-        }else if(pid==0){
+        }else if(pid == 0){
             LOG(INFO,"process %d is running",m_child_pid);
         }else{
             LOG(WARNING,"process %d has gone",m_child_pid);
@@ -40,7 +41,10 @@ int CommandTaskRunner::IsRunning() {
             return -1;
         }
     }
-    LOG(INFO, "check task %d ret %d", m_task_info.task_id(), ret);
+    LOG(INFO, "check task %d error[%d:%s] ", 
+            m_task_info.task_id(), 
+            errno,
+            strerror(errno));
     return ret;
 }
 
@@ -89,17 +93,33 @@ int CommandTaskRunner::Start() {
         }
 
         RunInnerChildProcess(m_workspace->GetPath(), m_task_info.cmd_line());
-    } else {
-        close(stdout_fd);
-        close(stderr_fd);
-        m_group_pid = m_child_pid;
-        return 0;
-    }
+    }         
+
+    // avoid of warning
+    close(stdout_fd);
+    close(stderr_fd);
+    m_group_pid = m_child_pid;
+    return 0;
 }
 
 int CommandTaskRunner::ReStart(){
+    int max_retry_times = FLAGS_task_retry_times;
+    if (m_task_info.has_fail_retry_times()) {
+        max_retry_times = m_task_info.fail_retry_times(); 
+    }
+    if (m_has_retry_times 
+            >= max_retry_times) {
+        return -1; 
+    }
 
+    m_has_retry_times ++;
+    if (IsRunning() == 0) {
+        if (!Stop()) {
+            return -1;         
+        }
+    }
 
+    return Start();
 }
 
 
@@ -110,7 +130,10 @@ int CommandTaskRunner::Stop() {
     LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
     if(ret != 0){
-        LOG(WARNING,"fail to kill process group %d",m_group_pid);
+        LOG(WARNING,"fail to kill process group %d err[%d:%s]",
+                m_group_pid,
+                errno,
+                strerror(errno));
     }
     pid_t killed_pid = wait(&ret);
     if(killed_pid == -1){
