@@ -45,7 +45,7 @@ class DefaultWorkspace:public Workspace{
 
 public:
     DefaultWorkspace(const TaskInfo &_task_info,
-                     std::string _root_path)
+                     const std::string& _root_path)
                      :m_task_info(_task_info),
                      m_root_path(_root_path),
                      m_has_created(false){

@@ -50,7 +50,7 @@ message NewTaskResponse {
 }
 
 message TerminateTaskRequest {
-    optional int32 task_id = 2;
+    optional int64 task_id = 2;
 }
 
 message TerminateTaskResponse {

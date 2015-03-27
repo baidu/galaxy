@@ -43,7 +43,8 @@ public:
     AbstractTaskRunner(TaskInfo task_info,
                        DefaultWorkspace * workspace)
                        :m_task_info(task_info),
-                       m_workspace(workspace){}
+                       m_workspace(workspace),
+                       m_has_retry_times(0){}
     virtual int Prepare() = 0;
     virtual int Start() = 0;
     int IsRunning();
@@ -56,6 +57,7 @@ protected:
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
+    int m_has_retry_times;
     DefaultWorkspace * m_workspace;
 };
 
@@ -66,7 +68,8 @@ public:
                       DefaultWorkspace * _workspace)
                       :AbstractTaskRunner(_task_info,_workspace){
     }
-    ~CommandTaskRunner(){
+
+    ~CommandTaskRunner() {
     }
     int Prepare(){
         return 0;

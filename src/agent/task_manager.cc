@@ -9,6 +9,7 @@
 #include "common/logging.h"
 #include "agent/cgroup.h"
 
+extern std::string FLAGS_container;
 namespace galaxy {
 int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
                      DefaultWorkspace *  workspace) {
@@ -18,7 +19,14 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         LOG(WARNING, "task with id %d has exist", task_info.task_id());
         return 0;
     }
-    TaskRunner* runner = new ContainerTaskRunner(task_info,"/cgroup", workspace);
+    TaskRunner* runner = NULL;
+    if(FLAGS_container.compare("cgroup") == 0){
+        LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
+        runner = new ContainerTaskRunner(task_info,"/cgroup", workspace);
+    }else{
+        LOG(INFO,"use command task runner for task %d",task_info.task_id());
+        runner = new CommandTaskRunner(task_info,workspace);
+    }
     int ret = runner->Prepare();
     if(ret != 0 ){
         LOG(INFO,"fail to prepare runner ,ret is %d",ret);
@@ -58,10 +66,18 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
     for (; it != m_task_runner_map.end(); ++it) {
         TaskStatus status;
         status.set_task_id(it->first);
-        if(it->second->IsRunning()){
+        if(it->second->IsRunning() == 0){
             status.set_status(RUNNING);
         }else{
-            status.set_status(ERROR);
+            if (it->second->ReStart() == 0) {
+                status.set_status(RESTART);
+            } else {
+                // if restart failed,
+                // 1. retry times more than limit, no need retry any more.
+                // 2. stop failed
+                // 3. start failed
+                status.set_status(ERROR);
+            }
         }
 
         task_status_vector.push_back(status);

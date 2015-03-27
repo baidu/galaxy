@@ -20,9 +20,7 @@ public:
         m_mutex = new common::Mutex();
     }
     ~WorkspaceManager(){
-        if(m_mutex!=NULL){
-            delete m_mutex;
-        }
+        delete m_mutex;
         Workspace * tmp = NULL;
         std::map<int64_t, DefaultWorkspace*>::iterator map_it = m_workspace_map.begin();
         for(;map_it != m_workspace_map.end();++map_it){

@@ -16,10 +16,12 @@
 #include "common/logging.h"
 #include "common/util.h"
 
+extern int FLAGS_task_retry_times;
+
 namespace galaxy {
 
 int AbstractTaskRunner::IsRunning(){
-    if (m_child_pid == -1) {
+   if (m_child_pid == -1) {
         return -1;
     }
     // check process exist
@@ -27,10 +29,10 @@ int AbstractTaskRunner::IsRunning(){
     if(ret == 0 ){
         //check process status
         pid_t pid = waitpid(m_child_pid,&ret,WNOHANG);
-        if(pid == -1 ){
+        if(pid == -1){
             LOG(WARNING,"check process %d state error",m_child_pid);
             return -1;
-        }else if(pid==0){
+        }else if(pid == 0){
             LOG(INFO,"process %d is running",m_child_pid);
         }else{
             LOG(WARNING,"process %d has gone",m_child_pid);
@@ -38,7 +40,10 @@ int AbstractTaskRunner::IsRunning(){
             return -1;
         }
     }
-    LOG(INFO, "check task %d ret %d", m_task_info.task_id(), ret);
+    LOG(INFO, "check task %d error[%d:%s] ",
+            m_task_info.task_id(),
+            errno,
+            strerror(errno));
     return ret;
 }
 
@@ -124,8 +129,23 @@ int CommandTaskRunner::Start() {
 }
 
 int CommandTaskRunner::ReStart(){
+    int max_retry_times = FLAGS_task_retry_times;
+    if (m_task_info.has_fail_retry_times()) {
+        max_retry_times = m_task_info.fail_retry_times();
+    }
+    if (m_has_retry_times
+            >= max_retry_times) {
+        return -1;
+    }
 
+    m_has_retry_times ++;
+    if (IsRunning() == 0) {
+        if (!Stop()) {
+            return -1;
+        }
+    }
 
+    return Start();
 }
 
 }

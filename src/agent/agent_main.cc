@@ -14,6 +14,7 @@
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_work_dir;
+extern std::string FLAGS_container;
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
@@ -31,6 +32,8 @@ int main(int argc, char* argv[])
             FLAGS_master_addr = s;
         } else if (sscanf(argv[i], "--work_dir=%s", s) == 1) {
             FLAGS_agent_work_dir = s;
+        } else if(sscanf(argv[i],"--container=%s",s) == 1){
+            FLAGS_container = s;
         }
         else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
