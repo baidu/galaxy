@@ -158,6 +158,7 @@ void MasterImpl::NewTask(::google::protobuf::RpcController* /*controller*/,
 
             it = agents_.find(agent_addr);
             it->second.tasks.insert(request->task_name());
+            it->second.task_num ++;
             agent_addrs.push_back(agent_addr);
         }
     }
