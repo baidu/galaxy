@@ -158,7 +158,7 @@ int ContainerTaskRunner::Prepare() {
 
 void ContainerTaskRunner::PutToCGroup(){
     int64_t mem_size = 1024 * 1024 * 1024;//1G
-    int64_t cpu_share = 1000;
+    int64_t cpu_share = 10;
     std::string mem_key = "memory";
     std::string cpu_key = "cpu";
     for(size_t i = 0; i< m_task_info.resource_list_size();i++){
@@ -168,7 +168,7 @@ void ContainerTaskRunner::PutToCGroup(){
             continue;
         }
         if(cpu_key.compare(item.name())==0 && item.value() >0){
-            cpu_share = item.value();
+            cpu_share = item.value() * 512;
         }
 
     }
