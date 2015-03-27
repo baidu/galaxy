@@ -11,7 +11,8 @@ enum TaskState {
     STARTING = 1;
     RUNNING = 2;
     KILLED = 3;
-    ERROR = 4;
+    RESTART = 4;
+    ERROR = 5;
 }
 
 message TaskStatus{
@@ -24,6 +25,7 @@ message TaskInfo{
     optional string task_name = 2;
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
+    optional int32 fail_retry_times = 5;
 }
 
 message TaskInstance {

@@ -55,7 +55,15 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
         if(it->second->IsRunning() == 0){
             status.set_status(RUNNING);
         }else{
-            status.set_status(ERROR);
+            if (it->second->ReStart() == 0) {
+                status.set_status(RESTART); 
+            } else {
+                // if restart failed,
+                // 1. retry times more than limit, no need retry any more.
+                // 2. stop failed
+                // 3. start failed
+                status.set_status(ERROR);
+            }
         }
 
         task_status_vector.push_back(status);
