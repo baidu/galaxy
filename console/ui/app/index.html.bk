@@ -1,0 +1,97 @@
+<!doctype html>
+<html class="no-js">
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="description" content="galaxy console">
+    <meta name="viewport" content="width=device-width">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+    <!-- build:css(.) styles/vendor.css -->
+    <!-- bower:css -->
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css" />
+    <link rel="stylesheet" href="bower_components/todc-bootstrap/dist/css/todc-bootstrap.css" />
+    <!-- endbower -->
+    <!-- endbuild -->
+    <!-- build:css(.tmp) styles/main.css -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/treeview.css">
+   
+    <!-- endbuild -->
+</head>
+<body ng-app="console">
+    <!--[if lt IE 7]>
+      <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
+      <![endif]-->
+
+      <!-- container -->
+      <div class="container" >
+         <!--header start-->
+         <div class="header">
+          {{header}}  
+          </div>
+      <!-- header end-->
+      <!--nav div-->
+     <div> 
+          <div class="toggle-nav">
+
+          </div>
+          <div class="layout-nav">
+            <div class="layout-nav-header">
+              <ul>
+                 <li><a ng-class="breadcrumb" href="{{nav.service.href}}">{{nav.service.name}}</a></li>
+             </ul>
+
+             <div>
+                  <div class="layout-nav-divider"></div>
+                  <div class="treeview" nav-tree is-root="true" tree-model=""></div>
+              </div>
+            </div>
+        </div>
+<!--end of nav div -->
+
+<!--content page-->
+<div >
+        <div class="loading-mask">
+            loading-mask
+        </div>
+        <div class="content-viewport" ng-view>
+        </div>
+</div>
+<!--end of content page-->
+<div class="footer">
+</div>
+
+</div>
+<!-- end of container-->
+
+
+<!-- build:js(.) scripts/oldieshim.js -->
+    <!--[if lt IE 9]>
+    <script src="bower_components/es5-shim/es5-shim.js"></script>
+    <script src="bower_components/json3/lib/json3.js"></script>
+    <![endif]-->
+    <!-- endbuild -->
+
+    <!-- build:js(.) scripts/vendor.js -->
+    <!-- bower:js -->
+    <script src="bower_components/jquery/dist/jquery.js"></script>
+    <script src="bower_components/angular/angular.js"></script>
+    <script src="bower_components/angular-bootstrap/ui-bootstrap-tpls.js"></script>
+    <script src="bower_components/angular-animate/angular-animate.js"></script>
+    <script src="bower_components/angular-cookies/angular-cookies.js"></script>
+    <script src="bower_components/angular-resource/angular-resource.js"></script>
+    <script src="bower_components/angular-route/angular-route.js"></script>
+    <script src="bower_components/angular-sanitize/angular-sanitize.js"></script>
+    <!-- endbower -->
+    <!-- endbuild -->
+
+    <!-- build:js({.tmp,app}) scripts/scripts.js -->
+    <script src="scripts/app.js"></script>
+    <script src="scripts/controllers/main.js"></script>
+    <script src="scripts/controllers/about.js"></script>
+    <script src="scripts/controllers/service.js"></script>
+    <script src="scripts/controllers/modal/service.js"></script>
+    <script src="scripts/utils/treeview.js"></script>
+    <!-- endbuild -->
+</body>
+</html>
