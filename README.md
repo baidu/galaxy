@@ -1,9 +1,12 @@
 # Galaxy
 Galaxy
+
 ## Todolist
 ###主线：
-1. Agent启动子进程时能关闭自己所有的文件     -- **Done**(FD_CLOEXEC解决)
-2. Agent启动任务时，放在本任务专用一个文件夹里，而不是现在的/home/下
+1. 在任务down掉时，agent负责重启FLAGS_agent_retry次，重试过程中，向master汇报的状态为"重启中"。
+2. Agent支持磁盘空间管理，即Workspace使用的磁盘空间是有配额的
+3. Agent支持SSD和多磁盘使用，当前Workspace只能是一个磁盘上的
+4. 控制台可以看到当前集群上所有任务的状态，实例数。
 
 
 ###非主线：
