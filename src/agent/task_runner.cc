@@ -124,8 +124,8 @@ int CommandTaskRunner::Start() {
         close(stdout_fd);
         close(stderr_fd);
         m_group_pid = m_child_pid;
-        return 0;
     }
+    return 0;
 }
 
 int CommandTaskRunner::ReStart(){

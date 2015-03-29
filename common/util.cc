@@ -98,7 +98,7 @@ void GetProcessFdList(int pid, std::vector<int>& fds) {
 int WriteIntToFile(const std::string filename , int64_t value){
     FILE * fd = fopen(filename.c_str(), "we");
     if(NULL != fd){
-        int ret = fprintf(fd,"%lld",value);
+        int ret = fprintf(fd,"%ld",value);
         fclose(fd);
         if(ret <= 0 ){
             return -1;

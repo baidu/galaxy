@@ -161,7 +161,7 @@ void ContainerTaskRunner::PutToCGroup(){
     int64_t cpu_share = 10;
     std::string mem_key = "memory";
     std::string cpu_key = "cpu";
-    for(size_t i = 0; i< m_task_info.resource_list_size();i++){
+    for (int i = 0; i< m_task_info.resource_list_size(); i++){
         ResourceItem item = m_task_info.resource_list(i);
         if(mem_key.compare(item.name())==0 && item.value() > 0){
             mem_size = item.value();
@@ -198,8 +198,8 @@ int ContainerTaskRunner::Start() {
     } else {
         close(stdout_fd);
         close(stderr_fd);
-        return 0;
     }
+    return 0;
 }
 
 int ContainerTaskRunner::ReStart() {

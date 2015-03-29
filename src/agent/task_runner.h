@@ -57,8 +57,8 @@ protected:
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
-    int m_has_retry_times;
     DefaultWorkspace * m_workspace;
+    int m_has_retry_times;
 };
 
 class CommandTaskRunner:public AbstractTaskRunner{
