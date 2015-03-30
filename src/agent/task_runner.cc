@@ -102,6 +102,26 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     assert(0);
     _exit(127);
 }
+int AbstractTaskRunner::ReStart(){
+    int max_retry_times = FLAGS_task_retry_times;
+    if (m_task_info.has_fail_retry_times()) {
+        max_retry_times = m_task_info.fail_retry_times();
+    }
+    if (m_has_retry_times
+            >= max_retry_times) {
+        return -1;
+    }
+
+    m_has_retry_times ++;
+    if (IsRunning() == 0) {
+        if (!Stop()) {
+            return -1;
+        }
+    }
+
+    return Start();
+}
+
 
 //start process
 //1. fork a subprocess A
@@ -126,26 +146,6 @@ int CommandTaskRunner::Start() {
         m_group_pid = m_child_pid;
     }
     return 0;
-}
-
-int CommandTaskRunner::ReStart(){
-    int max_retry_times = FLAGS_task_retry_times;
-    if (m_task_info.has_fail_retry_times()) {
-        max_retry_times = m_task_info.fail_retry_times();
-    }
-    if (m_has_retry_times
-            >= max_retry_times) {
-        return -1;
-    }
-
-    m_has_retry_times ++;
-    if (IsRunning() == 0) {
-        if (!Stop()) {
-            return -1;
-        }
-    }
-
-    return Start();
 }
 
 }
