@@ -13,6 +13,7 @@
 #include <set>
 
 #include "common/mutex.h"
+#include "common/thread_pool.h"
 
 namespace galaxy {
 
@@ -22,7 +23,17 @@ struct AgentInfo {
     std::string addr;
     int32_t task_num;
     Agent_Stub* stub;
-    std::set<std::string> tasks;
+    std::set<int64_t> tasks;
+};
+
+struct JobInfo {
+    int64_t id;
+    int32_t replica_num;
+    std::string job_name;
+    std::string job_raw;
+    std::string cmd_line;
+    int32_t running_num;
+    std::map<std::string,int> running_agents;
 };
 
 class RpcClient;
@@ -50,14 +61,22 @@ public:
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done);
-
 private:
+    void MasterImpl::Schedule();
+    std::string AllocResource();
+    bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
+    void UpdateJobsOnAgent(AgentInfo* agent,
+                           const std::set<int64_t>& running_tasks);
+private:
+    common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
+    std::map<int64_t, TaskInstance> tasks_;
+    std::map<int64_t, JobInfo> jobs_;
     int64_t next_agent_id_;
     int64_t next_task_id_;
+    int64_t next_job_id_;
     Mutex agent_lock_;
 
-    std::map<int64_t, TaskInstance> agent_task_pair_; 
 
     RpcClient* rpc_client_;
 };
