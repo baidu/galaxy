@@ -84,7 +84,7 @@ size_t CurlDownloader::RecvTrunkData(char* ptr,
             LOG(WARNING, "write file failed [%d: %s]", errno, strerror(errno)); 
             return 0;
         }
-        LOG(INFO, "write file %s", downloader->used_length_);
+        LOG(INFO, "write file %d", downloader->used_length_);
         downloader->used_length_ = 0;
     } 
     
