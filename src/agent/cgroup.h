@@ -79,7 +79,6 @@ public:
                         _cg_root(cg_root){}
     int Prepare();
     int Start();
-    int ReStart();
     int Stop();
     ~ContainerTaskRunner(){
         delete _cg_ctrl;
