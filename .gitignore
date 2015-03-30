@@ -23,4 +23,7 @@ _testmain.go
 *.test
 *.prof
 
+*.pb.h
+*.pb.cc
+
 Makefile
