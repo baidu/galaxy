@@ -27,3 +27,7 @@ _testmain.go
 *.pb.cc
 
 Makefile
+output/*
+master
+agent
+galaxy_client
