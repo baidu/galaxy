@@ -34,4 +34,5 @@ message TaskInstance {
     optional TaskInfo info = 2;
     optional string agent_addr = 3;
     optional int64 job_id = 4;
+    optional int32 start_time = 5;
 }

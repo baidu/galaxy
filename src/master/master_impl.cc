@@ -9,6 +9,8 @@
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 
+extern int FLAGS_task_deloy_timeout;
+
 namespace galaxy {
 
 MasterImpl::MasterImpl()
@@ -92,13 +94,18 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                                    const std::set<int64_t>& running_tasks) {
     const std::string& agent_addr = agent->addr;
     assert(!agent_addr.empty());
- 
+
+    int32_t now_time = common::timer::now_time();
     std::set<int64_t>::iterator it = agent->tasks.begin();
     std::vector<int64_t> del_tasks;
     for (; it != agent->tasks.end(); ++it) {
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
+            if (instance.start_time() + FLAGS_task_deloy_timeout > now_time) {
+                // 刚部署的任务，等待超时后才处理
+                continue;
+            }
             int64_t job_id = instance.job_id();
             assert(jobs_.find(job_id) != jobs_.end());
             JobInfo& job = jobs_[job_id];
@@ -218,6 +225,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.mutable_info()->set_task_name(job->job_name);
         instance.set_agent_addr(agent_addr);
         instance.set_job_id(job->id);
+        instance.set_start_time(common::timer::now_time());
         job->running_agents[agent_addr]++;
         job->running_num++;
     }
@@ -230,7 +238,7 @@ void MasterImpl::Schedule() {
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
         for (int i = job.running_num; i < job.replica_num; i++) {
-            LOG(INFO, "Job[%s] running %d tasks, replica_num %d",
+            LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
             std::string agent_addr = AllocResource();
             if (agent_addr.empty()) {
