@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -12,70 +12,71 @@
 #include <stdint.h>
 
 namespace galaxy {
-namespace sdk{
 //
 //
-enum PackageType{
-    FTP,
-    HTTP,
-    P2P,
-    BINARY
+enum PackageTypeEnum{
+    FTP_TYPE = 0,
+    HTTP_TYPE,
+    P2P_TYPE,
+    BINARY_TYPE
 };
 
-enum TaskState{
-    DEPLOYING,
-    RUNNING,
-    ERROR
+enum TaskStateEnum{
+    DEPLOYING_STATE = 0,
+    RUNNING_STATE,
+    ERROR_STATE
 };
 
-struct Task{
+struct TaskDescription{
     int64_t task_id;
     int64_t job_id;
     std::string task_name;
-    TaskState state;
+    TaskStateEnum state;
     std::string host;
 };
 
 
-struct Package{
-    PackageType type;
+struct PackageDescription{
+    PackageTypeEnum type;
     std::string source;
     std::string version;
 };
 
-struct ResourceRequirement{
+struct ResourceDescription{
     std::string name;
     int64_t value;
 };
 
 
-struct Job{
+struct JobDescription{
     int64_t job_id;
     std::string job_name;
     std::string cmd_line;
-    Package pkg;
+    PackageDescription pkg;
     int32_t replicate_count;
-    std::vector<ResourceRequirement> resource_vector;
+    std::vector<ResourceDescription> resource_vector;
 };
 
+struct JobInstanceDescription : JobDescription{
+    int32_t running_task_num;
+};
 
 class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
     //create a new job
-    virtual bool NewJob(const Job& job) = 0;
+    virtual bool NewJob(const JobDescription& job) = 0;
     //update job for example update the replicate_count
-    virtual bool UpdateJob(const Job& job) = 0;
+    virtual bool UpdateJob(const JobDescription& job) = 0;
     //list all jobs in galaxys
-    virtual bool ListJob(std::vector<Job> &jobs) = 0;
+    virtual bool ListJob(std::vector<JobInstanceDescription>* jobs) = 0;
     //termintate job
     virtual bool TerminateJob(int64_t job_id) = 0;
     //list all tasks of job
-    virtual bool ListTask(int64_t job_id,std::vector<Task> &tasks) = 0;
+    virtual bool ListTask(int64_t job_id,std::vector<TaskDescription>* tasks) = 0;
 
 };
 
-} // namepsace sdk
 } // namespace galaxy
 
 #endif  // GALAXY_GALAXY_H_

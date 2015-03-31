@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -18,6 +18,7 @@ void help() {
 
 enum Command {
     LIST = 0,
+    LISTJOB,
     ADD,
     KILL
 };
@@ -36,6 +37,8 @@ int main(int argc, char* argv[]) {
         }
     } else if (strcmp(argv[2], "list") == 0) {
         COMMAND = LIST;
+    } else if (strcmp(argv[2], "listjob") == 0) {
+        COMMAND = LISTJOB;
     } else if (strcmp(argv[2], "kill") == 0) {
         COMMAND = KILL;
         if (argc < 4) {
@@ -61,8 +64,14 @@ int main(int argc, char* argv[]) {
         }
         fclose(fp);
         printf("Task binary len %lu\n", task_raw.size());
-        galaxy::sdk::Galaxy* galaxy = galaxy::sdk::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy::sdk::Job job;
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy::JobDescription job;
+        galaxy::PackageDescription pkg;
+        pkg.source = task_raw;
+        job.pkg = pkg;
+        job.cmd_line = argv[4];
+        job.replicate_count = atoi(argv[5]);
+        job.job_name = argv[3];
         galaxy->NewJob(job);
         return 0;
     }
@@ -71,15 +80,22 @@ int main(int argc, char* argv[]) {
         if (argc == 4) {
             job_id = atoi(argv[3]);
         }
-        galaxy::sdk::Galaxy* galaxy = galaxy::sdk::Galaxy::ConnectGalaxy(argv[1]);
-        std::vector<galaxy::sdk::Task> tasks;
-        galaxy->ListTask(job_id,tasks);
+        return 0;
+    }
+    else if (COMMAND == LISTJOB) {
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        std::vector<galaxy::JobInstanceDescription> jobs;
+        galaxy->ListJob(&jobs);
+        std::vector<galaxy::JobInstanceDescription>::iterator it = jobs.begin();
+        fprintf(stdout, "================================\n");
+        for(;it != jobs.end();++it){
+            fprintf(stdout, "%ld\t%s\t%d\t%d\n",
+                    it->job_id, it->job_name.c_str(),
+                    it->running_task_num, it->replicate_count);
+        }
         return 0;
     }
     else if (COMMAND == KILL) {
-        int64_t job_id = atoi(argv[3]);
-        galaxy::sdk::Galaxy* galaxy = galaxy::sdk::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->TerminateJob(job_id);
         return 0;
     }
 }
