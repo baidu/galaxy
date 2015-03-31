@@ -100,7 +100,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.start_time() + FLAGS_task_deloy_timeout > now_time) {
+            if (instance.status() == DEPLOYING &&
+                instance.start_time() + FLAGS_task_deloy_timeout > now_time) {
                 LOG(INFO, "Wait for deloy timeout %ld", task_id);
                 continue;
             }
@@ -150,8 +151,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         running_tasks.insert(task_id);
 
         TaskInstance& instance = tasks_[task_id];
-        // @NOTE only update status in heartbeat
-        instance.mutable_status()->CopyFrom(request->task_status(i));
+
+        int task_status = request->task_status(i).status();
+        instance.set_status(task_status);
+        LOG(INFO, "Task %d status: %s", 
+            task_id, TaskState_Name((TaskState)task_status).c_str());
         instance.set_agent_addr(agent_addr);
         LOG(INFO, "%s run task %d %d", agent_addr.c_str(),
             task_id, request->task_status(i).status());
@@ -223,9 +227,11 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         agent.task_num ++;
         TaskInstance& instance = tasks_[task_id];
         instance.mutable_info()->set_task_name(job->job_name);
+        instance.mutable_info()->set_task_id(task_id);
         instance.set_agent_addr(agent_addr);
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
+        instance.set_status(DEPLOYING);
         job->running_agents[agent_addr]++;
         job->running_num++;
     }

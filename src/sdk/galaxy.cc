@@ -79,11 +79,11 @@ bool GalaxyImpl::ListTask(int64_t task_id) {
     fprintf(stdout, "================================\n");
     size_t task_size = response.tasks_size();
     for (size_t i = 0; i < task_size; i++) {
-        if (!response.tasks(i).has_status() ||
-                !response.tasks(i).status().has_task_id()) {
+        if (!response.tasks(i).has_info() ||
+                !response.tasks(i).info().has_task_id()) {
             continue; 
         }
-        int64_t task_id = response.tasks(i).status().task_id();
+        int64_t task_id = response.tasks(i).info().task_id();
         std::string task_name;
         std::string agent_addr;
         std::string state;
@@ -92,8 +92,8 @@ bool GalaxyImpl::ListTask(int64_t task_id) {
                 task_name = response.tasks(i).info().task_name(); 
             }
         }
-        if (response.tasks(i).status().has_status()) {
-            int task_state = response.tasks(i).status().status();
+        if (response.tasks(i).has_status()) {
+            int task_state = response.tasks(i).status();
             if (TaskState_IsValid(task_state)) {
                 state = TaskState_Name((TaskState)task_state); 
             } 

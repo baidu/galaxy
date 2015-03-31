@@ -17,13 +17,11 @@ extern std::string FLAGS_agent_work_dir;
 extern std::string FLAGS_container;
 
 static volatile bool s_quit = false;
-static void SignalIntHandler(int /*sig*/)
-{
+static void SignalIntHandler(int /*sig*/) {
     s_quit = true;
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         char s[1024];
         if (sscanf(argv[i], "--port=%s", s) == 1) {
