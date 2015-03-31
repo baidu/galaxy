@@ -8,7 +8,6 @@ message ResourceItem {
 
 enum TaskState {
     DEPLOYING = 0;
-    STARTING = 1;
     RUNNING = 2;
     KILLED = 3;
     RESTART = 4;
@@ -25,11 +24,8 @@ message TaskInfo{
     optional string task_name = 2;
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
-    optional int32 fail_retry_times = 5;
+    repeated ResourceItem resource_list = 5;
+    optional int32 fail_retry_times = 6;
 }
 
-message TaskInstance {
-    optional TaskStatus status = 1;
-    optional TaskInfo info = 2;
-    optional string agent_addr = 3;
-}
+

@@ -7,7 +7,9 @@
 #include "agent/task_manager.h"
 
 #include "common/logging.h"
+#include "agent/cgroup.h"
 
+extern std::string FLAGS_container;
 namespace galaxy {
 int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
                      DefaultWorkspace *  workspace) {
@@ -17,8 +19,20 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         LOG(WARNING, "task with id %d has exist", task_info.task_id());
         return 0;
     }
-    TaskRunner* runner = new CommandTaskRunner(task_info, workspace);
-    int ret = runner->Start();
+    TaskRunner* runner = NULL;
+    if(FLAGS_container.compare("cgroup") == 0){
+        LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
+        runner = new ContainerTaskRunner(task_info,"/cgroup", workspace);
+    }else{
+        LOG(INFO,"use command task runner for task %d",task_info.task_id());
+        runner = new CommandTaskRunner(task_info,workspace);
+    }
+    int ret = runner->Prepare();
+    if(ret != 0 ){
+        LOG(INFO,"fail to prepare runner ,ret is %d",ret);
+        return ret;
+    }
+    ret = runner->Start();
     if (ret == 0) {
         LOG(INFO, "add task with id %d successfully", task_info.task_id());
         m_task_runner_map[task_info.task_id()] = runner;
@@ -56,7 +70,7 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
             status.set_status(RUNNING);
         }else{
             if (it->second->ReStart() == 0) {
-                status.set_status(RESTART); 
+                status.set_status(RESTART);
             } else {
                 // if restart failed,
                 // 1. retry times more than limit, no need retry any more.

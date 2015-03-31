@@ -1,4 +1,4 @@
-// Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -24,6 +24,7 @@ public:
                  const std::string& cmd_line,
                  int32_t count);
     bool ListTask(int64_t taks_id = -1);
+    bool ListJob();
 
     bool TerminateTask(int64_t task_id);
 private:
@@ -57,14 +58,31 @@ bool GalaxyImpl::NewTask(const std::string& task_name,
                          const std::string& task_raw,
                          const std::string& cmd_line,
                          int32_t count) {
-    NewTaskRequest request;
-    request.set_task_name(task_name);
-    request.set_task_raw(task_raw);
+    NewJobRequest request;
+    request.set_job_name(task_name);
+    request.set_job_raw(task_raw);
     request.set_cmd_line(cmd_line);
-    request.set_replic_count(count);
-    NewTaskResponse response;
-    rpc_client_->SendRequest(master_, &Master_Stub::NewTask,
+    request.set_replica_num(count);
+    NewJobResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::NewJob,
                              &request, & response, 5, 1);
+    return true;
+}
+
+bool GalaxyImpl::ListJob() {
+    ListJobRequest request;
+    ListJobResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::ListJob,
+                             &request, &response, 5, 1);
+    fprintf(stdout, "================================\n");
+    int job_num = response.jobs_size();
+    for (int i = 0; i < job_num; i++) {
+        const JobInstance& job = response.jobs(i);
+        fprintf(stdout, "%ld\t%s\t%d\t%d\n",
+                job.job_id(), job.job_name().c_str(),
+                job.running_task_num(), job.replica_num());
+    }
+    fprintf(stdout, "================================\n");
     return true;
 }
 
@@ -77,13 +95,13 @@ bool GalaxyImpl::ListTask(int64_t task_id) {
     rpc_client_->SendRequest(master_, &Master_Stub::ListTask,
                              &request, &response, 5, 1);
     fprintf(stdout, "================================\n");
-    size_t task_size = response.tasks_size();
-    for (size_t i = 0; i < task_size; i++) {
-        if (!response.tasks(i).has_status() ||
-                !response.tasks(i).status().has_task_id()) {
+    int task_size = response.tasks_size();
+    for (int i = 0; i < task_size; i++) {
+        if (!response.tasks(i).has_info() ||
+                !response.tasks(i).info().has_task_id()) {
             continue; 
         }
-        int64_t task_id = response.tasks(i).status().task_id();
+        int64_t task_id = response.tasks(i).info().task_id();
         std::string task_name;
         std::string agent_addr;
         std::string state;
@@ -92,8 +110,8 @@ bool GalaxyImpl::ListTask(int64_t task_id) {
                 task_name = response.tasks(i).info().task_name(); 
             }
         }
-        if (response.tasks(i).status().has_status()) {
-            int task_state = response.tasks(i).status().status();
+        if (response.tasks(i).has_status()) {
+            int task_state = response.tasks(i).status();
             if (TaskState_IsValid(task_state)) {
                 state = TaskState_Name((TaskState)task_state); 
             } 

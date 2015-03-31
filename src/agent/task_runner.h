@@ -14,6 +14,8 @@ namespace galaxy{
 class TaskRunner{
 
 public:
+
+   virtual int Prepare() = 0 ;
    /**
     * start task
     * */
@@ -35,34 +37,45 @@ public:
 
    virtual ~TaskRunner(){}
 };
-
-class CommandTaskRunner:public TaskRunner{
+class AbstractTaskRunner:public TaskRunner{
 
 public:
-    CommandTaskRunner(const TaskInfo &_task_info,
-                      DefaultWorkspace * _workspace)
-                        :m_task_info(_task_info),
-                         m_child_pid(-1),
-                         m_workspace(_workspace),
-                         m_has_retry_times(0) {
-    }
-
-    ~CommandTaskRunner() {
-    }
-    int Start();
-    int ReStart();
-    int Stop();
+    AbstractTaskRunner(TaskInfo task_info,
+                       DefaultWorkspace * workspace)
+                       :m_task_info(task_info),
+                       m_workspace(workspace),
+                       m_has_retry_times(0){}
+    virtual int Prepare() = 0;
+    virtual int Start() = 0;
     int IsRunning();
-private:
+    int Stop();
+    int ReStart();
+protected:
+    void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
+    void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
+protected:
     TaskInfo m_task_info;
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
     DefaultWorkspace * m_workspace;
     int m_has_retry_times;
-private:
-    void RunInnerChildProcess(const std::string &root_path,
-                              const std::string &cmd_line);
+};
+
+class CommandTaskRunner:public AbstractTaskRunner{
+
+public:
+    CommandTaskRunner(TaskInfo _task_info,
+                      DefaultWorkspace * _workspace)
+                      :AbstractTaskRunner(_task_info,_workspace){
+    }
+
+    ~CommandTaskRunner() {
+    }
+    int Prepare(){
+        return 0;
+    }
+    int Start();
 };
 
 

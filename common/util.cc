@@ -8,12 +8,15 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <dirent.h>
-
+#include <stdint.h>
+#include <inttypes.h>
 #include <map>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <vector>
 
 namespace common {
@@ -90,6 +93,19 @@ void GetProcessFdList(int pid, std::vector<int>& fds) {
     }
 
     closedir(dir);
+}
+
+int WriteIntToFile(const std::string filename , int64_t value){
+    FILE * fd = fopen(filename.c_str(), "we");
+    if(NULL != fd){
+        int ret = fprintf(fd,"%ld",value);
+        fclose(fd);
+        if(ret <= 0 ){
+            return -1;
+        }
+        return 0;
+    }
+    return -1;
 }
 
 }

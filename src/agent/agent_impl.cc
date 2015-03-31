@@ -43,11 +43,12 @@ void AgentImpl::Report() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     std::string addr = common::util::GetLocalHostName() + ":" + FLAGS_agent_port;
-    std::vector< ::galaxy::TaskStatus > status_vector;
+    
+    std::vector<TaskStatus > status_vector;
     task_mgr_->Status(status_vector);
-    std::vector< ::galaxy::TaskStatus>::iterator it = status_vector.begin();
-    for(;it != status_vector.end();++it){
-        ::galaxy::TaskStatus * req_status = request.add_task_status();
+    std::vector<TaskStatus>::iterator it = status_vector.begin();
+    for(; it != status_vector.end(); ++it){
+        TaskStatus* req_status = request.add_task_status();
         req_status->set_task_id(it->task_id());
         req_status->set_status(it->status());
     }

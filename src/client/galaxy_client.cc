@@ -1,11 +1,13 @@
-// Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
 // Author: yanshiguang02@baidu.com
 
 #include "sdk/galaxy.h"
-
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
     fprintf(stderr, "./galaxy_client master_addr add task_raw cmd_line replicate_count\n");
@@ -16,6 +18,7 @@ void help() {
 
 enum Command {
     LIST = 0,
+    LISTJOB,
     ADD,
     KILL
 };
@@ -27,24 +30,26 @@ int main(int argc, char* argv[]) {
     }
     int COMMAND = 0;
     if (strcmp(argv[2], "add") == 0) {
-        COMMAND = ADD; 
+        COMMAND = ADD;
         if (argc < 6) {
-            help(); 
+            help();
             return -1;
         }
     } else if (strcmp(argv[2], "list") == 0) {
-        COMMAND = LIST; 
+        COMMAND = LIST;
+    } else if (strcmp(argv[2], "listjob") == 0) {
+        COMMAND = LISTJOB;
     } else if (strcmp(argv[2], "kill") == 0) {
-        COMMAND = KILL; 
+        COMMAND = KILL;
         if (argc < 4) {
-            help(); 
+            help();
             return -1;
         }
     } else {
-        help(); 
+        help();
         return -1;
     }
-    
+
     if (COMMAND == ADD) {
         FILE* fp = fopen(argv[3], "r");
         if (fp == NULL) {
@@ -66,14 +71,19 @@ int main(int argc, char* argv[]) {
     else if (COMMAND == LIST) {
         int64_t task_id = -1;
         if (argc == 4) {
-            task_id = atoi(argv[3]);     
+            task_id = atoi(argv[3]);
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(task_id);
         return 0;
-    } 
+    }
+    else if (COMMAND == LISTJOB) {
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->ListJob();
+        return 0;
+    }
     else if (COMMAND == KILL) {
-        int64_t task_id = atoi(argv[3]); 
+        int64_t task_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->TerminateTask(task_id);
         return 0;

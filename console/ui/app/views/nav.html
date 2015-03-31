@@ -1,0 +1,13 @@
+<dl >
+                        <dt ng-repeat-start="node in treeModel" >
+                          <a href="{{node.href}}" ng-if="node.href"   ng-class="node.nodestyle"><span >{{node.nodeName}}</span></a>
+                          <span ng-if="!node.href" ng-class="node.nodestyle">{{node.nodeName}}</span>
+                        </dt>
+                        <dd ng-repeat-end>
+                          <dl>
+                            <dt ng-repeat="inode in node.children">
+                            <a href="{{inode.href}}" ng-if="inode.href" ng-class="inode.nodestyle" ><span >{{inode.nodeName}}</span>
+                            </dt>
+                          </dl>
+                        </dd>
+</dl>

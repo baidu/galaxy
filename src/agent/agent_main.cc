@@ -14,15 +14,14 @@
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_work_dir;
+extern std::string FLAGS_container;
 
 static volatile bool s_quit = false;
-static void SignalIntHandler(int /*sig*/)
-{
+static void SignalIntHandler(int /*sig*/) {
     s_quit = true;
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     for (int i = 1; i < argc; i++) {
         char s[1024];
         if (sscanf(argv[i], "--port=%s", s) == 1) {
@@ -31,6 +30,8 @@ int main(int argc, char* argv[])
             FLAGS_master_addr = s;
         } else if (sscanf(argv[i], "--work_dir=%s", s) == 1) {
             FLAGS_agent_work_dir = s;
+        } else if(sscanf(argv[i],"--container=%s",s) == 1) {
+            FLAGS_container = s;
         }
         else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
@@ -44,12 +45,12 @@ int main(int argc, char* argv[])
     galaxy::AgentImpl* agent_service = new galaxy::AgentImpl();
 
     if (!rpc_server.RegisterService(agent_service)) {
-            return EXIT_FAILURE;
+        return EXIT_FAILURE;
     }
 
     std::string server_host = std::string("0.0.0.0:") + FLAGS_agent_port;
     if (!rpc_server.Start(server_host)) {
-            return EXIT_FAILURE;
+        return EXIT_FAILURE;
     }
 
     signal(SIGINT, SignalIntHandler);
