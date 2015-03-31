@@ -49,11 +49,14 @@ public:
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
                    ::google::protobuf::Closure* done);
-    void NewTask(::google::protobuf::RpcController* controller,
-                 const ::galaxy::NewTaskRequest* request,
-                 ::galaxy::NewTaskResponse* response,
+    void NewJob(::google::protobuf::RpcController* controller,
+                 const ::galaxy::NewJobRequest* request,
+                 ::galaxy::NewJobResponse* response,
                  ::google::protobuf::Closure* done);
-
+    void UpdateJob(::google::protobuf::RpcController* controller,
+                   const ::galaxy::UpdateJobRequest* request,
+                   ::galaxy::UpdateJobResponse* response,
+                   ::google::protobuf::Closure* done);
     void TerminateTask(::google::protobuf::RpcController* controller,
                        const ::galaxy::TerminateTaskRequest* request,
                        ::galaxy::TerminateTaskResponse* response,

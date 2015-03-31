@@ -39,14 +39,23 @@ message HeartBeatResponse {
     optional int64 agent_id = 5;
 }
 
-message NewTaskRequest {
-    optional string task_name = 2;
-    optional bytes task_raw = 3;
+message NewJobRequest {
+    optional string job_name = 2;
+    optional bytes job_raw = 3;
     optional string cmd_line = 4;
     optional int32 replica_num = 5;
 }
 
-message NewTaskResponse {
+message NewJobResponse {
+    optional int32 status = 2;
+    optional int64 job_id = 3;
+}
+
+message UpdateJobRequest {
+    optional int64 job_id = 3;
+    optional int32 replica_num = 4;
+};
+message UpdateJobResponse {
     optional int32 status = 2;
 }
 
@@ -89,7 +98,8 @@ message ListJobResponse {
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
 
-    rpc NewTask(NewTaskRequest) returns(NewTaskResponse);
+    rpc NewJob(NewJobRequest) returns(NewJobResponse);
+    rpc UpdateJob(UpdateJobRequest) returns(UpdateJobResponse);
     rpc TerminateTask(TerminateTaskRequest) returns(TerminateTaskResponse);
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);

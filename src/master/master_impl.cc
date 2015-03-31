@@ -158,7 +158,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             if (instance.status() == DEPLOYING &&
                 instance.start_time() + FLAGS_task_deloy_timeout > now_time
                 && !clear_all) {
-                LOG(INFO, "Wait for deloy timeout %ld", task_id);
+                LOG(INFO, "Wait for deploy timeout %ld", task_id);
                 continue;
             }
             int64_t job_id = instance.job_id();
@@ -229,21 +229,43 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-void MasterImpl::NewTask(::google::protobuf::RpcController* /*controller*/,
-                         const ::galaxy::NewTaskRequest* request,
-                         ::galaxy::NewTaskResponse* response,
+void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
+                         const ::galaxy::UpdateJobRequest* request,
+                         ::galaxy::UpdateJobResponse* response,
+                         ::google::protobuf::Closure* done) {
+    MutexLock lock(&agent_lock_);
+    if (request->has_job_id()) {
+        response->set_status(-1);
+        done->Run();
+    }
+    int64_t job_id = request->job_id();
+    std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        response->set_status(-2);
+        done->Run();
+    }
+
+    JobInfo job = it->second;
+    job.replica_num = request->replica_num();
+    done->Run();
+}
+
+void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
+                         const ::galaxy::NewJobRequest* request,
+                         ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
     JobInfo& job = jobs_[job_id];
     job.id = job_id;
-    job.job_name = request->task_name();
-    job.job_raw = request->task_raw();
+    job.job_name = request->job_name();
+    job.job_raw = request->job_raw();
     job.cmd_line = request->cmd_line();
     job.replica_num = request->replica_num();
     job.running_num = 0;
 
     response->set_status(0); 
+    response->set_job_id(job_id);
     done->Run();
 }
 
