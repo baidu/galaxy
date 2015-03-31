@@ -159,6 +159,10 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
+            if (job.running_num == 0 && job.killed) {
+                LOG(INFO, "Job %ld [%s] killed", job_id, job.job_name.c_str());
+                jobs_.erase(job_id);
+            }
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
@@ -229,8 +233,9 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* controller,
         return;
     }
     
-    JobInfo job = it->second;
+    JobInfo& job = it->second;
     job.replica_num = 0;
+    job.killed = true;
     done->Run();
 }
 
@@ -247,7 +252,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
         return;
     }
 
-    JobInfo job = it->second;
+    JobInfo& job = it->second;
     job.replica_num = request->replica_num();
     done->Run();
 }
@@ -266,6 +271,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.replica_num = request->replica_num();
     job.running_num = 0;
     job.scale_down_time = 0;
+    job.killed = false;
 
     response->set_status(0); 
     response->set_job_id(job_id);
@@ -347,7 +353,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     agent_lock_.AssertHeld();
     std::string agent_addr;
     int64_t task_id = -1;
-    int high_load = 1<<30;
+    int high_load = 0;
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
     for (; it != job->agent_tasks.end(); ++it) {
         assert(agents_.find(it->first) != agents_.end());

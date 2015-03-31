@@ -37,6 +37,7 @@ struct JobInfo {
     int32_t running_num;
     int32_t scale_down_time;
     std::map<std::string, std::set<int64_t> > agent_tasks;
+    bool killed;
 };
 
 class RpcClient;

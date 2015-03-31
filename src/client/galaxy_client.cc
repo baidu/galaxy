@@ -20,7 +20,8 @@ enum Command {
     LIST = 0,
     LISTJOB,
     ADD,
-    KILL
+    KILLTASK,
+    KILLJOB
 };
 
 int main(int argc, char* argv[]) {
@@ -40,7 +41,13 @@ int main(int argc, char* argv[]) {
     } else if (strcmp(argv[2], "listjob") == 0) {
         COMMAND = LISTJOB;
     } else if (strcmp(argv[2], "kill") == 0) {
-        COMMAND = KILL;
+        COMMAND = KILLTASK;
+        if (argc < 4) {
+            help();
+            return -1;
+        }    
+    } else if (strcmp(argv[2], "killjob") == 0) {
+        COMMAND = KILLJOB;
         if (argc < 4) {
             help();
             return -1;
@@ -74,8 +81,7 @@ int main(int argc, char* argv[]) {
         job.job_name = argv[3];
         galaxy->NewJob(job);
         return 0;
-    }
-    else if (COMMAND == LIST) {
+    } else if (COMMAND == LIST) {
         int64_t job_id = -1;
         if (argc == 4) {
             job_id = atoi(argv[3]);
@@ -84,8 +90,7 @@ int main(int argc, char* argv[]) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(job_id,NULL);
         return 0;
-    }
-    else if (COMMAND == LISTJOB) {
+    } else if (COMMAND == LISTJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         std::vector<galaxy::JobInstanceDescription> jobs;
         galaxy->ListJob(&jobs);
@@ -97,11 +102,15 @@ int main(int argc, char* argv[]) {
                     it->running_task_num, it->replicate_count);
         }
         return 0;
-    }
-    else if (COMMAND == KILL) {
+    } else if (COMMAND == KILLTASK) {
         int64_t task_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->KillTask(task_id);
+        return 0;
+    } else if (COMMAND == KILLJOB) {
+        int64_t job_id = atoi(argv[3]);
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->TerminateJob(job_id);
         return 0;
     }
 }
