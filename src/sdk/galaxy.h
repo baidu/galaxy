@@ -75,6 +75,8 @@ public:
     //list all tasks of job
     virtual bool ListTask(int64_t job_id,std::vector<TaskDescription>* tasks) = 0;
 
+    //debug
+    virtual bool KillTask(int64_t task_id) = 0;
 };
 
 } // namespace galaxy

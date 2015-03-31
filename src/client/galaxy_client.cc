@@ -80,6 +80,9 @@ int main(int argc, char* argv[]) {
         if (argc == 4) {
             job_id = atoi(argv[3]);
         }
+
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->ListTask(job_id,NULL);
         return 0;
     }
     else if (COMMAND == LISTJOB) {
@@ -96,6 +99,9 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     else if (COMMAND == KILL) {
+        int64_t task_id = atoi(argv[3]);
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->KillTask(task_id);
         return 0;
     }
 }
