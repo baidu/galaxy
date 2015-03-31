@@ -90,11 +90,18 @@ message ListJobResponse {
     repeated JobInstance jobs = 2; 
 }
 
+message KillJobRequest {
+    optional int64 job_id = 2;
+}
+message KillJobResponse {
+}
+
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
 
     rpc NewJob(NewJobRequest) returns(NewJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns(UpdateJobResponse);
+    rpc KillJob(KillJobRequest) returns(KillJobResponse);
     rpc TerminateTask(TerminateTaskRequest) returns(TerminateTaskResponse);
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);

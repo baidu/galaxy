@@ -218,16 +218,27 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
+void MasterImpl::KillJob(::google::protobuf::RpcController* controller,
+                   const ::galaxy::KillJobRequest* request,
+                   ::galaxy::KillJobResponse* response,
+                   ::google::protobuf::Closure* done) {
+    int64_t job_id = request->job_id();
+    std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        done->Run();
+        return;
+    }
+    
+    JobInfo job = it->second;
+    job.replica_num = 0;
+    done->Run();
+}
+
 void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::UpdateJobRequest* request,
                          ::galaxy::UpdateJobResponse* response,
                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
-    if (request->has_job_id()) {
-        response->set_status(-1);
-        done->Run();
-        return;
-    }
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {

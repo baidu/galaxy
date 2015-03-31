@@ -50,7 +50,12 @@ bool GalaxyImpl::KillTask(int64_t task_id){
     }
     return true;
 }
-bool GalaxyImpl::TerminateJob(int64_t /*job_id*/) {
+bool GalaxyImpl::TerminateJob(int64_t job_id) {
+    KillJobRequest request;
+    KillJobResponse response;
+    request.set_job_id(job_id);
+    rpc_client_->SendRequest(master_, &Master_Stub::KillJob,
+                             &request,&response,5,1);
 
     return true;
 }
@@ -67,8 +72,14 @@ bool GalaxyImpl::NewJob(const JobDescription& job) {
     return true;
 }
 
-bool GalaxyImpl::UpdateJob(const JobDescription& /*job*/) {
-   return true;
+bool GalaxyImpl::UpdateJob(const JobDescription& job) {
+    UpdateJobRequest request;
+    UpdateJobResponse response;
+    request.set_job_id(job.job_id);
+    request.set_replica_num(job.replicate_count);
+    rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
+                             &request, &response, 5, 1);
+    return true;
 }
 
 bool GalaxyImpl::ListJob(std::vector<JobInstanceDescription>* jobs) {
