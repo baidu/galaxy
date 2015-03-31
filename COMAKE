@@ -1,5 +1,5 @@
 #edit-mode: -*- python -*-
-#coding:gbk
+coding:utf8
 
 #工作路径.
 WORKROOT('../../../')
