@@ -65,27 +65,43 @@ int main(int argc, char* argv[]) {
         fclose(fp);
         printf("Task binary len %lu\n", task_raw.size());
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->NewTask(argv[3], task_raw, argv[4], atoi(argv[5]));
+        galaxy::JobDescription job;
+        galaxy::PackageDescription pkg;
+        pkg.source = task_raw;
+        job.pkg = pkg;
+        job.cmd_line = argv[4];
+        job.replicate_count = atoi(argv[5]);
+        job.job_name = argv[3];
+        galaxy->NewJob(job);
         return 0;
     }
     else if (COMMAND == LIST) {
-        int64_t task_id = -1;
+        int64_t job_id = -1;
         if (argc == 4) {
-            task_id = atoi(argv[3]);
+            job_id = atoi(argv[3]);
         }
+
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->ListTask(task_id);
+        galaxy->ListTask(job_id,NULL);
         return 0;
     }
     else if (COMMAND == LISTJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->ListJob();
+        std::vector<galaxy::JobInstanceDescription> jobs;
+        galaxy->ListJob(&jobs);
+        std::vector<galaxy::JobInstanceDescription>::iterator it = jobs.begin();
+        fprintf(stdout, "================================\n");
+        for(;it != jobs.end();++it){
+            fprintf(stdout, "%ld\t%s\t%d\t%d\n",
+                    it->job_id, it->job_name.c_str(),
+                    it->running_task_num, it->replicate_count);
+        }
         return 0;
     }
     else if (COMMAND == KILL) {
         int64_t task_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->TerminateTask(task_id);
+        galaxy->KillTask(task_id);
         return 0;
     }
 }
