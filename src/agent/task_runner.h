@@ -49,6 +49,7 @@ public:
     virtual int Start() = 0;
     int IsRunning();
     int Stop();
+    int ReStart();
 protected:
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
@@ -75,7 +76,6 @@ public:
         return 0;
     }
     int Start();
-    int ReStart();
 };
 
 

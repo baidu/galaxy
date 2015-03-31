@@ -202,10 +202,6 @@ int ContainerTaskRunner::Start() {
     return 0;
 }
 
-int ContainerTaskRunner::ReStart() {
-    return 0;
-}
-
 int ContainerTaskRunner::Stop(){
     int status = AbstractTaskRunner::Stop();
     LOG(INFO,"stop  task %d  with status %d",m_task_info.task_id(),status);
