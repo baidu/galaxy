@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <boost/algorithm/string/predicate.hpp>
 
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
@@ -63,19 +64,24 @@ int main(int argc, char* argv[]) {
     }
 
     if (COMMAND == ADD) {
-        FILE* fp = fopen(argv[3], "r");
-        if (fp == NULL) {
-            fprintf(stderr, "Open %s for read fail\n", argv[3]);
-            return -2;
-        }
         std::string task_raw;
-        char buf[1024];
-        int len = 0;
-        while ((len = fread(buf, 1, 1024, fp)) > 0) {
-            task_raw.append(buf, len);
+        if (!boost::starts_with(argv[3], "ftp://")) {
+            FILE* fp = fopen(argv[3], "r");
+            if (fp == NULL) {
+                fprintf(stderr, "Open %s for read fail\n", argv[3]);
+                return -2;
+            }
+            char buf[1024];
+            int len = 0;
+            while ((len = fread(buf, 1, 1024, fp)) > 0) {
+                task_raw.append(buf, len);
+            }
+            fclose(fp);
+            printf("Task binary len %lu\n", task_raw.size());
         }
-        fclose(fp);
-        printf("Task binary len %lu\n", task_raw.size());
+        else {
+            task_raw = argv[3];
+        }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy::JobDescription job;
         galaxy::PackageDescription pkg;

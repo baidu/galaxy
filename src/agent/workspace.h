@@ -57,6 +57,8 @@ public:
     ~DefaultWorkspace(){
     }
 private:
+    void DeployInThread();
+
     TaskInfo m_task_info;
     std::string m_root_path;
     std::string m_task_root_path;
