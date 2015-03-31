@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "common/logging.h"
-#include "common/asm_atomic.h"
 extern "C" {
 #include "curl/curl.h"
 }
@@ -63,7 +62,7 @@ CurlDownloader::~CurlDownloader() {
 }
 
 void CurlDownloader::Stop() {
-    common::atomic_swap(&stoped_, 1);
+    stoped_ = 1;
 }
 
 size_t CurlDownloader::RecvTrunkData(char* ptr, 
@@ -74,7 +73,7 @@ size_t CurlDownloader::RecvTrunkData(char* ptr,
         static_cast<CurlDownloader*>(user_data);
     assert(downloader);
 
-    if (common::atomic_add_ret_old(&downloader->stoped_, 0) == 1) {
+    if (stoped_ == 1) {
         return 0; 
     }
 
