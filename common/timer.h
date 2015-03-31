@@ -20,7 +20,7 @@ static inline int64_t get_micros() {
 }
 
 static inline int32_t now_time() {
-    return static_cast<int32_t>(get_micros() / 10000000);
+    return static_cast<int32_t>(get_micros() / 1000000);
 }
 
 class AutoTimer {

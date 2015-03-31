@@ -30,8 +30,8 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
         done->Run();
         return;
     }
-
     int64_t task_id = request->task_id();
+
     common::MutexLock lock(&agent_lock_); 
     std::map<int64_t, TaskInstance>::iterator it; 
     it = tasks_.find(task_id);
@@ -44,16 +44,14 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
     std::string agent_addr = it->second.agent_addr();
     AgentInfo& agent = agents_[agent_addr];
     if (agent.stub == NULL) {
-        bool ret = 
-            rpc_client_->GetStub(agent_addr, &agent.stub); 
+        bool ret = rpc_client_->GetStub(agent_addr, &agent.stub); 
         assert(ret);
     }
     KillTaskRequest kill_request; 
     kill_request.set_task_id(task_id);
     KillTaskResponse kill_response;
-    bool ret = 
-        rpc_client_->SendRequest(agent.stub, &Agent_Stub::KillTask,
-                                &kill_request, &kill_response, 5, 1);
+    bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::KillTask,
+                                        &kill_request, &kill_response, 5, 1);
     if (!ret) {
         LOG(WARNING, "Kill failed agent= %s", agent_addr.c_str()); 
         response->set_status(-2);
@@ -96,14 +94,14 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
     assert(!agent_addr.empty());
 
     int32_t now_time = common::timer::now_time();
-    std::set<int64_t>::iterator it = agent->tasks.begin();
+    std::set<int64_t>::iterator it = agent->running_tasks.begin();
     std::vector<int64_t> del_tasks;
-    for (; it != agent->tasks.end(); ++it) {
+    for (; it != agent->running_tasks.end(); ++it) {
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
             if (instance.start_time() + FLAGS_task_deloy_timeout > now_time) {
-                // 刚部署的任务，等待超时后才处理
+                LOG(INFO, "Wait for deloy timeout %ld", task_id);
                 continue;
             }
             int64_t job_id = instance.job_id();
@@ -112,14 +110,16 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             job.running_agents[agent_addr] --;
             job.running_num --;
             del_tasks.push_back(task_id);
+            tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
-        agent->tasks.erase(del_tasks[i]);
+        agent->running_tasks.erase(del_tasks[i]);
     }
 }
+
 void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            const ::galaxy::HeartBeatRequest* request,
                            ::galaxy::HeartBeatResponse* response,
@@ -219,7 +219,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     if (!ret) {
         LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
     } else {
-        agent.tasks.insert(task_id);
+        agent.running_tasks.insert(task_id);
         agent.task_num ++;
         TaskInstance& instance = tasks_[task_id];
         instance.mutable_info()->set_task_name(job->job_name);

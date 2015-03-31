@@ -23,7 +23,7 @@ struct AgentInfo {
     std::string addr;
     int32_t task_num;
     Agent_Stub* stub;
-    std::set<int64_t> tasks;
+    std::set<int64_t> running_tasks;
 };
 
 struct JobInfo {
