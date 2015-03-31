@@ -57,15 +57,15 @@ int AbstractTaskRunner::Stop(){
         LOG(WARNING,"fail to kill process group %d",m_group_pid);
     }
     pid_t killed_pid = wait(&ret);
-    if(killed_pid == -1){
-        LOG(FATAL,"fail to kill process group %d",m_group_pid);
-    }else{
-        LOG(INFO,"kill child process %d successfully",killed_pid);
-    }
     m_child_pid = -1;
     m_group_pid = -1;
-    return ret;
-
+    if (killed_pid == -1){
+        LOG(FATAL,"fail to kill process group %d",m_group_pid);
+        return -1;
+    }else{
+        LOG(INFO,"kill child process %d successfully",killed_pid);
+        return 0;
+    }
 }
 
 void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd){

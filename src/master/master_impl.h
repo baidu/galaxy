@@ -10,9 +10,11 @@
 #include "proto/master.pb.h"
 
 #include <map>
+#include <queue>
 #include <set>
 
 #include "common/mutex.h"
+#include "common/thread_pool.h"
 
 namespace galaxy {
 
@@ -22,7 +24,18 @@ struct AgentInfo {
     std::string addr;
     int32_t task_num;
     Agent_Stub* stub;
-    std::set<std::string> tasks;
+    int32_t alive_timestamp;
+    std::set<int64_t> running_tasks;
+};
+
+struct JobInfo {
+    int64_t id;
+    int32_t replica_num;
+    std::string job_name;
+    std::string job_raw;
+    std::string cmd_line;
+    int32_t running_num;
+    std::map<std::string,int> running_agents;
 };
 
 class RpcClient;
@@ -36,28 +49,45 @@ public:
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
                    ::google::protobuf::Closure* done);
-    void NewTask(::google::protobuf::RpcController* controller,
-                 const ::galaxy::NewTaskRequest* request,
-                 ::galaxy::NewTaskResponse* response,
+    void NewJob(::google::protobuf::RpcController* controller,
+                 const ::galaxy::NewJobRequest* request,
+                 ::galaxy::NewJobResponse* response,
                  ::google::protobuf::Closure* done);
-
+    void UpdateJob(::google::protobuf::RpcController* controller,
+                   const ::galaxy::UpdateJobRequest* request,
+                   ::galaxy::UpdateJobResponse* response,
+                   ::google::protobuf::Closure* done);
     void TerminateTask(::google::protobuf::RpcController* controller,
-                 const ::galaxy::TerminateTaskRequest* request,
-                 ::galaxy::TerminateTaskResponse* response,
+                       const ::galaxy::TerminateTaskRequest* request,
+                       ::galaxy::TerminateTaskResponse* response,
+                       ::google::protobuf::Closure* done);
+    void ListJob(::google::protobuf::RpcController* controller,
+                 const ::galaxy::ListJobRequest* request,
+                 ::galaxy::ListJobResponse* response,
                  ::google::protobuf::Closure* done);
 
     void ListTask(::google::protobuf::RpcController* controller,
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done);
-
 private:
+    void DeadCheck();
+    void Schedule();
+    std::string AllocResource();
+    bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
+    void UpdateJobsOnAgent(AgentInfo* agent,
+                           const std::set<int64_t>& running_tasks,
+                           bool clear_all = false);
+private:
+    common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
+    std::map<int64_t, TaskInstance> tasks_;
+    std::map<int64_t, JobInfo> jobs_;
+    std::map<int32_t, std::set<std::string> > alives_;
     int64_t next_agent_id_;
     int64_t next_task_id_;
+    int64_t next_job_id_;
     Mutex agent_lock_;
-
-    std::map<int64_t, TaskInstance> agent_task_pair_; 
 
     RpcClient* rpc_client_;
 };
