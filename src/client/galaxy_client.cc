@@ -51,19 +51,19 @@ int main(int argc, char* argv[]) {
     }
 
     if (COMMAND == ADD) {
-        FILE* fp = fopen(argv[3], "r");
-        if (fp == NULL) {
-            fprintf(stderr, "Open %s for read fail\n", argv[3]);
-            return -2;
-        }
-        std::string task_raw;
-        char buf[1024];
-        int len = 0;
-        while ((len = fread(buf, 1, 1024, fp)) > 0) {
-            task_raw.append(buf, len);
-        }
-        fclose(fp);
-        printf("Task binary len %lu\n", task_raw.size());
+        //FILE* fp = fopen(argv[3], "r");
+        //if (fp == NULL) {
+        //    fprintf(stderr, "Open %s for read fail\n", argv[3]);
+        //    return -2;
+        //}
+        std::string task_raw(argv[3]);
+        //char buf[1024];
+        //int len = 0;
+        //while ((len = fread(buf, 1, 1024, fp)) > 0) {
+        //    task_raw.append(buf, len);
+        //}
+        //fclose(fp);
+        //printf("Task binary len %lu\n", task_raw.size());
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->NewTask(argv[3], task_raw, argv[4], atoi(argv[5]));
         return 0;

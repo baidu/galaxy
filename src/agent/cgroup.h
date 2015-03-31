@@ -87,6 +87,7 @@ public:
     }
 private:
     void PutToCGroup();
+    void StartAfterDownload(int ret);
 private:
     std::string _cg_root;
     CGroupCtrl* _cg_ctrl;

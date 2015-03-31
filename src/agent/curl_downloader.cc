@@ -74,7 +74,7 @@ size_t CurlDownloader::RecvTrunkData(char* ptr,
         static_cast<CurlDownloader*>(user_data);
     assert(downloader);
 
-    if (downloader->stoped_ == 1) {
+    if (common::atomic_add_ret_old(&downloader->stoped_, 0) == 1) {
         return 0; 
     }
 

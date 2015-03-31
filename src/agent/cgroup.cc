@@ -10,8 +10,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <boost/bind.hpp>
 #include "common/logging.h"
 #include "common/util.h"
+#include "agent/downloader_manager.h"
 namespace galaxy {
 
 int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_sys_map) {
@@ -153,7 +155,30 @@ int ContainerTaskRunner::Prepare() {
 
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
+
+    std::string uri = m_task_info.task_raw();
+    std::string path = m_workspace->GetPath();
+    path.append("/");
+    path.append("tmp.tar.gz");
+
+    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
+    downloader_handler->DownloadInThread(
+            uri, 
+            path, 
+            boost::bind(&ContainerTaskRunner::StartAfterDownload, this, _1));
     return 0;
+}
+
+void ContainerTaskRunner::StartAfterDownload(int ret) {
+    if (ret == 0) {
+        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz"; 
+        int status = system(tar_cmd.c_str());
+        if (status != 0) {
+            LOG(WARNING, "tar -xf failed"); 
+            return;
+        }
+        Start();
+    }
 }
 
 void ContainerTaskRunner::PutToCGroup(){

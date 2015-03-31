@@ -14,6 +14,7 @@ namespace galaxy {
 class Downloader {
 public:
     virtual int Fetch(const std::string& uri, const std::string& dir) = 0;
+    virtual void Stop() = 0;
 };
 
 }   // ending namespace galaxy
