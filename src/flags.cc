@@ -15,5 +15,8 @@ int FLAGS_agent_keepalive_timeout = 20;
 std::string FLAGS_agent_work_dir = "/tmp";
 std::string FLAGS_container = "cmd";// cmd or cgroup
 
+int FLAGS_agent_curl_recv_buffer_size = 1024 * 10;
 
+int FLAGS_cpu_num = 4;
+int FLAGS_mem_gbytes = 32;
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

@@ -13,15 +13,18 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <boost/bind.hpp>
 #include "common/logging.h"
 #include "common/util.h"
+#include "downloader_manager.h"
+
 
 extern int FLAGS_task_retry_times;
 
 namespace galaxy {
 
 int AbstractTaskRunner::IsRunning(){
-   if (m_child_pid == -1) {
+    if (m_child_pid == -1) {
         return -1;
     }
     // check process exist
@@ -120,6 +123,33 @@ int AbstractTaskRunner::ReStart(){
     }
 
     return Start();
+}
+
+int CommandTaskRunner::Prepare() {
+    std::string uri = m_task_info.task_raw();
+    std::string path = m_workspace->GetPath();
+    path.append("/");
+    path.append("tmp.tar.gz");
+    // set deploying state
+    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
+    downloader_handler->DownloadInThread(
+            uri, 
+            path, 
+            boost::bind(&CommandTaskRunner::StartAfterDownload, this, _1));
+    return 0;
+}
+
+void CommandTaskRunner::StartAfterDownload(int ret) {
+    if (ret == 0) {
+        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz";
+        int status = system(tar_cmd.c_str());
+        if (status != 0) {
+            LOG(WARNING, "tar -xf failed"); 
+            return;
+        }
+        Start();     
+    }
+    // set deploy failed state
 }
 
 

@@ -19,6 +19,8 @@
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_agent_work_dir;
+extern int FLAGS_cpu_num;
+extern int FLAGS_mem_gbytes;
 
 namespace galaxy {
 
@@ -53,6 +55,8 @@ void AgentImpl::Report() {
         req_status->set_status(it->status());
     }
     request.set_agent_addr(addr);
+    request.set_cpu_share(FLAGS_cpu_num);
+    request.set_mem_share(FLAGS_mem_gbytes);
 
     LOG(INFO, "Reprot to master %s,task count %d", addr.c_str(),request.task_status_size());
     rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
@@ -72,11 +76,11 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_task_raw(request->task_raw());
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
     int ret = ws_mgr_->Add(task_info);
-    if(ret != 0 ){
+    if (ret != 0 ){
         LOG(FATAL,"fail to prepare workspace ");
         response->set_status(-2);
         done->Run();
-    }else{
+    } else {
         LOG(INFO,"start  task for %s",request->task_name().c_str());
         DefaultWorkspace * workspace ;
         workspace = ws_mgr_->GetWorkspace(task_info);

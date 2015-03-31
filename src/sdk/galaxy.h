@@ -31,8 +31,8 @@ struct TaskDescription{
     int64_t task_id;
     int64_t job_id;
     std::string task_name;
-    TaskStateEnum state;
-    std::string host;
+    int32_t state;
+    std::string addr;
 };
 
 
@@ -47,7 +47,6 @@ struct ResourceDescription{
     int64_t value;
 };
 
-
 struct JobDescription{
     int64_t job_id;
     std::string job_name;
@@ -55,6 +54,14 @@ struct JobDescription{
     PackageDescription pkg;
     int32_t replicate_count;
     std::vector<ResourceDescription> resource_vector;
+};
+
+struct NodeDescription {
+    int64_t node_id;
+    std::string addr;
+    int32_t task_num;
+    int32_t cpu_share;
+    int32_t mem_share;
 };
 
 struct JobInstanceDescription : JobDescription{
@@ -73,8 +80,11 @@ public:
     //termintate job
     virtual bool TerminateJob(int64_t job_id) = 0;
     //list all tasks of job
-    virtual bool ListTask(int64_t job_id,std::vector<TaskDescription>* tasks) = 0;
-
+    virtual bool ListTask(int64_t job_id,
+                          int64_t task_id,
+                          std::vector<TaskDescription>* tasks) = 0;
+    //list all nodes of cluster
+    virtual bool ListNode(std::vector<NodeDescription>* nodes) = 0;
     //debug
     virtual bool KillTask(int64_t task_id) = 0;
 };

@@ -23,6 +23,10 @@ struct AgentInfo {
     int64_t id;
     std::string addr;
     int32_t task_num;
+    int32_t cpu_share;
+    int32_t mem_share;
+    int32_t cpu_used;
+    int32_t mem_used;
     Agent_Stub* stub;
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
@@ -35,7 +39,9 @@ struct JobInfo {
     std::string job_raw;
     std::string cmd_line;
     int32_t running_num;
-    std::map<std::string,int> running_agents;
+    int32_t scale_down_time;
+    std::map<std::string, std::set<int64_t> > agent_tasks;
+    bool killed;
 };
 
 class RpcClient;
@@ -57,6 +63,10 @@ public:
                    const ::galaxy::UpdateJobRequest* request,
                    ::galaxy::UpdateJobResponse* response,
                    ::google::protobuf::Closure* done);
+    void KillJob(::google::protobuf::RpcController* controller,
+                       const ::galaxy::KillJobRequest* request,
+                       ::galaxy::KillJobResponse* response,
+                       ::google::protobuf::Closure* done);
     void TerminateTask(::google::protobuf::RpcController* controller,
                        const ::galaxy::TerminateTaskRequest* request,
                        ::galaxy::TerminateTaskResponse* response,
@@ -70,6 +80,11 @@ public:
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done);
+    void ListNode(::google::protobuf::RpcController* controller,
+                  const ::galaxy::ListNodeRequest* request,
+                  ::galaxy::ListNodeResponse* response,
+                  ::google::protobuf::Closure* done);
+
 private:
     void DeadCheck();
     void Schedule();
@@ -78,6 +93,10 @@ private:
     void UpdateJobsOnAgent(AgentInfo* agent,
                            const std::set<int64_t>& running_tasks,
                            bool clear_all = false);
+    void CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
+    void ScaleDown(JobInfo* job);
+    void ListTaskForJob(int64_t job_id,
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;

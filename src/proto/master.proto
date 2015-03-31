@@ -17,25 +17,20 @@ enum MasterCommandType {
     UPDATE_CONTAINER = 6;
 }
 
-//message LaunchTaskRequest {
-//    optional int64 task_id = 1;
-//    optional TaskInfo task_info = 2;
-//}
-
 message HeartBeatRequest {
     optional int64 seq_id = 1;      // id for communicate
     optional int64 agent_id = 2 [default = -1];
     optional string agent_addr = 3;
-    repeated ResourceItem total_resource_list = 4;
-    repeated ResourceItem used_resource_list = 5;
-    repeated TaskStatus task_status = 6;
+    repeated TaskStatus task_status = 4;
+    optional int32 cpu_share = 5;
+    optional int32 used_cpu_share = 6;
+    optional int32 mem_share = 7;
+    optional int32 used_mem_share = 8;
 }
 
 message HeartBeatResponse {
     optional int64 seq_id = 1;
     optional int32 status = 2;
-    //optional MasterCommandType type = 3[default = HEART_BEAT];
-    //optional LaunchTaskRequest launch_task_request = 4;
     optional int64 agent_id = 5;
 }
 
@@ -95,13 +90,37 @@ message ListJobResponse {
     repeated JobInstance jobs = 2; 
 }
 
+message KillJobRequest {
+    optional int64 job_id = 2;
+}
+message KillJobResponse {
+}
+
+message NodeInstance {
+    optional int64 node_id = 2;
+    optional string addr = 3;
+    optional int32 task_num = 4;
+    optional int32 cpu_share = 5;
+    optional int32 mem_share = 6;
+    optional int32 cpu_used = 7;
+    optional int32 mem_used = 8;
+}
+
+message ListNodeRequest {
+}
+message ListNodeResponse {
+    repeated NodeInstance nodes = 2;
+}
+
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
 
     rpc NewJob(NewJobRequest) returns(NewJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns(UpdateJobResponse);
+    rpc KillJob(KillJobRequest) returns(KillJobResponse);
     rpc TerminateTask(TerminateTaskRequest) returns(TerminateTaskResponse);
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);
+    rpc ListNode(ListNodeRequest) returns(ListNodeResponse);
 }
 

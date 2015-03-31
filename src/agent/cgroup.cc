@@ -10,8 +10,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <boost/bind.hpp>
 #include "common/logging.h"
 #include "common/util.h"
+#include "agent/downloader_manager.h"
 namespace galaxy {
 
 int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_sys_map) {
@@ -153,12 +155,42 @@ int ContainerTaskRunner::Prepare() {
 
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
+
+    std::string uri = m_task_info.task_raw();
+    std::string path = m_workspace->GetPath();
+    path.append("/");
+    path.append("tmp.tar.gz");
+
+    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
+    downloader_handler->DownloadInThread(
+            uri, 
+            path, 
+            boost::bind(&ContainerTaskRunner::StartAfterDownload, this, _1));
     return 0;
 }
 
+void ContainerTaskRunner::StartAfterDownload(int ret) {
+    if (ret == 0) {
+        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz"; 
+        int status = system(tar_cmd.c_str());
+        if (status != 0) {
+            LOG(WARNING, "tar -xf failed"); 
+            return;
+        }
+        Start();
+    }
+}
+
 void ContainerTaskRunner::PutToCGroup(){
-    int64_t mem_size = 1024 * 1024 * 1024;//1G
-    int64_t cpu_share = 10;
+    int64_t mem_size = m_task_info.required_mem() * (1L << 30);
+    int64_t cpu_share = m_task_info.required_cpu();
+    if (mem_size <= (1L << 30)) {
+        mem_size = (1L << 30);
+    }
+    if (cpu_share < 1) {
+        cpu_share = 1;
+    }
+    /*
     std::string mem_key = "memory";
     std::string cpu_key = "cpu";
     for (int i = 0; i< m_task_info.resource_list_size(); i++){
@@ -171,7 +203,7 @@ void ContainerTaskRunner::PutToCGroup(){
             cpu_share = item.value() * 512;
         }
 
-    }
+    }*/
     _mem_ctrl->SetLimit(mem_size);
     _cpu_ctrl->SetCpuShare(cpu_share);
     pid_t my_pid = getpid();
