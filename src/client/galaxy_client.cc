@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tCPU:%d\tMEM:%dGB\n",
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%d\tMEM:%dGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share, it->mem_share);
         }
