@@ -2,6 +2,7 @@ language: cpp
 compiler: gcc
 env:
     - PROTOBUF_VERSION=2.6.0
+    - LIBCURL_VERSION=7.41.0
 install:
     - sudo apt-get install libboost-dev
     - wget https://github.com/google/protobuf/releases/download/v$PROTOBUF_VERSION/protobuf-$PROTOBUF_VERSION.tar.gz
@@ -12,5 +13,6 @@ install:
     - sudo apt-get install zlib1g-dev
     - git clone https://github.com/bluebore/sofa-pbrpc ./thirdparty/sofa-pbrpc
     - ( cd thirdparty/sofa-pbrpc && make -j4 && make install);
+    - sudo apt-get install libcurl-dev
 script: make -j4 && make test
 
