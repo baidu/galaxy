@@ -61,23 +61,25 @@ int main(int argc, char* argv[]) {
         }
         fclose(fp);
         printf("Task binary len %lu\n", task_raw.size());
-        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->NewTask(argv[3], task_raw, argv[4], atoi(argv[5]));
+        galaxy::sdk::Galaxy* galaxy = galaxy::sdk::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy::sdk::Job job;
+        galaxy->NewJob(job);
         return 0;
     }
     else if (COMMAND == LIST) {
-        int64_t task_id = -1;
+        int64_t job_id = -1;
         if (argc == 4) {
-            task_id = atoi(argv[3]);
+            job_id = atoi(argv[3]);
         }
-        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->ListTask(task_id);
+        galaxy::sdk::Galaxy* galaxy = galaxy::sdk::Galaxy::ConnectGalaxy(argv[1]);
+        std::vector<galaxy::sdk::Task> tasks;
+        galaxy->ListTask(job_id,tasks);
         return 0;
     }
     else if (COMMAND == KILL) {
-        int64_t task_id = atoi(argv[3]);
-        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->TerminateTask(task_id);
+        int64_t job_id = atoi(argv[3]);
+        galaxy::sdk::Galaxy* galaxy = galaxy::sdk::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->TerminateJob(job_id);
         return 0;
     }
 }
