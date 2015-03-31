@@ -29,27 +29,6 @@ int DefaultWorkspace::Create() {
     int status ;
     status = mkdir(m_task_root_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (status == 0) {
-        //TODO move to fetcher,safe path join
-        std::string package_path = m_task_root_path + "/tmp.tar.gz";
-        int fd = open(package_path.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-        if (fd < 0) {
-            LOG(WARNING, "Open %s  write fail", package_path.c_str());
-            return -1;
-        }
-        int len = write(fd, m_task_info.task_raw().data(), m_task_info.task_raw().size());
-
-        if (len < 0) {
-            LOG(WARNING, "Write fail : %s", strerror(errno));
-        }
-
-        LOG(INFO, "Write %d bytes to %s", len, package_path.c_str());
-        close(fd);
-        //TODO move to extractor
-        std::string tar = "cd " + m_task_root_path +" && tar -zxf tmp.tar.gz";
-        int status = system(tar.c_str());
-        if(status != 0){
-            LOG(FATAL,"fail to extract package %s",package_path.c_str());
-        }
         m_has_created = true;
     }
     return status;

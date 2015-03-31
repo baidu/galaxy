@@ -72,10 +72,9 @@ public:
 
     ~CommandTaskRunner() {
     }
-    int Prepare(){
-        return 0;
-    }
+    int Prepare();
     int Start();
+    void StartAfterDownload(int ret);
 };
 
 
