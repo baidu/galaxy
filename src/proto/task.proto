@@ -1,11 +1,6 @@
 
 package galaxy;
 
-message ResourceItem {
-    optional string name = 1;   //Name could  be memory,cpu or port 
-    optional int64 value = 2;
-}
-
 enum TaskState {
     DEPLOYING = 0;
     RUNNING = 2;
@@ -24,8 +19,9 @@ message TaskInfo{
     optional string task_name = 2;
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
-    repeated ResourceItem resource_list = 5;
-    optional int32 fail_retry_times = 6;
+    optional int32 required_cpu = 5;
+    optional int32 required_mem = 6;
+    optional int32 fail_retry_times = 7;
 }
 
 

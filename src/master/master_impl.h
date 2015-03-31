@@ -37,6 +37,7 @@ struct JobInfo {
     int32_t running_num;
     int32_t scale_down_time;
     std::map<std::string, std::set<int64_t> > agent_tasks;
+    bool killed;
 };
 
 class RpcClient;
@@ -58,6 +59,10 @@ public:
                    const ::galaxy::UpdateJobRequest* request,
                    ::galaxy::UpdateJobResponse* response,
                    ::google::protobuf::Closure* done);
+    void KillJob(::google::protobuf::RpcController* controller,
+                       const ::galaxy::KillJobRequest* request,
+                       ::galaxy::KillJobResponse* response,
+                       ::google::protobuf::Closure* done);
     void TerminateTask(::google::protobuf::RpcController* controller,
                        const ::galaxy::TerminateTaskRequest* request,
                        ::galaxy::TerminateTaskResponse* response,
