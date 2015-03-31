@@ -7,7 +7,6 @@
 #include "downloader_manager.h"
 #include <boost/bind.hpp>
 
-using namespace galaxy;
 
 int FLAGS_agent_curl_recv_buffer_size = 1024 * 20;
 
@@ -23,7 +22,7 @@ int main(int argc, char* argv[]) {
     }    
     char* uri = argv[1];
     char* path = argv[2];
-    DownloaderManager* manager = DownloaderManager::GetInstance();
+    galaxy::DownloaderManager* manager = galaxy::DownloaderManager::GetInstance();
 
     manager->DownloadInThread(uri, path, boost::bind(Callback, _1));
     while (1) {}

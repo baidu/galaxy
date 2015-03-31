@@ -2,7 +2,6 @@ language: cpp
 compiler: gcc
 env:
     - PROTOBUF_VERSION=2.6.0
-    - LIBCURL_VERSION=7.41.0
 install:
     - sudo apt-get install libboost-dev
     - wget https://github.com/google/protobuf/releases/download/v$PROTOBUF_VERSION/protobuf-$PROTOBUF_VERSION.tar.gz
