@@ -62,7 +62,7 @@ public:
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done);
 private:
-    void MasterImpl::Schedule();
+    void Schedule();
     std::string AllocResource();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
     void UpdateJobsOnAgent(AgentInfo* agent,
