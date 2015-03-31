@@ -55,8 +55,12 @@ public:
                  ::google::protobuf::Closure* done);
 
     void TerminateTask(::google::protobuf::RpcController* controller,
-                 const ::galaxy::TerminateTaskRequest* request,
-                 ::galaxy::TerminateTaskResponse* response,
+                       const ::galaxy::TerminateTaskRequest* request,
+                       ::galaxy::TerminateTaskResponse* response,
+                       ::google::protobuf::Closure* done);
+    void ListJob(::google::protobuf::RpcController* controller,
+                 const ::galaxy::ListJobRequest* request,
+                 ::galaxy::ListJobResponse* response,
                  ::google::protobuf::Closure* done);
 
     void ListTask(::google::protobuf::RpcController* controller,

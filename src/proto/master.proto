@@ -58,13 +58,32 @@ message TerminateTaskResponse {
     optional int32 status = 2;
 }
 
-
-message ListTaskRequest {
-    optional int32 task_id = 2;
+// List task
+message TaskInstance {
+    optional TaskInfo info = 1;
+    optional int32 status = 2;
+    optional string agent_addr = 3;
+    optional int64 job_id = 4;
+    optional int32 start_time = 5;
 }
-
+message ListTaskRequest {
+    optional int64 job_id = 2;
+    optional int64 task_id = 3;
+}
 message ListTaskResponse {
     repeated TaskInstance tasks = 2;
+}
+
+message JobInstance {
+    optional int64 job_id = 2;
+    optional string job_name = 3;
+    optional int32 running_task_num = 4;
+    optional int32 replica_num = 5;
+}
+message ListJobRequest {
+}
+message ListJobResponse {
+    repeated JobInstance jobs = 2; 
 }
 
 service Master {
@@ -73,5 +92,6 @@ service Master {
     rpc NewTask(NewTaskRequest) returns(NewTaskResponse);
     rpc TerminateTask(TerminateTaskRequest) returns(TerminateTaskResponse);
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
+    rpc ListJob(ListJobRequest) returns(ListJobResponse);
 }
 

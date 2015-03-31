@@ -28,10 +28,4 @@ message TaskInfo{
     optional int32 fail_retry_times = 6;
 }
 
-message TaskInstance {
-    optional TaskInfo info = 1;
-    optional int32 status = 2;
-    optional string agent_addr = 3;
-    optional int64 job_id = 4;
-    optional int32 start_time = 5;
-}
+

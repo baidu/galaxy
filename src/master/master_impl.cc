@@ -91,6 +91,24 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
 }
 
 
+void MasterImpl::ListJob(::google::protobuf::RpcController* controller,
+                         const ::galaxy::ListJobRequest* request,
+                         ::galaxy::ListJobResponse* response,
+                         ::google::protobuf::Closure* done) {
+    MutexLock lock(&agent_lock_);
+
+    std::map<int64_t, JobInfo>::iterator it = jobs_.begin();
+    for (; it !=jobs_.end(); ++it) {
+        JobInfo& job = it->second;
+        JobInstance* job_inst = response->add_jobs();
+        job_inst->set_job_id(job.id);
+        job_inst->set_job_name(job.job_name);
+        job_inst->set_running_task_num(job.running_num);
+        job_inst->set_replica_num(job.replica_num);
+    }
+    done->Run();
+}
+
 void MasterImpl::DeadCheck() {
     int32_t now_time = common::timer::now_time();
 
