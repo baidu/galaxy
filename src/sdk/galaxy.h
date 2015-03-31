@@ -57,6 +57,14 @@ struct JobDescription{
     std::vector<ResourceDescription> resource_vector;
 };
 
+struct NodeDescription {
+    int64_t node_id;
+    std::string addr;
+    int32_t task_num;
+    int32_t cpu_share;
+    int32_t mem_share;
+};
+
 struct JobInstanceDescription : JobDescription{
     int32_t running_task_num;
 };
@@ -74,7 +82,8 @@ public:
     virtual bool TerminateJob(int64_t job_id) = 0;
     //list all tasks of job
     virtual bool ListTask(int64_t job_id,std::vector<TaskDescription>* tasks) = 0;
-
+    //list all nodes of cluster
+    virtual bool ListNode(std::vector<NodeDescription>* nodes) = 0;
     //debug
     virtual bool KillTask(int64_t task_id) = 0;
 };

@@ -49,6 +49,24 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
     done->Run();
 }
 
+void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
+                          const ::galaxy::ListNodeRequest* request,
+                          ::galaxy::ListNodeResponse* response,
+                          ::google::protobuf::Closure* done) {
+    MutexLock lock(&agent_lock_);
+    std::map<std::string, AgentInfo>::iterator it = agents_.begin();
+    for (; it != agents_.end(); ++it) {
+        AgentInfo& agent = it->second;
+        NodeInstance* node = response->add_nodes();
+        node->set_node_id(agent.id);
+        node->set_addr(agent.addr);
+        node->set_task_num(agent.task_num);
+        node->set_cpu_share(agent.cpu_share);
+        node->set_mem_share(agent.mem_share);
+    }
+    done->Run();
+}
+
 void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
@@ -189,6 +207,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent = &agents_[agent_addr];
         agent->addr = agent_addr;
         agent->id = next_agent_id_ ++;
+        agent->cpu_share = request->cpu_share();
+        agent->mem_share = request->mem_share();
         agent->task_num = request->task_status_size();
         agent->stub = NULL;
     } else {

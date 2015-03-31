@@ -23,6 +23,10 @@ struct AgentInfo {
     int64_t id;
     std::string addr;
     int32_t task_num;
+    int32_t cpu_share;
+    int32_t mem_share;
+    int32_t cpu_used;
+    int32_t mem_used;
     Agent_Stub* stub;
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
@@ -76,6 +80,11 @@ public:
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done);
+    void ListNode(::google::protobuf::RpcController* controller,
+                  const ::galaxy::ListNodeRequest* request,
+                  ::galaxy::ListNodeResponse* response,
+                  ::google::protobuf::Closure* done);
+
 private:
     void DeadCheck();
     void Schedule();
