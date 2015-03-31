@@ -5,7 +5,7 @@
 // Author: yuanyi03@baidu.com
 
 #include "curl_downloader.h"
-using namespace galaxy;
+
 int FLAGS_agent_curl_recv_buffer_size = 1024*20;
 
 int main(int argc, char* argv[]) {
@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     }
     char* uri = argv[1];
     char* path = argv[2];
-    CurlDownloader downloader;
+    galaxy::CurlDownloader downloader;
     downloader.Fetch(argv[1], argv[2]);
     return EXIT_SUCCESS;
 }
