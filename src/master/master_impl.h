@@ -35,7 +35,8 @@ struct JobInfo {
     std::string job_raw;
     std::string cmd_line;
     int32_t running_num;
-    std::map<std::string,int> running_agents;
+    int32_t scale_down_time;
+    std::map<std::string, std::set<int64_t> > agent_tasks;
 };
 
 class RpcClient;
@@ -78,6 +79,8 @@ private:
     void UpdateJobsOnAgent(AgentInfo* agent,
                            const std::set<int64_t>& running_tasks,
                            bool clear_all = false);
+    void CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
+    void ScaleDown(JobInfo* job);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;

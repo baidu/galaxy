@@ -45,21 +45,7 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
 
     std::string agent_addr = it->second.agent_addr();
     AgentInfo& agent = agents_[agent_addr];
-    if (agent.stub == NULL) {
-        bool ret = rpc_client_->GetStub(agent_addr, &agent.stub); 
-        assert(ret);
-    }
-    KillTaskRequest kill_request; 
-    kill_request.set_task_id(task_id);
-    KillTaskResponse kill_response;
-    bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::KillTask,
-                                        &kill_request, &kill_response, 5, 1);
-    if (!ret) {
-        LOG(WARNING, "Kill failed agent= %s", agent_addr.c_str()); 
-        response->set_status(-2);
-    } else {
-        response->set_status(0); 
-    }
+    CancelTaskOnAgent(&agent, task_id);
     done->Run();
 }
 
@@ -164,7 +150,10 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             int64_t job_id = instance.job_id();
             assert(jobs_.find(job_id) != jobs_.end());
             JobInfo& job = jobs_[job_id];
-            job.running_agents[agent_addr] --;
+            job.agent_tasks[agent_addr].erase(task_id);
+            if (job.agent_tasks[agent_addr].empty()) {
+                job.agent_tasks.erase(agent_addr);
+            }
             job.running_num --;
             del_tasks.push_back(task_id);
             tasks_.erase(task_id);
@@ -263,6 +252,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.cmd_line = request->cmd_line();
     job.replica_num = request->replica_num();
     job.running_num = 0;
+    job.scale_down_time = 0;
 
     response->set_status(0); 
     response->set_job_id(job_id);
@@ -317,17 +307,64 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
         instance.set_status(DEPLOYING);
-        job->running_agents[agent_addr]++;
+        job->agent_tasks[agent_addr].insert(task_id);
         job->running_num++;
     }
     return ret;
 }
 
+void MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
+    agent_lock_.AssertHeld();
+    if (agent->stub == NULL) {
+    bool ret = rpc_client_->GetStub(agent->addr, &agent->stub); 
+        assert(ret);
+    }
+    KillTaskRequest kill_request; 
+    kill_request.set_task_id(task_id);
+    KillTaskResponse kill_response;
+    bool ret = rpc_client_->SendRequest(agent->stub, &Agent_Stub::KillTask,
+                                        &kill_request, &kill_response, 5, 1);
+    if (!ret) {
+        LOG(WARNING, "Kill task %ld agent= %s",
+            task_id, agent->addr.c_str()); 
+    }
+}
+
+void MasterImpl::ScaleDown(JobInfo* job) {
+    agent_lock_.AssertHeld();
+    std::string agent_addr;
+    int64_t task_id = -1;
+    int high_load = 1<<30;
+    std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
+    for (; it != job->agent_tasks.end(); ++it) {
+        assert(agents_.find(it->first) != agents_.end());
+        assert(!it->second.empty());
+        // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
+        AgentInfo& ai = agents_[it->first];
+        if (ai.task_num > high_load) {
+            high_load = ai.task_num;
+            agent_addr = ai.addr;
+            task_id = *(it->second.begin());
+        }
+    }
+    assert(!agent_addr.empty() && task_id != -1);
+    LOG(INFO, "[ScaleDown] %s[%d/%d] on %s will be canceled",
+        job->job_name.c_str(), job->running_num, job->replica_num, agent_addr.c_str());
+    AgentInfo& agent = agents_[agent_addr];
+    CancelTaskOnAgent(&agent, task_id);
+}
+
 void MasterImpl::Schedule() {
     MutexLock lock(&agent_lock_);
+    int32_t now_time = common::timer::now_time();
     std::map<int64_t, JobInfo>::iterator job_it = jobs_.begin();
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
+        if (job.running_num > job.replica_num && job.scale_down_time + 10 < now_time) {
+            ScaleDown(&job);
+            // 避免瞬间缩成0了
+            job.scale_down_time = now_time;
+        }
         for (int i = job.running_num; i < job.replica_num; i++) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
