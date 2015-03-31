@@ -5,6 +5,7 @@
 // Author: yanshiguang02@baidu.com
 
 #include "sdk/galaxy.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -21,6 +22,7 @@ void help() {
 enum Command {
     LIST = 0,
     LISTJOB,
+    LISTNODE,
     ADD,
     KILLTASK,
     KILLJOB
@@ -42,6 +44,8 @@ int main(int argc, char* argv[]) {
         COMMAND = LIST;
     } else if (strcmp(argv[2], "listjob") == 0) {
         COMMAND = LISTJOB;
+    } else if (strcmp(argv[2], "listnode") == 0) {
+        COMMAND = LISTNODE;
     } else if (strcmp(argv[2], "kill") == 0) {
         COMMAND = KILLTASK;
         if (argc < 4) {
@@ -87,7 +91,6 @@ int main(int argc, char* argv[]) {
         job.replicate_count = atoi(argv[5]);
         job.job_name = argv[3];
         galaxy->NewJob(job);
-        return 0;
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
         if (argc == 4) {
@@ -96,7 +99,17 @@ int main(int argc, char* argv[]) {
 
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(job_id,NULL);
-        return 0;
+    } else if (COMMAND == LISTNODE) {
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        std::vector<galaxy::NodeDescription> nodes;
+        galaxy->ListNode(&nodes);
+        std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
+        fprintf(stdout, "================================\n");
+        for(; it != nodes.end(); ++it){
+            fprintf(stdout, "%ld\t%s\tCPU:%d\tMEM:%dGB\n",
+                    it->node_id, it->addr.c_str(),
+                    it->task_num, it->cpu_share, it->mem_share);
+        }
     } else if (COMMAND == LISTJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         std::vector<galaxy::JobInstanceDescription> jobs;
@@ -108,18 +121,16 @@ int main(int argc, char* argv[]) {
                     it->job_id, it->job_name.c_str(),
                     it->running_task_num, it->replicate_count);
         }
-        return 0;
     } else if (COMMAND == KILLTASK) {
         int64_t task_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->KillTask(task_id);
-        return 0;
     } else if (COMMAND == KILLJOB) {
         int64_t job_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->TerminateJob(job_id);
-        return 0;
     }
+    return 0;
 }
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

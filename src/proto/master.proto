@@ -96,6 +96,22 @@ message KillJobRequest {
 message KillJobResponse {
 }
 
+message NodeInstance {
+    optional int64 node_id = 2;
+    optional string addr = 3;
+    optional int32 task_num = 4;
+    optional int32 cpu_share = 5;
+    optional int32 mem_share = 6;
+    optional int32 cpu_used = 7;
+    optional int32 mem_used = 8;
+}
+
+message ListNodeRequest {
+}
+message ListNodeResponse {
+    repeated NodeInstance nodes = 2;
+}
+
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
 
@@ -105,5 +121,6 @@ service Master {
     rpc TerminateTask(TerminateTaskRequest) returns(TerminateTaskResponse);
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);
+    rpc ListNode(ListNodeRequest) returns(ListNodeResponse);
 }
 
