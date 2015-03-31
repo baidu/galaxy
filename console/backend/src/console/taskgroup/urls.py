@@ -5,11 +5,11 @@
 #
 # Author: wangtaize@baidu.com
 # Date: 2015-03-30
-
 from django.conf import urls
 
 #views
-urlpatterns = urls.patterns("console.conf.views",
-        (r'^get','get_conf'),
+urlpatterns = urls.patterns("console.taskgroup.views",
+        (r'^init','init_service_group'),
+        (r'^status','get_task_status'),
 )
 

@@ -47,11 +47,11 @@ var galaxy = angular.module('galaxy.ui', [
         controller: 'LoginCtrl'
       })
       .when('/service/:serviceName/', {
-        templateUrl: 'views/instance.html',
+        templateUrl: 'views/taskgroup.html',
         controller: 'ServiceCtrl'
       })
       .when('/service/:serviceName/status', {
-        templateUrl: 'views/instance.html',
+        templateUrl: 'views/taskgroup.html',
         controller: 'ServiceCtrl'
       })
       .when('/service/:serviceName/online', {
@@ -69,8 +69,8 @@ var galaxy = angular.module('galaxy.ui', [
   function fetchConfig(){
     var initInjector = angular.injector(["ng"]);
     var $http = initInjector.get("$http");
-    return $http.get("/ajax/config/get").then(function(response) {
-            galaxy.constant("config", {config:response.data.config,home:JSON.parse(response.data.home),service:JSON.parse(response.data.service)});
+    return $http.get("/conf/get").then(function(response) {
+            galaxy.constant("config", {config:response.data.data.config,home:response.data.data.home,service:response.data.data.service});
         }, function(errorResponse) {
 
      });

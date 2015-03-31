@@ -113,7 +113,7 @@ NavTree.prototype._markServiceActive=function(activeParentIndex,activeChildIndex
 	};
 	}]);
 	angular.module( 'galaxy.ui.treeview').controller('navTreeCtrl',['$scope','$rootScope','$http','$location','config',function($scope,$rootScope,$http,$location,config){
-		 $scope.config = {homeConfig:config.home,servicePageConfig:config.service};
+     $scope.config = {homeConfig:config.home,servicePageConfig:config.service};
      var navTree = new NavTree($scope,$location);
      navTree.update();
      var listener = $rootScope.$on("$routeChangeSuccess", function () {

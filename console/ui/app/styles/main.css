@@ -172,11 +172,13 @@ body {
   padding: 24px 28px 48px;
   overflow-y:scroll;
   overflow-x:auto;
-  font-size: 14px;
 }
 
 .content-viewport > .service-list > .service-table{
   margin-top: 10px;
+}
+.table > thead > tr > th {
+    border-bottom: 1px solid #ddd;
 }
 .ace_editor  {
   height: 300px;
@@ -185,14 +187,16 @@ body {
   display: block;
 
 }
-.instance-container .instance-container-title{
+.instance-container-title{
   border-bottom: 1px solid #E7E7E7;
+  margin-bottom: 10px;
+
 }
-.instance-container .instance-container-title h4{
+.instance-container-title h4{
   display: inline-block;
   margin-right: 10px;
 }
-.instance-container .instance-container-list{
+ .instance-container-list{
   width: 100%;
   display: block;
   min-height: 100px;
@@ -254,9 +258,6 @@ body {
   list-style: none;
   margin-top: 15px;
   display: block;
-}
-.modal-content,.form-group{
-  font-size: 14px;
 }
 
 

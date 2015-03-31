@@ -5,11 +5,12 @@
 #
 # Author: wangtaize@baidu.com
 # Date: 2015-03-30
-
 from django.conf import urls
 
 #views
-urlpatterns = urls.patterns("console.conf.views",
-        (r'^get','get_conf'),
+urlpatterns = urls.patterns("console.service.views",
+        (r'^list','list_service'),
+        (r'^create','create_service'),
+        (r'^delete','delete_service'),
 )
 

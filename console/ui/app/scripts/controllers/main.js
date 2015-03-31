@@ -18,10 +18,10 @@ angular.module('galaxy.ui.ctrl',[])
         size: size
       });
     };
-    $http.get("/ajax/service/list")
+    $http.get("/service/list?user=9527")
          .success(function(data){
           if(data.status == 0 ){
-            $scope.serviceList = data.data;  
+               $scope.serviceList = data.data;  
           }else{
             notify({ message:'获取服务列表失败',classes:"alert-danger"} );
             $log.error(data.msg);
@@ -45,7 +45,7 @@ angular.module('galaxy.ui.ctrl',[])
       });
       promot.result.then(function(result){
         if(result){
-          $http.get("/ajax/service/delete?id="+id)
+          $http.get("/service/delete?service="+id)
                .success(function(data){
                   if(data.status == 0){
                     notify({ message:'删除服务成功'} );
@@ -71,14 +71,14 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
 
   $scope.disableBtn=false;
   $scope.alerts = [];
-  $scope.service = {delayMigrateTimeSec:1000,name:"",enableSchedule:false,migrateRetryCount:3,migrateStopThreshold:10,enableNaming:false};
+  $scope.service = {user:"9527",delayMigrateTimeSec:1000,name:"",enableSchedule:false,migrateRetryCount:3,migrateStopThreshold:10,enableNaming:false};
   $scope.ok = function () {
     $scope.alerts = [];
     $scope.disableBtn=true;
     $http(
       {
         method:"POST",
-        url:'/ajax/service/create', 
+        url:'/service/create', 
         data:$scope.service,
         headers:{'Content-Type': 'application/x-www-form-urlencoded'},
         transformRequest: function(obj) {

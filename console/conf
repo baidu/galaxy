@@ -1,1 +1,3 @@
 /conf http://0.0.0.0:8989
+/service http://0.0.0.0:8989
+/taskgroup http://0.0.0.0:8989
