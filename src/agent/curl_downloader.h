@@ -20,6 +20,8 @@ public:
     int Fetch(const std::string& uri, 
             const std::string& path);
 
+    void Stop();
+
 private:
     static size_t RecvTrunkData(char* ptr, size_t size, size_t nmemb, void* user_data);
 
@@ -27,6 +29,7 @@ private:
     int used_length_;
     char* recv_buffer_;
     int output_fd_;
+    volatile int stoped_;
 };
 
 }   // ending namespace galaxy

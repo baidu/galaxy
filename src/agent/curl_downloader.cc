@@ -14,12 +14,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "common/logging.h"
-
+#include "common/asm_atomic.h"
 extern "C" {
 #include "curl/curl.h"
 }
-
-using namespace common;
 
 extern int FLAGS_agent_curl_recv_buffer_size;
 
@@ -41,12 +39,12 @@ namespace galaxy {
 static int OPEN_FLAGS = O_CREAT | O_WRONLY;
 static int OPEN_MODE = S_IRUSR | S_IWUSR | S_IRGRP | S_IRWXO;
 
-
 CurlDownloader::CurlDownloader()
     : recv_buffer_size_(0),
       used_length_(0),
       recv_buffer_(NULL),
-      output_fd_(-1) { 
+      output_fd_(-1),
+      stoped_(0) { 
     if (FLAGS_agent_curl_recv_buffer_size <= 16 * 1024) {
         recv_buffer_size_ = 16 * 1024; 
     }
@@ -64,6 +62,10 @@ CurlDownloader::~CurlDownloader() {
     }
 }
 
+void CurlDownloader::Stop() {
+    common::atomic_swap(&stoped_, 1);
+}
+
 size_t CurlDownloader::RecvTrunkData(char* ptr, 
                                      size_t size, 
                                      size_t nmemb, 
@@ -71,6 +73,10 @@ size_t CurlDownloader::RecvTrunkData(char* ptr,
     CurlDownloader* downloader = 
         static_cast<CurlDownloader*>(user_data);
     assert(downloader);
+
+    if (downloader->stoped_ == 1) {
+        return 0; 
+    }
 
     if (size * nmemb <= 0) {
         return size * nmemb; 
