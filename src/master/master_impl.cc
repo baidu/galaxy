@@ -10,6 +10,7 @@
 #include "rpc/rpc_client.h"
 
 extern int FLAGS_task_deloy_timeout;
+extern int FLAGS_agent_keepalive_timeout;
 
 namespace galaxy {
 
@@ -19,6 +20,7 @@ MasterImpl::MasterImpl()
       next_job_id_(0) {
     rpc_client_ = new RpcClient();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
+    thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
 }
 
 void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/,
@@ -88,8 +90,43 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
+
+void MasterImpl::DeadCheck() {
+    int32_t now_time = common::timer::now_time();
+
+    MutexLock lock(&agent_lock_);
+    std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
+    
+    while (it != alives_.end() 
+           && it->first + FLAGS_agent_keepalive_timeout < now_time) {
+        std::set<std::string>::iterator node = it->second.begin();
+        while (node != it->second.end()) {
+            AgentInfo& agent = agents_[*node];
+            LOG(INFO, "[DeadCheck] Agent %s dead, %lu task fail",
+                agent.addr.c_str(), agent.running_tasks.size());
+            std::set<int64_t> running_tasks;
+            UpdateJobsOnAgent(&agent, running_tasks, true);
+            agents_.erase(*node);
+            it->second.erase(node);
+            node = it->second.begin();
+        }
+        alives_.erase(it);
+        it = alives_.begin();
+    }
+    int idle_time = 5;
+    if (it != alives_.end()) {
+        idle_time = it->first + FLAGS_agent_keepalive_timeout - now_time;
+        if (idle_time > 5) {
+            idle_time = 5;
+        }
+    }
+    thread_pool_.DelayTask(idle_time * 1000,
+                           boost::bind(&MasterImpl::DeadCheck, this));
+}
+
 void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
-                                   const std::set<int64_t>& running_tasks) {
+                                   const std::set<int64_t>& running_tasks,
+                                   bool clear_all) {
     const std::string& agent_addr = agent->addr;
     assert(!agent_addr.empty());
 
@@ -101,7 +138,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
             if (instance.status() == DEPLOYING &&
-                instance.start_time() + FLAGS_task_deloy_timeout > now_time) {
+                instance.start_time() + FLAGS_task_deloy_timeout > now_time
+                && !clear_all) {
                 LOG(INFO, "Wait for deloy timeout %ld", task_id);
                 continue;
             }
@@ -128,11 +166,15 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     const std::string& agent_addr = request->agent_addr();
     LOG(INFO, "HeartBeat from %s", agent_addr.c_str());
 
+    int now_time = common::timer::now_time();
+
     MutexLock lock(&agent_lock_);
     std::map<std::string, AgentInfo>::iterator it;
     it = agents_.find(agent_addr);
     AgentInfo* agent = NULL;
     if (it == agents_.end()) {
+        LOG(INFO, "New Agent register %s", agent_addr.c_str());
+        alives_[now_time].insert(agent_addr);
         agent = &agents_[agent_addr];
         agent->addr = agent_addr;
         agent->id = next_agent_id_ ++;
@@ -140,7 +182,10 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->stub = NULL;
     } else {
         agent = &(it->second);
+        alives_[agent->alive_timestamp].erase(agent_addr);
+        alives_[now_time].insert(agent_addr);
     }
+    agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
     
     //@TODO maybe copy out of lock

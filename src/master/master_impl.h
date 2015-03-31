@@ -10,6 +10,7 @@
 #include "proto/master.pb.h"
 
 #include <map>
+#include <queue>
 #include <set>
 
 #include "common/mutex.h"
@@ -23,6 +24,7 @@ struct AgentInfo {
     std::string addr;
     int32_t task_num;
     Agent_Stub* stub;
+    int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
 };
 
@@ -62,16 +64,19 @@ public:
                  ::galaxy::ListTaskResponse* response,
                  ::google::protobuf::Closure* done);
 private:
+    void DeadCheck();
     void Schedule();
     std::string AllocResource();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
     void UpdateJobsOnAgent(AgentInfo* agent,
-                           const std::set<int64_t>& running_tasks);
+                           const std::set<int64_t>& running_tasks,
+                           bool clear_all = false);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
     std::map<int64_t, TaskInstance> tasks_;
     std::map<int64_t, JobInfo> jobs_;
+    std::map<int32_t, std::set<std::string> > alives_;
     int64_t next_agent_id_;
     int64_t next_task_id_;
     int64_t next_job_id_;
