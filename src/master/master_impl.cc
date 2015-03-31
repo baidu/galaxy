@@ -226,12 +226,14 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
     if (request->has_job_id()) {
         response->set_status(-1);
         done->Run();
+        return;
     }
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
         response->set_status(-2);
         done->Run();
+        return;
     }
 
     JobInfo job = it->second;
