@@ -40,7 +40,7 @@
     <div ng-show="hideInitServForm"  class="instance-container">
       <div class="instance-container-title"><h4>实例状态</h4><div ng-hide="hideSpinner" class="ui active mini text inline loader"></div></div>
       <div class="scrollable instance-container-list">
-        <div tooltip="{{instance.offset}} {{instance.tip}} " ng-repeat="instance in taskList" ng-click="showInstance(instance)" class="single-instance" ng-class="instance.state">
+        <div tooltip="{{instance.id}} {{instance.tip}} " ng-repeat="instance in taskList" class="single-instance" ng-class="instance.state">
              <span class="instance-state">{{instance.label}}</span>
              <span class="instance-offset">{{instance.offset}}</span>
         </div>

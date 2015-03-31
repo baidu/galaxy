@@ -21,15 +21,25 @@ angular.module('galaxy.ui.ctrl').controller('ServiceCtrl',function($scope,
     $scope.hideInitServForm = true;
     $scope.stopFlag = undefined;
     $scope.taskList = []
+     $scope.hideSpinner = false;
     $scope.getStatus = function(){
       $http.get("/taskgroup/status?serviceName="+$routeParams.serviceName)
            .success(function(data){
+              $scope.hideSpinner = true;
              if(data.status == 0 ){
                if(data.data.needInit){
                  $scope.hideInitServForm = false;
                  return;
                }else{
-                 $scope.taskList = data.data.taskList;
+                 $scope.taskList = [];
+                  for(var iindex in data.data.taskList){
+                         var taskDetail = data.data.taskList[iindex];
+                         switch(taskDetail.state){
+                            case "ERROR":  $scope.taskList.push({tip:"error",group:"G"+taskDetail.id,label:'E',offset:taskDetail.id,state:"error-instance"});break;
+                            case "RUNNING":  $scope.taskList.push({tip:"running",group:"G"+taskDetail.id,label:'R',offset:taskDetail.id,state:"running-instance"});break;
+                      
+                        }
+                  }
                }
              }
            })
