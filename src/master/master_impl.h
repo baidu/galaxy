@@ -95,6 +95,8 @@ private:
                            bool clear_all = false);
     void CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
     void ScaleDown(JobInfo* job);
+    void ListTaskForJob(int64_t job_id,
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;

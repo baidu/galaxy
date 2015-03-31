@@ -67,6 +67,32 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
+void MasterImpl::ListTaskForJob(int64_t job_id,
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks) {
+    common::MutexLock lock(&agent_lock_); 
+    
+    std::map<int64_t, JobInfo>::iterator job_it = jobs_.find(job_id);
+    if (job_it != jobs_.end()) {
+        JobInfo& job = job_it->second;
+        std::map<std::string, std::set<int64_t> >::iterator agent_it
+            = job.agent_tasks.begin();
+        for (; agent_it != job.agent_tasks.end(); ++agent_it) {
+            std::string agent_addr = agent_it->first;
+            std::set<int64_t>& task_set = agent_it->second;
+            std::set<int64_t>::iterator id_it = task_set.begin();
+            for (; id_it != task_set.end(); ++id_it) {
+                int64_t task_id = *id_it;
+                std::map<int64_t, TaskInstance>::iterator task_it
+                    = tasks_.find(task_id);     
+                if (task_it != tasks_.end()) {
+                    TaskInstance* task = tasks->Add();
+                    task->CopyFrom(task_it->second);
+                }
+            }
+        }
+    }
+}
+
 void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
@@ -84,8 +110,9 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
         if (it != tmp_task_pair.end()) {
             response->add_tasks()->CopyFrom(it->second);
         }
-    }
-    else {
+    } else if (request->has_job_id()) {
+        ListTaskForJob(request->job_id(), response->mutable_tasks());
+    } else {
         it = tmp_task_pair.begin(); 
         for (; it != tmp_task_pair.end(); ++it) {
             response->add_tasks()->CopyFrom(it->second);

@@ -90,9 +90,12 @@ int main(int argc, char* argv[]) {
         if (argc == 4) {
             job_id = atoi(argv[3]);
         }
-
+        int64_t task_id = -1;
+        if (argc == 5) {
+            task_id = atoi(argv[4]);
+        }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->ListTask(job_id,NULL);
+        galaxy->ListTask(job_id, task_id, NULL);
     } else if (COMMAND == LISTNODE) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         std::vector<galaxy::NodeDescription> nodes;
