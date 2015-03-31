@@ -18,6 +18,7 @@ void help() {
 
 enum Command {
     LIST = 0,
+    LISTJOB,
     ADD,
     KILL
 };
@@ -36,6 +37,8 @@ int main(int argc, char* argv[]) {
         }
     } else if (strcmp(argv[2], "list") == 0) {
         COMMAND = LIST;
+    } else if (strcmp(argv[2], "listjob") == 0) {
+        COMMAND = LISTJOB;
     } else if (strcmp(argv[2], "kill") == 0) {
         COMMAND = KILL;
         if (argc < 4) {
@@ -72,6 +75,11 @@ int main(int argc, char* argv[]) {
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(task_id);
+        return 0;
+    }
+    else if (COMMAND == LISTJOB) {
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->ListJob();
         return 0;
     }
     else if (COMMAND == KILL) {

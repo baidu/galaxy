@@ -24,6 +24,7 @@ public:
                  const std::string& cmd_line,
                  int32_t count);
     bool ListTask(int64_t taks_id = -1);
+    bool ListJob();
 
     bool TerminateTask(int64_t task_id);
 private:
@@ -68,6 +69,23 @@ bool GalaxyImpl::NewTask(const std::string& task_name,
     return true;
 }
 
+bool GalaxyImpl::ListJob() {
+    ListJobRequest request;
+    ListJobResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::ListJob,
+                             &request, &response, 5, 1);
+    fprintf(stdout, "================================\n");
+    int job_num = response.jobs_size();
+    for (int i = 0; i < job_num; i++) {
+        const JobInstance& job = response.jobs(i);
+        fprintf(stdout, "%ld\t%s\t%d\t%d\n",
+                job.job_id(), job.job_name().c_str(),
+                job.running_task_num(), job.replica_num());
+    }
+    fprintf(stdout, "================================\n");
+    return true;
+}
+
 bool GalaxyImpl::ListTask(int64_t task_id) {
     ListTaskRequest request;
     if (task_id != -1) {
@@ -77,8 +95,8 @@ bool GalaxyImpl::ListTask(int64_t task_id) {
     rpc_client_->SendRequest(master_, &Master_Stub::ListTask,
                              &request, &response, 5, 1);
     fprintf(stdout, "================================\n");
-    size_t task_size = response.tasks_size();
-    for (size_t i = 0; i < task_size; i++) {
+    int task_size = response.tasks_size();
+    for (int i = 0; i < task_size; i++) {
         if (!response.tasks(i).has_info() ||
                 !response.tasks(i).info().has_task_id()) {
             continue; 

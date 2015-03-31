@@ -20,6 +20,7 @@ public:
                          const std::string& cmd_line,
                          int32_t count) = 0;
     virtual bool ListTask(int64_t task_id = -1) = 0;
+    virtual bool ListJob() = 0;
     virtual bool TerminateTask(int64_t task_id) = 0;
 };
 

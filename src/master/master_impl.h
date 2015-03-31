@@ -86,7 +86,6 @@ private:
     int64_t next_job_id_;
     Mutex agent_lock_;
 
-
     RpcClient* rpc_client_;
 };
 
