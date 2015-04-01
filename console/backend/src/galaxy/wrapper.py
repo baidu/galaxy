@@ -32,8 +32,22 @@ class Galaxy(object):
            if line.startswith("="):
                continue
            parts = line.split('\t')
-           tasklist.append({"id":parts[0],"name":parts[1],"state":parts[2]})
+           tasklist.append({"id":parts[0],"name":parts[1],"state":parts[2],'agent':parts[3]})
         return True, tasklist
+    def list_task_by_agent(self,agent):
+        list_task_command = [self.bin_path,self.master_addr,'listtaskbyagent',str(agent)]
+        code,stdout,stderr = self.shell_helper.run_with_retuncode(list_task_command)
+        if code != 0:
+            return False,[]
+        lines = stdout.splitlines()
+        tasklist = []
+        for line in lines:
+           if line.startswith("="):
+               continue
+           parts = line.split('\t')
+           tasklist.append({"id":parts[0],"name":parts[1],"state":parts[2],'agent':parts[3]})
+        return True, tasklist
+
     def list_node(self):
         list_node_command = [self.bin_path,self.master_addr,'listnode']
         code,stdout,stderr = self.shell_helper.run_with_retuncode(list_node_command)

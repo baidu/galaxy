@@ -1,0 +1,28 @@
+<div class="modal-header">
+<button type="button" class="close" ng-click="close()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+   <h4>任务列表</h4>
+</div>
+<div class="modal-body scrollable" style="height:300px;overflow-y:scroll">  
+ <table class="table service-table">
+    <thead>
+      <tr>
+        <th>#id</th>
+        <th>任务名称</th>
+        <th>任务状态</th>
+        <th>agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="task in tasklist">
+        <td>{{task.id}}</td>
+        <td>{{task.name}}</td>
+        <td>{{task.state}}</td>
+        <td>{{task.agent}}</td>
+      </tr>
+    </tbody>
+  </table>  
+
+</div>
+<div class="modal-footer">
+    <button type="button" ng-click="getTask()" class="btn btn-primary">刷新</button>
+</div>

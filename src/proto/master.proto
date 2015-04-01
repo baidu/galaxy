@@ -73,6 +73,7 @@ message TaskInstance {
 message ListTaskRequest {
     optional int64 job_id = 2;
     optional int64 task_id = 3;
+    optional string agent_addr = 4;
 }
 message ListTaskResponse {
     repeated TaskInstance tasks = 2;
