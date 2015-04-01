@@ -42,6 +42,11 @@ var galaxy = angular.module('galaxy.ui', [
         templateUrl: 'views/cluster.html',
         controller: 'ClusterCtrl'
       })
+      .when('/setup', {
+        templateUrl: 'views/setup.html',
+        controller: 'SetupCtrl'
+      })
+
       .otherwise({
         redirectTo: '/'
       });
@@ -51,10 +56,13 @@ var galaxy = angular.module('galaxy.ui', [
   }]);
 
   function fetchConfig(){
-    //var masterAddr = prompt("输入galaxy master地址");
-    var masterAddr = 'cp01-rdqa-dev400.cp01.baidu.com:8102';
-    var initInjector = angular.injector(["ng"]);
+    var initInjector = angular.injector(["ng","ngCookies"]);
     var $http = initInjector.get("$http");
+    var $cookies = initInjector.get('$cookies');
+    var masterAddr = null ;
+    if($cookies.masterAddr != undefined ){
+        masterAddr = $cookies.masterAddr;
+    }
     return $http.get("/conf/get").then(function(response) {
             galaxy.constant("config", {config:response.data.data.config,masterAddr:masterAddr,home:response.data.data.home,service:response.data.data.service});
         }, function(errorResponse) {

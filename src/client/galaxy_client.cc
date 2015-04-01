@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <boost/algorithm/string/predicate.hpp>
 
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
@@ -20,6 +21,8 @@ void help() {
 enum Command {
     LIST = 0,
     LISTJOB,
+    LISTTASKBYAGENT,
+    UPDATEJOB,
     LISTNODE,
     ADD,
     KILLTASK,
@@ -56,7 +59,20 @@ int main(int argc, char* argv[]) {
             help();
             return -1;
         }
-    } else {
+    } else if(strcmp(argv[2], "listtaskbyagent") == 0){
+        COMMAND = LISTTASKBYAGENT;
+        if(argc < 4){
+           help();
+           return -1;
+        }
+
+    }else if(strcmp(argv[2], "updatejob") == 0){
+        COMMAND = UPDATEJOB;
+        if(argc < 5){
+            help();
+            return -1;
+        }
+    }else {
         help();
         return -1;
     }
@@ -102,6 +118,9 @@ int main(int argc, char* argv[]) {
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(job_id, task_id, NULL);
+    }else if(COMMAND== LISTTASKBYAGENT){
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->ListTaskByAgent(argv[3], NULL);
     } else if (COMMAND == LISTNODE) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         std::vector<galaxy::NodeDescription> nodes;
@@ -132,6 +151,12 @@ int main(int argc, char* argv[]) {
         int64_t job_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->TerminateJob(job_id);
+    } else if(COMMAND == UPDATEJOB){
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy::JobDescription job;
+        job.replicate_count = atoi(argv[4]);
+        job.job_id  =  atoi(argv[3]);
+        galaxy->UpdateJob(job);
     }
     return 0;
 }

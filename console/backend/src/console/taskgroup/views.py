@@ -73,22 +73,24 @@ def update_task_group(request):
 
 
 
-@s_decorator.service_name_required
 def get_task_status(request):
     builder = http.ResponseBuilder()
-    LOG.info("get service %s task status "%request.service_name)
-    service = models.Service.get_by_name(request.service_name,9527)
-    if not service:
-        return builder.error("service with name %s does not exist"%request.service_name)\
-                      .build_json()
-    default_group = models.TaskGroup.get_default(service.id)
-    if not default_group:
-        return builder.ok(data={'needInit':True}).build_json()
     #return builder.ok(data={'needInit':False,'taskList':[]}).build_json()
-    galaxy = wrapper.Galaxy(settings.GALAXY_MASTER,settings.GALAXY_CLIENT_BIN)
-    status,tasklist = galaxy.get_task_status(service.job_id)
-    if not status:
-        return builder.error("fail to get task list")\
+    id = request.GET.get('id',None)
+    agent = request.GET.get('agent',None)
+    master_addr = request.GET.get('master',None)
+    if not master_addr:
+        return builder.error('master is required').build_json()
+    galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    tasklist = []
+    if id :
+        status,tasklist = galaxy.get_task_status(id)
+        if not status:
+            return builder.error("fail to get task list")\
                       .build_json()
-
+    if agent:
+        status,tasklist = galaxy.list_task_by_agent(agent)
+        if not status:
+            return builder.error("fail to get task list")\
+                      .build_json()
     return builder.ok(data={'needInit':False,'taskList':tasklist}).build_json()

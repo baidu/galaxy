@@ -89,6 +89,9 @@ public:
     virtual bool ListNode(std::vector<NodeDescription>* nodes) = 0;
     //debug
     virtual bool KillTask(int64_t task_id) = 0;
+
+    virtual bool ListTaskByAgent(const std::string& agent_addr,
+                                 std::vector<TaskDescription> * tasks) = 0 ;
 };
 
 } // namespace galaxy
