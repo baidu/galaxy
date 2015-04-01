@@ -8,6 +8,7 @@
         <th>服务名称</th>
         <th>运行任务</th>
         <th>总任务</th>
+        <th>操作</th>
       </tr>
     </thead>
     <tbody>
@@ -16,6 +17,7 @@
         <td>{{service.name}}</td>
         <td>{{service.task_running_num}}</td>
         <td>{{service.replicate_num}}</td>
+        <td><a href ng-click="updateService(service)"><span class="glyphicon glyphicon-cog" aria-hidden="true"></span></a><a href ng-click="killService(service.id)"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></a></td>
       </tr>
     </tbody>
   </table>  

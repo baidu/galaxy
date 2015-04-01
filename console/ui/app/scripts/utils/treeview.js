@@ -44,6 +44,9 @@ NavTree.prototype._processHomePage = function(self,pathArray){
       if(pathArray.length == 1 ){
         if(pathArray[0] =="cluster"){
           activeParentIndex = 1;
+        }else if(pathArray[0]== 'setup'){
+        
+          activeParentIndex = 2;
         }
       }
       self._cleanHomeSelected();

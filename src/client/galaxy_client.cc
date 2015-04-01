@@ -22,6 +22,7 @@ void help() {
 enum Command {
     LIST = 0,
     LISTJOB,
+    UPDATEJOB,
     LISTNODE,
     ADD,
     KILLTASK,
@@ -58,7 +59,13 @@ int main(int argc, char* argv[]) {
             help();
             return -1;
         }
-    } else {
+    } else if(strcmp(argv[2], "updatejob") == 0){
+        COMMAND = UPDATEJOB;
+        if(argc < 5){
+            help();
+            return -1;
+        }
+    }else {
         help();
         return -1;
     }
@@ -132,6 +139,12 @@ int main(int argc, char* argv[]) {
         int64_t job_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->TerminateJob(job_id);
+    } else if(COMMAND == UPDATEJOB){
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy::JobDescription job;
+        job.replicate_count = atoi(argv[4]);
+        job.job_id  =  atoi(argv[3]);
+        galaxy->UpdateJob(job);
     }
     return 0;
 }
