@@ -10,7 +10,7 @@
 #include <boost/function.hpp>
 #include <map>
 #include <pthread.h>
-#include "downloader.h"
+#include "agent/downloader.h"
 #include "common/thread_pool.h"
 
 namespace galaxy {

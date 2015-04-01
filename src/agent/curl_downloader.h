@@ -7,7 +7,7 @@
 #ifndef _CURL_DOWNLOADER_H
 #define _CURL_DOWNLOADER_H
 
-#include "downloader.h"
+#include "agent/downloader.h"
 
 namespace galaxy {
 
