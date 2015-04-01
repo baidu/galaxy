@@ -22,6 +22,7 @@ void help() {
 enum Command {
     LIST = 0,
     LISTJOB,
+    LISTTASKBYAGENT,
     UPDATEJOB,
     LISTNODE,
     ADD,
@@ -59,7 +60,14 @@ int main(int argc, char* argv[]) {
             help();
             return -1;
         }
-    } else if(strcmp(argv[2], "updatejob") == 0){
+    } else if(strcmp(argv[2], "listtaskbyagent") == 0){
+        COMMAND = LISTTASKBYAGENT;
+        if(argc < 4){
+           help();
+           return -1;
+        }
+
+    }else if(strcmp(argv[2], "updatejob") == 0){
         COMMAND = UPDATEJOB;
         if(argc < 5){
             help();
@@ -109,6 +117,9 @@ int main(int argc, char* argv[]) {
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(job_id, task_id, NULL);
+    }else if(COMMAND== LISTTASKBYAGENT){
+        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
+        galaxy->ListTaskByAgent(argv[3], NULL);
     } else if (COMMAND == LISTNODE) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         std::vector<galaxy::NodeDescription> nodes;

@@ -36,8 +36,7 @@ angular.module('galaxy.ui.ctrl',[])
       });
     };
 
-
-    $http.get("/service/list?user=9527&master="+config.masterAddr)
+$http.get("/service/list?user=9527&master="+config.masterAddr)
          .success(function(data){
           if(data.status == 0 ){
                $scope.serviceList = data.data;  
@@ -49,6 +48,35 @@ angular.module('galaxy.ui.ctrl',[])
             notify({ message:'获取服务列表失败',classes:"alert-danger"} );
             $log.error(data);
      });
+    $scope.listTaskByService = function(service){
+        var modalInstance = $modal.open({
+        templateUrl: 'views/task.html',
+        controller: 'TaskCtrl',
+        keyboard:false,
+        backdrop:'static',
+        resolve:{
+            service:function(){
+                return service;
+            }
+        }
+      });
+
+    }
+    $scope.listTaskByAgent = function(agent){
+        var modalInstance = $modal.open({
+        templateUrl: 'views/task.html',
+        controller: 'TaskForAgentCtrl',
+        keyboard:false,
+        backdrop:'static',
+        resolve:{
+            agent:function(){
+                return agent;
+            }
+        }
+      });
+
+
+    }
     $scope.killService = function(id){
       var promot = $modal.open({
         templateUrl: 'views/promot.html',

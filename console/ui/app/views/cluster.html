@@ -13,7 +13,7 @@
       <tr ng-repeat="machine in machineList">
         <td>{{machine.id}}</td>
         <td>{{machine.host}}</td>
-        <td>{{machine.task_num}}</td>
+        <td><a href ng-click="listTaskByAgent(machine)">{{machine.task_num}}</a></td>
         <td>{{machine.cpu_num}}</td>
         <td>{{machine.mem}}G</td>
       </tr>

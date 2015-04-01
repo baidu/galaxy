@@ -18,6 +18,21 @@ angular.module('galaxy.ui.ctrl')
               $location.path('/setup');
               return;
            }
+          $scope.listTaskByAgent = function(agent){
+                 var modalInstance = $modal.open({
+                 templateUrl: 'views/task.html',
+                 controller: 'TaskForAgentCtrl',
+                 keyboard:false,
+                 backdrop:'static',
+                 resolve:{
+                    agent:function(){
+                      return agent;
+                 }
+             }
+           });
+          }  
+
+
            $scope.machineList = [];
            $http.get("/cluster/status?master="+config.masterAddr)
                 .success(function(data){
