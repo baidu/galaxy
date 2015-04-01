@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         if (argc < 4) {
             help();
             return -1;
-        }    
+        }
     } else if (strcmp(argv[2], "killjob") == 0) {
         COMMAND = KILLJOB;
         if (argc < 4) {
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
         job.cmd_line = argv[4];
         job.replicate_count = atoi(argv[5]);
         job.job_name = argv[3];
-        galaxy->NewJob(job);
+        fprintf(stdout,"%lld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
         if (argc == 4) {

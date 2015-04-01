@@ -1,11 +1,7 @@
-<div class="modal-header">
-<button type="button" class="close" ng-click="cancel()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-   <h4>创建服务</h4>
-</div>
-<div class="modal-body">  
-
-<form >
-  <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
+<div class="instance">
+  <class="instance-container" ng-hide="hideInitServForm ">
+   <div class="instance-container-title"><h4>初始化服务</h4></div>
+    <form style="width:60%">
         <div class="form-group">
           <label for="replicate">实例数</label>
           <input type="number" ng-model="deployTpl.replicate" class="form-control " id="replicate" >
@@ -38,10 +34,18 @@
           <label for="startCmd">启动命令</label>
           <input type="text" ng-model="deployTpl.startCmd" class="form-control " id="startCmd">
         </div>
+        <button type="submit" ng-click="initTaskGroup()" ng-disabled="disableBtn" class="btn btn-primary">初始化</button>
+      </form>  
+  </div>
+    <div ng-show="hideInitServForm"  class="instance-container">
+      <div class="instance-container-title"><h4>实例状态</h4><div ng-hide="hideSpinner" class="ui active mini text inline loader"></div></div>
+      <div class="scrollable instance-container-list">
+        <div tooltip="{{instance.id}} {{instance.tip}} " ng-repeat="instance in taskList" class="single-instance" ng-class="instance.state">
+             <span class="instance-state">{{instance.label}}</span>
+             <span class="instance-offset">{{instance.offset}}</span>
+        </div>
+        <div class="single-instance add-instance" ng-click="addInstance()" tooltip="添加实例"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span></div>
+      </div>
+    </div>
 
-</form>
-</div>
-<div class="modal-footer">
-    <button class="btn btn-primary" ng-disabled="disableBtn" ng-click="ok()">创建</button>
-    <button class="btn btn-default" ng-disabled="disableBtn" ng-click="cancel()">取消</button>
 </div>
