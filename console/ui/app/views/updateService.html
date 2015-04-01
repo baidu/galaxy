@@ -7,8 +7,7 @@
 <form >
   <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
         <div class="form-group">
-            <label for="replicate_num
-                >实例数</label>
+            <label for="replicate_num">实例数</label>
           <input type="number" ng-model="service.replicate_num" class="form-control " id="replicate_num" >
         </div>
 </form>

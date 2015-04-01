@@ -132,7 +132,7 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
        if(data.status==0){
          notify({ message:'创建服务成功'} );
          $route.reload();
-         $modalInstance.yyclose();
+         $modalInstance.close();
        }else{
            $scope.alerts.push({ type: 'danger', msg: '错误：'+data.msg });
        }
