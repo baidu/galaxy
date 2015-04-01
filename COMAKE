@@ -72,8 +72,9 @@ StaticLibrary('galaxy',Sources(sdk_sources),HeaderFiles(sdk_headers))
 
 #Client
 Application('galaxy_client',Sources(client_sources), Libraries('./libgalaxy.a'))
-Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
-Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
+#Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
+#Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
+
 #共享库
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
 #子目录
