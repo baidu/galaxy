@@ -41,6 +41,7 @@ angular.module('galaxy.ui.ctrl')
                         $scope.total_node_num = data.data.total_node_num;
                         $scope.total_cpu_num = data.data.total_cpu_num;
                         $scope.total_mem_num = data.data.total_mem_num;
+                        $scope.total_task_num = data.data.total_task_num;
                     }else{
                     
                     }
