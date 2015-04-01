@@ -18,12 +18,14 @@ public:
         rpc_client_->GetStub(master_addr, &master_);
     }
     virtual ~GalaxyImpl() {}
-    bool NewJob(const JobDescription& job);
+    int64_t NewJob(const JobDescription& job);
     bool UpdateJob(const JobDescription& job);
     bool ListJob(std::vector<JobInstanceDescription>* jobs);
     bool ListNode(std::vector<NodeDescription>* nodes);
     bool TerminateJob(int64_t job_id);
-    bool ListTask(int64_t job_id,std::vector<TaskDescription>* tasks);
+    bool ListTask(int64_t job_id,
+                  int64_t task_id,
+                  std::vector<TaskDescription>* tasks);
     bool KillTask(int64_t task_id);
 private:
     RpcClient* rpc_client_;
@@ -61,7 +63,7 @@ bool GalaxyImpl::TerminateJob(int64_t job_id) {
     return true;
 }
 
-bool GalaxyImpl::NewJob(const JobDescription& job) {
+int64_t GalaxyImpl::NewJob(const JobDescription& job){
     NewJobRequest request;
     NewJobResponse response;
     request.set_job_name(job.job_name);
@@ -70,7 +72,7 @@ bool GalaxyImpl::NewJob(const JobDescription& job) {
     request.set_replica_num(job.replicate_count);
     rpc_client_->SendRequest(master_, &Master_Stub::NewJob,
                              &request,&response,5,1);
-    return true;
+    return response.job_id();
 }
 
 bool GalaxyImpl::UpdateJob(const JobDescription& job) {
@@ -119,10 +121,14 @@ bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
     }
     return true;
 }
-bool GalaxyImpl::ListTask(int64_t job_id, std::vector<TaskDescription>* /*job*/) {
+bool GalaxyImpl::ListTask(int64_t job_id,
+                          int64_t task_id,
+                          std::vector<TaskDescription>* tasks) {
     ListTaskRequest request;
-    if (job_id != -1) {
-        request.set_task_id(job_id);
+    if (task_id != -1) {
+        request.set_task_id(task_id);
+    } else if (job_id != -1) {
+        request.set_job_id(job_id);
     }
     ListTaskResponse response;
     rpc_client_->SendRequest(master_, &Master_Stub::ListTask,

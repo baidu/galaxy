@@ -18,9 +18,9 @@ void Callback(int ret) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "./downloader_manager_test uri path"); 
+        fprintf(stderr, "./downloader_manager_test uri path");
         return EXIT_FAILURE;
-    }    
+    }
     char* uri = argv[1];
     char* path = argv[2];
     galaxy::DownloaderManager* manager = galaxy::DownloaderManager::GetInstance();

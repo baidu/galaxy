@@ -1,35 +1,87 @@
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: wangtaize@baidu.com
+// Date  : 2015-03-31
+
 (function(angular){
 
+function checkDeployForm(form){
 
-angular.module('galaxy.ui.ctrl')
+}
+angular.module('galaxy.ui.ctrl').controller('ServiceCtrl',function($scope,
+                                                                   $modal,
+                                                                   $http,
+                                                                   $routeParams,
+                                                                   $log,
+                                                                   notify,
+                                                                   config){
+    $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
+    $scope.deployTpl = {startCmd:"",serviceName:$routeParams.serviceName,pkgType:0,pkgSrc:"",replicate:0,memoryLimit:100,cpuShare:10};
+    $scope.hideInitServForm = true;
+    $scope.stopFlag = undefined;
+    $scope.taskList = []
+     $scope.hideSpinner = false;
+    $scope.getStatus = function(){
+      $http.get("/taskgroup/status?serviceName="+$routeParams.serviceName)
+           .success(function(data){
+              $scope.hideSpinner = true;
+             if(data.status == 0 ){
+               if(data.data.needInit){
+                 $scope.hideInitServForm = false;
+                 return;
+               }else{
+                 $scope.taskList = [];
+                  for(var iindex in data.data.taskList){
+                         var taskDetail = data.data.taskList[iindex];
+                         switch(taskDetail.state){
+                            case "ERROR":  $scope.taskList.push({tip:"error",group:"G"+taskDetail.id,label:'E',offset:taskDetail.id,state:"error-instance"});break;
+                            case "RUNNING":  $scope.taskList.push({tip:"running",group:"G"+taskDetail.id,label:'R',offset:taskDetail.id,state:"running-instance"});break;
+                      
+                        }
+                  }
+               }
+             }
+           })
+           .error(function(err){
+             $log.error('fail to get service '+ $routeParams.serviceName+' status');
+           });
+    }
+    $scope.getStatus();
+    $scope.disableBtn = false;
+    $scope.initTaskGroup = function(){
+      $scope.disableBtn = true;
+      $http({method:"POST",
+             url:"/taskgroup/init",
+             data: $scope.deployTpl ,
+             headers:{'Content-Type': 'application/x-www-form-urlencoded'},
+             transformRequest: function(obj) {
+                  var str = [];
+                  for(var p in obj){
+                    str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                  }
+                  return str.join("&");
+             }
+            }).success(function(data, status, headers, config) {
+                if(data.status == 0 ){
+                     notify({ message:'初始化服务成功'} );
+                     $scope.hideSpinner = false;
+                     //$scope.stopFlag = $interval($scope.getStatus,500);
+                }else{
+                    notify({ message:'初始化服务失败：'+data.msg,classes:"alert-danger"} );
+                }
+                $scope.disableBtn = false;
+           }).error(function(data){
+             $log.error("fail init group for"+data);
+           });
+    }
+});
+
+/*angular.module('galaxy.ui.ctrl')
        .controller('ServiceCtrl',['$scope','$routeParams','$modal','$http','$log','$interval','notify','$route',function ($scope,$routeParams,$modal,$http,$log,$interval,notify,$route) {
-      var instanceMetaTemplate = {
-            "packageSource": "ftp://yf-matrix-op.yf01.baidu.com:/home/work/matrix/public/matrix_example/hello-baidu.tar.gz",
-            "packageVersion": "1.0",
-            "packageType": 0,
-            "user": "work",
-            "deployDir": "/home/work/hello/",
-            "process": {},
-            "port":{"staticPort": {"main": 8547}, "dynamicPortName": []},
-            "tag": {"tag1": "value12"},
-            "deployTimeoutSec": 30,
-            "resource":{},
-            "healthCheckTimeoutSec": 30,
-            "hostConstrain": [],
-            "group":"test",
-            "resourceRequirement": {
-                "cpu": {"normalizedCore": {"quota": 5, "limit": -1}},
-                "memory": {"sizeMB": {"quota": 200, "limit": -1}},
-                "network": {"inBandwidthMBPS": {"quota": 1, "limit": -1}, "outBandwidthMBPS": {"quota": 1, "limit": -1}},
-                "port": {"staticPort": {"main": 8547}, "dynamicPortName": []},
-                "process": {"thread": {"quota": 100, "limit": -1}},
-                "workspace": {"sizeMB": {"quota": 100, "limit": -1}, "inode": {"quota": 100, "limit": -1}, "type": "home", "bindPoint": "", "exclusive": false, "useSoftLinkDir": false},
-                "requiredDisk": [],
-                "optionalDisk": []
-            },
-            "baseEnv": "system",
-            "priority": 0
-     };       
+    var deployRequirement = {serviceId:"",pkgType:"",replicateCount:0,memoryLimit:100,cpuShare:1000}
+     
      $scope.hideInitServForm= true;
      $scope.initServFormData = {servName:$routeParams.serviceName,instanceCount:0,meta:JSON.stringify(instanceMetaTemplate,null, 4)};
      $scope.serviceName = $routeParams.serviceName;
@@ -83,10 +135,11 @@ angular.module('galaxy.ui.ctrl')
         }
       });
     }
+
     $scope.stop = undefined;
     $scope.hideSpinner = false;
     $scope.config = null;
-   
+
     $scope.getStatus = function(){
         $http.get("/ajax/instance/getAllInstance?name="+$scope.serviceName).success(function(data, status, headers, config){
                 if(data.status != 0 ){
@@ -234,7 +287,7 @@ angular.module('galaxy.ui.ctrl').filter('propsFilter', function() {
 
     return out;
   }
-});
+});*/
 
 
 }(angular))

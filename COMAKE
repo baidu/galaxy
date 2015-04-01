@@ -1,44 +1,44 @@
 #edit-mode: -*- python -*-
-#coding:gbk
+#coding:utf-8
 
-#¹¤×÷Â·¾¶.
+#å·¥ä½œè·¯å¾„.
 WORKROOT('../../../')
 
-#Ê¹ÓÃÓ²Á´½Ócopy.
+#ä½¿ç”¨ç¡¬é“¾æ¥copy.
 CopyUsingHardLink(True)
 
-#Ö§³Ö32Î»/64Î»Æ½Ì¨±àÒë
+#æ”¯æŒ32ä½/64ä½å¹³å°ç¼–è¯‘
 #ENABLE_MULTI_LIBS(True)
 
-#CÔ¤´¦ÀíÆ÷²ÎÊı.
+#Cé¢„å¤„ç†å™¨å‚æ•°.
 CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\"')
-#Îª32Î»Ä¿±ê±àÒëÖ¸¶¨¶îÍâµÄÔ¤´¦Àí²ÎÊı
+#ä¸º32ä½ç›®æ ‡ç¼–è¯‘æŒ‡å®šé¢å¤–çš„é¢„å¤„ç†å‚æ•°
 #CPPFLAGS_32('-D_XOPEN_SOURE=500')
 
-#C±àÒë²ÎÊı.
+#Cç¼–è¯‘å‚æ•°.
 CFLAGS('-g -pipe -W -Wall -fPIC')
 
-#C++±àÒë²ÎÊı.
+#C++ç¼–è¯‘å‚æ•°.
 CXXFLAGS('-g -pipe -W -Wall -fPIC')
 
 # protoc
 PROTOC('../../../third-64/protobuf/bin/protoc')
 
-#Í·ÎÄ¼şÂ·¾¶.
+#å¤´æ–‡ä»¶è·¯å¾„.
 INCPATHS('. ./src ./output/include')
 
-#Ê¹ÓÃ¿â
+#ä½¿ç”¨åº“
 #LIBS('./libgalaxy.a')
 
-#Á´½Ó²ÎÊı.
+#é“¾æ¥å‚æ•°.
 LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
 
-#ÒÀÀµÄ£¿é
+#ä¾èµ–æ¨¡å—
 CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('third-64/libcurl@base')
 CONFIGS('third-64/zookeeper@base')
 
-#Îª32Î»/64Î»Ö¸¶¨²»Í¬µÄÒÀÀµÂ·¾¶.
+#ä¸º32ä½/64ä½æŒ‡å®šä¸åŒçš„ä¾èµ–è·¯å¾„.
 #CONFIGS_32('lib2/ullib')
 #CONFIGS_64('lib2-64/ullib')
 
@@ -66,20 +66,20 @@ downloadermgr_headers='src/agent/curl_downloader.h src/agent/downloader_manager.
 
 zk_util_sources='test/zk_test.cc'
 
-#¿ÉÖ´ĞĞÎÄ¼ş
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
 Application('master',Sources(master_sources))
-#¾²Ì¬¿â
+#é™æ€åº“
 StaticLibrary('galaxy',Sources(sdk_sources),HeaderFiles(sdk_headers))
 
 #Client
 Application('galaxy_client',Sources(client_sources), Libraries('./libgalaxy.a'))
-Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
-Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
-Application('zk_test', Sources(zk_util_sources)) 
-#¹²Ïí¿â
+#Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
+#Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
+#Application('zk_test', Sources(zk_util_sources)) 
+
+#å…±äº«åº“
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
-#×ÓÄ¿Â¼
+#å­ç›®å½•
 #Directory('demo')
 

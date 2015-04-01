@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         if (argc < 4) {
             help();
             return -1;
-        }    
+        }
     } else if (strcmp(argv[2], "killjob") == 0) {
         COMMAND = KILLJOB;
         if (argc < 4) {
@@ -90,15 +90,18 @@ int main(int argc, char* argv[]) {
         job.cmd_line = argv[4];
         job.replicate_count = atoi(argv[5]);
         job.job_name = argv[3];
-        galaxy->NewJob(job);
+        fprintf(stdout,"%lld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
         if (argc == 4) {
             job_id = atoi(argv[3]);
         }
-
+        int64_t task_id = -1;
+        if (argc == 5) {
+            task_id = atoi(argv[4]);
+        }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
-        galaxy->ListTask(job_id,NULL);
+        galaxy->ListTask(job_id, task_id, NULL);
     } else if (COMMAND == LISTNODE) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         std::vector<galaxy::NodeDescription> nodes;
@@ -106,7 +109,7 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tCPU:%d\tMEM:%dGB\n",
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%d\tMEM:%dGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share, it->mem_share);
         }

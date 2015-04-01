@@ -7,13 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "curl_downloader.h"
+#include "agent/curl_downloader.h"
 
 int FLAGS_agent_curl_recv_buffer_size = 1024*20;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "./curl_downloader_test uri path"); 
+        fprintf(stderr, "./curl_downloader_test uri path");
         return EXIT_FAILURE;
     }
     char* uri = argv[1];
