@@ -1,5 +1,19 @@
  <div class="service-list">
-  <table class="table service-table">
+<div class="ui statistics">
+      <div class="blue statistic">
+        <div class="value">{{total_node_num}}</div>
+        <div class="label">机器总数 </div>
+      </div>
+      <div class="blue statistic">
+        <div class="value">{{total_cpu_num}} </div>
+        <div class="label">集群总核数 </div>
+      </div>
+      <div class="blue statistic">
+        <div class="value">{{total_mem_num}}</div>
+        <div class="label">集群总内存(G)</div>
+      </div>
+    </div>    
+<table class="table service-table">
     <thead>
       <tr>
         <th>#id</th>

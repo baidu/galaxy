@@ -37,7 +37,10 @@ angular.module('galaxy.ui.ctrl')
            $http.get("/cluster/status?master="+config.masterAddr)
                 .success(function(data){
                     if(data.status == 0){
-                        $scope.machineList = data.data;
+                        $scope.machineList = data.data.machinelist;
+                        $scope.total_node_num = data.data.total_node_num;
+                        $scope.total_cpu_num = data.data.total_cpu_num;
+                        $scope.total_mem_num = data.data.total_mem_num;
                     }else{
                     
                     }

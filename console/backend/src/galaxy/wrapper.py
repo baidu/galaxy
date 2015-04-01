@@ -64,9 +64,9 @@ class Galaxy(object):
             machine = {}
             machine['id'] = parts[0]
             machine['host'] = parts[1]
-            machine['task_num'] = parts[2].split(':')[-1]
-            machine['cpu_num'] = parts[3].split(':')[-1]
-            machine['mem'] = parts[4].split(':')[-1].replace('GB','')
+            machine['task_num'] = parts[2].split(':')[-1].strip()
+            machine['cpu_num'] = parts[3].split(':')[-1].strip()
+            machine['mem'] = parts[4].split(':')[-1].replace('GB','').strip()
             machine_list.append(machine)
         return True,machine_list
     def kill_job(self,job_id):
