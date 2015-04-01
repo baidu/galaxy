@@ -1,0 +1,18 @@
+<div class="modal-header">
+<button type="button" class="close" ng-click="cancel()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+   <h4>创建服务</h4>
+</div>
+<div class="modal-body">  
+
+<form >
+  <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
+        <div class="form-group">
+            <label for="replicate_num">实例数</label>
+          <input type="number" ng-model="service.replicate_num" class="form-control " id="replicate_num" >
+        </div>
+</form>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-primary" ng-disabled="disableBtn" ng-click="update()">更新</button>
+    <button class="btn btn-default" ng-disabled="disableBtn" ng-click="cancel()">取消</button>
+</div>

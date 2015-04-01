@@ -10,14 +10,14 @@
           <label for="replicate">实例数</label>
           <input type="number" ng-model="deployTpl.replicate" class="form-control " id="replicate" >
         </div>
-        <div class="form-group">
+        <div class="form-group" ng-hide="true">
           <label for="memoryLimit">内存限制</label>
            <div class="input-group">
             <input type="number" ng-model="deployTpl.memoryLimit" class="form-control " id="memoryLimit" >
             <span class="input-group-addon">M</span> 
            </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" ng-hide="true">
           <label for="cpuShare">CPU权重</label>
           <input type="number" ng-model="deployTpl.cpuShare" class="form-control " id="cpuShare">
         </div>

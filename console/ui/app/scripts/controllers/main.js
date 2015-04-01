@@ -8,7 +8,11 @@
  * Controller of the uidemoApp
  */
 angular.module('galaxy.ui.ctrl',[])
-  .controller('HomeCtrl', function ($scope,$modal,$http,$route,notify,$log,config) {
+  .controller('HomeCtrl', function ($scope,$modal,$http,$route,notify,$log,config,$location) {
+     if(config.masterAddr == null ){
+         $location.path('/setup');
+         return
+     }
      $scope.open = function (size) {
       var modalInstance = $modal.open({
         templateUrl: 'views/createService.html',
@@ -18,6 +22,21 @@ angular.module('galaxy.ui.ctrl',[])
         size: size
       });
     };
+     $scope.updateService = function (service) {
+      var modalInstance = $modal.open({
+        templateUrl: 'views/updateService.html',
+        controller: 'UpdateServiceModalIntanceCtrl',
+        keyboard:false,
+        backdrop:'static',
+        resolve:{
+            service:function(){
+                return service;
+            }
+        }
+      });
+    };
+
+
     $http.get("/service/list?user=9527&master="+config.masterAddr)
          .success(function(data){
           if(data.status == 0 ){
@@ -30,7 +49,7 @@ angular.module('galaxy.ui.ctrl',[])
             notify({ message:'获取服务列表失败',classes:"alert-danger"} );
             $log.error(data);
      });
-    $scope.deleteService = function(id){
+    $scope.killService = function(id){
       var promot = $modal.open({
         templateUrl: 'views/promot.html',
         controller: 'PromotCtrl',
@@ -39,25 +58,25 @@ angular.module('galaxy.ui.ctrl',[])
         size: 'sm',
         resolve:{
           message:function(){
-            return "确定删除服务？";
+            return "确定kill服务？";
           }
         }
       });
       promot.result.then(function(result){
         if(result){
-          $http.get("/service/delete?service="+id)
+          $http.get("/service/kill?id="+id+"&master="+config.masterAddr)
                .success(function(data){
                   if(data.status == 0){
-                    notify({ message:'删除服务成功'} );
+                    notify({ message:'kill服务成功'} );
                     $route.reload();  
                   }else{
-                    notify({ message:'删除服务失败',classes:"alert-danger"} );
+                    notify({ message:'kill服务失败',classes:"alert-danger"} );
                     $log.error(data.msg);
                   }
           
                 })
                .error(function(data){
-                     notify({ message:'删除服务失败',classes:"alert-danger"} );
+                     notify({ message:'kill服务失败',classes:"alert-danger"} );
                      $log.error(data);
                });
         }
@@ -65,7 +84,25 @@ angular.module('galaxy.ui.ctrl',[])
     }
       
   });
+angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',function($scope,$modalInstance,$http,$route,config,service,notify){
+        $scope.service = service;
+        $scope.update = function(){
+             $http.get('/service/update?id='+$scope.service.id+"&replicate="+$scope.service.replicate_num+"&master="+config.masterAddr)
+                  .success(function(data){
+                        if(data.status == 0){ 
+                          notify({ message:'更新服务成功'} );
+                         $modalInstance.dismiss('cancel');
+                        }else{ 
+                          notify({ message:'更新服务失败',classes:"alert-danger"} );
+                        }
+                      })
+                  .error(function(data){});
+        }
+        $scope.cancel = function () {
+            $modalInstance.dismiss('cancel');
+        };
 
+});
 angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl', 
                                             function ($scope, $modalInstance,$http,$route,notify,config) {
 

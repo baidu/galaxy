@@ -55,6 +55,19 @@ class Galaxy(object):
             machine['mem'] = parts[4].split(':')[-1].replace('GB','')
             machine_list.append(machine)
         return True,machine_list
+    def kill_job(self,job_id):
+        kill_job_command = [self.bin_path,self.master_addr,'killjob',str(job_id)]
+        code,stdout,stderr = self.shell_helper.run_with_retuncode(kill_job_command)
+        if code != 0 :
+            return False
+        return True
+    def update_job(self,job_id,replicate_num):
+        update_job_command = [self.bin_path,self.master_addr,'updatejob',str(job_id),str(replicate_num)]
+        code,stdout,stderr = self.shell_helper.run_with_retuncode(update_job_command)
+        if code != 0 :
+            return False
+        return True
+
     def list_jobs(self):
         list_node_command = [self.bin_path,self.master_addr,'listjob']
         code,stdout,stderr = self.shell_helper.run_with_retuncode(list_node_command)
@@ -71,8 +84,8 @@ class Galaxy(object):
             job = {}
             job['id'] = parts[0]
             job['name'] = parts[1]
-            job['task_running_num'] = parts[2]
-            job['replicate_num'] = parts[3]
+            job['task_running_num'] = int(parts[2].strip())
+            job['replicate_num'] = int(parts[3].strip())
             jobs.append(job)
         return True,jobs
 

@@ -12,7 +12,12 @@ angular.module('galaxy.ui.ctrl')
                                           $routeParams,
                                           $log,
                                           notify,
-                                          config){
+                                          config,
+                                          $location){
+           if(config.masterAddr == null ){
+              $location.path('/setup');
+              return;
+           }
            $scope.machineList = [];
            $http.get("/cluster/status?master="+config.masterAddr)
                 .success(function(data){

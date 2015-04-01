@@ -52,6 +52,39 @@ def create_service(request):
     except Exception as e:
         return builder.error(str(e)).build_json()
 
-def delete_service(request):
+def kill_service(request):
     builder = http.ResponseBuilder()
-    return builder.ok().build_json()
+    id = request.GET.get('id',None)
+    if not id:
+        return builder.error('id is required').build_json()
+    master_addr = request.GET.get('master',None)
+    if not master_addr:
+        return builder.error('master is required').build_json()
+
+    galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    status = galaxy.kill_job(id)
+    if status:
+        return builder.ok().build_json()
+    else:
+        return builder.error('fail to kill job').build_json()
+
+def update_service(request):
+    builder = http.ResponseBuilder()
+    id = request.GET.get('id',None)
+    if not id:
+        return builder.error('id is required').build_json()
+    master_addr = request.GET.get('master',None)
+    if not master_addr:
+        return builder.error('master is required').build_json()
+    replicate = request.GET.get('replicate',None)
+    if not replicate:
+        return builder.error('replicate is required').build_json()
+
+    galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    status = galaxy.update_job(id,replicate)
+    if status:
+        return builder.ok().build_json()
+    else:
+        return builder.error('fail to kill job').build_json()
+
+

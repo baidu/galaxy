@@ -11,6 +11,7 @@ from django.conf import urls
 urlpatterns = urls.patterns("console.service.views",
         (r'^list','list_service'),
         (r'^create','create_service'),
-        (r'^delete','delete_service'),
+        (r'^kill','kill_service'),
+        (r'^update','update_service'),
 )
 
