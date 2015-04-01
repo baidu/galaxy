@@ -36,7 +36,18 @@ angular.module('galaxy.ui.ctrl',[])
       });
     };
 
-
+$http.get("/service/list?user=9527&master="+config.masterAddr)
+         .success(function(data){
+          if(data.status == 0 ){
+               $scope.serviceList = data.data;  
+          }else{
+            notify({ message:'获取服务列表失败',classes:"alert-danger"} );
+            $log.error(data.msg);
+          }
+         }).error(function(data){
+            notify({ message:'获取服务列表失败',classes:"alert-danger"} );
+            $log.error(data);
+     });
     $scope.listTaskByService = function(service){
         var modalInstance = $modal.open({
         templateUrl: 'views/task.html',
