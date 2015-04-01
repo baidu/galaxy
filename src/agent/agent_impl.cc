@@ -6,11 +6,6 @@
 
 #include "agent_impl.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 #include <boost/bind.hpp>
 #include <errno.h>
 #include <string.h>
@@ -27,7 +22,7 @@ namespace galaxy {
 
 AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
-    ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir + "/data/");
+    ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
@@ -43,33 +38,7 @@ AgentImpl::~AgentImpl() {
 }
 
 bool AgentImpl::Init() {
-    const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
-    // clear work_dir and kill tasks
-    std::string dir = FLAGS_agent_work_dir + "/data";
-    if (access(FLAGS_agent_work_dir.c_str(), F_OK) != 0) {
-        if (mkdir(FLAGS_agent_work_dir.c_str(), MKDIR_MODE) != 0) {
-            LOG(WARNING, "mkdir data failed %s err[%d: %s]", 
-                    FLAGS_agent_work_dir.c_str(), errno, strerror(errno)); 
-            return false;
-        } 
-    }
-    if (access(dir.c_str(), F_OK) == 0) {
-        std::string rm_cmd = "rm -rf " + dir;
-        if (system(rm_cmd.c_str()) == -1) {
-            LOG(WARNING, "rm data failed cmd %s err[%d: %s]", 
-                    rm_cmd.c_str(), errno, strerror(errno)); 
-            return false;
-        }
-        LOG(INFO, "clear dirty data %s by cmd[%s]", dir.c_str(), rm_cmd.c_str());
-    }
-
-    if (mkdir(dir.c_str(), MKDIR_MODE) != 0) {
-        LOG(WARNING, "mkdir data failed %s err[%d: %s]", 
-                dir.c_str(), errno, strerror(errno)); 
-        return false;
-    }
-    LOG(INFO, "init workdir %s", dir.c_str());
-    return true;
+    return ws_mgr_->Init();
 }
 
 void AgentImpl::Report() {
