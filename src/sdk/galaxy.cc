@@ -70,6 +70,8 @@ int64_t GalaxyImpl::NewJob(const JobDescription& job){
     request.set_job_raw(job.pkg.source);
     request.set_cmd_line(job.cmd_line);
     request.set_replica_num(job.replicate_count);
+    request.set_cpu_share(job.cpu_share);
+    request.set_mem_share(job.mem_share);
     rpc_client_->SendRequest(master_, &Master_Stub::NewJob,
                              &request,&response,5,1);
     return response.job_id();

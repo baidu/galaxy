@@ -53,6 +53,8 @@ struct JobDescription{
     std::string cmd_line;
     PackageDescription pkg;
     int32_t replicate_count;
+    int32_t cpu_share;
+    int32_t mem_share;
     std::vector<ResourceDescription> resource_vector;
 };
 

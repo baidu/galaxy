@@ -39,6 +39,8 @@ message NewJobRequest {
     optional bytes job_raw = 3;
     optional string cmd_line = 4;
     optional int32 replica_num = 5;
+    optional int32 cpu_share = 6;
+    optional int32 mem_share = 7;
 }
 
 message NewJobResponse {

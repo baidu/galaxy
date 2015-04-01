@@ -40,6 +40,8 @@ struct JobInfo {
     std::string cmd_line;
     int32_t running_num;
     int32_t scale_down_time;
+    int32_t cpu_share;
+    int32_t mem_share;
     std::map<std::string, std::set<int64_t> > agent_tasks;
     bool killed;
 };

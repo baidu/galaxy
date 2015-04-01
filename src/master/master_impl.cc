@@ -28,14 +28,14 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
                  ::galaxy::TerminateTaskResponse* response,
                  ::google::protobuf::Closure* done) {
     if (!request->has_task_id()) {
-        response->set_status(-1); 
+        response->set_status(-1);
         done->Run();
         return;
     }
     int64_t task_id = request->task_id();
 
-    common::MutexLock lock(&agent_lock_); 
-    std::map<int64_t, TaskInstance>::iterator it; 
+    common::MutexLock lock(&agent_lock_);
+    std::map<int64_t, TaskInstance>::iterator it;
     it = tasks_.find(task_id);
     if (it == tasks_.end()) {
         response->set_status(-1);
@@ -69,8 +69,8 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
 
 void MasterImpl::ListTaskForJob(int64_t job_id,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks) {
-    common::MutexLock lock(&agent_lock_); 
-    
+    common::MutexLock lock(&agent_lock_);
+
     std::map<int64_t, JobInfo>::iterator job_it = jobs_.find(job_id);
     if (job_it != jobs_.end()) {
         JobInfo& job = job_it->second;
@@ -83,7 +83,7 @@ void MasterImpl::ListTaskForJob(int64_t job_id,
             for (; id_it != task_set.end(); ++id_it) {
                 int64_t task_id = *id_it;
                 std::map<int64_t, TaskInstance>::iterator task_it
-                    = tasks_.find(task_id);     
+                    = tasks_.find(task_id);
                 if (task_it != tasks_.end()) {
                     TaskInstance* task = tasks->Add();
                     task->CopyFrom(task_it->second);
@@ -100,20 +100,20 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
     std::map<int64_t, TaskInstance> tmp_task_pair;
     std::map<int64_t, TaskInstance>::iterator it;
     {
-        // @TODO memory copy 
-        common::MutexLock lock(&agent_lock_); 
-        tmp_task_pair = tasks_; 
+        // @TODO memory copy
+        common::MutexLock lock(&agent_lock_);
+        tmp_task_pair = tasks_;
     }
     if (request->has_task_id()) {
         // just list one
-        it = tmp_task_pair.find(request->task_id());     
+        it = tmp_task_pair.find(request->task_id());
         if (it != tmp_task_pair.end()) {
             response->add_tasks()->CopyFrom(it->second);
         }
     } else if (request->has_job_id()) {
         ListTaskForJob(request->job_id(), response->mutable_tasks());
     } else {
-        it = tmp_task_pair.begin(); 
+        it = tmp_task_pair.begin();
         for (; it != tmp_task_pair.end(); ++it) {
             response->add_tasks()->CopyFrom(it->second);
         }
@@ -145,8 +145,8 @@ void MasterImpl::DeadCheck() {
 
     MutexLock lock(&agent_lock_);
     std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
-    
-    while (it != alives_.end() 
+
+    while (it != alives_.end()
            && it->first + FLAGS_agent_keepalive_timeout < now_time) {
         std::set<std::string>::iterator node = it->second.begin();
         while (node != it->second.end()) {
@@ -245,7 +245,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
-    
+
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
@@ -257,7 +257,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
 
         int task_status = request->task_status(i).status();
         instance.set_status(task_status);
-        LOG(INFO, "Task %d status: %s", 
+        LOG(INFO, "Task %d status: %s",
             task_id, TaskState_Name((TaskState)task_status).c_str());
         instance.set_agent_addr(agent_addr);
         LOG(INFO, "%s run task %d %d", agent_addr.c_str(),
@@ -279,7 +279,7 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* controller,
         done->Run();
         return;
     }
-    
+
     JobInfo& job = it->second;
     job.replica_num = 0;
     job.killed = true;
@@ -319,8 +319,10 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.running_num = 0;
     job.scale_down_time = 0;
     job.killed = false;
+    job.cpu_share = request->cpu_share();
+    job.mem_share = request->mem_share();
 
-    response->set_status(0); 
+    response->set_status(0);
     response->set_job_id(job_id);
     done->Run();
 }
@@ -357,6 +359,8 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_task_name(job->job_name);
     rt_request.set_task_raw(job->job_raw);
     rt_request.set_cmd_line(job->cmd_line);
+    rt_request.set_cpu_share(job->cpu_share);
+    rt_request.set_mem_share(job->mem_share);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
@@ -382,17 +386,17 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
 void MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     agent_lock_.AssertHeld();
     if (agent->stub == NULL) {
-    bool ret = rpc_client_->GetStub(agent->addr, &agent->stub); 
+    bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
         assert(ret);
     }
-    KillTaskRequest kill_request; 
+    KillTaskRequest kill_request;
     kill_request.set_task_id(task_id);
     KillTaskResponse kill_response;
     bool ret = rpc_client_->SendRequest(agent->stub, &Agent_Stub::KillTask,
                                         &kill_request, &kill_response, 5, 1);
     if (!ret) {
         LOG(WARNING, "Kill task %ld agent= %s",
-            task_id, agent->addr.c_str()); 
+            task_id, agent->addr.c_str());
     }
 }
 
