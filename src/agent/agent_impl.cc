@@ -24,6 +24,7 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
+    ws_mgr_->Init();
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }
@@ -35,10 +36,6 @@ AgentImpl::~AgentImpl() {
     delete ws_mgr_;
     delete task_mgr_;
 
-}
-
-bool AgentImpl::Init() {
-    return ws_mgr_->Init();
 }
 
 void AgentImpl::Report() {
