@@ -13,13 +13,6 @@ class ValidateException(Exception):
 
 def validate_init_service_group_req(request):
     ret = {}
-    service = models.Service.get_by_name(request.service_name,9527)
-    ret['service'] = service
-    if not service:
-        raise ValidateException("service with id %d does not exist"%request.service_name)
-    default_group = models.TaskGroup.get_default(service.id)
-    if default_group:
-        raise ValidateException("service with id %d has default group"%service.id)
     # package validate logic
     pkg_type_str = request.POST.get("pkgType",None)
     if not pkg_type_str:

@@ -16,3 +16,7 @@ urlpatterns += urls.patterns('',
 urlpatterns += urls.patterns('',
      (r'^taskgroup/', urls.include('console.taskgroup.urls')),
 )
+
+urlpatterns += urls.patterns('',
+     (r'^cluster/', urls.include('console.cluster.urls')),
+)

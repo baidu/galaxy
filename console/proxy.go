@@ -89,5 +89,5 @@ func main() {
 	flag.Parse()
 	proxy, _ := New(*confPath, *defaultHost)
 	http.HandleFunc("/", proxy.Routing)
-	http.ListenAndServe("127.0.0.1:"+*port, nil)
+	http.ListenAndServe("0.0.0.0:"+*port, nil)
 }

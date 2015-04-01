@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <boost/bind.hpp>
-#include "downloader_manager.h"
+#include "agent/downloader_manager.h"
 
 
 int FLAGS_agent_curl_recv_buffer_size = 1024 * 20;
@@ -19,9 +19,9 @@ void Callback(int ret) {
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "./downloader_manager_test uri path"); 
+        fprintf(stderr, "./downloader_manager_test uri path");
         return EXIT_FAILURE;
-    }    
+    }
     char* uri = argv[1];
     char* path = argv[2];
     galaxy::DownloaderManager* manager = galaxy::DownloaderManager::GetInstance();

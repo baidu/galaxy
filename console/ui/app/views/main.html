@@ -4,16 +4,18 @@
   <table class="table service-table">
     <thead>
       <tr>
+        <th>#id</th>
         <th>服务名称</th>
-        <th>创建日期</th>
-        <th>操作</th>
+        <th>运行任务</th>
+        <th>总任务</th>
       </tr>
     </thead>
     <tbody>
       <tr ng-repeat="service in serviceList">
-        <td><a href="/#/service/{{service.name}}">{{service.name}}</a></td>
-        <td>{{service.create_date}}</td>
-        <th><a href="" ng-click="deleteService(service.id)"><span class="glyphicon glyphicon-trash" aria-hidden="true"></span></a></th>
+        <td>{{service.id}}</td>
+        <td>{{service.name}}</td>
+        <td>{{service.task_running_num}}</td>
+        <td>{{service.replicate_num}}</td>
       </tr>
     </tbody>
   </table>  

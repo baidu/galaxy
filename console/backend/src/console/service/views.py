@@ -10,43 +10,48 @@ from django.views.decorators.csrf import csrf_exempt
 from console.service import decorator as service_decorator
 from common import http
 from common import decorator as com_decorator
-from console import models
 from console.service import helper
+from bootstrap import settings
+from galaxy import wrapper
+from console.taskgroup import helper
 LOG = logging.getLogger("console")
-@service_decorator.user_required
 def list_service(request):
     """
     get current user's service list
     """
     builder = http.ResponseBuilder()
-    ret_service_list = []
-    for m_service in  models.Service.get_by_user(request.user_id):
-        ret_service_list.append(helper.service_to_dict(m_service))
-    return builder.ok(data=ret_service_list).build_json()
+    master_addr = request.GET.get('master',None)
+    if not master_addr:
+        return builder.error('master is required').build_json()
+
+    client = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    status,jobs = client.list_jobs()
+    if not status:
+        return builder.error('fail to list jobs').build_json()
+    return builder.ok(data=jobs).build_json()
 
 @csrf_exempt
-@com_decorator.post_required
-@service_decorator.user_required
 def create_service(request):
     """
     create a service
     """
     builder = http.ResponseBuilder()
-    name = request.POST.get("name",None)
-    if not name :
-        return builder.error("name is required").build_json()
-    service = models.Service(name=name,user_id = request.user_id)
-    service.save()
-    if service.id is not None:
+    master_addr = request.GET.get('master',None)
+    if not master_addr:
+        return builder.error('master is required').build_json()
+    galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    try:
+        ret = helper.validate_init_service_group_req(request)
+        LOG.info(ret)
+        status,output = galaxy.create_task(ret['pkg_src'],
+                                           ret['start_cmd'],
+                                           ret['replicate_count'])
+        if not status:
+            return builder.error('fail create task').build_json()
         return builder.ok().build_json()
-    return builder.error("fail to save service %s"%name).build_json()
+    except Exception as e:
+        return builder.error(str(e)).build_json()
 
-@service_decorator.service_id_required
 def delete_service(request):
     builder = http.ResponseBuilder()
-    service = models.Service.get_by_id(request.service_id)
-    if not service:
-        return builder.error("service with id %s does not exist"%request.service_id).build_json()
-    service.is_delete = True
-    service.save()
     return builder.ok().build_json()

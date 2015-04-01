@@ -15,7 +15,8 @@ angular.module('galaxy.ui.ctrl').controller('ServiceCtrl',function($scope,
                                                                    $http,
                                                                    $routeParams,
                                                                    $log,
-                                                                   notify){
+                                                                   notify,
+                                                                   config){
     $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
     $scope.deployTpl = {startCmd:"",serviceName:$routeParams.serviceName,pkgType:0,pkgSrc:"",replicate:0,memoryLimit:100,cpuShare:10};
     $scope.hideInitServForm = true;

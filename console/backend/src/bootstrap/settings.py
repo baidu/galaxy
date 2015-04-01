@@ -96,3 +96,5 @@ LOGGING = {
         },
     },
 }
+GALAXY_MASTER='localhost:8102'
+GALAXY_CLIENT_BIN='/home/users/wangtaize/workspace/ps/se/galaxybk/galaxy_client'

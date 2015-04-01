@@ -8,7 +8,7 @@
  * Controller of the uidemoApp
  */
 angular.module('galaxy.ui.ctrl',[])
-  .controller('HomeCtrl', function ($scope,$modal,$http,$route,notify,$log) {
+  .controller('HomeCtrl', function ($scope,$modal,$http,$route,notify,$log,config) {
      $scope.open = function (size) {
       var modalInstance = $modal.open({
         templateUrl: 'views/createService.html',
@@ -18,7 +18,7 @@ angular.module('galaxy.ui.ctrl',[])
         size: size
       });
     };
-    $http.get("/service/list?user=9527")
+    $http.get("/service/list?user=9527&master="+config.masterAddr)
          .success(function(data){
           if(data.status == 0 ){
                $scope.serviceList = data.data;  
@@ -67,19 +67,21 @@ angular.module('galaxy.ui.ctrl',[])
   });
 
 angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl', 
-                                            function ($scope, $modalInstance,$http,$route,notify) {
+                                            function ($scope, $modalInstance,$http,$route,notify,config) {
 
   $scope.disableBtn=false;
   $scope.alerts = [];
-  $scope.service = {user:"9527",delayMigrateTimeSec:1000,name:"",enableSchedule:false,migrateRetryCount:3,migrateStopThreshold:10,enableNaming:false};
-  $scope.ok = function () {
+  $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
+  $scope.deployTpl = {startCmd:"",pkgType:0,pkgSrc:"",replicate:0,memoryLimit:100,cpuShare:10};
+
+ $scope.ok = function () {
     $scope.alerts = [];
     $scope.disableBtn=true;
     $http(
       {
         method:"POST",
-        url:'/service/create', 
-        data:$scope.service,
+        url:'/service/create?master='+config.masterAddr, 
+        data:$scope.deployTpl,
         headers:{'Content-Type': 'application/x-www-form-urlencoded'},
         transformRequest: function(obj) {
           var str = [];

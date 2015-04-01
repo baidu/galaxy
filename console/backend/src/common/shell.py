@@ -8,8 +8,8 @@ import os
 import subprocess
 import sys
 import time
-
-
+import logging
+LOG = logging.getLogger("console")
 USE_SHELL = sys.platform.startswith("win")
 
 class ShellHelper(object):
@@ -17,7 +17,7 @@ class ShellHelper(object):
     def run_with_retuncode(self, command,
                                 universal_newlines=True,
                                 useshell=USE_SHELL):
-      
+
         try:
             p = subprocess.Popen(command,
                                   stdout=subprocess.PIPE,
@@ -27,6 +27,7 @@ class ShellHelper(object):
             output, errout = p.communicate()
             return p.returncode, output, errout
         except Exception:
+            LOG.exception("fail to exec command  ")
             return -1, None, None
 
     def run_with_realtime_print(self, command,
@@ -54,4 +55,4 @@ class ShellHelper(object):
         except Exception:
             return -1
 
-    
+

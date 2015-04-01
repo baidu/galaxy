@@ -9,7 +9,6 @@ from django.conf import urls
 
 #views
 urlpatterns = urls.patterns("console.taskgroup.views",
-        (r'^init','init_service_group'),
         (r'^status','get_task_status'),
 )
 

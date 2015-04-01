@@ -72,7 +72,7 @@ class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
     //create a new job
-    virtual bool NewJob(const JobDescription& job) = 0;
+    virtual int64_t NewJob(const JobDescription& job) = 0;
     //update job for example update the replicate_count
     virtual bool UpdateJob(const JobDescription& job) = 0;
     //list all jobs in galaxys

@@ -42,7 +42,7 @@ NavTree.prototype._parsePath = function(hash){
 NavTree.prototype._processHomePage = function(self,pathArray){
       var activeParentIndex  = 0;
       if(pathArray.length == 1 ){
-        if(pathArray[0] =="resource"){
+        if(pathArray[0] =="cluster"){
           activeParentIndex = 1;
         }
       }
@@ -57,6 +57,7 @@ NavTree.prototype._cleanHomeSelected = function(){
 }
 NavTree.prototype._markHomeActive = function(index){
   var nodestyle = this.homeNavSetting[index].nodestyle[0];
+
   this.homeNavSetting[index].nodestyle = [nodestyle,'selected'];
 }
 //处理service路径逻辑

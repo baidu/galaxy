@@ -38,25 +38,9 @@ var galaxy = angular.module('galaxy.ui', [
         templateUrl: 'views/main.html',
         controller: 'HomeCtrl'
       })
-      .when('/resource', {
-        templateUrl: 'views/resource.html',
-        controller: 'ResourceCtrl'
-      })
-      .when('/login', {
-        templateUrl: 'views/login.html',
-        controller: 'LoginCtrl'
-      })
-      .when('/service/:serviceName/', {
-        templateUrl: 'views/taskgroup.html',
-        controller: 'ServiceCtrl'
-      })
-      .when('/service/:serviceName/status', {
-        templateUrl: 'views/taskgroup.html',
-        controller: 'ServiceCtrl'
-      })
-      .when('/service/:serviceName/online', {
-        templateUrl: 'views/online.tpl',
-        controller: 'ServiceOnlineCtrl'
+      .when('/cluster', {
+        templateUrl: 'views/cluster.html',
+        controller: 'ClusterCtrl'
       })
       .otherwise({
         redirectTo: '/'
@@ -67,10 +51,12 @@ var galaxy = angular.module('galaxy.ui', [
   }]);
 
   function fetchConfig(){
+    //var masterAddr = prompt("输入galaxy master地址");
+    var masterAddr = 'cp01-rdqa-dev400.cp01.baidu.com:8102';
     var initInjector = angular.injector(["ng"]);
     var $http = initInjector.get("$http");
     return $http.get("/conf/get").then(function(response) {
-            galaxy.constant("config", {config:response.data.data.config,home:response.data.data.home,service:response.data.data.service});
+            galaxy.constant("config", {config:response.data.data.config,masterAddr:masterAddr,home:response.data.data.home,service:response.data.data.service});
         }, function(errorResponse) {
 
      });
