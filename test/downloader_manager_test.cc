@@ -7,8 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <boost/bind.hpp>
-#include "downloader_manager.h"
-
+#include "agent/downloader_manager.h"
 
 int FLAGS_agent_curl_recv_buffer_size = 1024 * 20;
 
