@@ -16,7 +16,10 @@ namespace galaxy{
 
 class WorkspaceManager{
 public:
-    WorkspaceManager(const std::string & root_path):m_root_path(root_path){
+    WorkspaceManager(const std::string & root_path)
+        : m_mutex(NULL), 
+          m_root_path(root_path),
+          m_data_path() {
         m_mutex = new common::Mutex();
     }
     ~WorkspaceManager(){
@@ -32,6 +35,7 @@ public:
             }
         }
     }
+    bool Init();
     //根据task info 创建一个workspace
     int Add(const TaskInfo &task_info);
     int Remove(int64_t  task_info_id);
@@ -40,6 +44,7 @@ private:
     std::map<int64_t, DefaultWorkspace*>  m_workspace_map;
     common::Mutex * m_mutex;
     std::string m_root_path;
+    std::string m_data_path;
 };
 
 }
