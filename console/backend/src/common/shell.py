@@ -19,12 +19,14 @@ class ShellHelper(object):
                                 useshell=USE_SHELL):
 
         try:
+            LOG.info("run command [%s]"%(' '.join(command)))
             p = subprocess.Popen(command,
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE,
                                   shell=useshell,
                                   universal_newlines=universal_newlines)
             output, errout = p.communicate()
+            LOG.info("run command output %s , err %s"%(output,errout))
             return p.returncode, output, errout
         except Exception:
             LOG.exception("fail to exec command  ")

@@ -259,8 +259,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->id = next_agent_id_ ++;
         agent->cpu_share = request->cpu_share();
         agent->mem_share = request->mem_share();
-        agent->cpu_used = 0;
-        agent->mem_used = 0;
+        agent->cpu_used = request->used_cpu_share();
+        agent->mem_used = request->used_mem_share();
         agent->task_num = request->task_status_size();
         agent->stub = NULL;
     } else {

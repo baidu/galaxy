@@ -13,6 +13,10 @@ class ValidateException(Exception):
 
 def validate_init_service_group_req(request):
     ret = {}
+    name = request.POST.get('name',None)
+    if not name:
+        raise ValidateException("name is required")
+    ret['name'] = name
     # package validate logic
     pkg_type_str = request.POST.get("pkgType",None)
     if not pkg_type_str:

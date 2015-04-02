@@ -133,8 +133,8 @@ int CommandTaskRunner::Prepare() {
     // set deploying state
     DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
     downloader_handler->DownloadInThread(
-            uri, 
-            path, 
+            uri,
+            path,
             boost::bind(&CommandTaskRunner::StartAfterDownload, this, _1));
     return 0;
 }
@@ -144,10 +144,10 @@ void CommandTaskRunner::StartAfterDownload(int ret) {
         std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz";
         int status = system(tar_cmd.c_str());
         if (status != 0) {
-            LOG(WARNING, "tar -xf failed"); 
+            LOG(WARNING, "tar -xf failed");
             return;
         }
-        Start();     
+        Start();
     }
     // set deploy failed state
 }
