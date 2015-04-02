@@ -18,7 +18,7 @@
 namespace galaxy {
 
 static int CPU_CFS_PERIOD = 100000;
-static int MIN_CPU_CFS_QUOTA = 1000; 
+static int MIN_CPU_CFS_QUOTA = 1000;
 
 int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_sys_map) {
     if (_support_cg.size() <= 0) {
@@ -36,7 +36,7 @@ int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_
         if (status != 0) {
             if (errno == EEXIST) {
                 // TODO
-                LOG(WARNING, "cgroup already there"); 
+                LOG(WARNING, "cgroup already there");
             } else {
                 LOG(FATAL, "fail to create subsystem %s ,status is %d", ss.str().c_str(), status);
                 return status;
@@ -111,7 +111,7 @@ int MemoryCtrl::SetSoftLimit(int64_t soft_limit) {
 }
 
 
-int CpuCtrl::SetCpuShare(double cpu_share) {
+int CpuCtrl::SetCpuShare(int64_t cpu_share) {
     std::string cpu_share_file = _my_cg_root + "/" + "cpu.shares";
     int ret = common::util::WriteIntToFile(cpu_share_file, cpu_share);
 
@@ -215,7 +215,7 @@ void ContainerTaskRunner::PutToCGroup(){
     //_cpu_ctrl->SetCpuShare(cpu_share);
     int64_t quota = static_cast<int64_t>(cpu_core * CPU_CFS_PERIOD);
     if (quota < MIN_CPU_CFS_QUOTA) {
-        quota = MIN_CPU_CFS_QUOTA;         
+        quota = MIN_CPU_CFS_QUOTA;
     }
     _cpu_ctrl->SetCpuQuota(quota);
     pid_t my_pid = getpid();

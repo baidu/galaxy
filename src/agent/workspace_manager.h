@@ -18,9 +18,9 @@ class WorkspaceManager{
 public:
     WorkspaceManager(const std::string & root_path)
         : m_mutex(NULL),
-          m_root_path(root_path),
-          used_mem_share(0),
           used_cpu_share(0),
+          used_mem_share(0),
+          m_root_path(root_path),
           m_data_path() {
         m_mutex = new common::Mutex();
     }
