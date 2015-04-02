@@ -26,5 +26,6 @@ int main(int argc, char* argv[]) {
 		uint32_t reducer_slot = partition->GetReducerSlot(key.c_str());
 		std::cout << reducer_slot << "\1\1\1" << record << std::endl;
 	}
+	delete partition;
 	return 0;
 }
