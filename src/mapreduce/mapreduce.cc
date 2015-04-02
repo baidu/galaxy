@@ -10,12 +10,17 @@
 
 #include <galaxy.h>
 
+/// MapInput implement
 std::string MapInput::value() const {
-    return data_[idx_++];
+    return data_[idx_];
 }
 
 bool MapInput::done() {
     return idx_ >= data_.size();
+}
+
+void MapInput::NextValue() {
+    ++idx_;
 }
 
 MapInput::MapInput()
@@ -26,15 +31,43 @@ MapInput::MapInput()
     }
 }
 
-std::string ReduceInput::value() {
-    return "";
-}
-bool ReduceInput::done() {
-    return true;
-}
-void ReduceInput::NextValue() {
+/// ReduceInput implement
+ReduceInput::ReduceInput()
+  : key_idx_(0), value_idx_(0) {
+    std::string key;
+    std::string value;
+    std::string last_key = "";
+    int32_t key_num = 0;
+    while (std::cin >> key >> value) {
+        if (key != last_key) {
+            keys_.push_back(key);
+            values_.push_back(std::vector<std::string>());
+            key_num ++;
+            last_key = key;
+        }
+        values_[key_num - 1].push_back(value);
+    }
 }
 
+std::string ReduceInput::key() {
+    return keys_[key_idx_];
+}
+std::string ReduceInput::value() {
+    return values_[key_idx_][value_idx_];
+}
+bool ReduceInput::done() {
+    return value_idx_ >= values_[key_idx_].size();
+}
+void ReduceInput::NextValue() {
+    value_idx_++;
+}
+void ReduceInput::NextKey() {
+    key_idx_++;
+    value_idx_ = 0;
+}
+bool ReduceInput::alldone() {
+    return key_idx_ >= keys_.size();
+}
 
 
 void MapReduceInput::set_format(const std::string& format) {
@@ -80,9 +113,9 @@ void MapReduceSpecification::set_reduce_megabytes(int megabytes) {
 int MapReduceResult::machines_used() { return 0; }
 int MapReduceResult::time_taken() { return 0; } 
 
-bool GalaxyNewJob(const std::string& job_name, const std::string& tarfile,
+int64_t GalaxyNewJob(galaxy::Galaxy* galaxy,
+                  const std::string& job_name, const std::string& tarfile,
                   const std::string& cmd_line, int replica) {
-    galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy("localhost:8102");
     galaxy::JobDescription job;
     galaxy::PackageDescription pkg;
 
@@ -114,6 +147,7 @@ void Mapper::Emit(const std::string& output, int num) {
 }
 
 void Reducer::Emit(const std::string& output) {
+    std::cout << output << std::endl;
 }
 
 Mapper* g_mapper = NULL;
@@ -121,16 +155,21 @@ Reducer* g_reducer = NULL;
 const MapReduceSpecification* g_spec = NULL;
 
 bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
-    std::string map_cmd = 
-        "bfs_client cat /galaxy/src/$task_id.cc | ./mapper | ./shuffle";
+    galaxy::Galaxy* cluster = galaxy::Galaxy::ConnectGalaxy("localhost:8102");
     /// map
-    GalaxyNewJob("mapper", "mapper.tar.gz", map_cmd, spec.machines());
-    /// combine
-
-    /// shuffle
-    system("./shuffle");
+    int64_t mapper_id = 
+        GalaxyNewJob(cluster, "mapper", "mapper.tar.gz", "/mapper.sh", spec.machines());
+    //while(cluster->QueryJob(mapper_id)) {
+        printf(".");
+        sleep(1);
+    //}
     /// reduce
-    GalaxyNewJob("reducer", "reducer.tar.gz", "./reducer", spec.machines());
+    int64_t reducer_id = 
+        GalaxyNewJob(cluster, "reducer", "reducer.tar.gz", "./reducer.sh", spec.machines());
+    //while(cluster->QueryJob(reducer_id)) {
+        printf(".");
+        sleep(1);
+    //}
     return true;
 }
 

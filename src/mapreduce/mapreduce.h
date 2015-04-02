@@ -9,6 +9,7 @@
 
 class MapInput {
 public:
+    void NextValue();
     std::string value() const;
 public:
     MapInput();
@@ -29,6 +30,16 @@ public:
     std::string value();
     bool done();
     void NextValue();
+public:
+    ReduceInput();
+    std::string key();
+    void NextKey();
+    bool alldone();
+private:
+    std::vector<std::string> keys_;
+    std::vector<std::vector<std::string> > values_;
+    mutable uint32_t key_idx_;
+    mutable uint32_t value_idx_;
 };
 
 class Reducer {

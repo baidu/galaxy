@@ -47,14 +47,21 @@ user_sources='sample/wordcount.cc sample/wordcount_main.cc'
 mapred_sources='mapreduce.cc'
 mapred_headers='mapreduce.h'
 mapper_sources='mapper_main.cc sample/wordcount.cc'
+reducer_sources='reducer_main.cc sample/wordcount.cc'
 
 #可执行文件
 Application('word_count',Sources(user_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
 Application('mapper',Sources(mapper_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
+Application('reducer',Sources(reducer_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
 #静态库
 StaticLibrary('mapreduce',Sources(mapred_sources),HeaderFiles(mapred_headers))
 #共享库
 #SharedLibrary('mapreduce',Sources(user_sources),HeaderFiles(user_headers))
 #子目录
 #Directory('demo')
+
+TARGET('tar', Prefixes('reducer', 'mapper'),
+       ShellCommands(
+	       'tar zcvf mapper.tar.gz mapper mapper.sh bfs_client',
+	       'tar zcvf reducer.tar.gz reducer reducer.sh bfs_client'))
 
