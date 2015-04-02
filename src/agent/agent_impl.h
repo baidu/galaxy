@@ -22,8 +22,6 @@ public:
     AgentImpl();
     virtual ~AgentImpl();
 public:
-    bool Init();
-
     void Report();
 
     /// Services

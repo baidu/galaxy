@@ -50,10 +50,6 @@ int main(int argc, char* argv[]) {
 
     galaxy::AgentImpl* agent_service = new galaxy::AgentImpl();
 
-    if (!agent_service->Init()) {
-        exit(1); 
-    }
-
     if (!rpc_server.RegisterService(agent_service)) {
         return EXIT_FAILURE;
     }
