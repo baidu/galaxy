@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <string.h>
 #include <sstream>
 #include <unistd.h>
 #include "common/logging.h"
@@ -30,6 +31,9 @@ int DefaultWorkspace::Create() {
     status = mkdir(m_task_root_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (status == 0) {
         m_has_created = true;
+    } else {
+        LOG(WARNING, "create task root path failed %s err[%d: %s]", 
+                m_task_root_path.c_str(), errno, strerror(errno));
     }
     return status;
 }
