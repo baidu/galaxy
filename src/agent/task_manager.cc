@@ -19,7 +19,7 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         LOG(WARNING, "task with id %d has exist", task_info.task_id());
         return 0;
     }
-    // do download 
+    // do download
 
     TaskRunner* runner = NULL;
     if(FLAGS_container.compare("cgroup") == 0){
@@ -69,8 +69,11 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
     for (; it != m_task_runner_map.end(); ++it) {
         TaskStatus status;
         status.set_task_id(it->first);
-        if(it->second->IsRunning() == 0){
+        int ret = it->second->IsRunning();
+        if(ret == 0){
             status.set_status(RUNNING);
+        }else if(ret == -2){
+            status.set_status(COMPLETE);
         }else{
             if (it->second->ReStart() == 0) {
                 status.set_status(RESTART);

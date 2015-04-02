@@ -7,6 +7,7 @@ enum TaskState {
     KILLED = 3;
     RESTART = 4;
     ERROR = 5;
+    COMPLETE = 6;
 }
 
 message TaskStatus{
