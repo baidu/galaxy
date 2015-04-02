@@ -231,6 +231,23 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 LOG(INFO, "Job %ld [%s] killed", job_id, job.job_name.c_str());
                 jobs_.erase(job_id);
             }
+        }else{
+            TaskInstance& instance = tasks_[task_id];
+            if (instance.status() != COMPLETE) {
+                continue;
+            }
+            int64_t job_id = instance.job_id();
+            assert(jobs_.find(job_id) != jobs_.end());
+            JobInfo& job = jobs_[job_id];
+            job.agent_tasks[agent_addr].erase(task_id);
+            if (job.agent_tasks[agent_addr].empty()) {
+                job.agent_tasks.erase(agent_addr);
+            }
+            job.running_num --;
+            del_tasks.push_back(task_id);
+            tasks_.erase(task_id);
+            job.complete_tasks[agent_addr].insert(task_id);
+            job.replica_num --;
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
@@ -274,6 +291,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
+    std::set<int64_t> complete_tasks;
     for (int i = 0; i < task_num; i++) {
         int64_t task_id = request->task_status(i).task_id();
         running_tasks.insert(task_id);

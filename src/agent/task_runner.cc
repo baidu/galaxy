@@ -37,6 +37,10 @@ int AbstractTaskRunner::IsRunning(){
             return -1;
         }else if(pid == 0){
             LOG(INFO,"process %d is running",m_child_pid);
+
+        }else if(pid == m_child_pid){
+            // child exit
+            return -2;
         }else{
             LOG(WARNING,"process %d has gone",m_child_pid);
             //restart
