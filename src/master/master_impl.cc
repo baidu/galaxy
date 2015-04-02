@@ -62,8 +62,8 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
         node->set_addr(agent.addr);
         node->set_task_num(agent.task_num);
         node->set_cpu_share(agent.cpu_share);
-        node->set_cpu_used(agent.cpu_used);
         node->set_mem_share(agent.mem_share);
+        node->set_cpu_used(agent.cpu_used);
         node->set_mem_used(agent.mem_used);
     }
     done->Run();
@@ -282,8 +282,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->stub = NULL;
     } else {
         agent = &(it->second);
+        agent->cpu_used = request->used_cpu_share();
+        agent->mem_used = request->used_mem_share();
         alives_[agent->alive_timestamp].erase(agent_addr);
         alives_[now_time].insert(agent_addr);
+        LOG(INFO, "cpu_use:%f, mem_use:%d", agent->cpu_used, agent->mem_used);
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);

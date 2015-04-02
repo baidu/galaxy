@@ -70,9 +70,9 @@ class Galaxy(object):
             machine['host'] = parts[1]
             machine['task_num'] = parts[2].split(':')[-1].strip()
             machine['cpu_num'] = parts[3].split(':')[-1].strip()
-            machine['mem'] = parts[4].split(':')[-1].replace('GB','').strip()
-            machine['cpu_used'] = parts[5].split(':')[-1].strip()
-            machine['mem_used'] = parts[6].split(':')[-1].strip()
+            machine['mem'] = parts[5].split(':')[-1].replace('GB','').strip()
+            machine['cpu_used'] = parts[4].split(':')[-1].strip()
+            machine['mem_used'] = parts[6].split(':')[-1].replace('GB','').strip()
             machine_list.append(machine)
         LOG.info(machine_list)
         return True,machine_list

@@ -63,6 +63,11 @@ int DefaultWorkspace::Clean() {
 bool DefaultWorkspace::IsExpire() {
     return false;
 }
+
+TaskInfo DefaultWorkspace::GetTaskInfo() {
+    return m_task_info;
+}
+
 }
 
 

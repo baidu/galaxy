@@ -38,6 +38,7 @@ public:
      *获取一个已经准备好的路径
      * */
     virtual std::string GetPath() = 0 ;
+    virtual TaskInfo GetTaskInfo() = 0;
     virtual ~Workspace(){}
 };
 
@@ -56,6 +57,8 @@ public:
     std::string GetPath();
     ~DefaultWorkspace(){
     }
+    TaskInfo GetTaskInfo();
+
 private:
     void DeployInThread();
 

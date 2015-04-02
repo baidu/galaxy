@@ -128,9 +128,12 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%0.1f\tMEM:%dGB\tCPUUSED:%0.1f\tMEMUSED:%d\n",
-                   it->node_id, it->addr.c_str(),
-                    it->task_num, it->cpu_share, it->mem_share,it->cpu_used,it->mem_used);
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%f\t"
+                    "USED:%f\tMEM:%dGB\tUSED:%dGB\n",
+                    it->node_id, it->addr.c_str(),
+                    it->task_num, it->cpu_share,
+                    it->cpu_used, it->mem_share,
+                    it->mem_used);
         }
     } else if (COMMAND == LISTJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
