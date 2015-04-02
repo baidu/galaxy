@@ -1,30 +1,66 @@
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: yanshiguang02@baidu.com
 
 #include <string>
+#include <vector>
 
 class MapInput {
-	const std::string& value();
+public:
+    void NextValue();
+    std::string value() const;
+public:
+    MapInput();
+    bool done();
+private:
+    std::vector<std::string> data_;
+    mutable uint32_t idx_;
 };
+
 class Mapper {
-	virtual void Map(const MapInput& input) = 0;
-	virtual void Emit(const std::string& output) = 0;
+public:
+    virtual void Map(const MapInput& input) = 0;
+    virtual void Emit(const std::string& output, int num);
 };
 
 class ReduceInput {
-	const std::string& value();
-	bool done();
-	void NextValue();
+public:
+    std::string value();
+    bool done();
+    void NextValue();
+public:
+    ReduceInput();
+    std::string key();
+    void NextKey();
+    bool alldone();
+private:
+    std::vector<std::string> keys_;
+    std::vector<std::vector<std::string> > values_;
+    mutable uint32_t key_idx_;
+    mutable uint32_t value_idx_;
 };
+
 class Reducer {
-	virtual void Emit(const std::string& output) = 0;
+public:
+    virtual void Reduce(ReduceInput* input) = 0;
+    virtual void Emit(const std::string& output);
 };
 
 class MapReduceInput {
+public:
 	void set_format(const std::string& format);
 	void set_filepattern(const std::string& pattern);
 	void set_mapper_class(const std::string& mapper);
+public:
+    std::string get_file() const { return file_;}
+private:
+    std::string file_;
 };
 
 class MapReduceOutput {
+public:
 	void set_filebase(const std::string& filebase);
 	void set_num_tasks(int task_num);
 	void set_format(const std::string& format);
@@ -33,18 +69,48 @@ class MapReduceOutput {
 };
 
 class MapReduceSpecification {
+public:
 	MapReduceInput* add_input();
-	MpaReduceOutput* output();
+	MapReduceOutput* output();
 	void set_machines(int machines);
+	int machines() const;
 	void set_map_megabytes(int megabytes);
 	void set_reduce_megabytes(int megabytes);
+private:
+	int machines_;
+    std::vector<MapReduceInput> inputs_;
+    MapReduceOutput output_;
 };
 
 class MapReduceResult {
+public:
 	int machines_used();
 	int time_taken(); 
 };
 
+extern Mapper* g_mapper;
+#define REGISTER_MAPPER(mapper) \
+    mapper __mapper;    \
+    class Reg##mapper { \
+    public: \
+    Reg##mapper() { \
+        g_mapper = &__mapper; \
+    } \
+    }; \
+    Reg##mapper __regmapper;
+
+extern Reducer* g_reducer;
+#define REGISTER_REDUCER(reducer) \
+    reducer __reducer;    \
+    class Reg##reducer { \
+    public: \
+    Reg##reducer() { \
+        g_reducer = &__reducer; \
+    } \
+    }; \
+    Reg##reducer ____regreducer;
+
 bool MapReduce(const MapReduceSpecification& spec, 
 		       MapReduceResult* result);
 
+/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
