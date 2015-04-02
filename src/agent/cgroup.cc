@@ -16,6 +16,9 @@
 #include "agent/downloader_manager.h"
 namespace galaxy {
 
+static int CPU_CFS_PERIOD = 100000;
+static int MIN_CPU_CFS_QUOTA = 1000; 
+
 int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_sys_map) {
     if (_support_cg.size() <= 0) {
         LOG(WARNING, "no subsystem is support");
@@ -183,12 +186,9 @@ void ContainerTaskRunner::StartAfterDownload(int ret) {
 
 void ContainerTaskRunner::PutToCGroup(){
     int64_t mem_size = m_task_info.required_mem() * (1L << 30);
-    int64_t cpu_share = m_task_info.required_cpu();
+    double cpu_core = m_task_info.required_cpu();
     if (mem_size <= (1L << 30)) {
         mem_size = (1L << 30);
-    }
-    if (cpu_share < 1) {
-        cpu_share = 1;
     }
     /*
     std::string mem_key = "memory";
@@ -205,7 +205,12 @@ void ContainerTaskRunner::PutToCGroup(){
 
     }*/
     _mem_ctrl->SetLimit(mem_size);
-    _cpu_ctrl->SetCpuShare(cpu_share);
+    //_cpu_ctrl->SetCpuShare(cpu_share);
+    int64_t quota = static_cast<int64_t>(cpu_core * CPU_CFS_PERIOD);
+    if (quota < MIN_CPU_CFS_QUOTA) {
+        quota = MIN_CPU_CFS_QUOTA;         
+    }
+    _cpu_ctrl->SetCpuQuota(quota);
     pid_t my_pid = getpid();
     _mem_ctrl->AttachTask(my_pid);
     _cpu_ctrl->AttachTask(my_pid);
