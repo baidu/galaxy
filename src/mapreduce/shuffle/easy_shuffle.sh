@@ -3,7 +3,7 @@ set -o pipefail
 export PS4='[  ${LINENO} - \A - $0 ] '
 
 cur_script=`readlink -f $0`
-cur_dir=`basename $cur_script`
+cur_dir=`dirname $cur_script`
 
 function print_help() {
    echo "usage help:"
@@ -45,7 +45,9 @@ else
     rm -rf $output_dir/*
 fi
 
-./partitioner $reducer_total | awk -F"\1\1\1" -v output_dir=$output_dir '{
+chmod +x ${cur_dir}/partitioner
+
+${cur_dir}/partitioner $reducer_total | awk -F"\1\1\1" -v output_dir=$output_dir '{
 reducer_slot=$1; 
 key_len=length($1)
 file_name=output_dir"/"reducer_slot".tmp"
