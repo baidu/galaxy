@@ -6,10 +6,6 @@
 
 #include "agent_impl.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 #include <boost/bind.hpp>
 #include <errno.h>
 #include <string.h>
@@ -28,6 +24,7 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
+    ws_mgr_->Init();
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }

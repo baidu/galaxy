@@ -5,10 +5,13 @@
 // Author: yuanyi03@baidu.com
 
 #include "downloader_manager.h"
+#include <boost/bind.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 #include "common/asm_atomic.h"
 #include "curl_downloader.h"
+#include "binary_downloader.h"
 
-#include <boost/bind.hpp>
 namespace galaxy {
 
 DownloaderManager::DownloaderManager()
@@ -49,7 +52,14 @@ int DownloaderManager::DownloadInThread(
         boost::function<void (int)> callback) {
     // TODO change id create func
     int cur_id = common::atomic_inc_ret_old(&next_id_);
-    Downloader* downloader = new CurlDownloader();
+    Downloader* downloader = NULL;
+    if (boost::starts_with(uri.c_str(), "ftp://")) {
+        downloader = new CurlDownloader();
+    }
+    else {
+        downloader = new BinaryDownloader(); 
+    }
+    
     {
         common::MutexLock lock(&handler_lock_);
         downloader_handler_[cur_id] = downloader;

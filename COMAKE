@@ -36,7 +36,6 @@ LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
 #依赖模块
 CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('third-64/libcurl@base')
-#CONFIGS('third-64/quicklz@base')
 
 #为32位/64位指定不同的依赖路径.
 #CONFIGS_32('lib2/ullib')
@@ -49,21 +48,21 @@ agent_sources='src/flags.cc\
                src/agent/cgroup.cc\
                src/agent/workspace.cc src/agent/workspace_manager.cc \
                src/agent/agent_impl.cc src/agent/agent_main.cc \
-               src/agent/downloader_manager.cc src/agent/curl_downloader.cc'
+               src/agent/downloader_manager.cc src/agent/curl_downloader.cc \
+               src/agent/binary_downloader.cc'
 
 master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto\
                 common/logging.cc src/master/master_impl.cc src/master/master_main.cc'
-sdk_sources='src/sdk/galaxy.cc src/proto/task.proto src/proto/master.proto'
+sdk_sources='common/logging.cc src/sdk/galaxy.cc src/proto/task.proto src/proto/master.proto'
 sdk_headers='src/sdk/galaxy.h'
-client_sources='common/logging.cc src/client/galaxy_client.cc'
+client_sources='src/client/galaxy_client.cc'
 
 downloader_sources='src/agent/curl_downloader.cc test/curl_downloader_test.cc common/logging.cc'
 downloader_headers='src/agent/curl_downloader.h common/logging.h src/agent/downloader.h'
 
-downloadermgr_sources='src/agent/curl_downloader.cc src/agent/downloader_manager.cc test/downloader_manager_test.cc common/logging.cc'
+downloadermgr_sources='src/agent/curl_downloader.cc src/agent/downloader_manager.cc test/downloader_manager_test.cc common/logging.cc src/agent/binary_downloader.cc'
 downloadermgr_headers='src/agent/curl_downloader.h src/agent/downloader_manager.h common/logging.h src/agent/downloader.h'
 
-#可执行文件
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
 Application('master',Sources(master_sources))
