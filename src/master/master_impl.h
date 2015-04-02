@@ -43,6 +43,7 @@ struct JobInfo {
     double cpu_share;
     int32_t mem_share;
     std::map<std::string, std::set<int64_t> > agent_tasks;
+    std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
 };
 

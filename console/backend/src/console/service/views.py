@@ -43,9 +43,11 @@ def create_service(request):
     try:
         ret = helper.validate_init_service_group_req(request)
         LOG.info(ret)
-        status,output = galaxy.create_task(ret['pkg_src'],
+        status,output = galaxy.create_task(ret['name'],ret['pkg_src'],
                                            ret['start_cmd'],
-                                           ret['replicate_count'])
+                                           ret['replicate_count'],
+                                           ret['memory_limit'],
+                                           ret['cpu_share'])
         if not status:
             return builder.error('fail create task').build_json()
         return builder.ok().build_json()
