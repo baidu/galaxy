@@ -38,36 +38,6 @@ AgentImpl::~AgentImpl() {
 
 }
 
-bool AgentImpl::Init() {
-    const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
-    // clear work_dir and kill tasks
-    std::string dir = FLAGS_agent_work_dir + "/data";
-    if (access(FLAGS_agent_work_dir.c_str(), F_OK) != 0) {
-        if (mkdir(FLAGS_agent_work_dir.c_str(), MKDIR_MODE) != 0) {
-            LOG(WARNING, "mkdir data failed %s err[%d: %s]",
-                    FLAGS_agent_work_dir.c_str(), errno, strerror(errno));
-            return false;
-        }
-    }
-    if (access(dir.c_str(), F_OK) == 0) {
-        std::string rm_cmd = "rm -rf " + dir;
-        if (system(rm_cmd.c_str()) == -1) {
-            LOG(WARNING, "rm data failed cmd %s err[%d: %s]",
-                    rm_cmd.c_str(), errno, strerror(errno));
-            return false;
-        }
-        LOG(INFO, "clear dirty data %s by cmd[%s]", dir.c_str(), rm_cmd.c_str());
-    }
-
-    if (mkdir(dir.c_str(), MKDIR_MODE) != 0) {
-        LOG(WARNING, "mkdir data failed %s err[%d: %s]",
-                dir.c_str(), errno, strerror(errno));
-        return false;
-    }
-    LOG(INFO, "init workdir %s", dir.c_str());
-    return true;
-}
-
 void AgentImpl::Report() {
     HeartBeatRequest request;
     HeartBeatResponse response;
@@ -105,7 +75,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_required_mem(request->mem_share());
 
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
-    LOG(INFO,"cpu_share:%d\tmem_share:%d",
+    LOG(INFO,"cpu_share:%lf\tmem_share:%d",
         task_info.required_cpu(),
         task_info.required_mem());
     int ret = ws_mgr_->Add(task_info);

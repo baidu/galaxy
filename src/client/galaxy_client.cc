@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
         job.cmd_line = argv[5];
         job.replicate_count = atoi(argv[6]);
         job.job_name = argv[3];
-        job.cpu_share = atoi(argv[7]);
+        job.cpu_share = atof(argv[7]);
         job.mem_share = atoi(argv[8]);
         fprintf(stdout,"%lld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%d\tMEM:%dGB\n",
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%lf\tMEM:%dGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share, it->mem_share);
         }
