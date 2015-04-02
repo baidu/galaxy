@@ -49,10 +49,15 @@ mapred_headers='mapreduce.h'
 mapper_sources='mapper_main.cc sample/wordcount.cc'
 reducer_sources='reducer_main.cc sample/wordcount.cc'
 
+partitioner_sources='shuffle/partitioner.cc'
+partitioner_headers='shuffle/partitioner.h'
+
+
 #可执行文件
 Application('word_count',Sources(user_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
 Application('mapper',Sources(mapper_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
 Application('reducer',Sources(reducer_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
+Application('partitioner', Sources(partitioner_sources), HeaderFiles(partitioner_headers))
 #静态库
 StaticLibrary('mapreduce',Sources(mapred_sources),HeaderFiles(mapred_headers))
 #共享库
