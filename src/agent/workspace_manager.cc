@@ -30,6 +30,9 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
         m_workspace_map[task_info.task_id()] = ws;
     }
 
+    used_cpu_share += task_info.required_cpu();
+    used_mem_share += task_info.required_mem();
+    LOG(INFO, "used_cpu : %lf, used_mem : %d", used_cpu_share, used_mem_share);
     return status;
 }
 
@@ -40,13 +43,13 @@ bool WorkspaceManager::Init() {
     m_data_path = dir;
     if (access(m_root_path.c_str(), F_OK) != 0) {
         if (mkdir(m_root_path.c_str(), MKDIR_MODE) != 0) {
-            LOG(WARNING, "mkdir data failed %s err[%d: %s]", 
-                    m_root_path.c_str(), errno, strerror(errno)); 
+            LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                    m_root_path.c_str(), errno, strerror(errno));
             return false;
-        } 
+        }
         if (mkdir(m_data_path.c_str(), MKDIR_MODE) != 0) {
-            LOG(WARNING, "mkdir data failed %s err[%d: %s]", 
-                    m_data_path.c_str(), errno, strerror(errno)); 
+            LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                    m_data_path.c_str(), errno, strerror(errno));
             return false;
         }
         LOG(INFO, "init workdir %s", dir.c_str());
@@ -56,16 +59,16 @@ bool WorkspaceManager::Init() {
     if (access(dir.c_str(), F_OK) == 0) {
         std::string rm_cmd = "rm -rf " + dir;
         if (system(rm_cmd.c_str()) == -1) {
-            LOG(WARNING, "rm data failed cmd %s err[%d: %s]", 
-                    rm_cmd.c_str(), errno, strerror(errno)); 
+            LOG(WARNING, "rm data failed cmd %s err[%d: %s]",
+                    rm_cmd.c_str(), errno, strerror(errno));
             return false;
         }
         LOG(INFO, "clear dirty data %s by cmd[%s]", dir.c_str(), rm_cmd.c_str());
     }
 
     if (mkdir(dir.c_str(), MKDIR_MODE) != 0) {
-        LOG(WARNING, "mkdir data failed %s err[%d: %s]", 
-                dir.c_str(), errno, strerror(errno)); 
+        LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                dir.c_str(), errno, strerror(errno));
         return false;
     }
     LOG(INFO, "init workdir %s", dir.c_str());
@@ -81,6 +84,9 @@ int WorkspaceManager::Remove(int64_t task_info_id) {
     Workspace* ws = m_workspace_map[task_info_id];
 
     if (ws != NULL) {
+        used_cpu_share -= ws->GetTaskInfo().required_cpu();
+        used_mem_share -= ws->GetTaskInfo().required_mem();
+
         int status =  ws->Clean();
         if (status != 0) {
             return status;
@@ -101,6 +107,14 @@ DefaultWorkspace* WorkspaceManager::GetWorkspace(const TaskInfo& task_info) {
 
     return m_workspace_map[task_info.task_id()];
 
+}
+
+double WorkspaceManager::GetUsedCpuShare() {
+    return used_cpu_share;
+}
+
+int32_t WorkspaceManager::GetUsedMemShare() {
+    return used_mem_share;
 }
 }
 
