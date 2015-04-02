@@ -42,7 +42,7 @@ void AgentImpl::Report() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     std::string addr = common::util::GetLocalHostName() + ":" + FLAGS_agent_port;
-    
+
     std::vector<TaskStatus > status_vector;
     task_mgr_->Status(status_vector);
     std::vector<TaskStatus>::iterator it = status_vector.begin();
@@ -71,7 +71,13 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_task_name(request->task_name());
     task_info.set_cmd_line(request->cmd_line());
     task_info.set_task_raw(request->task_raw());
+    task_info.set_required_cpu(request->cpu_share());
+    task_info.set_required_mem(request->mem_share());
+
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
+    LOG(INFO,"cpu_share:%lf\tmem_share:%d",
+        task_info.required_cpu(),
+        task_info.required_mem());
     int ret = ws_mgr_->Add(task_info);
     if (ret != 0 ){
         LOG(FATAL,"fail to prepare workspace ");
