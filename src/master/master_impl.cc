@@ -340,6 +340,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.running_num = 0;
     job.scale_down_time = 0;
     job.killed = false;
+    job.cpu_share = request->cpu_share();
+    job.mem_share = request->mem_share();
 
     response->set_status(0);
     response->set_job_id(job_id);
@@ -378,6 +380,8 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_task_name(job->job_name);
     rt_request.set_task_raw(job->job_raw);
     rt_request.set_cmd_line(job->cmd_line);
+    rt_request.set_cpu_share(job->cpu_share);
+    rt_request.set_mem_share(job->mem_share);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,

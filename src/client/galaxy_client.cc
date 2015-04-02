@@ -8,12 +8,11 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <boost/algorithm/string/predicate.hpp>
 
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
-    fprintf(stderr, "./galaxy_client master_addr add task_raw cmd_line replicate_count\n");
+    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota\n");
     fprintf(stderr, "./galaxy_client master_addr list task_id\n");
     fprintf(stderr, "./galaxy_client master_addr kill task_id\n");
     return;
@@ -38,7 +37,7 @@ int main(int argc, char* argv[]) {
     int COMMAND = 0;
     if (strcmp(argv[2], "add") == 0) {
         COMMAND = ADD;
-        if (argc < 6) {
+        if (argc < 9) {
             help();
             return -1;
         }
@@ -80,10 +79,10 @@ int main(int argc, char* argv[]) {
 
     if (COMMAND == ADD) {
         std::string task_raw;
-        if (!boost::starts_with(argv[3], "ftp://")) {
-            FILE* fp = fopen(argv[3], "r");
+        if (!boost::starts_with(argv[4], "ftp://")) {
+            FILE* fp = fopen(argv[4], "r");
             if (fp == NULL) {
-                fprintf(stderr, "Open %s for read fail\n", argv[3]);
+                fprintf(stderr, "Open %s for read fail\n", argv[4]);
                 return -2;
             }
             char buf[1024];
@@ -95,16 +94,18 @@ int main(int argc, char* argv[]) {
             printf("Task binary len %lu\n", task_raw.size());
         }
         else {
-            task_raw = argv[3];
+            task_raw = argv[4];
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy::JobDescription job;
         galaxy::PackageDescription pkg;
         pkg.source = task_raw;
         job.pkg = pkg;
-        job.cmd_line = argv[4];
-        job.replicate_count = atoi(argv[5]);
+        job.cmd_line = argv[5];
+        job.replicate_count = atoi(argv[6]);
         job.job_name = argv[3];
+        job.cpu_share = atof(argv[7]);
+        job.mem_share = atoi(argv[8]);
         fprintf(stdout,"%lld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
@@ -127,7 +128,7 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%d\tMEM:%dGB\n",
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%lf\tMEM:%dGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share, it->mem_share);
         }
