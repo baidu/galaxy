@@ -8,7 +8,7 @@ message RunTaskRequest {
     optional string task_name = 2;
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
-    optional int32 cpu_share = 5;
+    optional double cpu_share = 5;
     optional int32 mem_share = 6;
 }
 
