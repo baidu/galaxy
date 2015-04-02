@@ -60,7 +60,7 @@ class CpuCtrl:public AbstractCtrl{
 public:
     CpuCtrl(std::string my_cg_root)
     :AbstractCtrl(my_cg_root){}
-    int SetCpuShare(int64_t cpu_share);
+    int SetCpuShare(double cpu_share);
     int SetCpuPeriod(int64_t cpu_period);
     int SetCpuQuota(int64_t cpu_quota);
     ~CpuCtrl(){}

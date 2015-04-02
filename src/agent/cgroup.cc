@@ -102,7 +102,7 @@ int MemoryCtrl::SetSoftLimit(int64_t soft_limit) {
 }
 
 
-int CpuCtrl::SetCpuShare(int64_t cpu_share) {
+int CpuCtrl::SetCpuShare(double cpu_share) {
     std::string cpu_share_file = _my_cg_root + "/" + "cpu.shares";
     int ret = common::util::WriteIntToFile(cpu_share_file, cpu_share);
 
@@ -163,18 +163,18 @@ int ContainerTaskRunner::Prepare() {
 
     DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
     downloader_handler->DownloadInThread(
-            uri, 
-            path, 
+            uri,
+            path,
             boost::bind(&ContainerTaskRunner::StartAfterDownload, this, _1));
     return 0;
 }
 
 void ContainerTaskRunner::StartAfterDownload(int ret) {
     if (ret == 0) {
-        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz"; 
+        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz";
         int status = system(tar_cmd.c_str());
         if (status != 0) {
-            LOG(WARNING, "tar -xf failed"); 
+            LOG(WARNING, "tar -xf failed");
             return;
         }
         Start();
