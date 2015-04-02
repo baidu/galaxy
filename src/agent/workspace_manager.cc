@@ -44,6 +44,11 @@ bool WorkspaceManager::Init() {
                     m_root_path.c_str(), errno, strerror(errno)); 
             return false;
         } 
+        if (mkdir(m_data_path.c_str(), MKDIR_MODE) != 0) {
+            LOG(WARNING, "mkdir data failed %s err[%d: %s]", 
+                    m_data_path.c_str(), errno, strerror(errno)); 
+            return false;
+        }
         LOG(INFO, "init workdir %s", dir.c_str());
         return true;
     }

@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <errno.h>
 #include <boost/bind.hpp>
 #include "common/logging.h"
 #include "common/util.h"
@@ -33,8 +34,13 @@ int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_
         int status = mkdir(ss.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
         if (status != 0) {
-            LOG(FATAL, "fail to create subsystem %s ,status is %d", ss.str().c_str(), status);
-            return status;
+            if (errno == EEXIST) {
+                // TODO
+                LOG(WARNING, "cgroup already there"); 
+            } else {
+                LOG(FATAL, "fail to create subsystem %s ,status is %d", ss.str().c_str(), status);
+                return status;
+            }
         }
 
         sub_sys_map[*it] = ss.str();
@@ -133,10 +139,10 @@ int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
     std::string cpu_quota_file = _my_cg_root + "/" + "cpu.cfs_quota_us";
     int ret = common::util::WriteIntToFile(cpu_quota_file, cpu_quota);
     if (ret < 0) {
-        LOG(FATAL, "fail to set cpu quota  %lld for %s", cpu_quota, _my_cg_root.c_str());
+        LOG(FATAL, "fail to set cpu quota  %ld for %s", cpu_quota, _my_cg_root.c_str());
         return -1;
     }
-
+    LOG(INFO, "set cpu quota %ld for %s", cpu_quota, _my_cg_root.c_str());
     return 0;
 
 }
@@ -187,6 +193,7 @@ void ContainerTaskRunner::StartAfterDownload(int ret) {
 void ContainerTaskRunner::PutToCGroup(){
     int64_t mem_size = m_task_info.required_mem() * (1L << 30);
     double cpu_core = m_task_info.required_cpu();
+    LOG(INFO, "resource limit cpu %f, mem %ld", cpu_core, mem_size);
     if (mem_size <= (1L << 30)) {
         mem_size = (1L << 30);
     }
