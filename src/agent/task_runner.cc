@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <sstream>
 #include <sys/types.h>
 #include <boost/bind.hpp>
 #include "common/logging.h"
@@ -105,7 +106,15 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
          close(fd_vector[i]);
     }
     chdir(m_workspace->GetPath().c_str());
-    execl("/bin/sh", "sh", "-c", m_task_info.cmd_line().c_str(), NULL);
+    char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
+    std::stringstream task_id_env;
+    task_id_env <<"TASK_ID="<<m_task_info.task_offset();
+    std::stringstream task_num_env;
+    task_num_env <<"TASK_NUM="<<m_task_info.job_replicate_num();
+    char *env[] = {const_cast<char*>(task_id_env.str().c_str()),
+                   const_cast<char*>(task_num_env.str().c_str()),
+                   NULL};
+    execve("/bin/sh", argv, env);
     assert(0);
     _exit(127);
 }
