@@ -78,7 +78,8 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_task_raw(request->task_raw());
     task_info.set_required_cpu(request->cpu_share());
     task_info.set_required_mem(request->mem_share());
-
+    task_info.set_task_offset(request->task_offset());
+    task_info.set_job_replicate_num(request->job_replicate_num());
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
     LOG(INFO,"cpu_share:%lf\tmem_share:%d",
         task_info.required_cpu(),

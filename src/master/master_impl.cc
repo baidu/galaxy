@@ -407,6 +407,8 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_cmd_line(job->cmd_line);
     rt_request.set_cpu_share(job->cpu_share);
     rt_request.set_mem_share(job->mem_share);
+    rt_request.set_task_offset(job->running_num);
+    rt_request.set_job_replicate_num(job->replica_num);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
@@ -423,8 +425,9 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
         instance.set_status(DEPLOYING);
+        instance.set_offset(job->running_num);
         job->agent_tasks[agent_addr].insert(task_id);
-        job->running_num++;
+        job->running_num ++;
     }
     return ret;
 }
