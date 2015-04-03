@@ -7,6 +7,7 @@ enum TaskState {
     KILLED = 3;
     RESTART = 4;
     ERROR = 5;
+    COMPLETE = 6;
 }
 
 message TaskStatus{
@@ -22,6 +23,8 @@ message TaskInfo{
     optional double required_cpu = 5;
     optional int64 required_mem = 6;
     optional int32 fail_retry_times = 7;
+    optional int32 task_offset=8;
+    optional int32 job_replicate_num = 9;
 }
 
 

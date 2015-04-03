@@ -1,7 +1,10 @@
 #! /bin/sh
 
-./bfs_client -cat /src/part-$task_id | ./mapper | ./shuffle ./part- $task_num
-for ((i=0;i<$task_num;i++)) do
-	./bfs_client -mkdir /shuffle/$i
-	./bfs_client -put ./part-$i /shuffle/$i/
+echo $TASK_ID
+echo $TASK_NUM
+
+./bfs_client cat /wordcount/src/part-$TASK_ID | ./mapper | ./easy_shuffle.sh -r $TASK_NUM -o ./tmp
+for ((i=0;i < $TASK_NUM;i++)) do
+	./bfs_client mkdir /wordcount/shuffle/$i
+	./bfs_client put ./tmp/$i.tmp /wordcount/shuffle/$i/$TASK_ID
 done;

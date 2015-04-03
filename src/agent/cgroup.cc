@@ -114,7 +114,6 @@ int MemoryCtrl::SetSoftLimit(int64_t soft_limit) {
 int CpuCtrl::SetCpuShare(int64_t cpu_share) {
     std::string cpu_share_file = _my_cg_root + "/" + "cpu.shares";
     int ret = common::util::WriteIntToFile(cpu_share_file, cpu_share);
-
     if (ret < 0) {
         LOG(FATAL, "fail to set cpu share %lld for %s", cpu_share, _my_cg_root.c_str());
         return -1;

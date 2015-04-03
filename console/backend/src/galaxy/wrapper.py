@@ -15,9 +15,9 @@ class Galaxy(object):
         self.master_addr = master_addr
         self.shell_helper = shell.ShellHelper()
         self.bin_path = bin_path
-    def create_task(self,url,cmd_line,replicate_count):
-        add_task_command = [self.bin_path,self.master_addr,'add',url,"'%s'"%str(cmd_line),str(replicate_count)]
-        code,stdout,stderr = self.shell_helper.run_with_retuncode(add_task_command)
+    def create_task(self,name,url,cmd_line,replicate_count,mem_limit,cpu_quota):
+        add_task_command = [self.bin_path,self.master_addr,'add',name,url,"'%s'"%str(cmd_line).strip(),str(replicate_count),str(cpu_quota),str(mem_limit)]
+        code,stdout,stderr = self.shell_helper.run_with_retuncode([" ".join(add_task_command)],useshell=True)
         if code != 0 :
             return False,None
         return True,stdout
@@ -52,22 +52,29 @@ class Galaxy(object):
         list_node_command = [self.bin_path,self.master_addr,'listnode']
         code,stdout,stderr = self.shell_helper.run_with_retuncode(list_node_command)
         if code != 0:
+            stderr = stderr or ""
+            stdout = stdout or ""
+            LOG.error("failt list node for %s"%(stdout+stderr))
             return False,[]
         lines = stdout.splitlines()
+        LOG.info(stdout)
         machine_list = []
         for line in lines:
             if line.startswith('='):
                 continue
             parts = line.split('\t')
-            if len(parts) != 5:
+            if len(parts) != 7:
                 continue
             machine = {}
             machine['id'] = parts[0]
             machine['host'] = parts[1]
-            machine['task_num'] = parts[2].split(':')[-1]
-            machine['cpu_num'] = parts[3].split(':')[-1]
-            machine['mem'] = parts[4].split(':')[-1].replace('GB','')
+            machine['task_num'] = parts[2].split(':')[-1].strip()
+            machine['cpu_num'] = parts[3].split(':')[-1].strip()
+            machine['mem'] = parts[5].split(':')[-1].replace('GB','').strip()
+            machine['cpu_used'] = parts[4].split(':')[-1].strip()
+            machine['mem_used'] = parts[6].split(':')[-1].replace('GB','').strip()
             machine_list.append(machine)
+        LOG.info(machine_list)
         return True,machine_list
     def kill_job(self,job_id):
         kill_job_command = [self.bin_path,self.master_addr,'killjob',str(job_id)]
