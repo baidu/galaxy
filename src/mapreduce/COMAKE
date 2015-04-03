@@ -67,6 +67,6 @@ StaticLibrary('mapreduce',Sources(mapred_sources),HeaderFiles(mapred_headers))
 
 TARGET('tar', Prefixes('reducer', 'mapper'),
        ShellCommands(
-	       'tar zcvf mapper.tar.gz mapper mapper.sh bfs_client ./shuffle/easy_shuffle.sh partitioner',
-	       'tar zcvf reducer.tar.gz reducer reducer.sh bfs_client'))
+	       'tar zcvf mapper.tar.gz mapper mapper.sh bfs_client easy_shuffle.sh partitioner bfs.flag',
+	       'tar zcvf reducer.tar.gz reducer reducer.sh bfs_client bfs.flag'))
 

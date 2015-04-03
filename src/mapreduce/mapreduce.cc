@@ -159,7 +159,7 @@ bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
     std::vector<galaxy::JobInstanceDescription> jobs;
     /// map
     int64_t mapper_id = 
-        GalaxyNewJob(cluster, "mapper", "mapper.tar.gz", "/mapper.sh", spec.machines());
+        GalaxyNewJob(cluster, "mapper", "mapper.tar.gz", "./mapper.sh", spec.machines());
     bool done = false;
     while(!done) {
         cluster->ListJob(&jobs);
@@ -173,11 +173,13 @@ bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
         fprintf(stderr, ".");
         sleep(1);
     }
+    fprintf(stderr, "Mapper done\n");
     /// reduce
     int64_t reducer_id = 
         GalaxyNewJob(cluster, "reducer", "reducer.tar.gz", "./reducer.sh", spec.machines());
     done = false;
     while(!done) {
+        cluster->ListJob(&jobs);
         for (uint32_t i = 0; i < jobs.size(); i++) {
             if (jobs[i].job_id == reducer_id && jobs[i].replicate_count == 0) {
                 done = true;
@@ -185,6 +187,7 @@ bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
             }
         }
     }
+    fprintf(stderr, "Reducer done\n");
     return true;
 }
 

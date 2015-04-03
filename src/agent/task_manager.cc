@@ -46,7 +46,7 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
 }
 
 int TaskManager::Remove(const int64_t& task_info_id) {
-    MutexLock lock(m_mutex);
+    m_mutex->AssertHeld();
     if (m_task_runner_map.find(task_info_id) == m_task_runner_map.end()) {
         LOG(WARNING, "task with id %d does not exist", task_info_id);
         return 0;
@@ -67,6 +67,7 @@ int TaskManager::Remove(const int64_t& task_info_id) {
 int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
     MutexLock lock(m_mutex);
     std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
+    std::vector<int64_t> dels;
     for (; it != m_task_runner_map.end(); ++it) {
         TaskStatus status;
         status.set_task_id(it->first);
@@ -75,7 +76,7 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
             status.set_status(RUNNING);
         }else if(ret == 1){
             status.set_status(COMPLETE);
-            Remove(it->first);
+            dels.push_back(it->first);
         }else{
             if (it->second->ReStart() == 0) {
                 status.set_status(RESTART);
@@ -89,6 +90,9 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
         }
 
         task_status_vector.push_back(status);
+    }
+    for (uint32_t i = 0; i < dels.size(); i++) {
+        Remove(dels[i]);
     }
     return 0;
 }
