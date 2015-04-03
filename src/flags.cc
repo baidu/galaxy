@@ -5,6 +5,8 @@
 // Author: yanshiguang02@baidu.com
 
 #include <string>
+#include <stdint.h>
+
 std::string FLAGS_master_port = "8101";
 std::string FLAGS_agent_port = "8102";
 std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
