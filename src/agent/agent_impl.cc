@@ -15,7 +15,7 @@
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_agent_work_dir;
-extern int FLAGS_cpu_num;
+extern double FLAGS_cpu_num;
 extern int FLAGS_mem_gbytes;
 
 namespace galaxy {
