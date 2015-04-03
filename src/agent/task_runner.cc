@@ -33,20 +33,26 @@ int AbstractTaskRunner::IsRunning(){
     if(ret == 0 ){
         //check process status
         pid_t pid = waitpid(m_child_pid,&ret,WNOHANG);
-        if(pid == -1){
-            LOG(WARNING,"check process %d state error",m_child_pid);
-            return -1;
-        }else if(pid == 0){
+        if(pid == 0 ){
             LOG(INFO,"process %d is running",m_child_pid);
-
-        }else if(pid == m_child_pid){
-            // child exit
-            return -2;
-        }else{
-            LOG(WARNING,"process %d has gone",m_child_pid);
-            //restart
+            return 0;
+        }else if(pid == -1){
+            LOG(WARNING,"fail to check process %d state",m_child_pid);
             return -1;
         }
+        else{
+            if(WIFEXITED(ret)){
+                int exit_code = WEXITSTATUS(ret);
+                if(exit_code == 0 ){
+                    //normal exit
+                    LOG(INFO,"process %d exits successfully",m_child_pid);
+                    return 1;
+                }
+                LOG(FATAL,"process %d exits with err code %d", exit_code);
+            }
+            return -1;
+        }
+
     }
     LOG(INFO, "check task %d error[%d:%s] ",
             m_task_info.task_id(),
