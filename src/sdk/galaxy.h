@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 namespace galaxy {
-//
+
 //
 enum PackageTypeEnum{
     FTP_TYPE = 0,
