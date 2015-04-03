@@ -130,8 +130,8 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%2f\t"
-                    "USED:%2f\tMEM:%dGB\tUSED:%dGB\n",
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%0.2f\t"
+                    "USED:%0.2f\tMEM:%dGB\tUSED:%dGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share,
                     it->cpu_used, it->mem_share/BYTES,
