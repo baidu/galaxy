@@ -65,6 +65,7 @@ int TaskManager::Remove(const int64_t& task_info_id) {
 }
 
 int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
+    MutexLock lock(m_mutex);
     std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
     for (; it != m_task_runner_map.end(); ++it) {
         TaskStatus status;
