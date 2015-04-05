@@ -1,0 +1,60 @@
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: yuanyi03@baidu.com
+
+#ifndef _RESOURCE_COLLECTOR_H
+#define _RESOURCE_COLLECTOR_H
+
+#include "proto/task.pb.h"
+#include "agent/cgroup.h"
+#include "common/thread_pool.h"
+
+namespace galaxy {
+
+
+class ResourceCollector;
+
+class ResourceCollectorEngine {
+public:
+    explicit ResourceStatistics(int interval) 
+        : collector_thread_(NULL),
+          collect_interval_(interval) {
+        collector_thread_ = new ThreadPool(1); 
+    }   
+
+    virtual ResourceStatistics() {
+        delete collector_thread_; 
+    }
+
+    void AddCollector(ResourceCollector* collector)
+protected:
+    common::ThreadPool* collector_thread_;
+    int collect_interval_;
+};
+
+class ResourceCollector {
+protected: 
+    friend class ResourceCollectorEngine;
+    virtual bool CollectStatistics() = 0;
+};
+
+class CGroupResourceCollectorImpl;
+class CGroupResourceCollector : public ResourceCollector {
+public:
+    double GetCpuUsage();   
+    long GetMemoryUsage();
+protected:
+    virtual bool CollectStatistics();
+private:
+    CGroupResourceCollectorImpl impl_;
+};
+
+};
+
+}   // ending namespace galaxy
+
+#endif  //_RESOURCE_COLLECTOR_H
+
+/* vim: set ts=4 sw=4 sts=4 tw=100 */
