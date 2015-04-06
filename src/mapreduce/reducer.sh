@@ -1,11 +1,14 @@
 #! /bin/sh
 
-for((i=0;i<$task_num;i++)) do
-	mkdir -p ./tmp/
-	./bfs_client -get /shuffle/$task_id/part-$i ./tmp/$i
+echo $TASK_ID
+echo $TASK_NUM
+mkdir -p ./tmp/
+rm -rf ./tmp/*
+for((i=0;i < $TASK_NUM; i++)) do
+	./bfs_client get /wordcount/shuffle/$TASK_ID/$i ./tmp/$i
 done;
 
-cat ./tmp/* | ./reducer > ./result
+cat ./tmp/* | sort | ./reducer > ./result
 
-./bfs_client -put ./result /result/part-$task_id
+./bfs_client put ./result /wordcount/result/part-$TASK_ID
 

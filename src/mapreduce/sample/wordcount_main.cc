@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     
     // Tuning parameters: use at most 2000
     // machines and 100 MB of memory per task
-    spec.set_machines(2);
+    spec.set_machines(13);
     spec.set_map_megabytes(100);
     spec.set_reduce_megabytes(100);
     
