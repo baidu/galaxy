@@ -84,12 +84,12 @@ def get_task_status(request):
     galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
     tasklist = []
     if id :
-        status,tasklist = galaxy.get_task_status(id)
+        status,tasklist = galaxy.list_task_by_job_id(id)
         if not status:
             return builder.error("fail to get task list")\
                       .build_json()
     if agent:
-        status,tasklist = galaxy.list_task_by_agent(agent)
+        status,tasklist = galaxy.list_task_by_host(agent)
         if not status:
             return builder.error("fail to get task list")\
                       .build_json()

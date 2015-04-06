@@ -26,9 +26,13 @@ def list_service(request):
 
     client = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
     status,jobs = client.list_jobs()
+    LOG.info(status)
     if not status:
         return builder.error('fail to list jobs').build_json()
-    return builder.ok(data=jobs).build_json()
+    ret = []
+    for job in jobs:
+        ret.append(job.__dict__)
+    return builder.ok(data=ret).build_json()
 
 @csrf_exempt
 def create_service(request):
@@ -64,11 +68,8 @@ def kill_service(request):
         return builder.error('master is required').build_json()
 
     galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
-    status = galaxy.kill_job(id)
-    if status:
-        return builder.ok().build_json()
-    else:
-        return builder.error('fail to kill job').build_json()
+    galaxy.kill_job(int(id))
+    return builder.ok().build_json()
 
 def update_service(request):
     builder = http.ResponseBuilder()
