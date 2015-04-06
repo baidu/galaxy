@@ -121,7 +121,6 @@ bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
         node_desc.addr = node.addr();
         node_desc.node_id = node.node_id();
         node_desc.task_num = node.task_num();
-        fprintf(stdout,"%0.2f",node.cpu_share());
         node_desc.cpu_share = node.cpu_share();
         node_desc.mem_share = node.mem_share();
         node_desc.cpu_used = node.cpu_used();
