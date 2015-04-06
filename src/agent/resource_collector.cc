@@ -54,17 +54,25 @@ struct CgroupResourceStatistics {
 
     // cpu_cores from cfs_quota_usota_us
     double cpu_cores_limit;
+
+    long memory_rss_in_bytes;
 };
 
 // get cpu usage from /cgroups/cpuacct/xxxxx/cpuacct.stat
-// get cpu limit cores from /cgroups/cpu/xxxxx/cpu.cfs_quota_usota_us and cpu.cfs_
 static bool GetCgroupCpuUsage(
                 const std::string& group_path, 
                 CgroupResourceStatistics* statistics);
 
+// get memory usage from /cgroups/memory/xxxxx/memory.stat
+static bool GetCgroupMemoryUsage(
+        const std::string& group_path,
+        CgroupResourceStatistics* statistics);
+
 // get total cpu usage from /proc/stat
 static bool GetGlobalCpuUsage(ResourceStatistics* statistics);
 
+
+// get cpu limit cores from /cgroups/cpu/xxxxx/cpu.cfs_quota_usota_us and cpu.cfs_
 static bool GetCgroupCpuCoresLimit(
         const std::string& group_path, 
         CgroupResourceStatistics* statistics);
@@ -89,7 +97,9 @@ public:
 
     double GetCpuUsage();
 
-    long GetMemoryUsage() {return 0;}
+    long GetMemoryUsage() {
+        return cgroup_statistics_cur_.memory_rss_in_bytes;
+    }
 private:
     std::string cgroup_name_;
     // global resource statistics
@@ -175,6 +185,11 @@ bool CGroupResourceCollectorImpl::CollectStatistics() {
     }
 
     if (!GetCgroupCpuCoresLimit(cgroup_name_, 
+                &cgroup_statistics_cur_)) {
+        return false; 
+    }
+
+    if (!GetCgroupMemoryUsage(cgroup_name_,
                 &cgroup_statistics_cur_)) {
         return false; 
     }
@@ -375,7 +390,41 @@ bool GetCgroupCpuCoresLimit(
     return true;
 }
 
+bool GetCgroupMemoryUsage(const std::string& group_path,
+        CgroupResourceStatistics* statistics) {
+    std::string memory_path = CGROUP_MOUNT_PATH 
+        + "/memory/" + group_path + "/memory.stat";
+    FILE* fin = fopen(memory_path.c_str(), "r");
+    if (fin == NULL) {
+        LOG(WARNING, "open %s failed", memory_path.c_str());
+        return false;
+    } 
 
+    ssize_t read;
+    char* line = NULL;
+    size_t len = 0;
+
+    // escape first line for cache usage
+    if ((read = getline(&line, &len, fin)) == -1) {
+        LOG(WARNING, "read line failed err[%d: %s]", errno, strerror(errno));
+        return false;
+    }
+
+    fclose(fin);
+    SAFE_FREE(line);
+    if ((read = getline(&line, &len, fin)) == -1) {
+        LOG(WARNING, "read line failed err[%d: %s]", errno, strerror(errno));
+        return false;
+    }
+
+    int item_size = sscanf(line, "%ld", &(statistics->memory_rss_in_bytes));
+    SAFE_FREE(line);
+    if (item_size != 1) {
+        LOG(WARNING, "read from %s format err", memory_path.c_str());  
+        return false;
+    }
+    return true;
+}
 
 }   // ending namespace galaxy
 
