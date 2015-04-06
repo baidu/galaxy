@@ -10,6 +10,7 @@
 #include "agent/cgroup.h"
 
 extern std::string FLAGS_container;
+extern std::string FLAGS_cgroup_root;
 namespace galaxy {
 int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
                      DefaultWorkspace *  workspace) {
@@ -24,7 +25,7 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
     TaskRunner* runner = NULL;
     if(FLAGS_container.compare("cgroup") == 0){
         LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
-        runner = new ContainerTaskRunner(task_info,"/cgroup", workspace);
+        runner = new ContainerTaskRunner(task_info,FLAGS_cgroup_root, workspace);
     }else{
         LOG(INFO,"use command task runner for task %d",task_info.task_id());
         runner = new CommandTaskRunner(task_info,workspace);
@@ -65,6 +66,7 @@ int TaskManager::Remove(const int64_t& task_info_id) {
 }
 
 int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
+
     std::vector<int64_t> dels;
     {
         MutexLock lock(m_mutex);
