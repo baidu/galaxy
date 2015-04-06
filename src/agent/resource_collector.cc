@@ -16,10 +16,20 @@
 
 namespace galaxy {
 
+#define SAFE_FREE(x) \
+    do { \
+        if (x != NULL) {\
+            free(x); \
+            x = NULL; \
+        } \
+    } while(0)
+
+
 const std::string CGROUP_MOUNT_PATH = "/cgroups/";
-const std::string CPUACT_SUBSYSTEM_PATH = "cpuact";
+const std::string CPUACT_SUBSYSTEM_PATH = "cpuacct";
 
 static long SYS_TIMER_HZ = sysconf(_SC_CLK_TCK);
+static long CPU_CORES = sysconf(_SC_NPROCESSORS_CONF);
 
 // unit jiffies
 struct ResourceStatistics {
@@ -37,30 +47,37 @@ struct ResourceStatistics {
     long cpu_cores;
 };
 
-// unit ns
+// unit jiffies
 struct CgroupResourceStatistics {
     long cpu_user_time;
     long cpu_system_time;
+
+    // cpu_cores from cfs_quota_usota_us
+    double cpu_cores_limit;
 };
 
 // get cpu usage from /cgroups/cpuacct/xxxxx/cpuacct.stat
-bool GetCgroupCpuUsage(
+// get cpu limit cores from /cgroups/cpu/xxxxx/cpu.cfs_quota_usota_us and cpu.cfs_
+static bool GetCgroupCpuUsage(
+                const std::string& group_path, 
+                CgroupResourceStatistics* statistics);
+
+// get total cpu usage from /proc/stat
+static bool GetGlobalCpuUsage(ResourceStatistics* statistics);
+
+static bool GetCgroupCpuCoresLimit(
         const std::string& group_path, 
         CgroupResourceStatistics* statistics);
 
-// get total cpu usage from /proc/stat
-bool GetGlobalCpuUsage(ResourceStatistics* statistics);
-
-// get limit cores num from /cgroups/cpu/xxxxx/cpu.cfs_quota_us
-bool GetCgroupCpuCores(
-        const std::string& group_path,
-        double* cpu_cores);
-
 class CGroupResourceCollectorImpl {
 public:
-    CGroupResourceCollectorImpl() 
-        : statistics_prev_(), 
-          statistics_cur_(),
+    CGroupResourceCollectorImpl() {}
+    explicit CGroupResourceCollectorImpl(const std::string& cgroup_name) 
+        : cgroup_name_(cgroup_name),
+          global_statistics_prev_(), 
+          global_statistics_cur_(),
+          cgroup_statistics_prev_(),
+          cgroup_statistics_cur_(),
           timestamp_prev_(0.0),
           timestamp_cur_(0.0),
           mutex_() {
@@ -72,8 +89,9 @@ public:
 
     double GetCpuUsage();
 
-    long GetMemoryUsage();
+    long GetMemoryUsage() {return 0;}
 private:
+    std::string cgroup_name_;
     // global resource statistics
     ResourceStatistics global_statistics_prev_;
     ResourceStatistics global_statistics_cur_;
@@ -117,18 +135,38 @@ double CGroupResourceCollectorImpl::GetCpuUsage() {
         + global_statistics_cur_.cpu_stealstolen
         + global_statistics_cur_.cpu_guest;
 
+    long cgroup_cpu_before = cgroup_statistics_prev_.cpu_user_time
+        + cgroup_statistics_prev_.cpu_system_time;
+    long cgroup_cpu_after = cgroup_statistics_cur_.cpu_user_time
+        + cgroup_statistics_cur_.cpu_system_time;
+
+    double radio = cgroup_statistics_cur_.cpu_cores_limit / global_statistics_cur_.cpu_cores;
+    LOG(DEBUG, "radio = limit(%f) / cores(%ld)",
+            cgroup_statistics_cur_.cpu_cores_limit,
+            global_statistics_cur_.cpu_cores);
+
+    double rs = (cgroup_cpu_after - cgroup_cpu_before) / (double)(global_cpu_after - global_cpu_before) ; 
+    rs /= radio;
+    LOG(DEBUG, "p prev :%ld p post:%ld g pre:%ld g post:%ld radir:%f rs:%f", 
+            cgroup_cpu_before, 
+            cgroup_cpu_after,
+            global_cpu_before,
+            global_cpu_after,
+            radio,
+            rs);
+    return rs;
 }
 
 bool CGroupResourceCollectorImpl::CollectStatistics() {
     common::MutexLock lock(&mutex_);
-    collector_times_ ++;
     global_statistics_prev_ = global_statistics_cur_;
     cgroup_statistics_prev_ = cgroup_statistics_cur_;
     timestamp_prev_ = timestamp_cur_;
 
     timestamp_cur_ = time(NULL);
 
-    if (!GetCgroupCpuUsage(&cgroup_statistics_cur_)) {
+    if (!GetCgroupCpuUsage(cgroup_name_, 
+                &cgroup_statistics_cur_)) {
         return false; 
     }
 
@@ -136,21 +174,36 @@ bool CGroupResourceCollectorImpl::CollectStatistics() {
         return false; 
     }
 
+    if (!GetCgroupCpuCoresLimit(cgroup_name_, 
+                &cgroup_statistics_cur_)) {
+        return false; 
+    }
+
+    collector_times_ ++;
     return true;
 }
 
 // ----------- CGroupResourceCollector implement -----
 
-bool CGroupResourceCollector::CollectStatistics() {
-    return impl_.CollectStatistics();
+CGroupResourceCollector::CGroupResourceCollector(
+        const std::string& cgroup_name) : impl_(NULL) {
+    impl_ = new CGroupResourceCollectorImpl(cgroup_name);
 }
 
-double CGroupResourceCollector::GetCgroupCpuUsage() {
-    return impl_.GetCpuUsage();
+bool CGroupResourceCollector::CollectStatistics() {
+    return impl_->CollectStatistics();
+}
+
+double CGroupResourceCollector::GetCpuUsage() {
+    return impl_->GetCpuUsage();
 }
 
 long CGroupResourceCollector::GetMemoryUsage() {
-    return impl_.GetMemoryUsage();
+    return impl_->GetMemoryUsage();
+}
+
+CGroupResourceCollector::~CGroupResourceCollector() {
+    delete impl_;
 }
 
 // -----------  resource collector utils -------------
@@ -161,7 +214,8 @@ bool GetCgroupCpuUsage(
     if (statistics == NULL) {
         return false; 
     }
-    std::string path = group_path + "/cpuacct.stat";
+    std::string path = CGROUP_MOUNT_PATH + "/" 
+        + CPUACT_SUBSYSTEM_PATH + "/" + group_path + "/cpuacct.stat";
     FILE* fin = fopen(path.c_str(), "r");
     if (fin == NULL) {
         LOG(WARNING, "open %s failed", path.c_str());
@@ -183,7 +237,7 @@ bool GetCgroupCpuUsage(
     char cpu_tmp_char[20];
     int item_size = sscanf(line, "%s %ld", 
             cpu_tmp_char, &(statistics->cpu_user_time));
-    free(line);
+    SAFE_FREE(line);
 
     if (item_size != 2) {
         LOG(WARNING, "read from %s format err", path.c_str()); 
@@ -199,9 +253,9 @@ bool GetCgroupCpuUsage(
         return false;
     }
 
-    item_size = sscan(line, "%s %ld",
+    item_size = sscanf(line, "%s %ld",
             cpu_tmp_char, &(statistics->cpu_system_time));
-    free(line);
+    SAFE_FREE(line);
 
     if (item_size != 2) {
         LOG(WARNING, "read from %s format err", path.c_str()); 
@@ -217,6 +271,8 @@ bool GetGlobalCpuUsage(ResourceStatistics* statistics) {
     if (statistics == NULL) {
         return false; 
     }
+
+    statistics->cpu_cores = CPU_CORES;
     std::string path = "/proc/stat";
     FILE* fin = fopen(path.c_str(), "r");
     if (fin == NULL) {
@@ -249,13 +305,76 @@ bool GetGlobalCpuUsage(ResourceStatistics* statistics) {
                            &(statistics->cpu_stealstolen),
                            &(statistics->cpu_guest)); 
 
-    free(line);
+    SAFE_FREE(line);
     if (item_size != 10) {
         LOG(WARNING, "read from /proc/stat format err"); 
         return false;
     }
     return true;
 }
+
+bool GetCgroupCpuCoresLimit(
+        const std::string& group_path,
+        CgroupResourceStatistics* statistics) {
+    std::string period_path = CGROUP_MOUNT_PATH 
+        + "/cpu/" + group_path + "/cpu.cfs_period_us";
+    std::string quota_path = CGROUP_MOUNT_PATH
+        + "/cpu/" + group_path + "/cpu.cfs_quota_us";
+
+    FILE* fin = fopen(period_path.c_str(), "r");
+    if (fin == NULL) {
+        LOG(WARNING, "open %s failed", period_path.c_str());
+        return false;
+    }
+
+    ssize_t read;
+    size_t len = 0;
+    char* line = NULL;
+
+    if ((read = getline(&line, &len, fin)) == -1) {
+        LOG(WARNING, "read line failed err[%d: %s]", errno, strerror(errno));
+        fclose(fin);
+        return false;
+    }
+    fclose(fin);
+
+    long period_time = 0;
+    int item_size = sscanf(line, "%ld", &period_time);
+    SAFE_FREE(line);
+    if (item_size != 1) {
+        LOG(WARNING, "read from %s format err", period_path.c_str());
+        return false;
+    }
+
+    fin = fopen(quota_path.c_str(), "r");
+    if (fin == NULL) {
+        LOG(WARNING, "open %s failed", quota_path.c_str()); 
+        return false;
+    }
+
+    line = NULL;
+    len = 0;
+    if ((read = getline(&line, &len, fin)) == -1) {
+        LOG(WARNING, "read line failed err[%d: %s]", errno, strerror(errno)); 
+        fclose(fin);
+        return false;
+    }
+    fclose(fin);
+
+    long quota_value = 0;
+    item_size = sscanf(line, "%ld", &quota_value);
+    SAFE_FREE(line);
+    if (item_size != 1) {
+        LOG(WARNING, "read from %s format err", quota_path.c_str());
+        return false;
+    }
+    LOG(DEBUG, "cpu cores limit : quota(%ld), period(%ld)",
+            quota_value, 
+            period_time);
+    statistics->cpu_cores_limit = quota_value * 1.0 / period_time;
+    return true;
+}
+
 
 
 }   // ending namespace galaxy

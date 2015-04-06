@@ -9,30 +9,8 @@
 
 #include "proto/task.pb.h"
 #include "agent/cgroup.h"
-#include "common/thread_pool.h"
 
 namespace galaxy {
-
-
-class ResourceCollector;
-
-class ResourceCollectorEngine {
-public:
-    explicit ResourceStatistics(int interval) 
-        : collector_thread_(NULL),
-          collect_interval_(interval) {
-        collector_thread_ = new ThreadPool(1); 
-    }   
-
-    virtual ResourceStatistics() {
-        delete collector_thread_; 
-    }
-
-    void AddCollector(ResourceCollector* collector)
-protected:
-    common::ThreadPool* collector_thread_;
-    int collect_interval_;
-};
 
 class ResourceCollector {
 protected: 
@@ -43,14 +21,15 @@ protected:
 class CGroupResourceCollectorImpl;
 class CGroupResourceCollector : public ResourceCollector {
 public:
+    explicit CGroupResourceCollector(const std::string& cgroup_name);
+    virtual ~CGroupResourceCollector();
     double GetCpuUsage();   
     long GetMemoryUsage();
 protected:
     virtual bool CollectStatistics();
 private:
-    CGroupResourceCollectorImpl impl_;
-};
-
+    CGroupResourceCollectorImpl* impl_;
+    std::string cgroup_name_;
 };
 
 }   // ending namespace galaxy
