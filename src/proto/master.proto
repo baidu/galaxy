@@ -4,6 +4,7 @@ package galaxy;
 import "task.proto";
 
 option cc_generic_services = true;
+option py_generic_services = true;
 
 enum MasterCommandType {
     HEART_BEAT = 0;
