@@ -10,26 +10,23 @@ def fetch(ftp):
         api.run('wget %s'%ftp)
         api.run('tar -zxvf galaxy.tar.gz')
 
-def stop():
-    with api.cd("/home/galaxy/agent"):
-        api.run('sh ./bin/stop-agent.sh')
+def stop(port):
+    with api.cd("/home/galaxy/agent/galaxy"):
+        api.run('sh ./bin/stop-agent.sh %s'%port)
 
 
-def start(port,master):
+def start(port,master,mem=128,cpu=64):
     with api.cd('/home/galaxy/agent/galaxy'):
-        api.run('sh ./bin/start-agent.sh %s %s'%(master,port))
+        api.run('sh ./bin/start-agent.sh %s %s %s %s '%(master,port,mem,cpu))
 
-
-def migrate(ftp,port,master):
-    stop()
+def migrate(ftp,port,master,mem=128,cpu=64):
+    stop(port)
     fetch(ftp)
-    with api.cd('/home/galaxy/agent'):
-         api.run('tar -zxvf galaxy.tar.gz')
-    start(port,master)
+    start(port,master,mem=mem,cpu=cpu)
 
-def first(ftp,port,master):
+def first(ftp,port,master,mem=128,cpu=64):
     fetch(ftp)
-    start(port,master)
+    start(port,master,mem=mem,cpu=cpu)
 
 def fixlib():
     with api.cd("/usr/lib64"):

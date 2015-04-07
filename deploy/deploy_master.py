@@ -10,9 +10,9 @@ def fetch(ftp):
         api.run('wget %s'%ftp)
         api.run('tar -zxvf galaxy.tar.gz')
 
-def stop():
+def stop(port):
     with api.cd('/home/galaxy/master/galaxy'):
-        api.run('sh ./bin/stop-master.sh')
+        api.run('sh ./bin/stop-master.sh %s'%port)
 
 
 def start(port):
