@@ -190,12 +190,9 @@ void ContainerTaskRunner::StartAfterDownload(int ret) {
 }
 
 void ContainerTaskRunner::PutToCGroup(){
-    int64_t mem_size = m_task_info.required_mem() * (1L << 30);
+    int64_t mem_size = m_task_info.required_mem();
     double cpu_core = m_task_info.required_cpu();
     LOG(INFO, "resource limit cpu %f, mem %ld", cpu_core, mem_size);
-    if (mem_size <= (1L << 30)) {
-        mem_size = (1L << 30);
-    }
     /*
     std::string mem_key = "memory";
     std::string cpu_key = "cpu";
