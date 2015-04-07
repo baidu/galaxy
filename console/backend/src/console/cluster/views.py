@@ -9,6 +9,14 @@
 from bootstrap import settings
 from common import http
 from galaxy import wrapper
+SHOW_G_BYTES_LIMIT = 1024 * 1024 * 1024
+
+def str_pretty(total_bytes):
+    if total_bytes < SHOW_G_BYTES_LIMIT:
+        return "%sM"%(total_bytes/(1024*1024))
+    return "%sG"%(total_bytes/(1024*1024*1024))
+
+
 def get_status(req):
     builder = http.ResponseBuilder()
     master_addr = req.GET.get('master',None)
@@ -31,14 +39,16 @@ def get_status(req):
         total_task_num += machine.task_num
         total_cpu_used += machine.cpu_used
         total_mem_used += machine.mem_used
+        machine.mem_share = str_pretty(machine.mem_share)
+        machine.mem_used = str_pretty(machine.mem_used)
         machine.cpu_used = '%0.2f'%machine.cpu_used
         ret.append(machine.__dict__)
     return builder.ok(data={'machinelist':ret,
                                 'total_node_num':total_node_num,
-                                'total_mem_used':total_mem_used,
+                                'total_mem_used':str_pretty(total_mem_used),
                                 'total_cpu_used':"%0.2f"%total_cpu_used,
                                 'total_cpu_num':total_cpu_num,
-                                'total_mem_num':total_mem_num,
+                                'total_mem_num':str_pretty(total_mem_num),
                                 'total_task_num':total_task_num}).build_json()
 
 
