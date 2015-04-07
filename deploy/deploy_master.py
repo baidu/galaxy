@@ -21,7 +21,7 @@ def start(port):
 
 
 def migrate(ftp,port):
-    stop()
+    stop(port)
     fetch(ftp)
     start(port)
 
