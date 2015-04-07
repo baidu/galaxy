@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 port=$1
-pid_list=`ps -ef | grep agent | grep work_dir | grep $port  | grep -v grep | awk '{print $2}'`
+pid_list=`ps -ef | grep agent | grep work_dir | grep $port  | grep -v stop | grep -v grep | awk '{print $2}'`
 if [ -n "$pid_list" ];then
    for pid in $pid_list;do
         kill  $pid
