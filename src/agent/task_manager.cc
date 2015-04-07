@@ -10,6 +10,7 @@
 #include "agent/cgroup.h"
 
 extern std::string FLAGS_container;
+extern std::string FLAGS_cgroup_root;
 namespace galaxy {
 int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
                      DefaultWorkspace *  workspace) {
@@ -19,12 +20,12 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         LOG(WARNING, "task with id %d has exist", task_info.task_id());
         return 0;
     }
-    // do download 
+    // do download
 
     TaskRunner* runner = NULL;
     if(FLAGS_container.compare("cgroup") == 0){
         LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
-        runner = new ContainerTaskRunner(task_info,"/cgroup", workspace);
+        runner = new ContainerTaskRunner(task_info,FLAGS_cgroup_root, workspace);
     }else{
         LOG(INFO,"use command task runner for task %d",task_info.task_id());
         runner = new CommandTaskRunner(task_info,workspace);
@@ -65,25 +66,37 @@ int TaskManager::Remove(const int64_t& task_info_id) {
 }
 
 int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
-    std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
-    for (; it != m_task_runner_map.end(); ++it) {
-        TaskStatus status;
-        status.set_task_id(it->first);
-        if(it->second->IsRunning() == 0){
-            status.set_status(RUNNING);
-        }else{
-            if (it->second->ReStart() == 0) {
-                status.set_status(RESTART);
-            } else {
-                // if restart failed,
-                // 1. retry times more than limit, no need retry any more.
-                // 2. stop failed
-                // 3. start failed
-                status.set_status(ERROR);
-            }
-        }
 
-        task_status_vector.push_back(status);
+    std::vector<int64_t> dels;
+    {
+        MutexLock lock(m_mutex);
+        std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
+        for (; it != m_task_runner_map.end(); ++it) {
+            TaskStatus status;
+            status.set_task_id(it->first);
+            int ret = it->second->IsRunning();
+            if(ret == 0){
+                status.set_status(RUNNING);
+            }else if(ret == 1){
+                status.set_status(COMPLETE);
+                dels.push_back(it->first);
+            }else{
+                if (it->second->ReStart() == 0) {
+                    status.set_status(RESTART);
+                } else {
+                    // if restart failed,
+                    // 1. retry times more than limit, no need retry any more.
+                    // 2. stop failed
+                    // 3. start failed
+                    status.set_status(ERROR);
+                }
+            }
+
+            task_status_vector.push_back(status);
+        }
+    }
+    for (uint32_t i = 0; i < dels.size(); i++) {
+        Remove(dels[i]);
     }
     return 0;
 }

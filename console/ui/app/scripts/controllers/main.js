@@ -53,6 +53,7 @@ $http.get("/service/list?user=9527&master="+config.masterAddr)
         templateUrl: 'views/task.html',
         controller: 'TaskCtrl',
         keyboard:false,
+        size:'lg',
         backdrop:'static',
         resolve:{
             service:function(){
@@ -115,7 +116,7 @@ $http.get("/service/list?user=9527&master="+config.masterAddr)
 angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',function($scope,$modalInstance,$http,$route,config,service,notify){
         $scope.service = service;
         $scope.update = function(){
-             $http.get('/service/update?id='+$scope.service.id+"&replicate="+$scope.service.replicate_num+"&master="+config.masterAddr)
+             $http.get('/service/update?id='+$scope.service.job_id+"&replicate="+$scope.service.replica_num+"&master="+config.masterAddr)
                   .success(function(data){
                         if(data.status == 0){ 
                           notify({ message:'更新服务成功'} );
@@ -137,7 +138,7 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   $scope.disableBtn=false;
   $scope.alerts = [];
   $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
-  $scope.deployTpl = {startCmd:"",pkgType:0,pkgSrc:"",replicate:0,memoryLimit:100,cpuShare:10};
+  $scope.deployTpl = {name:"",startCmd:"",pkgType:0,pkgSrc:"",replicate:0,memoryLimit:100,cpuShare:0.5};
 
  $scope.ok = function () {
     $scope.alerts = [];

@@ -63,6 +63,8 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
         node->set_task_num(agent.task_num);
         node->set_cpu_share(agent.cpu_share);
         node->set_mem_share(agent.mem_share);
+        node->set_cpu_used(agent.cpu_used);
+        node->set_mem_used(agent.mem_used);
     }
     done->Run();
 }
@@ -229,6 +231,23 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 LOG(INFO, "Job %ld [%s] killed", job_id, job.job_name.c_str());
                 jobs_.erase(job_id);
             }
+        }else{
+            TaskInstance& instance = tasks_[task_id];
+            if (instance.status() != COMPLETE) {
+                continue;
+            }
+            int64_t job_id = instance.job_id();
+            assert(jobs_.find(job_id) != jobs_.end());
+            JobInfo& job = jobs_[job_id];
+            job.agent_tasks[agent_addr].erase(task_id);
+            if (job.agent_tasks[agent_addr].empty()) {
+                job.agent_tasks.erase(agent_addr);
+            }
+            job.running_num --;
+            del_tasks.push_back(task_id);
+            tasks_.erase(task_id);
+            job.complete_tasks[agent_addr].insert(task_id);
+            job.replica_num --;
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
@@ -257,12 +276,17 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->id = next_agent_id_ ++;
         agent->cpu_share = request->cpu_share();
         agent->mem_share = request->mem_share();
+        agent->cpu_used = request->used_cpu_share();
+        agent->mem_used = request->used_mem_share();
         agent->task_num = request->task_status_size();
         agent->stub = NULL;
     } else {
         agent = &(it->second);
+        agent->cpu_used = request->used_cpu_share();
+        agent->mem_used = request->used_mem_share();
         alives_[agent->alive_timestamp].erase(agent_addr);
         alives_[now_time].insert(agent_addr);
+        LOG(INFO, "cpu_use:%f, mem_use:%d", agent->cpu_used, agent->mem_used);
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
@@ -270,6 +294,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
+    std::set<int64_t> complete_tasks;
     for (int i = 0; i < task_num; i++) {
         int64_t task_id = request->task_status(i).task_id();
         running_tasks.insert(task_id);
@@ -382,6 +407,8 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_cmd_line(job->cmd_line);
     rt_request.set_cpu_share(job->cpu_share);
     rt_request.set_mem_share(job->mem_share);
+    rt_request.set_task_offset(job->running_num);
+    rt_request.set_job_replicate_num(job->replica_num);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
@@ -398,8 +425,9 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
         instance.set_status(DEPLOYING);
+        instance.set_offset(job->running_num);
         job->agent_tasks[agent_addr].insert(task_id);
-        job->running_num++;
+        job->running_num ++;
     }
     return ret;
 }

@@ -4,6 +4,7 @@ package galaxy;
 import "task.proto";
 
 option cc_generic_services = true;
+option py_generic_services = true;
 
 enum MasterCommandType {
     HEART_BEAT = 0;
@@ -71,6 +72,7 @@ message TaskInstance {
     optional string agent_addr = 3;
     optional int64 job_id = 4;
     optional int32 start_time = 5;
+    optional int32 offset = 6;
 }
 message ListTaskRequest {
     optional int64 job_id = 2;

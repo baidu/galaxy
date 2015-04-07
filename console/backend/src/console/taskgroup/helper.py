@@ -13,6 +13,10 @@ class ValidateException(Exception):
 
 def validate_init_service_group_req(request):
     ret = {}
+    name = request.POST.get('name',None)
+    if not name:
+        raise ValidateException("name is required")
+    ret['name'] = name
     # package validate logic
     pkg_type_str = request.POST.get("pkgType",None)
     if not pkg_type_str:
@@ -29,21 +33,21 @@ def validate_init_service_group_req(request):
     ret['start_cmd'] = request.POST.get("startCmd",None)
     if not ret['start_cmd']:
         raise ValidateException("startCmd is required")
-    #cpu validate logic 
+    #cpu validate logic
     cpu_share_str = request.POST.get("cpuShare",None)
     if not cpu_share_str:
         raise ValidateException("cpu_share is required")
-    cpu_share = int(cpu_share_str)
+    cpu_share =float(cpu_share_str)
     ret['cpu_share'] = cpu_share
 
     #memory validate logic
     memory_limit_str = request.POST.get("memoryLimit",None)
-    if not memory_limit_str: 
+    if not memory_limit_str:
         raise ValidateException("memoryLimit is required")
     ret['memory_limit'] = int(memory_limit_str)
     # replicate count
     replicate_count_str = request.POST.get("replicate",None)
-    if not replicate_count_str: 
+    if not replicate_count_str:
         raise ValidateException("replicate is required")
     ret['replicate_count'] = int(replicate_count_str)
     if ret['replicate_count'] < 0:

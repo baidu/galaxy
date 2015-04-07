@@ -1,0 +1,72 @@
+#edit-mode: -*- python -*-
+#coding:gbk
+
+#工作路径.
+WORKROOT('../../../../../')
+
+#使用硬链接copy.
+CopyUsingHardLink(True)
+
+#支持32位/64位平台编译
+#ENABLE_MULTI_LIBS(True)
+
+#C预处理器参数.
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\"')
+#为32位目标编译指定额外的预处理参数
+#CPPFLAGS_32('-D_XOPEN_SOURE=500')
+
+#C编译参数.
+CFLAGS('-g -pipe -W -Wall -fPIC')
+
+#C++编译参数.
+CXXFLAGS('-g -pipe -W -Wall -fPIC')
+
+#IDL编译参数
+IDLFLAGS('--compack')
+
+#UBRPC编译参数
+UBRPCFLAGS('--compack')
+
+#头文件路径.
+INCPATHS('. ../ ../../ ../../output/include/')
+
+#使用库
+LIBS('../../libgalaxy.a')
+
+#链接参数.
+LDFLAGS('-lpthread -lcrypto -lrt')
+
+#依赖模块
+CONFIGS('public/sofa-pbrpc@trunk@comake')
+
+#为32位/64位指定不同的依赖路径.
+#CONFIGS_32('lib2/ullib')
+#CONFIGS_64('lib2-64/ullib')
+
+user_sources='sample/wordcount.cc sample/wordcount_main.cc'
+mapred_sources='mapreduce.cc'
+mapred_headers='mapreduce.h'
+mapper_sources='mapper_main.cc sample/wordcount.cc'
+reducer_sources='reducer_main.cc sample/wordcount.cc'
+
+partitioner_sources='shuffle/partitioner.cc'
+partitioner_headers='shuffle/partitioner.h'
+
+
+#可执行文件
+Application('word_count',Sources(user_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
+Application('mapper',Sources(mapper_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
+Application('reducer',Sources(reducer_sources),Libraries('./libmapreduce.a ../../libgalaxy.a'))
+Application('partitioner', Sources(partitioner_sources), HeaderFiles(partitioner_headers))
+#静态库
+StaticLibrary('mapreduce',Sources(mapred_sources),HeaderFiles(mapred_headers))
+#共享库
+#SharedLibrary('mapreduce',Sources(user_sources),HeaderFiles(user_headers))
+#子目录
+#Directory('demo')
+
+TARGET('tar', Prefixes('reducer', 'mapper'),
+       ShellCommands(
+	       'tar zcvf mapper.tar.gz mapper mapper.sh bfs_client easy_shuffle.sh partitioner bfs.flag',
+	       'tar zcvf reducer.tar.gz reducer reducer.sh bfs_client bfs.flag'))
+

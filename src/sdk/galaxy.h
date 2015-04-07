@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 namespace galaxy {
-//
+
 //
 enum PackageTypeEnum{
     FTP_TYPE = 0,
@@ -64,6 +64,8 @@ struct NodeDescription {
     int32_t task_num;
     double cpu_share;
     int32_t mem_share;
+    double cpu_used;
+    int32_t mem_used;
 };
 
 struct JobInstanceDescription : JobDescription{

@@ -1,5 +1,4 @@
 
-
 !function ( angular ) {
 	var NavTree = function($scope,$location){
     this.$scope = $scope;

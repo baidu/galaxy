@@ -16,7 +16,7 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
                                                                 config){
 
    $scope.getTask = function(){
-      $http.get("/taskgroup/status?id="+service.id+"&master="+config.masterAddr)
+      $http.get("/taskgroup/status?id="+service.job_id+"&master="+config.masterAddr)
            .success(function(data){
                if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
@@ -41,7 +41,7 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
                                                                 config){
 
    $scope.getTask = function(){
-      $http.get("/taskgroup/status?agent="+agent.host+"&master="+config.masterAddr)
+      $http.get("/taskgroup/status?agent="+agent.addr+"&master="+config.masterAddr)
            .success(function(data){
                if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
