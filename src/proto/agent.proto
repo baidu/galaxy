@@ -9,7 +9,7 @@ message RunTaskRequest {
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
     optional double cpu_share = 5;
-    optional int32 mem_share = 6;
+    optional int64 mem_share = 6;
     optional int32 job_replicate_num = 7;
     optional int32 task_offset = 8;
 }

@@ -21,7 +21,7 @@ message TaskInfo{
     optional bytes task_raw = 3;
     optional string cmd_line = 4;
     optional double required_cpu = 5;
-    optional int32 required_mem = 6;
+    optional int64 required_mem = 6;
     optional int32 fail_retry_times = 7;
     optional int32 task_offset=8;
     optional int32 job_replicate_num = 9;

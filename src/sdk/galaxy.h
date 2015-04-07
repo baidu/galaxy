@@ -54,7 +54,7 @@ struct JobDescription{
     PackageDescription pkg;
     int32_t replicate_count;
     double cpu_share;
-    int32_t mem_share;
+    int64_t mem_share;
     std::vector<ResourceDescription> resource_vector;
 };
 
@@ -63,9 +63,9 @@ struct NodeDescription {
     std::string addr;
     int32_t task_num;
     double cpu_share;
-    int32_t mem_share;
+    int64_t mem_share;
     double cpu_used;
-    int32_t mem_used;
+    int64_t mem_used;
 };
 
 struct JobInstanceDescription : JobDescription{
