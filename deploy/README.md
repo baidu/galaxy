@@ -6,7 +6,7 @@
 ### 在A机器上面安装部署工具
 
 * install python-pip ,对于内部同学请参考pip.baidu.com
-* pip install fabric
+* pip install [fabric](http://docs.fabfile.org/en/1.10/)
 
 ### 打包
 可以使用 make-package.sh打包，将带上启停脚本
