@@ -12,7 +12,10 @@
 
 #include <string>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include "common/logging.h"
+#include "common/mutex.h"
 
 namespace galaxy {
 
@@ -27,9 +30,14 @@ namespace galaxy {
 
 const std::string CGROUP_MOUNT_PATH = "/cgroups/";
 const std::string CPUACT_SUBSYSTEM_PATH = "cpuacct";
+const std::string PROC_MOUNT_PATH = "/proc/";
 
 static long SYS_TIMER_HZ = sysconf(_SC_CLK_TCK);
 static long CPU_CORES = sysconf(_SC_NPROCESSORS_CONF);
+static long MEMORY_PAGE_SIZE = sysconf(_SC_PAGESIZE);
+
+static size_t PROC_STAT_FILE_SPLIT_SIZE = 44;
+static const size_t PROC_STATUS_FILE_SPLIT_SIZE = 3;
 
 // unit jiffies
 struct ResourceStatistics {
@@ -45,6 +53,8 @@ struct ResourceStatistics {
     long cpu_guest;
 
     long cpu_cores;
+
+    long memory_rss_in_bytes;
 };
 
 // unit jiffies
@@ -77,9 +87,165 @@ static bool GetCgroupCpuCoresLimit(
         const std::string& group_path, 
         CgroupResourceStatistics* statistics);
 
+// get cpu usage from /proc/pid/stat
+static bool GetProcCpuUsage(
+        int pid,
+        ResourceStatistics* statistics);
+
+// ------------ proc collector impl ----------------
+
+class ProcResourceCollectorImpl {
+public:
+    explicit ProcResourceCollectorImpl(int pid) 
+        : pid_(pid),
+          global_statistics_prev_(),
+          global_statistics_cur_(),
+          process_statistics_prev_(),
+          process_statistics_cur_(),
+          timestamp_prev_(0.0),
+          timestamp_cur_(0.0),
+          collector_times_(0),
+          mutex_(),
+          is_cleared_(true) {
+    }
+    virtual ~ProcResourceCollectorImpl() {}
+    virtual bool CollectStatistics();
+    double GetCpuUsage();
+
+    void ResetPid(int pid) {
+        pid_ = pid; 
+    }
+
+    void Clear() {
+        is_cleared_ = true; 
+    }
+
+    long GetMemoryUsage() {
+        return process_statistics_cur_.memory_rss_in_bytes;
+    }
+
+private:
+    int pid_;
+    ResourceStatistics global_statistics_prev_;
+    ResourceStatistics global_statistics_cur_;
+
+    ResourceStatistics process_statistics_prev_;    
+    ResourceStatistics process_statistics_cur_;
+
+    double timestamp_prev_;
+    double timestamp_cur_;
+    long collector_times_;
+    common::Mutex mutex_;
+    bool is_cleared_;
+};
+
+bool ProcResourceCollectorImpl::CollectStatistics() {
+    common::MutexLock lock(&mutex_);
+    global_statistics_prev_ = global_statistics_cur_;
+    process_statistics_prev_ = process_statistics_cur_;
+
+    timestamp_prev_ = timestamp_cur_;
+    if (!GetGlobalCpuUsage(&global_statistics_cur_)) {
+        return false; 
+    }
+
+    if (!GetProcCpuUsage(pid_, &process_statistics_cur_)) {
+        return false; 
+    }
+
+    collector_times_ ++;
+    const int MIN_COLLOECT_TIMES_NEED = 2;        
+    if (collector_times_ >= MIN_COLLOECT_TIMES_NEED) {
+        is_cleared_ = false; 
+    }
+    return true;
+}
+
+double ProcResourceCollectorImpl::GetCpuUsage() {
+    common::MutexLock lock(&mutex_);
+    if (is_cleared_) {
+        LOG(WARNING, "need try again"); 
+        return 0.0;
+    }
+
+    long global_cpu_before = 
+        global_statistics_prev_.cpu_user_time
+        + global_statistics_prev_.cpu_nice_time
+        + global_statistics_prev_.cpu_system_time
+        + global_statistics_prev_.cpu_idle_time
+        + global_statistics_prev_.cpu_iowait_time
+        + global_statistics_prev_.cpu_irq_time
+        + global_statistics_prev_.cpu_softirq_time
+        + global_statistics_prev_.cpu_stealstolen
+        + global_statistics_prev_.cpu_guest;
+        
+    long global_cpu_after =
+        global_statistics_cur_.cpu_user_time
+        + global_statistics_cur_.cpu_nice_time
+        + global_statistics_cur_.cpu_system_time
+        + global_statistics_cur_.cpu_idle_time
+        + global_statistics_cur_.cpu_iowait_time
+        + global_statistics_cur_.cpu_irq_time
+        + global_statistics_cur_.cpu_softirq_time
+        + global_statistics_cur_.cpu_stealstolen
+        + global_statistics_cur_.cpu_guest;
+    
+    long proc_cpu_before = process_statistics_prev_.cpu_user_time 
+        + process_statistics_prev_.cpu_system_time;
+    long proc_cpu_after = process_statistics_cur_.cpu_user_time
+        + process_statistics_cur_.cpu_system_time;
+
+    if (global_cpu_after - global_cpu_before == 0) {
+        return 0.0; 
+    }
+    double rs = (proc_cpu_after - proc_cpu_before) / (double)(global_cpu_after - global_cpu_before);
+    LOG(DEBUG, "p prev :%ld p post:%ld g pre:%ld g post:%ld rs:%f",
+            proc_cpu_before,
+            proc_cpu_after,
+            global_cpu_before,
+            global_cpu_after,
+            rs);
+    return rs;
+}
+
+// ------------- ProcResourceCollector Implement ------------
+
+ProcResourceCollector::ProcResourceCollector(int pid) 
+    : impl_(NULL) {
+    impl_ = new ProcResourceCollectorImpl(pid);   
+}
+
+ProcResourceCollector::~ProcResourceCollector() {
+    if (impl_ != NULL) {
+        delete impl_; 
+        impl_ = NULL;
+    }
+}
+
+double ProcResourceCollector::GetCpuUsage() {
+    return impl_->GetCpuUsage();
+}
+
+long ProcResourceCollector::GetMemoryUsage() {
+    return impl_->GetMemoryUsage();
+}
+
+bool ProcResourceCollector::CollectStatistics() {
+    return impl_->CollectStatistics();
+}
+
+void ProcResourceCollector::ResetPid(int pid) {
+    impl_->ResetPid(pid);
+}
+
+void ProcResourceCollector::Clear() {
+    impl_->Clear();
+}
+
+// ------------- cgroup collector impl --------------
+
 class CGroupResourceCollectorImpl {
 public:
-    CGroupResourceCollectorImpl() {}
     explicit CGroupResourceCollectorImpl(const std::string& cgroup_name) 
         : cgroup_name_(cgroup_name),
           global_statistics_prev_(), 
@@ -88,13 +254,22 @@ public:
           cgroup_statistics_cur_(),
           timestamp_prev_(0.0),
           timestamp_cur_(0.0),
-          mutex_() {
+          collector_times_(0),
+          mutex_(),
+          is_cleared_(true) {
     }
 
     virtual ~CGroupResourceCollectorImpl() {}
 
     virtual bool CollectStatistics();
 
+    void ResetCgroupName(const std::string& cgroup_name) {
+        cgroup_name_ = cgroup_name; 
+    }
+
+    void Clear() {
+        is_cleared_ = true; 
+    }
     double GetCpuUsage();
 
     long GetMemoryUsage() {
@@ -113,13 +288,13 @@ private:
     double timestamp_cur_;
     long collector_times_;
     common::Mutex mutex_;
+    bool is_cleared_;
 };
 
 double CGroupResourceCollectorImpl::GetCpuUsage() {
-    const int MIN_COLLOECT_TIMES_NEED = 2;
     common::MutexLock lock(&mutex_);
-    if (collector_times_ < MIN_COLLOECT_TIMES_NEED) {
-        LOG(WARNING, "need try agin"); 
+    if (is_cleared_) {
+        LOG(WARNING, "need try again"); 
         return 0.0;
     }
 
@@ -154,6 +329,10 @@ double CGroupResourceCollectorImpl::GetCpuUsage() {
     LOG(DEBUG, "radio = limit(%f) / cores(%ld)",
             cgroup_statistics_cur_.cpu_cores_limit,
             global_statistics_cur_.cpu_cores);
+
+    if (global_cpu_after - global_cpu_before == 0) {
+        return 0.0; 
+    }
 
     double rs = (cgroup_cpu_after - cgroup_cpu_before) / (double)(global_cpu_after - global_cpu_before) ; 
     rs /= radio;
@@ -194,7 +373,11 @@ bool CGroupResourceCollectorImpl::CollectStatistics() {
         return false; 
     }
 
+    const int MIN_COLLOECT_TIMES_NEED = 2;        
     collector_times_ ++;
+    if (collector_times_ >= MIN_COLLOECT_TIMES_NEED) {
+        is_cleared_ = false; 
+    }
     return true;
 }
 
@@ -219,6 +402,15 @@ long CGroupResourceCollector::GetMemoryUsage() {
 
 CGroupResourceCollector::~CGroupResourceCollector() {
     delete impl_;
+}
+
+void CGroupResourceCollector::ResetCgroupName(
+        const std::string& cgroup_name) {
+    impl_->ResetCgroupName(cgroup_name);
+}
+
+void CGroupResourceCollector::Clear() {
+    impl_->Clear();
 }
 
 // -----------  resource collector utils -------------
@@ -423,6 +615,45 @@ bool GetCgroupMemoryUsage(const std::string& group_path,
         LOG(WARNING, "read from %s format err", memory_path.c_str());  
         return false;
     }
+    return true;
+}
+
+bool GetProcCpuUsage(int pid, ResourceStatistics* statistics) {
+    std::string path = PROC_MOUNT_PATH + "/" + boost::lexical_cast<std::string>(pid) + "/stat";    
+    FILE* fin = fopen(path.c_str(), "r");
+    if (fin == NULL) {
+        LOG(WARNING, "open %s failed", path.c_str()); 
+        return false;
+    }
+
+    ssize_t read;
+    size_t len = 0;
+    char* line = NULL;
+
+    if ((read = getline(&line, &len, fin)) == -1) {
+        LOG(WARNING, "read line failed err[%d: %s]",
+                errno, strerror(errno)); 
+        fclose(fin);
+        return false;
+    }
+    fclose(fin);
+
+    std::vector<std::string> values;
+    std::string str_line(line);
+    boost::split(values, str_line, boost::is_any_of(" "));
+    LOG(DEBUG, "split items %lu", values.size());
+    SAFE_FREE(line);
+    if (values.size() !=  PROC_STAT_FILE_SPLIT_SIZE) {
+        LOG(WARNING, "proc[%ld] stat file format err", pid);    
+        return false;
+    }
+    statistics->cpu_user_time = atol(values[13].c_str());
+    statistics->cpu_system_time = atol(values[14].c_str());
+    statistics->memory_rss_in_bytes = atol(values[23].c_str()) * MEMORY_PAGE_SIZE;
+    LOG(DEBUG, "get proc[%ld] user %ld sys %ld mem %ld", 
+            pid, statistics->cpu_user_time, 
+            statistics->cpu_system_time, 
+            statistics->memory_rss_in_bytes);
     return true;
 }
 

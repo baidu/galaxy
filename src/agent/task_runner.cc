@@ -18,6 +18,7 @@
 #include "common/logging.h"
 #include "common/util.h"
 #include "downloader_manager.h"
+#include "agent/resource_collector_engine.h"
 
 
 extern int FLAGS_task_retry_times;
@@ -73,10 +74,12 @@ int AbstractTaskRunner::Stop(){
     pid_t killed_pid = wait(&ret);
     m_child_pid = -1;
     m_group_pid = -1;
+
     if (killed_pid == -1){
         LOG(FATAL,"fail to kill process group %d",m_group_pid);
         return -1;
     }else{
+        StopPost();
         LOG(INFO,"kill child process %d successfully",killed_pid);
         return 0;
     }
@@ -144,6 +147,10 @@ int AbstractTaskRunner::ReStart(){
     return Start();
 }
 
+void CommandTaskRunner::StopPost() {
+    collector_->Clear();
+}
+
 int CommandTaskRunner::Prepare() {
     std::string uri = m_task_info.task_raw();
     std::string path = m_workspace->GetPath();
@@ -156,6 +163,16 @@ int CommandTaskRunner::Prepare() {
             path,
             boost::bind(&CommandTaskRunner::StartAfterDownload, this, _1));
     return 0;
+}
+
+CommandTaskRunner::~CommandTaskRunner() {
+    ResourceCollectorEngine* engine 
+        = GetResourceCollectorEngine();
+    engine->DelCollector(collector_id_);
+    if (collector_ != NULL) {
+        delete collector_; 
+        collector_ = NULL;
+    }
 }
 
 void CommandTaskRunner::StartAfterDownload(int ret) {
@@ -171,6 +188,15 @@ void CommandTaskRunner::StartAfterDownload(int ret) {
     // set deploy failed state
 }
 
+void CommandTaskRunner::Status(TaskStatus* status) {
+    if (collector_ != NULL) {
+        status->set_cpu_usage(collector_->GetCpuUsage()); 
+        status->set_memory_usage(collector_->GetMemoryUsage());
+        LOG(WARNING, "cpu usage %f memory usage %ld", 
+                status->cpu_usage(), status->memory_usage());
+    }
+    return;
+}
 
 //start process
 //1. fork a subprocess A
@@ -193,6 +219,16 @@ int CommandTaskRunner::Start() {
         close(stdout_fd);
         close(stderr_fd);
         m_group_pid = m_child_pid;
+        // NOTE not multi thread safe 
+        if (collector_ == NULL) {
+            collector_ = new ProcResourceCollector(m_child_pid); 
+            ResourceCollectorEngine* engine 
+                = GetResourceCollectorEngine(); 
+            collector_id_ = engine->AddCollector(collector_);
+        }
+        else {
+            collector_->ResetPid(m_child_pid); 
+        }
     }
     return 0;
 }

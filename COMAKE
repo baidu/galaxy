@@ -49,7 +49,9 @@ agent_sources='src/flags.cc\
                src/agent/workspace.cc src/agent/workspace_manager.cc \
                src/agent/agent_impl.cc src/agent/agent_main.cc \
                src/agent/downloader_manager.cc src/agent/curl_downloader.cc \
-               src/agent/binary_downloader.cc'
+               src/agent/binary_downloader.cc \
+               src/agent/resource_collector.cc \
+               src/agent/resource_collector_engine.cc'
 
 master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto\
                 common/logging.cc src/master/master_impl.cc src/master/master_main.cc'

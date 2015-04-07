@@ -5,10 +5,36 @@
 // Author: yuanyi03@baidu.com
 
 #include "agent/resource_collector_engine.h"
+
+#include <pthread.h>
 #include <boost/bind.hpp>
 #include "common/logging.h"
 
+extern int FLAGS_resource_collector_engine_threads;
+
 namespace galaxy {
+
+static ResourceCollectorEngine* g_collector_engine = NULL;
+static pthread_once_t g_once = PTHREAD_ONCE_INIT;
+
+static void DestroyResourceCollectorEngine() {
+    delete g_collector_engine;
+    g_collector_engine = NULL;
+    return;
+}
+
+static void InitResourceCollectorEngine() {
+    g_collector_engine = 
+        new ResourceCollectorEngine(
+                FLAGS_resource_collector_engine_threads);
+    ::atexit(DestroyResourceCollectorEngine);
+    return;
+}
+
+ResourceCollectorEngine* GetResourceCollectorEngine() {
+    pthread_once(&g_once, InitResourceCollectorEngine); 
+    return g_collector_engine;
+}
 
 long ResourceCollectorEngine::AddCollector(ResourceCollector* collector) {
     if (collector == NULL) {

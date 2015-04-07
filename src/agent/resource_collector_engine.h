@@ -14,6 +14,8 @@
 
 namespace galaxy {
 
+ResourceCollectorEngine* GetResourceCollectorEngine();
+
 class ResourceCollectorEngine {
 public:
     explicit ResourceCollectorEngine(int interval) 

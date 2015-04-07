@@ -155,6 +155,9 @@ int ContainerTaskRunner::Prepare() {
     _cg_ctrl = new CGroupCtrl(_cg_root, support_cg);
     std::map<std::string, std::string> sub_sys_map;
     int status = _cg_ctrl->Create(m_task_info.task_id(), sub_sys_map);
+    if (collector_ == NULL) {
+
+    }
 
     if (status != 0) {
         LOG(FATAL, "fail to create subsystem for task %d,status %d", m_task_info.task_id(), status);
@@ -245,12 +248,24 @@ int ContainerTaskRunner::Start() {
     return 0;
 }
 
+void ContainerTaskRunner::Status(TaskStatus* status) {
+    return;
+}
+
+void ContainerTaskRunner::StopPost() {
+    if (collector_ != NULL) {
+        collector_->Clear(); 
+    }
+    return;      
+}
+
 int ContainerTaskRunner::Stop(){
     int status = AbstractTaskRunner::Stop();
     LOG(INFO,"stop  task %d  with status %d",m_task_info.task_id(),status);
     if(status != 0 ){
         return status;
     }
+    StopPost();
     status = _cg_ctrl->Destroy(m_task_info.task_id());
     LOG(INFO,"destroy cgroup for task %d with status %s",m_task_info.task_id(),status);
     return status;

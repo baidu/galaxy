@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include "agent/resource_collector_engine.h"
 
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_master_addr;
@@ -44,6 +45,10 @@ int main(int argc, char* argv[]) {
             exit(1);
         }
     }
+
+    galaxy::ResourceCollectorEngine* engine = 
+        galaxy::GetResourceCollectorEngine();
+    engine->Start();
 
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);

@@ -73,6 +73,8 @@ message TaskInstance {
     optional int64 job_id = 4;
     optional int32 start_time = 5;
     optional int32 offset = 6;
+    optional double cpu_usage = 7;
+    optional int64 memory_usage = 8;
 }
 message ListTaskRequest {
     optional int64 job_id = 2;

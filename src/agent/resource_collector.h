@@ -8,7 +8,6 @@
 #define _RESOURCE_COLLECTOR_H
 
 #include "proto/task.pb.h"
-#include "agent/cgroup.h"
 
 namespace galaxy {
 
@@ -23,6 +22,8 @@ class CGroupResourceCollector : public ResourceCollector {
 public:
     explicit CGroupResourceCollector(const std::string& cgroup_name);
     virtual ~CGroupResourceCollector();
+    void ResetCgroupName(const std::string& group_name);
+    void Clear();
     double GetCpuUsage();   
     long GetMemoryUsage();
 protected:
@@ -30,6 +31,21 @@ protected:
 private:
     CGroupResourceCollectorImpl* impl_;
     std::string cgroup_name_;
+};
+
+class ProcResourceCollectorImpl;
+class ProcResourceCollector : public ResourceCollector {
+public:
+    explicit ProcResourceCollector(int pid);
+    virtual ~ProcResourceCollector();
+    void ResetPid(int pid);
+    void Clear();
+    double GetCpuUsage();
+    long GetMemoryUsage();
+protected:
+    virtual bool CollectStatistics();
+private:
+    ProcResourceCollectorImpl* impl_;
 };
 
 }   // ending namespace galaxy

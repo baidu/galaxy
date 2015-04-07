@@ -308,6 +308,16 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         instance.set_agent_addr(agent_addr);
         LOG(INFO, "%s run task %d %d", agent_addr.c_str(),
             task_id, request->task_status(i).status());
+        if (request->task_status(i).has_cpu_usage()) {
+            instance.set_cpu_usage(
+                    request->task_status(i).cpu_usage()); 
+            LOG(INFO, "%d use cpu %f", task_id, instance.cpu_usage());
+        }
+        if (request->task_status(i).has_memory_usage()) {
+            instance.set_memory_usage(
+                    request->task_status(i).memory_usage());
+            LOG(INFO, "%d use memory %ld", task_id, instance.memory_usage());
+        }
     }
     agent->task_num = request->task_status_size();
 
