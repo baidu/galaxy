@@ -43,13 +43,13 @@ public:
     int Remove(int64_t  task_info_id);
     DefaultWorkspace* GetWorkspace(const ::galaxy::TaskInfo &task_info);
     double GetUsedCpuShare();
-    int32_t GetUsedMemShare();
+    int64_t GetUsedMemShare();
 
 private:
     std::map<int64_t, DefaultWorkspace*>  m_workspace_map;
     common::Mutex * m_mutex;
     double used_cpu_share;
-    int32_t used_mem_share;
+    int64_t used_mem_share;
     std::string m_root_path;
     std::string m_data_path;
 };

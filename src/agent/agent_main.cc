@@ -16,7 +16,8 @@ extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_work_dir;
 extern std::string FLAGS_container;
 extern double FLAGS_cpu_num;
-extern int FLAGS_mem_gbytes;
+extern int64_t FLAGS_mem_gbytes;
+extern int64_t FLAGS_mem_bytes;
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/) {
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    FLAGS_mem_bytes = FLAGS_mem_gbytes*(1024*1024*1024);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
