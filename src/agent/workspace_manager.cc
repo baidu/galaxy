@@ -19,19 +19,20 @@ namespace galaxy {
 
 int WorkspaceManager::Add(const TaskInfo& task_info) {
     MutexLock lock(m_mutex);
-    if (m_workspace_map.find(task_info.task_id()) != m_workspace_map.end()) {
+    TaskInfo my_task_info(task_info);
+    if (m_workspace_map.find(my_task_info.task_id()) != m_workspace_map.end()) {
         return 0;
     }
 
-    DefaultWorkspace* ws = new DefaultWorkspace(task_info, m_data_path);
+    DefaultWorkspace* ws = new DefaultWorkspace(my_task_info, m_data_path);
     int status = ws->Create();
 
     if (status == 0) {
-        m_workspace_map[task_info.task_id()] = ws;
+        m_workspace_map[my_task_info.task_id()] = ws;
     }
 
-    used_cpu_share += task_info.required_cpu();
-    used_mem_share += task_info.required_mem();
+    used_cpu_share += my_task_info.required_cpu();
+    used_mem_share += my_task_info.required_mem();
     LOG(INFO, "used_cpu : %lf, used_mem : %d", used_cpu_share, used_mem_share);
     return status;
 }

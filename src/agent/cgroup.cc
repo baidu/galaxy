@@ -14,6 +14,7 @@
 #include <boost/bind.hpp>
 #include "common/logging.h"
 #include "common/util.h"
+#include "common/this_thread.h"
 #include "agent/downloader_manager.h"
 namespace galaxy {
 
@@ -238,6 +239,7 @@ int ContainerTaskRunner::Start() {
     } else {
         close(stdout_fd);
         close(stderr_fd);
+        m_group_pid = m_child_pid;
     }
     return 0;
 }
@@ -248,8 +250,10 @@ int ContainerTaskRunner::Stop(){
     if(status != 0 ){
         return status;
     }
+    //sleep 500 ms for cgroup clear tasks
+    common::ThisThread::Sleep(500);
     status = _cg_ctrl->Destroy(m_task_info.task_id());
-    LOG(INFO,"destroy cgroup for task %d with status %s",m_task_info.task_id(),status);
+    LOG(INFO,"destroy cgroup for task %d with status %d",m_task_info.task_id(),status);
     return status;
 }
 

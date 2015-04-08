@@ -21,14 +21,14 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         return 0;
     }
     // do download
-
+    TaskInfo my_task_info(task_info);
     TaskRunner* runner = NULL;
     if(FLAGS_container.compare("cgroup") == 0){
         LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
-        runner = new ContainerTaskRunner(task_info,FLAGS_cgroup_root, workspace);
+        runner = new ContainerTaskRunner(my_task_info,FLAGS_cgroup_root, workspace);
     }else{
         LOG(INFO,"use command task runner for task %d",task_info.task_id());
-        runner = new CommandTaskRunner(task_info,workspace);
+        runner = new CommandTaskRunner(my_task_info,workspace);
     }
     int ret = runner->Prepare();
     if(ret != 0 ){
