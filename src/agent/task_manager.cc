@@ -77,6 +77,7 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
             int ret = it->second->IsRunning();
             if(ret == 0){
                 status.set_status(RUNNING);
+                it->second->Status(&status);
             }else if(ret == 1){
                 status.set_status(COMPLETE);
                 dels.push_back(it->first);

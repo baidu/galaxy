@@ -12,11 +12,16 @@
 #include <stdio.h>
 #include <errno.h>
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 #include "common/logging.h"
 #include "common/util.h"
 #include "common/this_thread.h"
 #include "agent/downloader_manager.h"
+#include "agent/resource_collector.h"
+#include "agent/resource_collector_engine.h"
+
 namespace galaxy {
+
 
 static int CPU_CFS_PERIOD = 100000;
 static int MIN_CPU_CFS_QUOTA = 1000;
@@ -147,15 +152,41 @@ int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
 
 }
 
+ContainerTaskRunner::~ContainerTaskRunner() {
+    if (collector_ != NULL) {
+        ResourceCollectorEngine* engine
+            = GetResourceCollectorEngine();
+        engine->DelCollector(collector_id_);
+        delete collector_;
+        collector_ = NULL;
+    }
+    delete _cg_ctrl;
+    delete _mem_ctrl;
+    delete _cpu_ctrl;
+}
+
 int ContainerTaskRunner::Prepare() {
     LOG(INFO, "prepare container for task %d", m_task_info.task_id());
     //TODO
     std::vector<std::string> support_cg;
     support_cg.push_back("memory");
     support_cg.push_back("cpu");
+    support_cg.push_back("cpuacct");
     _cg_ctrl = new CGroupCtrl(_cg_root, support_cg);
     std::map<std::string, std::string> sub_sys_map;
     int status = _cg_ctrl->Create(m_task_info.task_id(), sub_sys_map);
+    // NOTE multi thread safe
+    if (collector_ == NULL) {
+        std::string group_path = boost::lexical_cast<std::string>(m_task_info.task_id());
+        collector_ = new CGroupResourceCollector(group_path);
+        ResourceCollectorEngine* engine
+                = GetResourceCollectorEngine();
+        collector_id_ = engine->AddCollector(collector_);
+    }
+    else {
+        collector_->ResetCgroupName(
+                boost::lexical_cast<std::string>(m_task_info.task_id()));
+    }
 
     if (status != 0) {
         LOG(FATAL, "fail to create subsystem for task %d,status %d", m_task_info.task_id(), status);
@@ -244,6 +275,23 @@ int ContainerTaskRunner::Start() {
     return 0;
 }
 
+void ContainerTaskRunner::Status(TaskStatus* status) {
+    if (collector_ != NULL) {
+        status->set_cpu_usage(collector_->GetCpuUsage());
+        status->set_memory_usage(collector_->GetMemoryUsage());
+        LOG(WARNING, "cpu usage %f memory usage %ld",
+                status->cpu_usage(), status->memory_usage());
+    }
+    return;
+}
+
+void ContainerTaskRunner::StopPost() {
+    if (collector_ != NULL) {
+        collector_->Clear();
+    }
+    return;
+}
+
 int ContainerTaskRunner::Stop(){
     int status = AbstractTaskRunner::Stop();
     LOG(INFO,"stop  task %d  with status %d",m_task_info.task_id(),status);
@@ -252,6 +300,7 @@ int ContainerTaskRunner::Stop(){
     }
     //sleep 500 ms for cgroup clear tasks
     common::ThisThread::Sleep(500);
+    StopPost();
     status = _cg_ctrl->Destroy(m_task_info.task_id());
     LOG(INFO,"destroy cgroup for task %d with status %d",m_task_info.task_id(),status);
     return status;

@@ -76,15 +76,15 @@ public:
                         std::string cg_root,
                         DefaultWorkspace* workspace)
                        :AbstractTaskRunner(task_info,workspace),
-                        _cg_root(cg_root){}
+                        _cg_root(cg_root),
+                        collector_(NULL), 
+                        collector_id_(-1) {}
     int Prepare();
     int Start();
     int Stop();
-    ~ContainerTaskRunner(){
-        delete _cg_ctrl;
-        delete _mem_ctrl;
-        delete _cpu_ctrl;
-    }
+    virtual void StopPost();
+    virtual void Status(TaskStatus* status);
+    ~ContainerTaskRunner();
 private:
     void PutToCGroup();
     void StartAfterDownload(int ret);
@@ -93,6 +93,8 @@ private:
     CGroupCtrl* _cg_ctrl;
     MemoryCtrl* _mem_ctrl;
     CpuCtrl*    _cpu_ctrl;
+    CGroupResourceCollector* collector_;
+    long collector_id_;
 };
 
 }
