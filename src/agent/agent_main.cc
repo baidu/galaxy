@@ -16,6 +16,7 @@ extern std::string FLAGS_agent_port;
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_work_dir;
 extern std::string FLAGS_container;
+extern std::string FLAGS_cgroup_root;
 extern double FLAGS_cpu_num;
 extern int FLAGS_mem_gbytes;
 
@@ -39,7 +40,10 @@ int main(int argc, char* argv[]) {
             FLAGS_mem_gbytes = atoi(s);
         } else if(sscanf(argv[i],"--container=%s",s) == 1) {
             FLAGS_container = s;
+        } else if(sscanf(argv[i], "--cgroup_mount_path=%s", s) == 1) {
+            FLAGS_cgroup_root = s; 
         }
+         
         else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);

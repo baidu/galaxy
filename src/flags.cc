@@ -20,5 +20,5 @@ int FLAGS_agent_curl_recv_buffer_size = 1024 * 10;
 double FLAGS_cpu_num = 4;
 int FLAGS_mem_gbytes = 32;
 
-int FLAGS_resource_collector_engine_threads = 4;
+int FLAGS_resource_collector_engine_interval = 1000;
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

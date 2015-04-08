@@ -228,7 +228,8 @@ bool GalaxyImpl::ListTask(int64_t job_id,
                 agent_addr.c_str(),
                 cpu_usage);
         double memory_formated = 0.0;
-        for (int i = MEMORY_UNIT_SIZE - 1; i >= 0; i--) {
+        int i;
+        for (i = MEMORY_UNIT_SIZE - 1; i >= 0; i--) {
             memory_formated = memory_usage * 1.0 / (1L << (i * 10));
             if (memory_formated - 1 > 0.001) {
                 fprintf(stdout, "%f %s\n",
@@ -236,6 +237,9 @@ bool GalaxyImpl::ListTask(int64_t job_id,
                         MEMORY_UNIT_NAME[i]);
                 break; 
             }
+        }
+        if (i < 0) {
+            fprintf(stdout, "\n"); 
         }
     }
     fprintf(stdout, "================================\n");

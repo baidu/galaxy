@@ -17,6 +17,8 @@
 #include "common/logging.h"
 #include "common/mutex.h"
 
+extern std::string FLAGS_cgroup_root;
+
 namespace galaxy {
 
 #define SAFE_FREE(x) \
@@ -28,7 +30,6 @@ namespace galaxy {
     } while(0)
 
 
-const std::string CGROUP_MOUNT_PATH = "/cgroups/";
 const std::string CPUACT_SUBSYSTEM_PATH = "cpuacct";
 const std::string PROC_MOUNT_PATH = "/proc/";
 
@@ -356,20 +357,24 @@ bool CGroupResourceCollectorImpl::CollectStatistics() {
 
     if (!GetCgroupCpuUsage(cgroup_name_, 
                 &cgroup_statistics_cur_)) {
+        LOG(WARNING, "cgroup collector collect cpu usage failed");
         return false; 
     }
 
     if (!GetGlobalCpuUsage(&global_statistics_cur_)) {
+        LOG(WARNING, "cgroup collector collect global cpu usage failed");
         return false; 
     }
 
     if (!GetCgroupCpuCoresLimit(cgroup_name_, 
                 &cgroup_statistics_cur_)) {
+        LOG(WARNING, "cgroup collector collect cpu limit failed");
         return false; 
     }
 
     if (!GetCgroupMemoryUsage(cgroup_name_,
                 &cgroup_statistics_cur_)) {
+        LOG(WARNING, "cgroup collector collect memory failed");
         return false; 
     }
 
@@ -421,7 +426,7 @@ bool GetCgroupCpuUsage(
     if (statistics == NULL) {
         return false; 
     }
-    std::string path = CGROUP_MOUNT_PATH + "/" 
+    std::string path = FLAGS_cgroup_root + "/" 
         + CPUACT_SUBSYSTEM_PATH + "/" + group_path + "/cpuacct.stat";
     FILE* fin = fopen(path.c_str(), "r");
     if (fin == NULL) {
@@ -523,9 +528,9 @@ bool GetGlobalCpuUsage(ResourceStatistics* statistics) {
 bool GetCgroupCpuCoresLimit(
         const std::string& group_path,
         CgroupResourceStatistics* statistics) {
-    std::string period_path = CGROUP_MOUNT_PATH 
+    std::string period_path = FLAGS_cgroup_root 
         + "/cpu/" + group_path + "/cpu.cfs_period_us";
-    std::string quota_path = CGROUP_MOUNT_PATH
+    std::string quota_path = FLAGS_cgroup_root
         + "/cpu/" + group_path + "/cpu.cfs_quota_us";
 
     FILE* fin = fopen(period_path.c_str(), "r");
@@ -584,7 +589,7 @@ bool GetCgroupCpuCoresLimit(
 
 bool GetCgroupMemoryUsage(const std::string& group_path,
         CgroupResourceStatistics* statistics) {
-    std::string memory_path = CGROUP_MOUNT_PATH 
+    std::string memory_path = FLAGS_cgroup_root 
         + "/memory/" + group_path + "/memory.stat";
     FILE* fin = fopen(memory_path.c_str(), "r");
     if (fin == NULL) {
@@ -602,16 +607,17 @@ bool GetCgroupMemoryUsage(const std::string& group_path,
         return false;
     }
 
-    fclose(fin);
     SAFE_FREE(line);
     if ((read = getline(&line, &len, fin)) == -1) {
         LOG(WARNING, "read line failed err[%d: %s]", errno, strerror(errno));
         return false;
     }
 
-    int item_size = sscanf(line, "%ld", &(statistics->memory_rss_in_bytes));
+    fclose(fin);
+    char tmp[10];
+    int item_size = sscanf(line, "%s %ld", tmp, &(statistics->memory_rss_in_bytes));
     SAFE_FREE(line);
-    if (item_size != 1) {
+    if (item_size != 2) {
         LOG(WARNING, "read from %s format err", memory_path.c_str());  
         return false;
     }

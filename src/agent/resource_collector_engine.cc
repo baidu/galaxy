@@ -10,7 +10,7 @@
 #include <boost/bind.hpp>
 #include "common/logging.h"
 
-extern int FLAGS_resource_collector_engine_threads;
+extern int FLAGS_resource_collector_engine_interval;
 
 namespace galaxy {
 
@@ -26,7 +26,7 @@ static void DestroyResourceCollectorEngine() {
 static void InitResourceCollectorEngine() {
     g_collector_engine = 
         new ResourceCollectorEngine(
-                FLAGS_resource_collector_engine_threads);
+                FLAGS_resource_collector_engine_interval);
     ::atexit(DestroyResourceCollectorEngine);
     return;
 }

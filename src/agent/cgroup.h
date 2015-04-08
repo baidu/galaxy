@@ -84,11 +84,7 @@ public:
     int Stop();
     virtual void StopPost();
     virtual void Status(TaskStatus* status);
-    ~ContainerTaskRunner(){
-        delete _cg_ctrl;
-        delete _mem_ctrl;
-        delete _cpu_ctrl;
-    }
+    ~ContainerTaskRunner();
 private:
     void PutToCGroup();
     void StartAfterDownload(int ret);
