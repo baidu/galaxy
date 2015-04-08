@@ -14,6 +14,7 @@
 
 namespace galaxy {
 
+class ResourceCollectorEngine;
 ResourceCollectorEngine* GetResourceCollectorEngine();
 
 class ResourceCollectorEngine {
