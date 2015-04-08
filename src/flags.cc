@@ -20,6 +20,9 @@ std::string FLAGS_cgroup_root = "/cgroups";
 int FLAGS_agent_curl_recv_buffer_size = 1024 * 10;
 
 double FLAGS_cpu_num = 4;
+
+int FLAGS_resource_collector_engine_interval = 1000;
+
 int64_t FLAGS_mem_gbytes = 32;
 int64_t FLAGS_mem_bytes = FLAGS_mem_gbytes * 1024 * 1024 * 1024;
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

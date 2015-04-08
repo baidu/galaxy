@@ -9,6 +9,7 @@
 #include "proto/task.pb.h"
 #include "common/mutex.h"
 #include "agent/workspace.h"
+#include "agent/resource_collector.h"
 namespace galaxy{
 
 class TaskRunner{
@@ -35,6 +36,8 @@ public:
     * */
    virtual int IsRunning() = 0 ;
 
+   virtual void Status(TaskStatus* status) = 0;
+
    virtual ~TaskRunner(){}
 };
 class AbstractTaskRunner:public TaskRunner{
@@ -50,6 +53,9 @@ public:
     int IsRunning();
     int Stop();
     int ReStart();
+    // do something after stop
+    virtual void StopPost() = 0;
+    virtual void Status(TaskStatus* status) = 0;
 protected:
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
@@ -67,14 +73,20 @@ class CommandTaskRunner:public AbstractTaskRunner{
 public:
     CommandTaskRunner(TaskInfo _task_info,
                       DefaultWorkspace * _workspace)
-                      :AbstractTaskRunner(_task_info,_workspace){
+                      :AbstractTaskRunner(_task_info,_workspace), 
+                       collector_(NULL), 
+                       collector_id_(-1) {
     }
 
-    ~CommandTaskRunner() {
-    }
+    virtual ~CommandTaskRunner();
     int Prepare();
     int Start();
     void StartAfterDownload(int ret);
+    virtual void Status(TaskStatus* status);
+    virtual void StopPost();
+protected:
+    ProcResourceCollector* collector_;
+    long collector_id_;
 };
 
 

@@ -48,8 +48,7 @@ void AgentImpl::Report() {
     std::vector<TaskStatus>::iterator it = status_vector.begin();
     for(; it != status_vector.end(); ++it){
         TaskStatus* req_status = request.add_task_status();
-        req_status->set_task_id(it->task_id());
-        req_status->set_status(it->status());
+        req_status->CopyFrom(*it);
     }
     request.set_agent_addr(addr);
     request.set_cpu_share(FLAGS_cpu_num);
