@@ -16,3 +16,5 @@ def mount():
     api.run('mount -t cgroup -ocpu cpu /cgroups/cpu')
     api.run('mkdir -p /cgroups/memory')
     api.run('mount -t cgroup -omemory memory /cgroups/memory')
+    api.run('mkdir -p /cgroups/cpuacct')
+    api.run('mount -t cgroup -ocpuacct cpuacct /cgroups/cpuacct')

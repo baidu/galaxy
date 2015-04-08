@@ -66,7 +66,14 @@ public:
     ~CpuCtrl(){}
 };
 
+class CpuAcctCtrl:public AbstractCtrl{
 
+public:
+    CpuAcctCtrl(std::string my_cg_root)
+        :AbstractCtrl(my_cg_root){}
+    ~CpuAcctCtrl(){}
+
+};
 
 
 class ContainerTaskRunner:public AbstractTaskRunner{
@@ -77,7 +84,7 @@ public:
                         DefaultWorkspace* workspace)
                        :AbstractTaskRunner(task_info,workspace),
                         _cg_root(cg_root),
-                        collector_(NULL), 
+                        collector_(NULL),
                         collector_id_(-1) {}
     int Prepare();
     int Start();
@@ -93,6 +100,7 @@ private:
     CGroupCtrl* _cg_ctrl;
     MemoryCtrl* _mem_ctrl;
     CpuCtrl*    _cpu_ctrl;
+    CpuAcctCtrl * _cpu_acct_ctrl;
     CGroupResourceCollector* collector_;
     long collector_id_;
 };

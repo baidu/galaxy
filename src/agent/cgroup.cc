@@ -87,6 +87,8 @@ int AbstractCtrl::AttachTask(pid_t pid) {
     if (ret < 0) {
         LOG(FATAL, "fail to attach pid  %d for %s", pid, _my_cg_root.c_str());
         return -1;
+    }else{
+        LOG(INFO,"attach pid %d for %s successfully",pid, _my_cg_root.c_str());
     }
 
     return 0;
@@ -163,6 +165,7 @@ ContainerTaskRunner::~ContainerTaskRunner() {
     delete _cg_ctrl;
     delete _mem_ctrl;
     delete _cpu_ctrl;
+    delete _cpu_acct_ctrl;
 }
 
 int ContainerTaskRunner::Prepare() {
@@ -195,6 +198,7 @@ int ContainerTaskRunner::Prepare() {
 
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
+    _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
 
     std::string uri = m_task_info.task_raw();
     std::string path = m_workspace->GetPath();
@@ -249,6 +253,7 @@ void ContainerTaskRunner::PutToCGroup(){
     pid_t my_pid = getpid();
     _mem_ctrl->AttachTask(my_pid);
     _cpu_ctrl->AttachTask(my_pid);
+    _cpu_acct_ctrl->AttachTask(my_pid);
 }
 
 int ContainerTaskRunner::Start() {

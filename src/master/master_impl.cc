@@ -312,7 +312,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             task_id, request->task_status(i).status());
         if (request->task_status(i).has_cpu_usage()) {
             instance.set_cpu_usage(
-                    request->task_status(i).cpu_usage()); 
+                    request->task_status(i).cpu_usage());
             LOG(INFO, "%d use cpu %f", task_id, instance.cpu_usage());
         }
         if (request->task_status(i).has_memory_usage()) {
@@ -433,6 +433,8 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         TaskInstance& instance = tasks_[task_id];
         instance.mutable_info()->set_task_name(job->job_name);
         instance.mutable_info()->set_task_id(task_id);
+        instance.mutable_info()->set_required_cpu(job->cpu_share);
+        instance.mutable_info()->set_required_mem(job->mem_share);
         instance.set_agent_addr(agent_addr);
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
