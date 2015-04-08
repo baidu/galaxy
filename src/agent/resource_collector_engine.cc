@@ -27,6 +27,7 @@ static void InitResourceCollectorEngine() {
     g_collector_engine = 
         new ResourceCollectorEngine(
                 FLAGS_resource_collector_engine_interval);
+    g_collector_engine->Start();
     ::atexit(DestroyResourceCollectorEngine);
     return;
 }

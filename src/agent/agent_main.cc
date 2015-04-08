@@ -51,10 +51,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    galaxy::ResourceCollectorEngine* engine = 
-        galaxy::GetResourceCollectorEngine();
-    engine->Start();
-
     FLAGS_mem_bytes = FLAGS_mem_gbytes*(1024*1024*1024);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
