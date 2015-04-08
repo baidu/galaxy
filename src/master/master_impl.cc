@@ -233,7 +233,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
         }else{
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() != COMPLETE) {
+            if(instance.status() != ERROR && instance.status() != COMPLETE){
                 continue;
             }
             int64_t job_id = instance.job_id();
@@ -246,8 +246,10 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             job.running_num --;
             del_tasks.push_back(task_id);
             tasks_.erase(task_id);
-            job.complete_tasks[agent_addr].insert(task_id);
-            job.replica_num --;
+            if(instance.status() == COMPLETE){
+                job.complete_tasks[agent_addr].insert(task_id);
+                job.replica_num --;
+            }
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {

@@ -24,9 +24,9 @@ struct AgentInfo {
     std::string addr;
     int32_t task_num;
     double cpu_share;
-    int32_t mem_share;
+    int64_t mem_share;
     double cpu_used;
-    int32_t mem_used;
+    int64_t mem_used;
     Agent_Stub* stub;
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
@@ -41,7 +41,7 @@ struct JobInfo {
     int32_t running_num;
     int32_t scale_down_time;
     double cpu_share;
-    int32_t mem_share;
+    int64_t mem_share;
     std::map<std::string, std::set<int64_t> > agent_tasks;
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;

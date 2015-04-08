@@ -16,7 +16,7 @@ extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_agent_work_dir;
 extern double FLAGS_cpu_num;
-extern int FLAGS_mem_gbytes;
+extern int64_t FLAGS_mem_bytes;
 
 namespace galaxy {
 
@@ -52,14 +52,14 @@ void AgentImpl::Report() {
     }
     request.set_agent_addr(addr);
     request.set_cpu_share(FLAGS_cpu_num);
-    request.set_mem_share(FLAGS_mem_gbytes);
+    request.set_mem_share(FLAGS_mem_bytes);
     request.set_used_cpu_share(ws_mgr_->GetUsedCpuShare());
     request.set_used_mem_share(ws_mgr_->GetUsedMemShare());
 
     LOG(INFO, "Reprot to master %s,task count %d,"
-        "cpu_share %f, cpu_used %f, mem_share %d, mem_used %d",
+        "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld",
         addr.c_str(),request.task_status_size(), FLAGS_cpu_num,
-        ws_mgr_->GetUsedCpuShare(), FLAGS_mem_gbytes, ws_mgr_->GetUsedMemShare());
+        ws_mgr_->GetUsedCpuShare(), FLAGS_mem_bytes, ws_mgr_->GetUsedMemShare());
     rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));

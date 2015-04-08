@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
         job.replicate_count = atoi(argv[6]);
         job.job_name = argv[3];
         job.cpu_share = atof(argv[7]);
-        job.mem_share = atoi(argv[8]);
+        job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
         fprintf(stdout,"%lld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
@@ -128,12 +128,12 @@ int main(int argc, char* argv[]) {
         std::vector<galaxy::NodeDescription>::iterator it = nodes.begin();
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
-            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%f\t"
-                    "USED:%f\tMEM:%dGB\tUSED:%dGB\n",
+            fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%0.2f\t"
+                    "USED:%0.2f\tMEM:%dGB\tUSED:%dGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share,
-                    it->cpu_used, it->mem_share,
-                    it->mem_used);
+                    it->cpu_used, it->mem_share/(1024*1024*1024),
+                    it->mem_used/(1024*1024*1024));
         }
     } else if (COMMAND == LISTJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);

@@ -113,7 +113,7 @@ double WorkspaceManager::GetUsedCpuShare() {
     return used_cpu_share;
 }
 
-int32_t WorkspaceManager::GetUsedMemShare() {
+int64_t WorkspaceManager::GetUsedMemShare() {
     return used_mem_share;
 }
 }

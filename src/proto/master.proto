@@ -25,8 +25,8 @@ message HeartBeatRequest {
     repeated TaskStatus task_status = 4;
     optional double cpu_share = 5;
     optional double used_cpu_share = 6;
-    optional int32 mem_share = 7;
-    optional int32 used_mem_share = 8;
+    optional int64 mem_share = 7;
+    optional int64 used_mem_share = 8;
 }
 
 message HeartBeatResponse {
@@ -41,7 +41,7 @@ message NewJobRequest {
     optional string cmd_line = 4;
     optional int32 replica_num = 5;
     optional double cpu_share = 6;
-    optional int32 mem_share = 7;
+    optional int64 mem_share = 7;
 }
 
 message NewJobResponse {
@@ -108,9 +108,9 @@ message NodeInstance {
     optional string addr = 3;
     optional int32 task_num = 4;
     optional double cpu_share = 5;
-    optional int32 mem_share = 6;
+    optional int64 mem_share = 6;
     optional double cpu_used = 7;
-    optional int32 mem_used = 8;
+    optional int64 mem_used = 8;
 }
 
 message ListNodeRequest {
