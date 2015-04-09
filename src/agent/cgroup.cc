@@ -169,7 +169,7 @@ ContainerTaskRunner::~ContainerTaskRunner() {
 }
 
 int ContainerTaskRunner::Prepare() {
-    LOG(INFO, "prepare container for task %d", m_task_info.task_id());
+    LOG(INFO, "prepare container for task %ld", m_task_info.task_id());
     //TODO
     std::vector<std::string> support_cg;
     support_cg.push_back("memory");
@@ -192,7 +192,7 @@ int ContainerTaskRunner::Prepare() {
     }
 
     if (status != 0) {
-        LOG(FATAL, "fail to create subsystem for task %d,status %d", m_task_info.task_id(), status);
+        LOG(FATAL, "fail to create subsystem for task %ld,status %d", m_task_info.task_id(), status);
         return status;
     }
 
@@ -257,10 +257,10 @@ void ContainerTaskRunner::PutToCGroup(){
 }
 
 int ContainerTaskRunner::Start() {
-    LOG(INFO, "start a task with id %d", m_task_info.task_id());
+    LOG(INFO, "start a task with id %ld", m_task_info.task_id());
 
     if (IsRunning() == 0) {
-        LOG(WARNING, "task with id %d has been runing", m_task_info.task_id());
+        LOG(WARNING, "task with id %ld has been runing", m_task_info.task_id());
         return -1;
     }
 
@@ -299,7 +299,7 @@ void ContainerTaskRunner::StopPost() {
 
 int ContainerTaskRunner::Stop(){
     int status = AbstractTaskRunner::Stop();
-    LOG(INFO,"stop  task %d  with status %d",m_task_info.task_id(),status);
+    LOG(INFO,"stop  task %ld  with status %d",m_task_info.task_id(),status);
     if(status != 0 ){
         return status;
     }
@@ -307,7 +307,7 @@ int ContainerTaskRunner::Stop(){
     common::ThisThread::Sleep(500);
     StopPost();
     status = _cg_ctrl->Destroy(m_task_info.task_id());
-    LOG(INFO,"destroy cgroup for task %d with status %d",m_task_info.task_id(),status);
+    LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
     return status;
 }
 
