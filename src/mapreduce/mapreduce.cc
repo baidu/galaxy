@@ -6,9 +6,11 @@
 
 #include "mapreduce.h"
 
+#include <gflags/gflags.h>
 #include <iostream>
-
 #include <galaxy.h>
+
+DECLARE_string(role);
 
 /// MapInput implement
 std::string MapInput::value() const {
@@ -113,6 +115,20 @@ void MapReduceSpecification::set_reduce_megabytes(int megabytes) {
 int MapReduceResult::machines_used() { return 0; }
 int MapReduceResult::time_taken() { return 0; } 
 
+
+void Mapper::Emit(const std::string& output, int num) {
+    std::cout << output << "\t" << num << std::endl;
+}
+
+void Reducer::Emit(const std::string& output) {
+    std::cout << output << std::endl;
+}
+
+Mapper* g_mapper = NULL;
+Reducer* g_reducer = NULL;
+const MapReduceSpecification* g_spec = NULL;
+
+
 int64_t GalaxyNewJob(galaxy::Galaxy* galaxy,
                   const std::string& job_name, const std::string& tarfile,
                   const std::string& cmd_line, int replica) {
@@ -141,26 +157,15 @@ int64_t GalaxyNewJob(galaxy::Galaxy* galaxy,
     return galaxy->NewJob(job);
 }
 
+bool MapReduceMaster(const MapReduceSpecification& spec, MapReduceResult* result) {
 
-void Mapper::Emit(const std::string& output, int num) {
-    std::cout << output << "\t" << num << std::endl;
-}
-
-void Reducer::Emit(const std::string& output) {
-    std::cout << output << std::endl;
-}
-
-Mapper* g_mapper = NULL;
-Reducer* g_reducer = NULL;
-const MapReduceSpecification* g_spec = NULL;
-
-bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
     galaxy::Galaxy* cluster = galaxy::Galaxy::ConnectGalaxy("localhost:8102");
     std::vector<galaxy::JobInstanceDescription> jobs;
     /// map
     int64_t mapper_id = 
         GalaxyNewJob(cluster, "mapper", "mapper.tar.gz", "./mapper.sh", spec.machines());
     bool done = false;
+    fprintf(stderr, "Mapper Start\n");
     while(!done) {
         cluster->ListJob(&jobs);
         for (uint32_t i = 0 ; i < jobs.size(); i++) {
@@ -173,11 +178,12 @@ bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
         fprintf(stderr, ".");
         sleep(1);
     }
-    fprintf(stderr, "Mapper done\n");
+    fprintf(stderr, "\nMapper done\n");
     /// reduce
     int64_t reducer_id = 
         GalaxyNewJob(cluster, "reducer", "reducer.tar.gz", "./reducer.sh", spec.machines());
     done = false;
+    fprintf(stderr, "Reducer Start\n");
     while(!done) {
         cluster->ListJob(&jobs);
         for (uint32_t i = 0; i < jobs.size(); i++) {
@@ -186,9 +192,48 @@ bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
                 break;
             }
         }
+        jobs.clear();
+        fprintf(stderr, ".");
+        sleep(1);
     }
-    fprintf(stderr, "Reducer done\n");
+    fprintf(stderr, "\nReducer done\n");
     return true;
+}
+
+bool Map(const MapReduceSpecification& spec, MapReduceResult* result) {
+    MapInput input;
+    while(!input.done()) {
+        g_mapper->Map(input);
+        input.NextValue();
+    }
+    return true;
+}
+
+bool Reduce(const MapReduceSpecification& spec, MapReduceResult* result) {
+    ReduceInput input;
+    while(!input.alldone()) {
+        std::cout << input.key() << "\t";
+        g_reducer->Reduce(&input);
+        input.NextKey();
+    }
+    return true;
+}
+
+bool Client(const MapReduceSpecification& spec, MapReduceResult* result) {
+    return true;
+}
+
+bool MapReduce(const MapReduceSpecification& spec, MapReduceResult* result) {
+    if (FLAGS_role == "master") {
+        return MapReduceMaster(spec,result);
+    } else if (FLAGS_role == "mapper") {
+        return Map(spec,result);
+    } else if (FLAGS_role == "reducer") {
+        return Reduce(spec,result);
+    } else {
+        /// Client
+        return Client(spec,result);
+    }
 }
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

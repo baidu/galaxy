@@ -4,10 +4,11 @@
 //
 // Author: yanshiguang02@baidu.com
 
+#include <gflags/gflags.h>
 #include <mapreduce/mapreduce.h>
 
-int main(int argc, char** argv) {
-    //ParseCommandLineFlags(argc, argv);
+int main(int argc, char* argv[]) {
+    ::google::ParseCommandLineFlags(&argc, &argv, false);
     
     MapReduceSpecification spec;
     
@@ -24,8 +25,8 @@ int main(int argc, char** argv) {
     // /gfs/test/freq-00001-of-00100
     // 
     MapReduceOutput* out = spec.output();
-    out->set_filebase("/bfs/test/freq");
-    out->set_num_tasks(100);
+    out->set_filebase("wordcount/src");
+    out->set_num_tasks(7);
     out->set_format("text");
     out->set_reducer_class("Adder");
     
@@ -35,7 +36,7 @@ int main(int argc, char** argv) {
     
     // Tuning parameters: use at most 2000
     // machines and 100 MB of memory per task
-    spec.set_machines(13);
+    spec.set_machines(7);
     spec.set_map_megabytes(100);
     spec.set_reduce_megabytes(100);
     

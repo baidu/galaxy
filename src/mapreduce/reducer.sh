@@ -8,7 +8,7 @@ for((i=0;i < $TASK_NUM; i++)) do
 	./bfs_client get /wordcount/shuffle/$TASK_ID/$i ./tmp/$i
 done;
 
-cat ./tmp/* | sort | ./reducer > ./result
+cat ./tmp/* | sort | ./mapreduce --role=reducer > ./result
 
 ./bfs_client put ./result /wordcount/result/part-$TASK_ID
 
