@@ -148,6 +148,10 @@ class GalaxySDK(object):
                 base.agent_addr = task.agent_addr
                 base.job_id = task.job_id
                 base.offset = task.offset
+                base.mem_limit = task.info.required_mem
+                base.cpu_limit = task.info.required_cpu
+                base.mem_used = task.memory_usage
+                base.cpu_used = task.cpu_usage
                 base.start_time = task.start_time
                 ret.append(base)
             return True,ret
@@ -175,6 +179,10 @@ class GalaxySDK(object):
                 base.agent_addr = task.agent_addr
                 base.job_id = task.job_id
                 base.offset = task.offset
+                base.mem_limit = task.info.required_mem
+                base.cpu_limit = task.info.required_cpu
+                base.mem_used = task.memory_usage
+                base.cpu_used = task.cpu_usage
                 base.start_time = task.start_time
                 ret.append(base)
             return True,ret

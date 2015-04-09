@@ -17,6 +17,16 @@ from django.db import transaction
 from django.views.decorators.csrf import csrf_exempt
 LOG = logging.getLogger("console")
 # service group 0
+
+SHOW_G_BYTES_LIMIT = 1024 * 1024 * 1024
+
+def str_pretty(total_bytes):
+    if total_bytes < SHOW_G_BYTES_LIMIT:
+        return "%sM"%(total_bytes/(1024*1024))
+    return "%sG"%(total_bytes/(1024*1024*1024))
+
+
+
 @csrf_exempt
 @s_decorator.service_name_required
 def init_service_group(request):
@@ -93,4 +103,8 @@ def get_task_status(request):
         if not status:
             return builder.error("fail to get task list")\
                       .build_json()
+    for task in tasklist:
+        task['mem_used'] = str_pretty(task['mem_used'])
+        task['mem_limit'] = str_pretty(task['mem_limit'])
+        task['cpu_used'] ="%0.2f"%(task['cpu_limit'] * task['cpu_used'])
     return builder.ok(data={'needInit':False,'taskList':tasklist}).build_json()
