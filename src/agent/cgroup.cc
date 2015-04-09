@@ -15,6 +15,7 @@
 #include <boost/lexical_cast.hpp>
 #include "common/logging.h"
 #include "common/util.h"
+#include "common/this_thread.h"
 #include "agent/downloader_manager.h"
 #include "agent/resource_collector.h"
 #include "agent/resource_collector_engine.h"
@@ -86,6 +87,8 @@ int AbstractCtrl::AttachTask(pid_t pid) {
     if (ret < 0) {
         LOG(FATAL, "fail to attach pid  %d for %s", pid, _my_cg_root.c_str());
         return -1;
+    }else{
+        LOG(INFO,"attach pid %d for %s successfully",pid, _my_cg_root.c_str());
     }
 
     return 0;
@@ -153,19 +156,20 @@ int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
 
 ContainerTaskRunner::~ContainerTaskRunner() {
     if (collector_ != NULL) {
-        ResourceCollectorEngine* engine 
+        ResourceCollectorEngine* engine
             = GetResourceCollectorEngine();
-        engine->DelCollector(collector_id_); 
+        engine->DelCollector(collector_id_);
         delete collector_;
         collector_ = NULL;
     }
     delete _cg_ctrl;
     delete _mem_ctrl;
     delete _cpu_ctrl;
+    delete _cpu_acct_ctrl;
 }
 
 int ContainerTaskRunner::Prepare() {
-    LOG(INFO, "prepare container for task %d", m_task_info.task_id());
+    LOG(INFO, "prepare container for task %ld", m_task_info.task_id());
     //TODO
     std::vector<std::string> support_cg;
     support_cg.push_back("memory");
@@ -178,22 +182,23 @@ int ContainerTaskRunner::Prepare() {
     if (collector_ == NULL) {
         std::string group_path = boost::lexical_cast<std::string>(m_task_info.task_id());
         collector_ = new CGroupResourceCollector(group_path);
-        ResourceCollectorEngine* engine 
-                = GetResourceCollectorEngine(); 
+        ResourceCollectorEngine* engine
+                = GetResourceCollectorEngine();
         collector_id_ = engine->AddCollector(collector_);
     }
     else {
         collector_->ResetCgroupName(
-                boost::lexical_cast<std::string>(m_task_info.task_id())); 
+                boost::lexical_cast<std::string>(m_task_info.task_id()));
     }
 
     if (status != 0) {
-        LOG(FATAL, "fail to create subsystem for task %d,status %d", m_task_info.task_id(), status);
+        LOG(FATAL, "fail to create subsystem for task %ld,status %d", m_task_info.task_id(), status);
         return status;
     }
 
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
+    _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
 
     std::string uri = m_task_info.task_raw();
     std::string path = m_workspace->GetPath();
@@ -248,13 +253,14 @@ void ContainerTaskRunner::PutToCGroup(){
     pid_t my_pid = getpid();
     _mem_ctrl->AttachTask(my_pid);
     _cpu_ctrl->AttachTask(my_pid);
+    _cpu_acct_ctrl->AttachTask(my_pid);
 }
 
 int ContainerTaskRunner::Start() {
-    LOG(INFO, "start a task with id %d", m_task_info.task_id());
+    LOG(INFO, "start a task with id %ld", m_task_info.task_id());
 
     if (IsRunning() == 0) {
-        LOG(WARNING, "task with id %d has been runing", m_task_info.task_id());
+        LOG(WARNING, "task with id %ld has been runing", m_task_info.task_id());
         return -1;
     }
 
@@ -269,15 +275,16 @@ int ContainerTaskRunner::Start() {
     } else {
         close(stdout_fd);
         close(stderr_fd);
+        m_group_pid = m_child_pid;
     }
     return 0;
 }
 
 void ContainerTaskRunner::Status(TaskStatus* status) {
     if (collector_ != NULL) {
-        status->set_cpu_usage(collector_->GetCpuUsage()); 
+        status->set_cpu_usage(collector_->GetCpuUsage());
         status->set_memory_usage(collector_->GetMemoryUsage());
-        LOG(WARNING, "cpu usage %f memory usage %ld", 
+        LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());
     }
     return;
@@ -285,20 +292,22 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
 
 void ContainerTaskRunner::StopPost() {
     if (collector_ != NULL) {
-        collector_->Clear(); 
+        collector_->Clear();
     }
-    return;      
+    return;
 }
 
 int ContainerTaskRunner::Stop(){
     int status = AbstractTaskRunner::Stop();
-    LOG(INFO,"stop  task %d  with status %d",m_task_info.task_id(),status);
+    LOG(INFO,"stop  task %ld  with status %d",m_task_info.task_id(),status);
     if(status != 0 ){
         return status;
     }
+    //sleep 500 ms for cgroup clear tasks
+    common::ThisThread::Sleep(500);
     StopPost();
     status = _cg_ctrl->Destroy(m_task_info.task_id());
-    LOG(INFO,"destroy cgroup for task %d with status %s",m_task_info.task_id(),status);
+    LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
     return status;
 }
 
