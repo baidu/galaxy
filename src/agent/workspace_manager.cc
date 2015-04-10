@@ -31,9 +31,6 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
         m_workspace_map[my_task_info.task_id()] = ws;
     }
 
-    used_cpu_share += my_task_info.required_cpu();
-    used_mem_share += my_task_info.required_mem();
-    LOG(INFO, "used_cpu : %lf, used_mem : %d", used_cpu_share, used_mem_share);
     return status;
 }
 
@@ -85,8 +82,6 @@ int WorkspaceManager::Remove(int64_t task_info_id) {
     Workspace* ws = m_workspace_map[task_info_id];
 
     if (ws != NULL) {
-        used_cpu_share -= ws->GetTaskInfo().required_cpu();
-        used_mem_share -= ws->GetTaskInfo().required_mem();
 
         int status =  ws->Clean();
         if (status != 0) {
@@ -110,13 +105,6 @@ DefaultWorkspace* WorkspaceManager::GetWorkspace(const TaskInfo& task_info) {
 
 }
 
-double WorkspaceManager::GetUsedCpuShare() {
-    return used_cpu_share;
-}
-
-int64_t WorkspaceManager::GetUsedMemShare() {
-    return used_mem_share;
-}
 }
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
