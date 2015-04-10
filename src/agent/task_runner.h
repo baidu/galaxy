@@ -37,9 +37,9 @@ public:
    virtual int IsRunning() = 0 ;
 
    virtual void Status(TaskStatus* status) = 0;
-
    virtual ~TaskRunner(){}
 };
+
 class AbstractTaskRunner:public TaskRunner{
 
 public:
@@ -53,6 +53,7 @@ public:
     int IsRunning();
     int Stop();
     int ReStart();
+    void ResourceUsage();
     // do something after stop
     virtual void StopPost() = 0;
     virtual void Status(TaskStatus* status) = 0;
@@ -73,8 +74,8 @@ class CommandTaskRunner:public AbstractTaskRunner{
 public:
     CommandTaskRunner(TaskInfo _task_info,
                       DefaultWorkspace * _workspace)
-                      :AbstractTaskRunner(_task_info,_workspace), 
-                       collector_(NULL), 
+                      :AbstractTaskRunner(_task_info,_workspace),
+                       collector_(NULL),
                        collector_id_(-1) {
     }
 
