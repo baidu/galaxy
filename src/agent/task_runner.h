@@ -53,7 +53,6 @@ public:
     int IsRunning();
     int Stop();
     int ReStart();
-    void ResourceUsage();
     // do something after stop
     virtual void StopPost() = 0;
     virtual void Status(TaskStatus* status) = 0;
