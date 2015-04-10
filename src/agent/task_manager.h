@@ -13,12 +13,6 @@
 #include "agent/task_runner.h"
 #include "agent/workspace.h"
 namespace galaxy{
-//task manager resource usage
-struct ResourceUsage{
-    int64_t total_mem_usage;
-    double total_cpu_usage;
-};
-
 
 class TaskManager{
 public:
