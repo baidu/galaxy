@@ -188,6 +188,7 @@ void MasterImpl::DeadCheck() {
     int idle_time = 5;
     if (it != alives_.end()) {
         idle_time = it->first + FLAGS_agent_keepalive_timeout - now_time;
+        LOG(INFO, "it->first= %d, now_time= %s\n", it->first, now_time);
         if (idle_time > 5) {
             idle_time = 5;
         }
