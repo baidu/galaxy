@@ -170,7 +170,7 @@ void MasterImpl::DeadCheck() {
     std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
 
     while (it != alives_.end()
-           && it->first + FLAGS_agent_keepalive_timeout < now_time) {
+           && it->first + FLAGS_agent_keepalive_timeout <= now_time) {
         std::set<std::string>::iterator node = it->second.begin();
         while (node != it->second.end()) {
             AgentInfo& agent = agents_[*node];
@@ -188,7 +188,7 @@ void MasterImpl::DeadCheck() {
     int idle_time = 5;
     if (it != alives_.end()) {
         idle_time = it->first + FLAGS_agent_keepalive_timeout - now_time;
-        LOG(INFO, "it->first= %d, now_time= %s\n", it->first, now_time);
+        LOG(INFO, "it->first= %d, now_time= %d\n", it->first, now_time);
         if (idle_time > 5) {
             idle_time = 5;
         }
