@@ -188,7 +188,7 @@ void MasterImpl::DeadCheck() {
     int idle_time = 5;
     if (it != alives_.end()) {
         idle_time = it->first + FLAGS_agent_keepalive_timeout - now_time;
-        LOG(INFO, "it->first= %d, now_time= %d\n", it->first, now_time);
+        // LOG(INFO, "it->first= %d, now_time= %d\n", it->first, now_time);
         if (idle_time > 5) {
             idle_time = 5;
         }
@@ -268,7 +268,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            ::galaxy::HeartBeatResponse* response,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
-    LOG(INFO, "HeartBeat from %s", agent_addr.c_str());
+    LOG(DEBUG, "HeartBeat from %s", agent_addr.c_str());
 
     int now_time = common::timer::now_time();
 
@@ -292,9 +292,10 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent = &(it->second);
         agent->cpu_used = request->used_cpu_share();
         agent->mem_used = request->used_mem_share();
-        alives_[agent->alive_timestamp].erase(agent_addr);
+        int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
+        assert(es);
         alives_[now_time].insert(agent_addr);
-        LOG(INFO, "cpu_use:%f, mem_use:%d", agent->cpu_used, agent->mem_used);
+        LOG(DEBUG, "cpu_use:%f, mem_use:%d", agent->cpu_used, agent->mem_used);
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
