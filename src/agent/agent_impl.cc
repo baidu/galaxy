@@ -25,6 +25,12 @@ AgentImpl::AgentImpl() {
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
     ws_mgr_->Init();
+    AgentResource resource;
+    resource.total_cpu = FLAGS_cpu_num;
+    resource.total_mem = FLAGS_mem_bytes;
+    resource.the_left_cpu = resource.total_cpu;
+    resource.the_left_mem = resource.total_mem;
+    resource_mgr_ = new ResourceManager(resource);
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }
@@ -35,6 +41,7 @@ AgentImpl::AgentImpl() {
 AgentImpl::~AgentImpl() {
     delete ws_mgr_;
     delete task_mgr_;
+    delete resource_mgr_;
 
 }
 
@@ -51,15 +58,17 @@ void AgentImpl::Report() {
         req_status->CopyFrom(*it);
     }
     request.set_agent_addr(addr);
-    request.set_cpu_share(FLAGS_cpu_num);
-    request.set_mem_share(FLAGS_mem_bytes);
-    request.set_used_cpu_share(ws_mgr_->GetUsedCpuShare());
-    request.set_used_mem_share(ws_mgr_->GetUsedMemShare());
+    AgentResource resource;
+    resource_mgr_->Status(&resource);
+    request.set_cpu_share(resource.total_cpu);
+    request.set_mem_share(resource.total_mem);
+    request.set_used_cpu_share(resource.total_cpu - resource.the_left_cpu);
+    request.set_used_mem_share(resource.total_mem - resource.the_left_mem);
 
     LOG(INFO, "Reprot to master %s,task count %d,"
         "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld",
         addr.c_str(),request.task_status_size(), FLAGS_cpu_num,
-        ws_mgr_->GetUsedCpuShare(), FLAGS_mem_bytes, ws_mgr_->GetUsedMemShare());
+        request.used_cpu_share(), FLAGS_mem_bytes, request.used_mem_share());
     rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
@@ -79,29 +88,37 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_required_mem(request->mem_share());
     task_info.set_task_offset(request->task_offset());
     task_info.set_job_replicate_num(request->job_replicate_num());
-    LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
-    LOG(INFO,"cpu_share:%lf\tmem_share:%d",
-        task_info.required_cpu(),
-        task_info.required_mem());
-    int ret = ws_mgr_->Add(task_info);
+    TaskResourceRequirement requirement;
+    requirement.cpu_limit = request->cpu_share();
+    requirement.mem_limit = request->mem_share();
+    int ret = resource_mgr_->Allocate(requirement,request->task_id());
+    if(ret != 0){
+        LOG(FATAL,"fail to allocate resource for task %ld",request->task_id());
+        response->set_status(-3);
+        done->Run();
+        return;
+    }
+    ret = ws_mgr_->Add(task_info);
     if (ret != 0 ){
         LOG(FATAL,"fail to prepare workspace ");
         response->set_status(-2);
         done->Run();
-    } else {
-        LOG(INFO,"start  task for %s",request->task_name().c_str());
-        DefaultWorkspace * workspace ;
-        workspace = ws_mgr_->GetWorkspace(task_info);
-        ret = task_mgr_->Add(task_info,workspace);
-        if (ret != 0){
-           LOG(FATAL,"fail to start task");
-           response->set_status(-1);
-        }
-        response->set_status(0);
-        done->Run();
+        return ;
     }
-    //OpenProcess(request->task_name(), request->task_raw(), request->cmd_line(),"/tmp");
-    //done->Run();
+    LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
+    DefaultWorkspace * workspace ;
+    workspace = ws_mgr_->GetWorkspace(task_info);
+    LOG(INFO,"start  task for %s",request->task_name().c_str());
+    ret = task_mgr_->Add(task_info,workspace);
+    if (ret != 0){
+        LOG(FATAL,"fail to start task");
+        response->set_status(-1);
+        done->Run();
+        return;
+    }
+    response->set_status(0);
+    done->Run();
+
 }
 void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::KillTaskRequest* request,
@@ -112,6 +129,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
     status = ws_mgr_->Remove(request->task_id());
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
+    resource_mgr_->Free(request->task_id());
     response->set_status(status);
     done->Run();
 }
