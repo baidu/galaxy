@@ -8,7 +8,7 @@
 #include <mapreduce/mapreduce.h>
 
 int main(int argc, char* argv[]) {
-    ::google::ParseCommandLineFlags(&argc, &argv, false);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     
     MapReduceSpecification spec;
     
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     // /gfs/test/freq-00001-of-00100
     // 
     MapReduceOutput* out = spec.output();
-    out->set_filebase("wordcount/src");
+    out->set_filebase("/wordcount/result");
     out->set_num_tasks(7);
     out->set_format("text");
     out->set_reducer_class("Adder");

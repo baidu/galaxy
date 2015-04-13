@@ -18,8 +18,6 @@ class WorkspaceManager{
 public:
     WorkspaceManager(const std::string & root_path)
         : m_mutex(NULL),
-          used_cpu_share(0),
-          used_mem_share(0),
           m_root_path(root_path),
           m_data_path() {
         m_mutex = new common::Mutex();
@@ -42,14 +40,10 @@ public:
     int Add(const TaskInfo &task_info);
     int Remove(int64_t  task_info_id);
     DefaultWorkspace* GetWorkspace(const ::galaxy::TaskInfo &task_info);
-    double GetUsedCpuShare();
-    int64_t GetUsedMemShare();
 
 private:
     std::map<int64_t, DefaultWorkspace*>  m_workspace_map;
     common::Mutex * m_mutex;
-    double used_cpu_share;
-    int64_t used_mem_share;
     std::string m_root_path;
     std::string m_data_path;
 };

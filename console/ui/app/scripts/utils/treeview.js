@@ -1,6 +1,6 @@
-
-!function ( angular ) {
-	var NavTree = function($scope,$location){
+'use strict';
+(function(angular){
+var NavTree = function($scope,$location){
     this.$scope = $scope;
     this.$location = $location;
     this.serviceNavSetting = $scope.config.servicePageConfig;
@@ -106,16 +106,18 @@ NavTree.prototype._markServiceActive=function(activeParentIndex,activeChildIndex
         var nodestyle = this.serviceNavSetting[activeParentIndex].children[activeChildIndex].nodestyle[0];
         this.serviceNavSetting[activeParentIndex].children[activeChildIndex].nodestyle=[nodestyle,'selected'];
 }
-	//构造nav tree
-	angular.module( 'galaxy.ui.treeview', [] ).directive( 'navTree',
+
+angular.module( 'galaxy.ui.treeview', [] );
+//构造nav tree
+angular.module( 'galaxy.ui.treeview').directive( 'navTree',
 		[function() {
 			return {
 				controller: 'navTreeCtrl',
 				restrict: 'A',
 				templateUrl:'views/nav.html'
 	};
-	}]);
-	angular.module( 'galaxy.ui.treeview').controller('navTreeCtrl',['$scope','$rootScope','$http','$location','config',function($scope,$rootScope,$http,$location,config){
+}]);
+angular.module( 'galaxy.ui.treeview').controller('navTreeCtrl',['$scope','$rootScope','$http','$location','config',function($scope,$rootScope,$http,$location,config){
      $scope.config = {homeConfig:config.home,servicePageConfig:config.service};
      var navTree = new NavTree($scope,$location);
      navTree.update();
@@ -123,5 +125,6 @@ NavTree.prototype._markServiceActive=function(activeParentIndex,activeChildIndex
          navTree.update();
      });
      $scope.$on('$destroy',listener);
-	}]);
-}( angular );
+}]);
+
+}(angular));

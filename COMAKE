@@ -51,6 +51,7 @@ agent_sources='src/flags.cc\
                src/agent/downloader_manager.cc src/agent/curl_downloader.cc \
                src/agent/binary_downloader.cc \
                src/agent/resource_collector.cc \
+               src/agent/resource_manager.cc \
                src/agent/resource_collector_engine.cc'
 
 master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto src/proto/galaxy.proto \
