@@ -1,0 +1,71 @@
+package galaxy;
+
+enum AgentState {
+    AGENT_REGISTED = 1;    
+    AGENT_RUNNING = 2;
+    AGENT_TERMINATED = 3;
+    AGENT_LOSTING = 4;    // status when no heartbeat for a long time more than limit
+}
+
+message AgentId {
+    optional int64 agent_id = 1;        
+    optional string agent_address = 2;
+}
+
+message AgentInfo {
+    optional AgentId id = 1;    
+    optional AgentState status = 2;
+    optional int64 last_timestamp = 3;
+    optional double cpu_limit = 4;
+    optional int64 mem_limit = 5;
+
+    optional double cpu_used = 6;  // used by task quota
+    optional int64 mem_used = 7;
+
+    optional double cpu_idle = 8;   // idle actually
+    optional int64 mem_free = 9;
+}
+
+message TaskInstance {
+    optional int64 id = 1;      
+    optional int64 job_id = 2;
+    optional int32 retry_times = 3;
+    optional int64 last_timestamp = 4;
+    optional AgentId agent_id = 5;
+    optional double start_time = 6;
+
+    optional double cpu_limit = 7;
+    optional double cpu_usage = 8;
+    optional int64 mem_limit = 9;
+    optional int64 mem_usage = 10;
+}
+
+message JobId {
+    optional int64 job_id = 1;
+    optional int64 timestamp = 2;    
+    // other parameters
+}
+
+enum JobState {
+    JOB_STARTING = 1;
+    JOB_RUNNING = 2; 
+    JOB_SCHEDULING = 3;
+    JOB_RESOURCE_SHORT = 4;    // schedule failed for resource not enough
+    JOB_SCHEDULE_FAILED = 5;   // part task instance can't run
+    JOB_FISHIED = 6;
+    JOB_ERROR = 7;  
+}
+
+message Job {
+    optional JobId id = 1;
+    optional int64 replica_count = 2;
+    optional string job_name = 3;
+    optional string job_raw = 4;
+    optional string cmd_line = 5;
+    optional int32 scale_down_period = 6; // scale down period
+    optional int32 scale_down_num = 7;
+    repeated TaskInstance instances = 8;
+    optional int32 fail_retry_times = 9; // max retry times for single task instance retry
+
+    optional JobState state = 10;
+}
