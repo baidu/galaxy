@@ -1,3 +1,4 @@
+'use strict';
 (function(angular){
 
 var NavBreadcrumb = function($scope,$location){
@@ -25,7 +26,9 @@ NavBreadcrumb.prototype.update = function(){
         this.$scope.mybreadcrumb='mybreadcrumb';
     }
 }
-angular.module( 'galaxy.ui.breadcrumb', [] ).directive( 'navBreadcrumb',
+
+angular.module( 'galaxy.ui.breadcrumb', [] );
+angular.module( 'galaxy.ui.breadcrumb' ).directive( 'navBreadcrumb',
         [function( ) {
             return {
                 restrict: 'A',

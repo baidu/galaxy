@@ -1,3 +1,5 @@
+(function(angular){
+
 angular.module( 'galaxy.ui.loader', [] ).directive( 'routerLoader',
         ['$compile','$rootScope','$location',function( $compile ,$rootScope,$location) {
             return {
@@ -15,3 +17,7 @@ angular.module( 'galaxy.ui.loader', [] ).directive( 'routerLoader',
                 }}
             
         }]);
+
+}(angular));
+
+
