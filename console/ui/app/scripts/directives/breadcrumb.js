@@ -1,3 +1,4 @@
+'use strict';
 (function(angular){
 
 var NavBreadcrumb = function($scope,$location){

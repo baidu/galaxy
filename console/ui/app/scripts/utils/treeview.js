@@ -1,3 +1,4 @@
+'use strict';
 (function(angular){
 var NavTree = function($scope,$location){
     this.$scope = $scope;
@@ -125,4 +126,5 @@ angular.module( 'galaxy.ui.treeview').controller('navTreeCtrl',['$scope','$rootS
      });
      $scope.$on('$destroy',listener);
 }]);
+
 }(angular));

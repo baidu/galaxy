@@ -22,7 +22,6 @@ var galaxy = angular.module('galaxy.ui', [
     'galaxy.ui.ctrl',
     'galaxy.ui.breadcrumb',
     'galaxy.ui.promot',
-    'galaxy.ui.modal.service',
     'cgNotify',
     'galaxy.ui.loader',
     'galaxy.ui.treeview',
