@@ -1,3 +1,7 @@
+
+(function(angular){
+
+
 angular.module('galaxy.ui.modal.service',[]).controller('ShowCreateServiceModalCtrl', function ($scope, $modal, $log) {
   $scope.open = function (size) {
     var modalInstance = $modal.open({
@@ -63,3 +67,5 @@ angular.module('galaxy.ui.modal.service').controller('CreateServiceModalInstance
   };
   $scope.step1style = 'glyphicon glyphicon-ok stepdone';
 });
+
+}(angular));

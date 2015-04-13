@@ -18,14 +18,14 @@ var galaxy = angular.module('galaxy.ui', [
     'ngResource',
     'ngRoute',
     'ngSanitize',
-    'galaxy.ui.treeview',
     'ui.bootstrap',
-    'galaxy.ui.modal.service',
     'galaxy.ui.ctrl',
-    'galaxy.ui.loader',
     'galaxy.ui.breadcrumb',
     'galaxy.ui.promot',
+    'galaxy.ui.modal.service',
     'cgNotify',
+    'galaxy.ui.loader',
+    'galaxy.ui.treeview',
     'ui.select'
   ])
   .config(function ($routeProvider) {
