@@ -38,6 +38,7 @@ message TaskInstance {
     optional double cpu_usage = 8;
     optional int64 mem_limit = 9;
     optional int64 mem_usage = 10;
+    optional int32 port_usage = 11;
 }
 
 message JobId {
