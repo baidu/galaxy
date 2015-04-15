@@ -21,7 +21,6 @@
 #include "agent/resource_collector.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
-#include "proto/agent_internal.pb.h"
 
 extern std::string FLAGS_cgroup_root; 
 
