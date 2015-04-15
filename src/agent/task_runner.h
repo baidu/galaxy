@@ -36,6 +36,8 @@ public:
     * */
    virtual int IsRunning() = 0 ;
 
+   virtual void PersistenceAble(const std::string& persistence_path) = 0;
+
    virtual void Status(TaskStatus* status) = 0;
    virtual ~TaskRunner(){}
 };
@@ -56,6 +58,9 @@ public:
     // do something after stop
     virtual void StopPost() = 0;
     virtual void Status(TaskStatus* status) = 0;
+
+    virtual void PersistenceAble(const std::string& persistence_path) = 0;
+
 protected:
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
@@ -75,19 +80,31 @@ public:
                       DefaultWorkspace * _workspace)
                       :AbstractTaskRunner(_task_info,_workspace),
                        collector_(NULL),
-                       collector_id_(-1) {
+                       collector_id_(-1),
+                       persistence_path_dir_(),
+                       sequence_id_(0) {
     }
 
     virtual ~CommandTaskRunner();
     int Prepare();
+    void PersistenceAble(const std::string& persistence_path) {
+        persistence_path_dir_ = persistence_path; 
+    }
     int Start();
     void StartAfterDownload(int ret);
     virtual void Status(TaskStatus* status);
     virtual void StopPost();
+
+    static bool RecoverRunner(
+            const std::string& persistence_path);
 protected:
+
     ProcResourceCollector* collector_;
     long collector_id_;
+    std::string persistence_path_dir_;
+    int64_t sequence_id_;
 };
+
 
 
 }//galaxy

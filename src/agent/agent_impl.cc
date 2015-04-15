@@ -24,7 +24,12 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
-    ws_mgr_->Init();
+    if (!task_mgr_->Init()) {
+        assert(0); 
+    }
+    if (!ws_mgr_->Init()) {
+        assert(0); 
+    }
     AgentResource resource;
     resource.total_cpu = FLAGS_cpu_num;
     resource.total_mem = FLAGS_mem_bytes;

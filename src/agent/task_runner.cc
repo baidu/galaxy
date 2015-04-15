@@ -15,15 +15,18 @@
 #include <sstream>
 #include <sys/types.h>
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 #include "common/logging.h"
 #include "common/util.h"
 #include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
-
+#include "agent/utils.h"
 
 extern int FLAGS_task_retry_times;
 
 namespace galaxy {
+
+static const std::string RUNNER_META_PREFIX = "task_runner_";
 
 int AbstractTaskRunner::IsRunning(){
     if (m_child_pid == -1) {
@@ -95,17 +98,12 @@ void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd
 }
 
 void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd){
-    pid_t my_pid = getpid();
-    int ret = setpgid(my_pid, my_pid);
-    if (ret != 0) {
-        return ;
-    }
-   // do in child process,
-   // all interface called in child process should be async-safe.
-   // NOTE if dup2 will return errno == EINTR?
-   while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
-   while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
-   for (size_t i = 0; i < fd_vector.size(); i++) {
+    // do in child process,
+    // all interface called in child process should be async-safe.
+    // NOTE if dup2 will return errno == EINTR?
+    while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
+    while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
+    for (size_t i = 0; i < fd_vector.size(); i++) {
         if (fd_vector[i] == STDOUT_FILENO
                     || fd_vector[i] == STDERR_FILENO
                     || fd_vector[i] == STDIN_FILENO) {
@@ -148,7 +146,9 @@ int AbstractTaskRunner::ReStart(){
 }
 
 void CommandTaskRunner::StopPost() {
-    collector_->Clear();
+    if (collector_ != NULL) {
+        collector_->Clear();
+    }
 }
 
 int CommandTaskRunner::Prepare() {
@@ -211,9 +211,34 @@ int CommandTaskRunner::Start() {
     int stdout_fd,stderr_fd;
     std::vector<int> fds;
     PrepareStart(fds,&stdout_fd,&stderr_fd);
+    //sequence_id_ ++;
     m_child_pid = fork();
     //child
     if (m_child_pid == 0) {
+        pid_t my_pid = getpid();
+        int ret = setpgid(my_pid, my_pid);
+        if (ret != 0) {
+            assert(0);
+        }
+        std::string meta_file = persistence_path_dir_ 
+            + "/" + RUNNER_META_PREFIX 
+            + boost::lexical_cast<std::string>(sequence_id_);
+        int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+        if (meta_fd == -1) {
+            assert(0);
+        }
+        int64_t value = my_pid;
+        LOG(WARNING, "value = %d", my_pid);
+        int len = write(meta_fd, (void*)&value, sizeof(value));
+        if (len == -1) {
+            close(meta_fd);
+            assert(0);
+        }
+        if (0 != fsync(meta_fd)) {
+            close(meta_fd); 
+            assert(0);
+        }
+        close(meta_fd);
         StartTaskAfterFork(fds,stdout_fd,stderr_fd);
     } else {
         close(stdout_fd);
@@ -233,7 +258,72 @@ int CommandTaskRunner::Start() {
     return 0;
 }
 
+bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
+    std::vector<std::string> files;    
+    if (!GetDirFilesByPrefix(
+                persistence_path, 
+                RUNNER_META_PREFIX, 
+                &files)) {
+        LOG(WARNING, "get meta files failed"); 
+        return false;
+    }
+    LOG(DEBUG, "get meta files size %lu", files.size());
+    if (files.size() == 0) {
+        return true; 
+    }
+    int max_seq_id = -1;
+    std::string last_meta_file;
+    for (size_t i = 0; i < files.size(); i++) {
+        std::string file = files[i];
+        size_t pos = file.find(RUNNER_META_PREFIX);
+        if (pos == std::string::npos) {
+            continue;  
+        }
+
+        if (pos + RUNNER_META_PREFIX.size() >= file.size()) {
+            LOG(WARNING, "meta file format err %s", file.c_str()); 
+            continue;
+        }
+
+        int cur_id = atoi(file.substr(pos + RUNNER_META_PREFIX.size()).c_str());
+        if (max_seq_id < cur_id) {
+            max_seq_id = cur_id; 
+            last_meta_file = file;
+        }
+    }
+    if (max_seq_id < 0) {
+        return false; 
+    }
+    
+    std::string meta_file = persistence_path + "/" + last_meta_file;
+    LOG(DEBUG, "start to recover %s", meta_file.c_str());
+    int fin = open(meta_file.c_str(), O_RDONLY);
+    if (fin == -1) {
+        LOG(WARNING, "open meta file failed %s err[%d: %s]", 
+                meta_file.c_str(),
+                errno,
+                strerror(errno)); 
+        return false;
+    }
+
+    size_t value;
+    int len = read(fin, (void*)&value, sizeof(value));
+    if (len == -1) {
+        LOG(WARNING, "read meta file failed err[%d: %s]",
+                errno,
+                strerror(errno)); 
+        close(fin);
+        return false;
+    }
+    close(fin);
+
+    LOG(DEBUG, "recove gpid %lu", value);
+    int ret = killpg((pid_t)value, 9);
+    if (ret != 0 && errno != ESRCH) {
+        LOG(WARNING, "fail to kill process group %lu", value); 
+        return false;
+    }
+    return true;
 }
 
-
-
+}

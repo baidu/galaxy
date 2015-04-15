@@ -6,12 +6,79 @@
 
 #include "agent/task_manager.h"
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <errno.h>
+#include <string.h>
+
+#include <boost/lexical_cast.hpp>
+
 #include "common/logging.h"
 #include "agent/cgroup.h"
 
+#include "agent/utils.h"
+
 extern std::string FLAGS_container;
 extern std::string FLAGS_cgroup_root;
+extern std::string FLAGS_agent_work_dir;
+
 namespace galaxy {
+
+const std::string META_PATH = "/meta/";
+const std::string META_FILE_PREFIX = "meta_";
+
+bool TaskManager::Init() {
+    const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    m_task_meta_dir = FLAGS_agent_work_dir + "/" + META_PATH;
+    if (access(m_task_meta_dir.c_str(), F_OK) != 0) {
+        if (mkdir(m_task_meta_dir.c_str(), MKDIR_MODE) != 0) {
+            LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                    m_task_meta_dir.c_str(),
+                    errno,
+                    strerror(errno)); 
+            return false;
+        }         
+        return true;
+    }
+
+    LOG(INFO, "recove meta data %s", m_task_meta_dir.c_str());
+    // if meta_path exists do clear for process
+    // clear by Runner Static Function 
+    std::vector<std::string> meta_files;
+    if (!GetDirFilesByPrefix(
+                m_task_meta_dir, 
+                META_FILE_PREFIX, 
+                &meta_files)) {
+        LOG(WARNING, "list directory files failed"); 
+        return false;
+    }
+    for (size_t i = 0; i < meta_files.size(); i++) {
+        LOG(DEBUG, "recove meta file %s", meta_files[i].c_str());
+        std::string meta_file_name = m_task_meta_dir + "/" + meta_files[i];
+        bool ret = false;
+        if (FLAGS_container.compare("cgroup") == 0) {
+            ret = ContainerTaskRunner::RecoverRunner(meta_file_name);     
+        }
+        else {
+            ret = CommandTaskRunner::RecoverRunner(meta_file_name);            
+        }
+        if (!ret) {
+            return false;
+        }
+        std::string rmdir = "rm -rf " + meta_file_name; 
+        if (system(rmdir.c_str()) == -1) {
+            LOG(WARNING, "rm meta failed rm %s err[%d: %s]",
+                    rmdir.c_str(),
+                    errno, strerror(errno)); 
+            return false;
+        }
+    }
+    return true;
+}
+
+
 int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
                      DefaultWorkspace *  workspace) {
     MutexLock lock(m_mutex);
@@ -23,6 +90,18 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
     // do download
     TaskInfo my_task_info(task_info);
     TaskRunner* runner = NULL;
+    std::string persistence_path = FLAGS_agent_work_dir 
+        + "/" + META_PATH 
+        + "/" + META_FILE_PREFIX + boost::lexical_cast<std::string>(task_info.task_id());
+
+    const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    if (mkdir(persistence_path.c_str(), MKDIR_MODE) != 0) {
+        LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                persistence_path.c_str(),
+                errno,
+                strerror(errno));     
+        return -1;
+    }  
     if(FLAGS_container.compare("cgroup") == 0){
         LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
         runner = new ContainerTaskRunner(my_task_info,FLAGS_cgroup_root, workspace);
@@ -30,6 +109,7 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         LOG(INFO,"use command task runner for task %d",task_info.task_id());
         runner = new CommandTaskRunner(my_task_info,workspace);
     }
+    runner->PersistenceAble(persistence_path);
     int ret = runner->Prepare();
     if(ret != 0 ){
         LOG(INFO,"fail to prepare runner ,ret is %d",ret);
@@ -101,6 +181,7 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
     }
     return 0;
 }
+
 }
 
 

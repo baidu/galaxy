@@ -134,7 +134,7 @@ bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
 
 }
 bool GalaxyImpl::ListTaskByAgent(const std::string& agent_addr,
-                                 std::vector<TaskDescription>* tasks){
+                                 std::vector<TaskDescription>* /*tasks*/){
 
 
     ListTaskRequest request;
@@ -175,7 +175,7 @@ bool GalaxyImpl::ListTaskByAgent(const std::string& agent_addr,
 }
 bool GalaxyImpl::ListTask(int64_t job_id,
                           int64_t task_id,
-                          std::vector<TaskDescription>* tasks) {
+                          std::vector<TaskDescription>* /*tasks*/) {
     ListTaskRequest request;
     if (task_id != -1) {
         request.set_task_id(task_id);
