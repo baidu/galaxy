@@ -91,19 +91,19 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     TaskResourceRequirement requirement;
     requirement.cpu_limit = request->cpu_share();
     requirement.mem_limit = request->mem_share();
-    int ret = resource_mgr_->Allocate(requirement,request->task_id());
-    if(ret != 0){
-        LOG(FATAL,"fail to allocate resource for task %ld",request->task_id());
-        response->set_status(-3);
-        done->Run();
-        return;
-    }
-    ret = ws_mgr_->Add(task_info);
+    int ret = ws_mgr_->Add(task_info);
     if (ret != 0 ){
         LOG(FATAL,"fail to prepare workspace ");
         response->set_status(-2);
         done->Run();
         return ;
+    }
+    ret = resource_mgr_->Allocate(requirement,request->task_id());
+    if(ret != 0){
+        LOG(FATAL,"fail to allocate resource for task %ld",request->task_id());
+        response->set_status(-3);
+        done->Run();
+        return;
     }
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
     DefaultWorkspace * workspace ;
@@ -113,6 +113,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     if (ret != 0){
         LOG(FATAL,"fail to start task");
         response->set_status(-1);
+        resource_mgr_->Free(request->task_id());
         done->Run();
         return;
     }
