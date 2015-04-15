@@ -6,6 +6,7 @@
 
 #include "master_impl.h"
 
+#include <vector>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 
@@ -49,8 +50,8 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
     done->Run();
 }
 
-void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
-                          const ::galaxy::ListNodeRequest* request,
+void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
+                          const ::galaxy::ListNodeRequest* /*request*/,
                           ::galaxy::ListNodeResponse* response,
                           ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
@@ -145,8 +146,8 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
 }
 
 
-void MasterImpl::ListJob(::google::protobuf::RpcController* controller,
-                         const ::galaxy::ListJobRequest* request,
+void MasterImpl::ListJob(::google::protobuf::RpcController* /*controller*/,
+                         const ::galaxy::ListJobRequest* /*request*/,
                          ::galaxy::ListJobResponse* response,
                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
@@ -228,10 +229,6 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
-            if (job.running_num == 0 && job.killed) {
-                LOG(INFO, "Job %ld [%s] killed", job_id, job.job_name.c_str());
-                jobs_.erase(job_id);
-            }
         }else{
             TaskInstance& instance = tasks_[task_id];
             if(instance.status() != ERROR && instance.status() != COMPLETE){
@@ -336,13 +333,14 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
 
 void MasterImpl::DelayRemoveZombieTaskOnAgent(AgentInfo * agent,int64_t task_id){
     MutexLock lock(&agent_lock_);
+
     CancelTaskOnAgent(agent,task_id);
 }
 
 
-void MasterImpl::KillJob(::google::protobuf::RpcController* controller,
+void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
-                   ::galaxy::KillJobResponse* response,
+                   ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
@@ -504,8 +502,13 @@ void MasterImpl::Schedule() {
     MutexLock lock(&agent_lock_);
     int32_t now_time = common::timer::now_time();
     std::map<int64_t, JobInfo>::iterator job_it = jobs_.begin();
+    std::vector<int64_t> should_rm_job;
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
+        if (job.running_num == 0 && job.killed) {
+            should_rm_job.push_back(job_it->first);
+            continue;
+        }
         if (job.running_num > job.replica_num && job.scale_down_time + 10 < now_time) {
             ScaleDown(&job);
             // ±ÜÃâË²¼äËõ³É0ÁË
@@ -522,6 +525,9 @@ void MasterImpl::Schedule() {
             }
             ScheduleTask(&job, agent_addr);
         }
+    }
+    for(uint32_t i = 0;i < should_rm_job.size();i++){
+        jobs_.erase(should_rm_job[i]);
     }
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
 }
