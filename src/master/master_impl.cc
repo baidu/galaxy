@@ -247,12 +247,11 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             if(instance.status() == COMPLETE){
                 job.complete_tasks[agent_addr].insert(task_id);
                 job.replica_num --;
-            }else{
-                //将error状态的task判断为僵尸任务，需要master主动确认删除
-                //TODO,目前存在问题，master重复发送删除命令
-                LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
-                thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
             }
+            //释放资源
+            LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
+            thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
+
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
