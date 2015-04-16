@@ -70,8 +70,9 @@ public:
     virtual void PersistenceAble(const std::string& persistence_path) = 0;
 
 protected:
-    void AbstractTaskRunner::StartAfterDownload(
-            boost::function<void()> callback, int ret);
+    void StartAfterDownload(
+            boost::function<void()> callback, 
+            int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
 protected:

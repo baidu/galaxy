@@ -269,7 +269,6 @@ int ContainerTaskRunner::Start() {
             assert(0);
         }
         int64_t value = my_pid;
-        LOG(WARNING, "value = %d", my_pid);
         int len = write(meta_fd, (void*)&value, sizeof(value));
         if (len == -1) {
             close(meta_fd);
