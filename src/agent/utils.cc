@@ -128,9 +128,12 @@ bool ReloadPbMessage(const std::string& file_name, google::protobuf::Message* me
         return false;
     }
     close(fd);
-    delete tmp_buffer;
     std::string data_buffer(tmp_buffer, size);
-    message->ParseFromString(data_buffer);
+    delete tmp_buffer;
+    if (!message->ParseFromString(data_buffer)) {
+        LOG(WARNING, "parse pb from content failed");
+        return false; 
+    }
     return true;
 }
 
