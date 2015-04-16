@@ -49,7 +49,8 @@ public:
                        DefaultWorkspace * workspace)
                        :m_task_info(task_info),
                        m_workspace(workspace),
-                       m_has_retry_times(0){}
+                       m_has_retry_times(0),
+                       m_task_state(DEPLOYING) {}
     virtual int Prepare() = 0;
     virtual int Start() = 0;
     int IsRunning();
@@ -71,6 +72,7 @@ protected:
     pid_t  m_group_pid;
     DefaultWorkspace * m_workspace;
     int m_has_retry_times;
+    int m_task_state;
 };
 
 class CommandTaskRunner:public AbstractTaskRunner{

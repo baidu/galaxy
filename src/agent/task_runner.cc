@@ -156,6 +156,7 @@ int CommandTaskRunner::Prepare() {
     std::string path = m_workspace->GetPath();
     path.append("/");
     path.append("tmp.tar.gz");
+    m_task_state = DEPLOYING;
     // set deploying state
     DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
     downloader_handler->DownloadInThread(
@@ -194,6 +195,29 @@ void CommandTaskRunner::Status(TaskStatus* status) {
         status->set_memory_usage(collector_->GetMemoryUsage());
         LOG(WARNING, "cpu usage %f memory usage %ld", 
                 status->cpu_usage(), status->memory_usage());
+    }
+
+    int ret = IsRunning();
+    if (ret == 0) {
+        m_task_state = RUNNING;
+        status->set_status(RUNNING);
+    }
+    else if (ret == 1) {
+        m_task_state = COMPLETE; 
+        status->set_status(COMPLETE);
+    }
+    else if (m_task_state == DEPLOYING) {
+        status->set_status(DEPLOYING); 
+    }
+    else {
+        if (ReStart() == 0) {
+            m_task_state = RESTART;
+            status->set_status(RESTART); 
+        }
+        else {
+            m_task_state = ERROR;
+            status->set_status(ERROR); 
+        }
     }
     return;
 }
