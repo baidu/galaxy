@@ -1,5 +1,8 @@
+'use strict';
 (function(angular){
-    angular.module( 'galaxy.ui.promot', [])
+
+    angular.module( 'galaxy.ui.promot', []);
+    angular.module( 'galaxy.ui.promot')
            .controller('PromotCtrl',function($scope,$modalInstance,message){
                $scope.message = message;
                $scope.sure = function(){
@@ -9,4 +12,4 @@
                    $modalInstance.close(false);
                }
            });
-}(angular))
+}(angular));
