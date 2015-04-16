@@ -18,7 +18,7 @@
 #include <boost/lexical_cast.hpp>
 #include "common/logging.h"
 #include "common/util.h"
-#include "downloader_manager.h"
+#include "agent/downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
 
@@ -29,7 +29,10 @@ namespace galaxy {
 static const std::string RUNNER_META_PREFIX = "task_runner_";
 
 int AbstractTaskRunner::IsRunning(){
-    if (m_child_pid == -1) {
+    if ((int64_t)m_child_pid == -1) {
+        LOG(WARNING, "task with id %ld not running with pid %ld",
+                m_task_info.task_id(),
+                (int64_t)m_child_pid);
         return -1;
     }
     // check process exist
@@ -65,9 +68,53 @@ int AbstractTaskRunner::IsRunning(){
     return ret;
 }
 
+void AbstractTaskRunner::AsyncDownload(boost::function<void()> callback) {
+    std::string uri = m_task_info.task_raw();
+    std::string path = m_workspace->GetPath();
+    path.append("/");
+    path.append("tmp.tar.gz");
+    m_task_state = DEPLOYING;
+    // set deploying state
+    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
+    downloader_id_ = downloader_handler->DownloadInThread(
+                        uri,
+                        path,
+                        boost::bind(&AbstractTaskRunner::StartAfterDownload, this, callback, _1));
+    return;
+}
+
+void AbstractTaskRunner::StartAfterDownload(boost::function<void()> callback, int ret) {
+    if (ret == 0) {
+        std::string tar_cmd = "cd " 
+            + m_workspace->GetPath() 
+            + " && tar -xzf tmp.tar.gz";
+        int status = system(tar_cmd.c_str());
+        if (status != 0) {
+            LOG(WARNING, "task with id %ld extract failed", 
+                    m_task_info.task_id());
+        } 
+        else {
+            callback();
+            return;
+        }
+    }        
+    LOG(WARNING, "task with id %ld deploy failed", 
+            m_task_info.task_id());
+    m_task_state = ERROR; 
+    return;
+}
+
 int AbstractTaskRunner::Stop(){
+    if (m_task_state == DEPLOYING) {
+        // do download stop 
+        DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
+        downloader_handler->KillDownload(downloader_id_);
+        LOG(DEBUG, "task id %ld stop failed with deploying", m_task_info.task_id());
+        return -1;
+    }
+
     if (IsRunning() != 0) {
-        return 0;
+        return 0; 
     }
     LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
@@ -75,15 +122,14 @@ int AbstractTaskRunner::Stop(){
         LOG(WARNING,"fail to kill process group %d",m_group_pid);
     }
     pid_t killed_pid = wait(&ret);
-    m_child_pid = -1;
-    m_group_pid = -1;
-
     if (killed_pid == -1){
         LOG(FATAL,"fail to kill process group %d",m_group_pid);
         return -1;
     }else{
         StopPost();
         LOG(INFO,"kill child process %d successfully",killed_pid);
+        m_child_pid = -1;
+        m_group_pid = -1;
         return 0;
     }
 }
@@ -126,44 +172,33 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     _exit(127);
 }
 int AbstractTaskRunner::ReStart(){
+    // only has retry times reach limit return -1
     int max_retry_times = FLAGS_task_retry_times;
     if (m_task_info.has_fail_retry_times()) {
         max_retry_times = m_task_info.fail_retry_times();
     }
     if (m_has_retry_times
             >= max_retry_times) {
+        m_task_state = ERROR;
         return -1;
     }
 
     m_has_retry_times ++;
     if (IsRunning() == 0) {
         if (!Stop()) {
-            return -1;
+            // stop failed need retry last heartbeat
+            return 0;
         }
     }
 
-    return Start();
+    Start();
+    return 0;
 }
 
 void CommandTaskRunner::StopPost() {
     if (collector_ != NULL) {
         collector_->Clear();
     }
-}
-
-int CommandTaskRunner::Prepare() {
-    std::string uri = m_task_info.task_raw();
-    std::string path = m_workspace->GetPath();
-    path.append("/");
-    path.append("tmp.tar.gz");
-    m_task_state = DEPLOYING;
-    // set deploying state
-    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
-    downloader_handler->DownloadInThread(
-            uri,
-            path,
-            boost::bind(&CommandTaskRunner::StartAfterDownload, this, _1));
-    return 0;
 }
 
 CommandTaskRunner::~CommandTaskRunner() {
@@ -176,19 +211,6 @@ CommandTaskRunner::~CommandTaskRunner() {
     }
 }
 
-void CommandTaskRunner::StartAfterDownload(int ret) {
-    if (ret == 0) {
-        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz";
-        int status = system(tar_cmd.c_str());
-        if (status != 0) {
-            LOG(WARNING, "tar -xf failed");
-            return;
-        }
-        Start();
-    }
-    // set deploy failed state
-}
-
 void CommandTaskRunner::Status(TaskStatus* status) {
     if (collector_ != NULL) {
         status->set_cpu_usage(collector_->GetCpuUsage()); 
@@ -197,6 +219,7 @@ void CommandTaskRunner::Status(TaskStatus* status) {
                 status->cpu_usage(), status->memory_usage());
     }
 
+    // check if it is running
     int ret = IsRunning();
     if (ret == 0) {
         m_task_state = RUNNING;
@@ -206,10 +229,8 @@ void CommandTaskRunner::Status(TaskStatus* status) {
         m_task_state = COMPLETE; 
         status->set_status(COMPLETE);
     }
-    else if (m_task_state == DEPLOYING) {
-        status->set_status(DEPLOYING); 
-    }
-    else {
+    // last state is running ==> download finish
+    else if (m_task_state == RUNNING) {
         if (ReStart() == 0) {
             m_task_state = RESTART;
             status->set_status(RESTART); 
@@ -218,6 +239,10 @@ void CommandTaskRunner::Status(TaskStatus* status) {
             m_task_state = ERROR;
             status->set_status(ERROR); 
         }
+    }
+    // other state
+    else {
+        status->set_status(m_task_state); 
     }
     return;
 }
@@ -267,6 +292,13 @@ int CommandTaskRunner::Start() {
     } else {
         close(stdout_fd);
         close(stderr_fd);
+        if (m_child_pid == -1) {
+            LOG(WARNING, "task with id %ld fork failed err[%d: %s]",
+                    m_task_info.task_id(),
+                    errno,
+                    strerror(errno));
+            return -1; 
+        }
         m_group_pid = m_child_pid;
         // NOTE not multi thread safe 
         if (collector_ == NULL) {
@@ -278,8 +310,13 @@ int CommandTaskRunner::Start() {
         else {
             collector_->ResetPid(m_child_pid); 
         }
+        m_task_state = RUNNING;
     }
     return 0;
+}
+
+int CommandTaskRunner::Prepare() {
+    return Start();
 }
 
 bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {

@@ -30,6 +30,7 @@ public:
     bool Init();
     int Add(const ::galaxy::TaskInfo &task_info,
             DefaultWorkspace* workspace);
+    int Start(const int64_t& task_info_id);
     int Remove(const int64_t& task_info_id);
     int Status(std::vector<TaskStatus>& task_status_vector);
 

@@ -207,31 +207,7 @@ int ContainerTaskRunner::Prepare() {
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
     _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
-
-    std::string uri = m_task_info.task_raw();
-    std::string path = m_workspace->GetPath();
-    path.append("/");
-    path.append("tmp.tar.gz");
-    m_task_state = DEPLOYING;
-    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
-    downloader_handler->DownloadInThread(
-            uri,
-            path,
-            boost::bind(&ContainerTaskRunner::StartAfterDownload, this, _1));
-    return 0;
-}
-
-void ContainerTaskRunner::StartAfterDownload(int ret) {
-    if (ret == 0) {
-        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz";
-        int status = system(tar_cmd.c_str());
-        if (status != 0) {
-            LOG(WARNING, "tar -xf failed");
-            return;
-        }
-        Start();
-        return;
-    }
+    return Start();
 }
 
 void ContainerTaskRunner::PutToCGroup(){
@@ -316,6 +292,13 @@ int ContainerTaskRunner::Start() {
     } else {
         close(stdout_fd);
         close(stderr_fd);
+        if (m_child_pid == -1) {
+            LOG(WARNING, "task with id %ld fork failed err[%d: %s]",
+                    m_task_info.task_id(), 
+                    errno,
+                    strerror(errno));
+            return -1; 
+        }
         m_group_pid = m_child_pid;
     }
     return 0;
@@ -328,6 +311,7 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
         LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());
     }
+    // check if it is running
     int ret = IsRunning();
     if (ret == 0) {
         m_task_state = RUNNING;
@@ -337,10 +321,8 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
         m_task_state = COMPLETE; 
         status->set_status(COMPLETE);
     }
-    else if (m_task_state == DEPLOYING) {
-        status->set_status(DEPLOYING); 
-    }
-    else {
+    // last state is running ==> download finish
+    else if (m_task_state == RUNNING) {
         if (ReStart() == 0) {
             m_task_state = RESTART;
             status->set_status(RESTART); 
@@ -350,6 +332,13 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
             status->set_status(ERROR); 
         }
     }
+    // other state
+    else {
+        status->set_status(m_task_state); 
+    }
+    LOG(WARNING, "task with id %ld state %s", 
+            m_task_info.task_id(), 
+            TaskState_Name(TaskState(m_task_state)).c_str());
     return;
 }
 
@@ -366,11 +355,13 @@ int ContainerTaskRunner::Stop(){
     if(status != 0 ){
         return status;
     }
-    //sleep 500 ms for cgroup clear tasks
-    common::ThisThread::Sleep(500);
+    if (_cg_ctrl != NULL) {
+        //sleep 500 ms for cgroup clear tasks
+        common::ThisThread::Sleep(500);
+        status = _cg_ctrl->Destroy(m_task_info.task_id());
+        LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
+    }
     StopPost();
-    status = _cg_ctrl->Destroy(m_task_info.task_id());
-    LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
     return status;
 }
 

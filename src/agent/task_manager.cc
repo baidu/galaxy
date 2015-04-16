@@ -14,6 +14,7 @@
 #include <string.h>
 
 #include <boost/lexical_cast.hpp>
+#include <boost/bind.hpp>
 
 #include "common/logging.h"
 #include "agent/cgroup.h"
@@ -110,26 +111,38 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
         runner = new CommandTaskRunner(my_task_info,workspace);
     }
     runner->PersistenceAble(persistence_path);
-    int ret = runner->Prepare();
-    if(ret != 0 ){
-        LOG(INFO,"fail to prepare runner ,ret is %d",ret);
-        return ret;
-    }
+    // not run directly dead lock
+    runner->AsyncDownload(
+            boost::bind(&TaskManager::Start, this, task_info.task_id()));
     m_task_runner_map[task_info.task_id()] = runner;
-    //ret = runner->Start();
-    //if (ret == 0) {
-    //    LOG(INFO, "add task with id %d successfully", task_info.task_id());
-    //    m_task_runner_map[task_info.task_id()] = runner;
-    //} else {
-    //    LOG(FATAL, "fail to add task with %d", task_info.task_id());
-    //}
-    return ret;
+    return 0;
+}
+
+int TaskManager::Start(const int64_t& task_info_id) {
+    MutexLock lock(m_mutex);
+    if (m_task_runner_map.find(task_info_id) == m_task_runner_map.end()) {
+        LOG(WARNING, "task with id %ld does not exist", task_info_id); 
+        return 0;
+    }
+
+    TaskRunner* runner = m_task_runner_map[task_info_id];
+    if (NULL == runner) {
+        return 0; 
+    }
+    int status = runner->Prepare(); 
+    if (status == 0) {
+        LOG(INFO, "start task %ld successfully", task_info_id); 
+    }
+    else {
+        LOG(WARNING, "start task %ld failed", task_info_id); 
+    }
+    return status;
 }
 
 int TaskManager::Remove(const int64_t& task_info_id) {
     MutexLock lock(m_mutex);
     if (m_task_runner_map.find(task_info_id) == m_task_runner_map.end()) {
-        LOG(WARNING, "task with id %d does not exist", task_info_id);
+        LOG(WARNING, "task with id %ld does not exist", task_info_id); 
         return 0;
     }
     TaskRunner* runner = m_task_runner_map[task_info_id];
@@ -138,48 +151,27 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     }
     int status = runner->Stop();
     if(status == 0){
-        LOG(INFO,"stop task %d successfully",task_info_id);
+        LOG(INFO,"stop task %d successfully", task_info_id);
+        m_task_runner_map.erase(task_info_id);
+        delete runner;
+    }    
+    else {
+        LOG(WARNING, "stop task %d failed maybe delay stoped",
+                task_info_id); 
     }
-    m_task_runner_map.erase(task_info_id);
-    delete runner;
     return status;
 }
 
 int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
-
-    std::vector<int64_t> dels;
-    {
-        MutexLock lock(m_mutex);
-        std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
-        for (; it != m_task_runner_map.end(); ++it) {
-            TaskStatus status;
-            it->second->Status(&status);
-            //status.set_task_id(it->first);
-            //int ret = it->second->IsRunning();
-            //if(ret == 0){
-            //    status.set_status(RUNNING);
-            //}else if(ret == 1){
-            //    status.set_status(COMPLETE);
-            //    dels.push_back(it->first);
-            //}else{
-            //    if (it->second->ReStart() == 0) {
-            //        status.set_status(RESTART);
-            //    } else {
-            //        // if restart failed,
-            //        // 1. retry times more than limit, no need retry any more.
-            //        // 2. stop failed
-            //        // 3. start failed
-            //        status.set_status(ERROR);
-            //    }
-            //}
-
-            task_status_vector.push_back(status);
-        }
-    }
-    for (uint32_t i = 0; i < dels.size(); i++) {
-        Remove(dels[i]);
-    }
-    return 0;
+   MutexLock lock(m_mutex);
+   std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
+   for (; it != m_task_runner_map.end(); ++it) {
+       TaskStatus status;
+       status.set_task_id(it->first);
+       it->second->Status(&status);
+       task_status_vector.push_back(status);
+   }
+   return 0;
 }
 
 }

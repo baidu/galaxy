@@ -10,7 +10,7 @@
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 
-extern int FLAGS_task_deloy_timeout;
+extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
 
 namespace galaxy {
@@ -211,9 +211,9 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == DEPLOYING &&
-                instance.start_time() + FLAGS_task_deloy_timeout > now_time
-                && !clear_all) {
+            if (instance.status() == DEPLOYING 
+                    && instance.start_time() + FLAGS_task_deploy_timeout > now_time
+                        && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
                 continue;
             }
@@ -231,7 +231,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         }else{
             TaskInstance& instance = tasks_[task_id];
-            if(instance.status() != ERROR && instance.status() != COMPLETE){
+            if(instance.status() != ERROR 
+                    && instance.status() != COMPLETE){
                 continue;
             }
             int64_t job_id = instance.job_id();
@@ -247,12 +248,11 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             if(instance.status() == COMPLETE){
                 job.complete_tasks[agent_addr].insert(task_id);
                 job.replica_num --;
-            }else{
-                //将error状态的task判断为僵尸任务，需要master主动确认删除
-                //TODO,目前存在问题，master重复发送删除命令
-                LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
-                thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
             }
+            //释放资源
+            LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
+            thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
+
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
@@ -292,7 +292,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
         assert(es);
         alives_[now_time].insert(agent_addr);
-        LOG(DEBUG, "cpu_use:%f, mem_use:%d", agent->cpu_used, agent->mem_used);
+        LOG(DEBUG, "cpu_use:%lf, mem_use:%ld", agent->cpu_used, agent->mem_used);
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
@@ -302,6 +302,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     std::set<int64_t> running_tasks;
     std::set<int64_t> complete_tasks;
     for (int i = 0; i < task_num; i++) {
+        assert(request->task_status(i).has_task_id());
         int64_t task_id = request->task_status(i).task_id();
         running_tasks.insert(task_id);
 
@@ -480,11 +481,23 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     int64_t task_id = -1;
     int high_load = 0;
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
+    if (job->running_num <= 0) {
+        LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
+                job->job_name.c_str(),
+                job->running_num,
+                job->replica_num); 
+        return;
+    }
     for (; it != job->agent_tasks.end(); ++it) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
+        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d", 
+                job->job_name.c_str(),
+                it->first.c_str(),
+                ai.task_num,
+                high_load);
         if (ai.task_num > high_load) {
             high_load = ai.task_num;
             agent_addr = ai.addr;
