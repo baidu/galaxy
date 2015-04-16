@@ -19,12 +19,6 @@ bool GetDirFilesByPrefix(
         const std::string& prefix, 
         std::vector<std::string>* files);
 
-bool PersistencePbMessage(const std::string& file_name, 
-        const google::protobuf::Message& mesage);
-
-bool ReloadPbMessage(const std::string& file_name, 
-        google::protobuf::Message* message);
-
 }   // ending namespace galaxy
 
 #endif  //_AGENT_UTILS_H
