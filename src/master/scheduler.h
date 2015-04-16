@@ -21,13 +21,13 @@ struct AgentLoad{
     double cpu_total;
     double cpu_left;
     double load;
-}
+};
 
 struct AgentUsedPort{
     int64_t id;
     int64_t agent_id;
     int32_t port;
-}
+};
 
 
 

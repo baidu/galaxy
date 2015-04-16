@@ -6,8 +6,9 @@
 // Date  : 2015-04-14
 #include "master/scheduler.h"
 
-#include "common/logging.h"
 #include <iostream>
+#include <sstream>
+#include "common/logging.h"
 
 namespace galaxy{
 
@@ -16,8 +17,8 @@ SqliteScheduler::SqliteScheduler():
 
 int SqliteScheduler::Init(){
     MutexLock lock(&mutex_);
-    LOG(INFO,"init scheduler sqlit db")
-    if(db_ != NULL){
+    LOG(INFO,"init scheduler sqlit db");
+    if(db_ != NULL ){
         return 0;
     }
     int ret = sqlite3_open(":memory:", &db_);
@@ -28,21 +29,21 @@ int SqliteScheduler::Init(){
 
     std::string create_agent_load = "BEGIN;"\
                                    "CREATE TABLE agent_load ("\
-                                   "agent_id INT PRIMARY KEY AUTOINCREMENT NOT NULL"\
-                                   "mem_total INT NOT NULL"\
-                                   "mem_left INT NOT NULL"\
-                                   "cpu_total NUMERIC NOT NULL"\
-                                   "cpu_left NUMERIC NOT NULL"\
+                                   "agent_id INTEGER PRIMARY KEY  NOT NULL,"\
+                                   "mem_total INTEGER NOT NULL,"\
+                                   "mem_left INTEGER NOT NULL,"\
+                                   "cpu_total NUMERIC NOT NULL,"\
+                                   "cpu_left NUMERIC NOT NULL,"\
                                    "load NUMERIC NOT NULL);"\
                                    "CREATE INDEX resource_index ON agent_load(mem_left,cpu_left);"\
                                    "CREATE INDEX load_index ON agent_load(load);"\
                                    "COMMIT;";
     std::string create_agent_used_port = "BEGIN;"\
-                                         "CREATE TABLE agent_used_port("\
-                                         "id INT PRIMARY KEY AUTOINCREMENT NOT NULL"\
-                                         "agent_id INT NOT NULL"\
-                                         "port INT NOT NULL)"\
-                                         "CREATE INDEX agent_id_index ON agent_used_port(agent_id)"\
+                                         "CREATE TABLE agent_used_port ("\
+                                         "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"\
+                                         "agent_id INTEGER NOT NULL,"\
+                                         "port INTEGER NOT NULL);"\
+                                         "CREATE INDEX agent_id_index ON agent_used_port(agent_id);"\
                                          "COMMIT;";
     char * err = 0;
     ret = sqlite3_exec(db_,create_agent_load.c_str(),0,0,&err);
@@ -55,10 +56,12 @@ int SqliteScheduler::Init(){
         LOG(FATAL,"fail to create table agent used port for %s",err);
         return -1;
     }
+    return 0;
 
 }
 void SqliteScheduler::Save(const AgentLoad& load){
-
+    std::stringstream ss ;
+    ss <<
 }
 
 void SqliteScheduler::Delete(int64_t agent_id){
