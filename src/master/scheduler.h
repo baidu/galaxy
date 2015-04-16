@@ -9,8 +9,8 @@
 
 #include <map>
 #include <vector>
+#include <string>
 #include <sqlite3.h>
-
 #include "common/mutex.h"
 
 namespace galaxy{
@@ -21,6 +21,8 @@ struct AgentLoad{
     double cpu_total;
     double cpu_left;
     double load;
+    int32_t task_count;
+    std::string addr;
 };
 
 struct AgentUsedPort{
@@ -34,9 +36,13 @@ struct AgentUsedPort{
 class Scheduler{
 public:
     virtual int Init() = 0;
-    virtual void Save(const AgentLoad& load) = 0 ;
-    virtual void Delete(int64_t agent_id) = 0;
-    virtual int64_t Schedule(int64_t mem_limit,double cpu_limit,const std::vector<int32_t>& ports) = 0;
+    virtual double CalcLoad(const AgentLoad& load) = 0;
+    virtual int Save(const AgentLoad& load) = 0 ;
+    virtual int Delete(int64_t agent_id) = 0;
+    virtual int Schedule(int64_t mem_limit,double cpu_limit,
+                         const std::vector<int32_t>& ports,
+                         AgentLoad* load) = 0;
+
     virtual ~Scheduler(){}
 };
 
@@ -44,13 +50,19 @@ class SqliteScheduler:public Scheduler{
 
 public:
     SqliteScheduler();
-    void Save(const AgentLoad& table);
-    void Delete(int64_t agent_id);
-    int64_t Schedule(int64_t mem_limit,double cpu_limit,const std::vector<int32_t>& ports);
+    double CalcLoad(const AgentLoad& load);
+    int Save(const AgentLoad& load);
+    int Delete(int64_t agent_id);
+    int Schedule(int64_t mem_limit,double cpu_limit,
+                 const std::vector<int32_t>& ports,
+                 AgentLoad* load);
     int Init();
-    ~SqliteScheduler(){}
+    ~SqliteScheduler();
 private:
     bool IsPortFit(const std::map<int32_t,int32_t>& used_ports,std::vector<int32_t> ports);
+    bool Exists(int64_t agent_id);
+    int Update(const AgentLoad& load);
+    int Insert(const AgentLoad& load);
 private:
     Mutex mutex_;
     sqlite3* db_;

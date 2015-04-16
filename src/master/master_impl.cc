@@ -20,6 +20,8 @@ MasterImpl::MasterImpl()
       next_task_id_(0),
       next_job_id_(0) {
     rpc_client_ = new RpcClient();
+    scheduler_ = new SqliteScheduler();
+    scheduler_->Init();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
     thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
 }
@@ -181,6 +183,7 @@ void MasterImpl::DeadCheck() {
             UpdateJobsOnAgent(&agent, running_tasks, true);
             agents_.erase(*node);
             it->second.erase(node);
+            DeleteFromScheduler(&agent);
             node = it->second.begin();
         }
         alives_.erase(it);
@@ -294,7 +297,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
-
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
@@ -324,8 +326,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         }
     }
     agent->task_num = request->task_status_size();
-
     UpdateJobsOnAgent(agent, running_tasks);
+    SaveToScheduler(agent);
     done->Run();
 }
 
@@ -394,22 +396,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-std::string MasterImpl::AllocResource(/*ResourceRequirement*/) {
-    agent_lock_.AssertHeld();
-    std::string agent_addr;
-    int low_load = 1 << 30;
-    ///TODO: Use priority queue
-    std::map<std::string, AgentInfo>::iterator it = agents_.begin();
-    for (; it != agents_.end(); ++it) {
-        AgentInfo& ai = it->second;
-        if (ai.task_num < low_load) {
-            low_load = ai.task_num;
-            agent_addr = ai.addr;
-        }
-    }
-    LOG(INFO, "Allocate resource %s", agent_addr.c_str());
-    return agent_addr;
-}
 
 bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     agent_lock_.AssertHeld();
@@ -515,7 +501,7 @@ void MasterImpl::Schedule() {
         for (int i = job.running_num; i < job.replica_num; i++) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
-            std::string agent_addr = AllocResource();
+            std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",
                     job.job_name.c_str());
@@ -528,6 +514,49 @@ void MasterImpl::Schedule() {
         jobs_.erase(should_rm_job[i]);
     }
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
+}
+
+bool MasterImpl::SaveToScheduler(AgentInfo* agent){
+    if(NULL == agent){
+        return false;
+    }
+    AgentLoad load ;
+    load.agent_id = agent->id;
+    load.mem_total = agent->mem_share;
+    load.mem_left = agent->mem_share - agent->mem_used;
+    load.cpu_total = agent->cpu_share;
+    load.cpu_left = agent->cpu_share - agent->cpu_used;
+    load.task_count = agent->task_num;
+    load.addr = agent->addr;
+    int ret = scheduler_->Save(load);
+    if(ret != 0){
+        LOG(FATAL,"fail to save agent %ld to scheduler ret %d",agent->id,ret);
+        return false;
+    }
+    return true;
+}
+
+bool MasterImpl::DeleteFromScheduler(AgentInfo* agent){
+    if(NULL == agent ){
+        return false;
+    }
+    int ret = scheduler_->Delete(agent->id);
+    if(ret != 0){
+        LOG(FATAL,"fail to delete agent %ld from scheduler ret %d",agent->id,ret);
+        return false;
+    }
+    return true;
+}
+
+std::string MasterImpl::AllocResource(const JobInfo& job){
+    agent_lock_.AssertHeld();
+    std::vector<int32_t> ports;
+    AgentLoad load;
+    int ret  = scheduler_->Schedule(job.mem_share,job.cpu_share,ports,&load);
+    if(ret != 0 ){
+        LOG(WARNING,"no agent to schedule");
+    }
+    return load.addr;
 }
 
 } // namespace galasy
