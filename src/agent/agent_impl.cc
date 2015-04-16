@@ -145,6 +145,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
     response->set_status(status);
+    done->Run();
 }
 } // namespace galxay
 
