@@ -73,8 +73,8 @@ resource_collector_sources='src/agent/resource_collector.cc test/resource_collec
 resource_collector_headers='src/agent/resource_collector.h common/logging.h src/agent/resource_collector_engine.h'
 
 #scheduler 
-scheduler_sources='src/master/scheduler.cc test/scheduler_test.cc'
-scheduler_headers='src/master/scheduler.h test/scheduler_test.cc'
+scheduler_sources='src/master/scheduler.cc common/logging.cc test/scheduler_test.cc'
+scheduler_headers='src/master/scheduler.h '
 
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
