@@ -7,6 +7,7 @@
 #include "master_impl.h"
 
 #include <vector>
+#include <queue>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 
@@ -20,8 +21,6 @@ MasterImpl::MasterImpl()
       next_task_id_(0),
       next_job_id_(0) {
     rpc_client_ = new RpcClient();
-    scheduler_ = new SqliteScheduler();
-    scheduler_->Init();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
     thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
 }
@@ -183,7 +182,6 @@ void MasterImpl::DeadCheck() {
             UpdateJobsOnAgent(&agent, running_tasks, true);
             agents_.erase(*node);
             it->second.erase(node);
-            DeleteFromScheduler(&agent);
             node = it->second.begin();
         }
         alives_.erase(it);
@@ -328,7 +326,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     }
     agent->task_num = request->task_status_size();
     UpdateJobsOnAgent(agent, running_tasks);
-    SaveToScheduler(agent);
     done->Run();
 }
 
@@ -517,47 +514,38 @@ void MasterImpl::Schedule() {
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
 }
 
-bool MasterImpl::SaveToScheduler(AgentInfo* agent){
-    if(NULL == agent){
-        return false;
+double MasterImpl::CalcLoad(AgentInfo* agent){
+    if(agent->mem_share == 0 || agent->cpu_share == 0.0 ){
+        LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent->mem_share,agent->cpu_share);
+        return 0.0;
     }
-    AgentLoad load ;
-    load.agent_id = agent->id;
-    load.mem_total = agent->mem_share;
-    load.mem_left = agent->mem_share - agent->mem_used;
-    load.cpu_total = agent->cpu_share;
-    load.cpu_left = agent->cpu_share - agent->cpu_used;
-    load.task_count = agent->task_num;
-    load.addr = agent->addr;
-    int ret = scheduler_->Save(load);
-    if(ret != 0){
-        LOG(FATAL,"fail to save agent %ld to scheduler ret %d",agent->id,ret);
-        return false;
-    }
-    return true;
-}
+    int64_t mem_used = agent->mem_used > 0 ? agent->mem_used : 1;
+    double cpu_used = agent->cpu_used > 0 ? agent->cpu_used : 0.1;
+    double mem_factor = mem_used/static_cast<double>(agent->mem_share);
+    double cpu_factor = cpu_used/agent->cpu_share;
+    double task_count_factor = agent->task_num > 0 ? agent->task_num : 0.1;
+    return task_count_factor * mem_factor * cpu_factor;
 
-bool MasterImpl::DeleteFromScheduler(AgentInfo* agent){
-    if(NULL == agent ){
-        return false;
-    }
-    int ret = scheduler_->Delete(agent->id);
-    if(ret != 0){
-        LOG(FATAL,"fail to delete agent %ld from scheduler ret %d",agent->id,ret);
-        return false;
-    }
-    return true;
 }
 
 std::string MasterImpl::AllocResource(const JobInfo& job){
     agent_lock_.AssertHeld();
-    std::vector<int32_t> ports;
-    AgentLoad load;
-    int ret  = scheduler_->Schedule(job.mem_share,job.cpu_share,ports,&load);
-    if(ret != 0 ){
-        LOG(WARNING,"no agent to schedule");
+    std::string agent_addr;
+    std::priority_queue<AgentLoad,std::vector<AgentLoad>,AgentLoadAscCompare> agent_load_queue;
+    std::map<std::string,AgentInfo>::iterator it = agents_.begin();
+    for(;it!=agents_.end();++it){
+        AgentLoad load;
+        load.load = CalcLoad(&it->second);
+        load.agent_info = it->second;
+        agent_load_queue.push(load);
     }
-    return load.addr;
+    if(!agent_load_queue.empty()){
+        agent_addr = agent_load_queue.top().agent_info.addr;
+        LOG(INFO,"schedule job %ld task to %s load is %f",job.id,agent_addr.c_str(), agent_load_queue.top().load);
+    }else{
+        LOG(FATAL,"fail to schedule job %ld ",job.id);
+    }
+    return agent_addr;
 }
 
 } // namespace galasy

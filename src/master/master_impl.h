@@ -15,7 +15,6 @@
 
 #include "common/mutex.h"
 #include "common/thread_pool.h"
-#include "master/scheduler.h"
 
 namespace galaxy {
 
@@ -32,6 +31,21 @@ struct AgentInfo {
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
 };
+
+struct AgentLoad{
+    double load;
+    AgentInfo agent_info;
+};
+
+struct AgentLoadAscCompare{
+    bool operator()(AgentLoad& l1, AgentLoad& l2)const{
+        if (l1.load < l2.load){
+            return false;
+        }
+        return true;
+    }
+};
+
 
 struct JobInfo {
     int64_t id;
@@ -54,7 +68,6 @@ class MasterImpl : public Master {
 public:
     MasterImpl();
     ~MasterImpl() {
-        delete scheduler_;
     }
 public:
     void HeartBeat(::google::protobuf::RpcController* controller,
@@ -95,8 +108,7 @@ private:
     void DeadCheck();
     void Schedule();
     std::string AllocResource(const JobInfo& job);
-    bool SaveToScheduler(AgentInfo* agent);
-    bool DeleteFromScheduler(AgentInfo* agent);
+    double CalcLoad(AgentInfo* agent);
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
     void UpdateJobsOnAgent(AgentInfo* agent,
                            const std::set<int64_t>& running_tasks,
@@ -119,7 +131,6 @@ private:
     int64_t next_task_id_;
     int64_t next_job_id_;
     Mutex agent_lock_;
-    Scheduler* scheduler_;
     RpcClient* rpc_client_;
 };
 

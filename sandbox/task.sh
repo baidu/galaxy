@@ -2,7 +2,7 @@
 echo $TASK_ID
 echo $TASK_NUM
 echo "start echo"
-for ((i=0;i<10;i++)) do
+for ((i=0;i<1000;i++)) do
 	echo $i;
 	sleep 1;
 done;

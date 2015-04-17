@@ -36,7 +36,7 @@ LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
 #依赖模块
 CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('third-64/libcurl@base')
-CONFIGS('third-64/sqlite@base')
+
 
 #为32位/64位指定不同的依赖路径.
 #CONFIGS_32('lib2/ullib')
@@ -56,8 +56,8 @@ agent_sources='src/flags.cc\
                src/agent/resource_collector_engine.cc'
 
 master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto\
-                common/logging.cc src/master/master_impl.cc src/master/master_main.cc \
-                src/master/scheduler.cc'
+                common/logging.cc src/master/master_impl.cc src/master/master_main.cc '
+
 sdk_sources='common/logging.cc src/sdk/galaxy.cc src/proto/task.proto src/proto/master.proto'
 sdk_headers='src/sdk/galaxy.h'
 client_sources='src/client/galaxy_client.cc'
@@ -72,9 +72,6 @@ downloadermgr_headers='src/agent/curl_downloader.h src/agent/downloader_manager.
 resource_collector_sources='src/agent/resource_collector.cc test/resource_collector_test.cc common/logging.cc src/agent/resource_collector_engine.cc'
 resource_collector_headers='src/agent/resource_collector.h common/logging.h src/agent/resource_collector_engine.h'
 
-#scheduler 
-scheduler_sources='src/master/scheduler.cc test/scheduler_test.cc'
-scheduler_headers='src/master/scheduler.h test/scheduler_test.cc'
 
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
@@ -87,7 +84,6 @@ Application('galaxy_client',Sources(client_sources), Libraries('./libgalaxy.a'))
 Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
 Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
 Application('resource_collector_test', Sources(resource_collector_sources), HeaderFiles(resource_collector_headers));
-Application('scheduler_test', Sources(scheduler_sources), HeaderFiles(scheduler_headers));
 
 #共享库
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
