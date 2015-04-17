@@ -38,6 +38,7 @@ struct JobInfo {
     std::string job_name;
     std::string job_raw;
     std::string cmd_line;
+    std::string acct;
     int32_t running_num;
     int32_t scale_down_time;
     double cpu_share;

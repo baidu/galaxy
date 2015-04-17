@@ -70,11 +70,13 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s", request->task_name().c_str(), request->cmd_line().c_str());
+    LOG(INFO, "Run Task %s %s %s", request->task_name().c_str(), request->cmd_line().c_str(),
+        request->acct().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
     task_info.set_task_name(request->task_name());
     task_info.set_cmd_line(request->cmd_line());
+    task_info.set_acct(request->acct());
     task_info.set_task_raw(request->task_raw());
     task_info.set_required_cpu(request->cpu_share());
     task_info.set_required_mem(request->mem_share());

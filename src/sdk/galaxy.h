@@ -51,6 +51,7 @@ struct JobDescription{
     int64_t job_id;
     std::string job_name;
     std::string cmd_line;
+    std::string acct;
     PackageDescription pkg;
     int32_t replicate_count;
     double cpu_share;

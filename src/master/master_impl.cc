@@ -361,6 +361,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.job_name = request->job_name();
     job.job_raw = request->job_raw();
     job.cmd_line = request->cmd_line();
+    job.acct = request->acct();
     job.replica_num = request->replica_num();
     job.running_num = 0;
     job.scale_down_time = 0;
@@ -405,6 +406,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_task_name(job->job_name);
     rt_request.set_task_raw(job->job_raw);
     rt_request.set_cmd_line(job->cmd_line);
+    rt_request.set_acct(job->acct);
     rt_request.set_cpu_share(job->cpu_share);
     rt_request.set_mem_share(job->mem_share);
     rt_request.set_task_offset(job->running_num);

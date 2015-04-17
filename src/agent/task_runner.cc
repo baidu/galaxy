@@ -18,7 +18,7 @@
 #include "common/logging.h"
 #include "common/util.h"
 #include "downloader_manager.h"
-
+#include <pwd.h>
 
 extern int FLAGS_task_retry_times;
 
@@ -87,8 +87,10 @@ void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd
     common::util::GetProcessFdList(current_pid, fd_vector);
     std::string task_stdout = m_workspace->GetPath() + "/./stdout";
     std::string task_stderr = m_workspace->GetPath() + "/./stderr";
-    *stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    *stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
+                      S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
+                      S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd){
@@ -111,16 +113,31 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
          }
          close(fd_vector[i]);
     }
+
+    //chroot(m_workspace->GetPath().c_str());
     chdir(m_workspace->GetPath().c_str());
+
+    passwd *pw = getpwnam(m_task_info.acct().c_str());
+    if (NULL != pw) {
+        chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
+        setuid(pw->pw_uid);
+    }
+
     char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
     task_id_env <<"TASK_ID="<<m_task_info.task_offset();
     std::stringstream task_num_env;
     task_num_env <<"TASK_NUM="<<m_task_info.job_replicate_num();
+    std::stringstream task_user_env;
+    task_user_env <<"USER="<<pw->pw_uid;
     char *env[] = {const_cast<char*>(task_id_env.str().c_str()),
                    const_cast<char*>(task_num_env.str().c_str()),
+                   const_cast<char*>(task_user_env.str().c_str()),
                    NULL};
+
     execve("/bin/sh", argv, env);
+    LOG(FATAL,"fail to kill exec %s errno %d %s",
+        m_task_info.task_name().c_str(), errno, strerror(errno));
     assert(0);
     _exit(127);
 }

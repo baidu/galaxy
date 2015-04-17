@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
     int COMMAND = 0;
     if (strcmp(argv[2], "add") == 0) {
         COMMAND = ADD;
-        if (argc < 9) {
+        if (argc < 10) {
             help();
             return -1;
         }
@@ -106,6 +106,7 @@ int main(int argc, char* argv[]) {
         job.job_name = argv[3];
         job.cpu_share = atof(argv[7]);
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
+        job.acct = argv[9];
         fprintf(stdout,"%lld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;

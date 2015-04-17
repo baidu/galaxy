@@ -14,6 +14,7 @@
 #include <string.h>
 #include <sstream>
 #include <unistd.h>
+#include <pwd.h>
 #include "common/logging.h"
 
 namespace galaxy {
@@ -24,16 +25,70 @@ int DefaultWorkspace::Create() {
         return 0;
     }
     //TODO safe path join
-    std::stringstream ss;
-    ss << m_root_path << "/" << m_task_info.task_id();
-    m_task_root_path = ss.str();
-    int status ;
-    status = mkdir(m_task_root_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    // check users dir
+    std::stringstream private_path;
+    private_path << "/home/users/";
+    int status = 0;
+    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (0 != status) {
+        LOG(WARNING, "create orient path failed %s err[%d: %s]",
+                private_path.str().c_str(), errno, strerror(errno));
+    }
+    //create acct
+    private_path << m_task_info.acct();
+    passwd *pw = getpwnam(m_task_info.acct().c_str());
+    if (NULL == pw) {
+        std::stringstream add_user;
+        add_user << "useradd -d " << private_path.str().c_str() << " -m " << m_task_info.acct().c_str();
+        system(add_user.str().c_str());
+        if (errno) {
+            LOG(WARNING, "create acct failed %s err[%d: %s]",
+                m_task_info.acct().c_str(), errno, strerror(errno));
+        }
+    }
+
+    //create work dir
+    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    m_task_root_path = private_path.str();
+    if (0 != status) {
+        LOG(WARNING, "create task root path failed %s err[%d: %s]",
+                m_task_root_path.c_str(), errno, strerror(errno));
+    }
+
+    private_path << "/data";
+    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    m_task_root_path = private_path.str();
+    if (0 != status) {
+        LOG(WARNING, "create task root path failed %s err[%d: %s]",
+                m_task_root_path.c_str(), errno, strerror(errno));
+    }
+
+    private_path << "/" << m_task_info.task_id();
+    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
     if (status == 0) {
+        m_task_root_path = private_path.str();
         m_has_created = true;
     } else {
-        LOG(WARNING, "create task root path failed %s err[%d: %s]", 
+        LOG(WARNING, "create task root path failed %s err[%d: %s]",
                 m_task_root_path.c_str(), errno, strerror(errno));
+    }
+    return status;
+}
+
+int DefaultWorkspace::mk_patch(const char *path, mode_t mode)
+{
+    struct stat st = {0};
+    int status = 0;
+    if (stat(path, &st) != 0) {
+        if (mkdir(path, mode) != 0 && errno != EEXIST) {
+            status = -1;
+        }
+    }
+    else if (!S_ISDIR(st.st_mode)) {
+        errno = ENOTDIR;
+        status = -1;
     }
     return status;
 }
