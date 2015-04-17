@@ -534,10 +534,16 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
     std::priority_queue<AgentLoad,std::vector<AgentLoad>,AgentLoadAscCompare> agent_load_queue;
     std::map<std::string,AgentInfo>::iterator it = agents_.begin();
     for(;it!=agents_.end();++it){
+        double cpu_left = agent->agent->cpu_share -  agent->cpu_used;
+        int64_t mem_left = agent->mem_share - agent->mem_used ;
+        if(cpu_left < job.cpu_share ||  mem_left < job.mem_share){
+            continue;
+        }
         AgentLoad load;
         load.load = CalcLoad(&it->second);
         load.agent_info = it->second;
         agent_load_queue.push(load);
+
     }
     if(!agent_load_queue.empty()){
         agent_addr = agent_load_queue.top().agent_info.addr;
