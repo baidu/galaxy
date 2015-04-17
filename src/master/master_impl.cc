@@ -296,6 +296,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
+
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
@@ -325,6 +326,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         }
     }
     agent->task_num = request->task_status_size();
+
     UpdateJobsOnAgent(agent, running_tasks);
     done->Run();
 }
@@ -514,6 +516,14 @@ void MasterImpl::Schedule() {
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
 }
 
+//负载计算
+//目前使用3个因数
+//1、当前机器mem使用量，负载与内存使用量成正比，与内存总量成反比，但是需要考虑内存使用量为零情况
+//   需要设置一个默认值比如1 byte,避免总负债变为零
+//2、当前机器的cpu使用量，负载与cpu使用量成正比，与cpu总量成反比，同时需要考虑内存使用量为0状态
+//3、当前机器上的任务数，负载与任务数成正比，需要考虑为0情况
+//例子:
+//   一台机器内存10g 使用量4g ,cpu数5个，使用量1.0，任务数1 当前负载load = 4/10 * 1.0/5 * 1 = 0.08
 double MasterImpl::CalcLoad(AgentInfo* agent){
     if(agent->mem_share == 0 || agent->cpu_share == 0.0 ){
         LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent->mem_share,agent->cpu_share);
@@ -549,7 +559,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         agent_addr = agent_load_queue.top().agent_info.addr;
         LOG(INFO,"schedule job %ld task to %s load is %f",job.id,agent_addr.c_str(), agent_load_queue.top().load);
     }else{
-        LOG(FATAL,"fail to schedule job %ld ",job.id);
+        LOG(WARNING,"fail to schedule job %ld, no enough resource to allocate",job.id);
     }
     return agent_addr;
 }

@@ -72,7 +72,6 @@ downloadermgr_headers='src/agent/curl_downloader.h src/agent/downloader_manager.
 resource_collector_sources='src/agent/resource_collector.cc test/resource_collector_test.cc common/logging.cc src/agent/resource_collector_engine.cc'
 resource_collector_headers='src/agent/resource_collector.h common/logging.h src/agent/resource_collector_engine.h'
 
-
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
 Application('master',Sources(master_sources))
