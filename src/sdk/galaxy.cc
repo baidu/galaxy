@@ -9,6 +9,9 @@
 #include "proto/master.pb.h"
 #include "rpc/rpc_client.h"
 
+static char* MEMORY_UNIT_NAME[] = {"Byte", "KB", "MB", "GB", "PB"};
+static int MEMORY_UNIT_SIZE = 5;
+
 namespace galaxy {
 class GalaxyImpl : public Galaxy {
 public:
@@ -132,7 +135,7 @@ bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
 
 }
 bool GalaxyImpl::ListTaskByAgent(const std::string& agent_addr,
-                                 std::vector<TaskDescription>* tasks){
+                                 std::vector<TaskDescription>* /*tasks*/){
 
 
     ListTaskRequest request;
@@ -173,7 +176,7 @@ bool GalaxyImpl::ListTaskByAgent(const std::string& agent_addr,
 }
 bool GalaxyImpl::ListTask(int64_t job_id,
                           int64_t task_id,
-                          std::vector<TaskDescription>* tasks) {
+                          std::vector<TaskDescription>* /*tasks*/) {
     ListTaskRequest request;
     if (task_id != -1) {
         request.set_task_id(task_id);
@@ -194,6 +197,8 @@ bool GalaxyImpl::ListTask(int64_t job_id,
         std::string task_name;
         std::string agent_addr;
         std::string state;
+        double cpu_usage = 0.0;
+        int64_t memory_usage = 0;
         if (response.tasks(i).has_info()){
             if (response.tasks(i).info().has_task_name()) {
                 task_name = response.tasks(i).info().task_name();
@@ -208,7 +213,35 @@ bool GalaxyImpl::ListTask(int64_t job_id,
         if (response.tasks(i).has_agent_addr()) {
             agent_addr = response.tasks(i).agent_addr();
         }
-        fprintf(stdout, "%ld\t%s\t%s\t%s\n", task_id, task_name.c_str(), state.c_str(), agent_addr.c_str());
+
+        if (response.tasks(i).has_cpu_usage()) {
+            cpu_usage = response.tasks(i).cpu_usage(); 
+        }
+
+        if (response.tasks(i).has_memory_usage()) {
+            memory_usage = response.tasks(i).memory_usage(); 
+        }
+        
+        fprintf(stdout, "%ld\t%s\t%s\t%s\t%f\t", 
+                task_id, 
+                task_name.c_str(), 
+                state.c_str(), 
+                agent_addr.c_str(),
+                cpu_usage);
+        double memory_formated = 0.0;
+        int i;
+        for (i = MEMORY_UNIT_SIZE - 1; i >= 0; i--) {
+            memory_formated = memory_usage * 1.0 / (1L << (i * 10));
+            if (memory_formated - 1 > 0.001) {
+                fprintf(stdout, "%f %s\n",
+                        memory_formated,
+                        MEMORY_UNIT_NAME[i]);
+                break; 
+            }
+        }
+        if (i < 0) {
+            fprintf(stdout, "\n"); 
+        }
     }
     fprintf(stdout, "================================\n");
     return true;

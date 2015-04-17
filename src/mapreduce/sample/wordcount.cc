@@ -4,11 +4,12 @@
 //
 // Author: yanshiguang02@baidu.com
 
-#include <mapreduce/mapreduce.h>
 
 #include <ctype.h>
 #include <string>
 #include <sstream>
+
+#include <mapreduce/mapreduce.h>
 
 using std::string;
 

@@ -16,8 +16,8 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "./curl_downloader_test uri path");
         return EXIT_FAILURE;
     }
-    char* uri = argv[1];
-    char* path = argv[2];
+    //char* uri = argv[1];
+    //char* path = argv[2];
     galaxy::CurlDownloader downloader;
     downloader.Fetch(argv[1], argv[2]);
     return EXIT_SUCCESS;

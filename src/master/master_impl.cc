@@ -6,10 +6,11 @@
 
 #include "master_impl.h"
 
+#include <vector>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 
-extern int FLAGS_task_deloy_timeout;
+extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
 
 namespace galaxy {
@@ -49,8 +50,8 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
     done->Run();
 }
 
-void MasterImpl::ListNode(::google::protobuf::RpcController* controller,
-                          const ::galaxy::ListNodeRequest* request,
+void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
+                          const ::galaxy::ListNodeRequest* /*request*/,
                           ::galaxy::ListNodeResponse* response,
                           ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
@@ -145,8 +146,8 @@ void MasterImpl::ListTask(::google::protobuf::RpcController* /*controller*/,
 }
 
 
-void MasterImpl::ListJob(::google::protobuf::RpcController* controller,
-                         const ::galaxy::ListJobRequest* request,
+void MasterImpl::ListJob(::google::protobuf::RpcController* /*controller*/,
+                         const ::galaxy::ListJobRequest* /*request*/,
                          ::galaxy::ListJobResponse* response,
                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
@@ -170,7 +171,7 @@ void MasterImpl::DeadCheck() {
     std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
 
     while (it != alives_.end()
-           && it->first + FLAGS_agent_keepalive_timeout < now_time) {
+           && it->first + FLAGS_agent_keepalive_timeout <= now_time) {
         std::set<std::string>::iterator node = it->second.begin();
         while (node != it->second.end()) {
             AgentInfo& agent = agents_[*node];
@@ -188,6 +189,7 @@ void MasterImpl::DeadCheck() {
     int idle_time = 5;
     if (it != alives_.end()) {
         idle_time = it->first + FLAGS_agent_keepalive_timeout - now_time;
+        // LOG(INFO, "it->first= %d, now_time= %d\n", it->first, now_time);
         if (idle_time > 5) {
             idle_time = 5;
         }
@@ -209,9 +211,9 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == DEPLOYING &&
-                instance.start_time() + FLAGS_task_deloy_timeout > now_time
-                && !clear_all) {
+            if (instance.status() == DEPLOYING 
+                    && instance.start_time() + FLAGS_task_deploy_timeout > now_time
+                        && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
                 continue;
             }
@@ -227,13 +229,10 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
-            if (job.running_num == 0 && job.killed) {
-                LOG(INFO, "Job %ld [%s] killed", job_id, job.job_name.c_str());
-                jobs_.erase(job_id);
-            }
         }else{
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() != COMPLETE) {
+            if(instance.status() != ERROR 
+                    && instance.status() != COMPLETE){
                 continue;
             }
             int64_t job_id = instance.job_id();
@@ -246,8 +245,14 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             job.running_num --;
             del_tasks.push_back(task_id);
             tasks_.erase(task_id);
-            job.complete_tasks[agent_addr].insert(task_id);
-            job.replica_num --;
+            if(instance.status() == COMPLETE){
+                job.complete_tasks[agent_addr].insert(task_id);
+                job.replica_num --;
+            }
+            //释放资源
+            LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
+            thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
+
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
@@ -260,7 +265,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            ::galaxy::HeartBeatResponse* response,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
-    LOG(INFO, "HeartBeat from %s", agent_addr.c_str());
+    LOG(DEBUG, "HeartBeat from %s", agent_addr.c_str());
 
     int now_time = common::timer::now_time();
 
@@ -284,9 +289,10 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent = &(it->second);
         agent->cpu_used = request->used_cpu_share();
         agent->mem_used = request->used_mem_share();
-        alives_[agent->alive_timestamp].erase(agent_addr);
+        int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
+        assert(es);
         alives_[now_time].insert(agent_addr);
-        LOG(INFO, "cpu_use:%f, mem_use:%d", agent->cpu_used, agent->mem_used);
+        LOG(DEBUG, "cpu_use:%lf, mem_use:%ld", agent->cpu_used, agent->mem_used);
     }
     agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
@@ -296,6 +302,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     std::set<int64_t> running_tasks;
     std::set<int64_t> complete_tasks;
     for (int i = 0; i < task_num; i++) {
+        assert(request->task_status(i).has_task_id());
         int64_t task_id = request->task_status(i).task_id();
         running_tasks.insert(task_id);
 
@@ -308,6 +315,16 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         instance.set_agent_addr(agent_addr);
         LOG(INFO, "%s run task %d %d", agent_addr.c_str(),
             task_id, request->task_status(i).status());
+        if (request->task_status(i).has_cpu_usage()) {
+            instance.set_cpu_usage(
+                    request->task_status(i).cpu_usage());
+            LOG(INFO, "%d use cpu %f", task_id, instance.cpu_usage());
+        }
+        if (request->task_status(i).has_memory_usage()) {
+            instance.set_memory_usage(
+                    request->task_status(i).memory_usage());
+            LOG(INFO, "%d use memory %ld", task_id, instance.memory_usage());
+        }
     }
     agent->task_num = request->task_status_size();
 
@@ -315,9 +332,16 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-void MasterImpl::KillJob(::google::protobuf::RpcController* controller,
+void MasterImpl::DelayRemoveZombieTaskOnAgent(AgentInfo * agent,int64_t task_id){
+    MutexLock lock(&agent_lock_);
+
+    CancelTaskOnAgent(agent,task_id);
+}
+
+
+void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
-                   ::galaxy::KillJobResponse* response,
+                   ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
@@ -423,6 +447,8 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         TaskInstance& instance = tasks_[task_id];
         instance.mutable_info()->set_task_name(job->job_name);
         instance.mutable_info()->set_task_id(task_id);
+        instance.mutable_info()->set_required_cpu(job->cpu_share);
+        instance.mutable_info()->set_required_mem(job->mem_share);
         instance.set_agent_addr(agent_addr);
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
@@ -457,11 +483,23 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     int64_t task_id = -1;
     int high_load = 0;
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
+    if (job->running_num <= 0) {
+        LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
+                job->job_name.c_str(),
+                job->running_num,
+                job->replica_num); 
+        return;
+    }
     for (; it != job->agent_tasks.end(); ++it) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
+        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d", 
+                job->job_name.c_str(),
+                it->first.c_str(),
+                ai.task_num,
+                high_load);
         if (ai.task_num > high_load) {
             high_load = ai.task_num;
             agent_addr = ai.addr;
@@ -479,8 +517,13 @@ void MasterImpl::Schedule() {
     MutexLock lock(&agent_lock_);
     int32_t now_time = common::timer::now_time();
     std::map<int64_t, JobInfo>::iterator job_it = jobs_.begin();
+    std::vector<int64_t> should_rm_job;
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
+        if (job.running_num == 0 && job.killed) {
+            should_rm_job.push_back(job_it->first);
+            continue;
+        }
         if (job.running_num > job.replica_num && job.scale_down_time + 10 < now_time) {
             ScaleDown(&job);
             // 避免瞬间缩成0了
@@ -497,6 +540,9 @@ void MasterImpl::Schedule() {
             }
             ScheduleTask(&job, agent_addr);
         }
+    }
+    for(uint32_t i = 0;i < should_rm_job.size();i++){
+        jobs_.erase(should_rm_job[i]);
     }
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
 }

@@ -13,6 +13,7 @@
 #include "agent/task_runner.h"
 #include "agent/workspace.h"
 namespace galaxy{
+
 class TaskManager{
 public:
     TaskManager(){
@@ -26,13 +27,17 @@ public:
         }
         delete m_mutex;
     }
+    bool Init();
     int Add(const ::galaxy::TaskInfo &task_info,
             DefaultWorkspace* workspace);
+    int Start(const int64_t& task_info_id);
     int Remove(const int64_t& task_info_id);
     int Status(std::vector<TaskStatus>& task_status_vector);
+
 private:
     common::Mutex * m_mutex;
     std::map<int64_t,TaskRunner*> m_task_runner_map;
+    std::string m_task_meta_dir;
 };
 }
 #endif /* !AGENT_TASK_MANAGER_H */

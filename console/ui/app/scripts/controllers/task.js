@@ -1,3 +1,4 @@
+'use strict';
 // Copyright (c) 2015, Galaxy Authors. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -12,9 +13,10 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
                                                                 $modalInstance,
                                                                 $http,
                                                                 $log,
+                                                                $interval,
                                                                 service,
                                                                 config){
-
+    var stop = null;
    $scope.getTask = function(){
       $http.get("/taskgroup/status?id="+service.job_id+"&master="+config.masterAddr)
            .success(function(data){
@@ -26,9 +28,14 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
              $log.error('fail to get service '+ $routeParams.serviceName+' status');
            });
     }
-   $scope.getTask();
+
+   stop = $interval($scope.getTask,500);
    $scope.close =function(){
-      $modalInstance.dismiss('cancel'); 
+      if(stop != null){
+          $interval.cancel(stop);
+      }
+
+       $modalInstance.dismiss('cancel'); 
    }
    
 });
@@ -37,9 +44,10 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
                                                                 $modalInstance,
                                                                 $http,
                                                                 $log,
+                                                                $interval,
                                                                 agent,
                                                                 config){
-
+   var stop = null;
    $scope.getTask = function(){
       $http.get("/taskgroup/status?agent="+agent.addr+"&master="+config.masterAddr)
            .success(function(data){
@@ -51,8 +59,11 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
              $log.error('fail to get service '+ $routeParams.serviceName+' status');
            });
     }
-   $scope.getTask();
+   stop = $interval($scope.getTask,500);
    $scope.close =function(){
+      if(stop != null){
+          $interval.cancel(stop);
+      }
       $modalInstance.dismiss('cancel'); 
    }
    
@@ -61,4 +72,4 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
 
 
 
-}(angular))
+}(angular));

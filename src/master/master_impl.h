@@ -99,6 +99,8 @@ private:
                            bool clear_all = false);
     void CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
     void ScaleDown(JobInfo* job);
+
+    void DelayRemoveZombieTaskOnAgent(AgentInfo * agent,int64_t task_id);
     void ListTaskForAgent(const std::string& agent_addr,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
     void ListTaskForJob(int64_t job_id,

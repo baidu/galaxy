@@ -17,29 +17,29 @@
 
 namespace galaxy {
 
+const std::string DATA_PATH = "/data/";
+
 int WorkspaceManager::Add(const TaskInfo& task_info) {
     MutexLock lock(m_mutex);
-    if (m_workspace_map.find(task_info.task_id()) != m_workspace_map.end()) {
+    TaskInfo my_task_info(task_info);
+    if (m_workspace_map.find(my_task_info.task_id()) != m_workspace_map.end()) {
         return 0;
     }
 
-    DefaultWorkspace* ws = new DefaultWorkspace(task_info, m_data_path);
+    DefaultWorkspace* ws = new DefaultWorkspace(my_task_info, m_data_path);
     int status = ws->Create();
 
     if (status == 0) {
-        m_workspace_map[task_info.task_id()] = ws;
+        m_workspace_map[my_task_info.task_id()] = ws;
     }
 
-    used_cpu_share += task_info.required_cpu();
-    used_mem_share += task_info.required_mem();
-    LOG(INFO, "used_cpu : %lf, used_mem : %d", used_cpu_share, used_mem_share);
     return status;
 }
 
 bool WorkspaceManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     // clear work_dir and kill tasks
-    std::string dir = m_root_path + "/data";
+    std::string dir = m_root_path + DATA_PATH;
     m_data_path = dir;
     if (access(m_root_path.c_str(), F_OK) != 0) {
         if (mkdir(m_root_path.c_str(), MKDIR_MODE) != 0) {
@@ -84,8 +84,6 @@ int WorkspaceManager::Remove(int64_t task_info_id) {
     Workspace* ws = m_workspace_map[task_info_id];
 
     if (ws != NULL) {
-        used_cpu_share -= ws->GetTaskInfo().required_cpu();
-        used_mem_share -= ws->GetTaskInfo().required_mem();
 
         int status =  ws->Clean();
         if (status != 0) {
@@ -109,13 +107,6 @@ DefaultWorkspace* WorkspaceManager::GetWorkspace(const TaskInfo& task_info) {
 
 }
 
-double WorkspaceManager::GetUsedCpuShare() {
-    return used_cpu_share;
-}
-
-int64_t WorkspaceManager::GetUsedMemShare() {
-    return used_mem_share;
-}
 }
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

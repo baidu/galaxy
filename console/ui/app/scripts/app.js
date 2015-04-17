@@ -18,14 +18,13 @@ var galaxy = angular.module('galaxy.ui', [
     'ngResource',
     'ngRoute',
     'ngSanitize',
-    'galaxy.ui.treeview',
     'ui.bootstrap',
-    'galaxy.ui.modal.service',
     'galaxy.ui.ctrl',
-    'galaxy.ui.loader',
     'galaxy.ui.breadcrumb',
     'galaxy.ui.promot',
     'cgNotify',
+    'galaxy.ui.loader',
+    'galaxy.ui.treeview',
     'ui.select'
   ])
   .config(function ($routeProvider) {
@@ -54,13 +53,19 @@ var galaxy = angular.module('galaxy.ui', [
   .controller('AppCtrl',['$scope','$rootScope','$http','$location','notify',function($scope,$rootScope,$http,$location,notify){
       notify.config({duration:1000,templateUrl:'views/notify/notice.html'});
   }]);
+  function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, " "));
+  }
 
   function fetchConfig(){
     var initInjector = angular.injector(["ng","ngCookies"]);
     var $http = initInjector.get("$http");
     var $cookies = initInjector.get('$cookies');
-    var masterAddr = null ;
-    if($cookies.masterAddr != undefined ){
+    var masterAddr = getParameterByName('master');
+    if(masterAddr ==null && $cookies.masterAddr != undefined ){
         masterAddr = $cookies.masterAddr;
     }
     return $http.get("/conf/get").then(function(response) {

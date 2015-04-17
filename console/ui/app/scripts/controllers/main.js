@@ -1,4 +1,6 @@
 'use strict';
+(function(angular){
+
 
 /**
  * @ngdoc function
@@ -138,9 +140,8 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   $scope.disableBtn=false;
   $scope.alerts = [];
   $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
-  $scope.deployTpl = {name:"",startCmd:"",pkgType:0,pkgSrc:"",replicate:0,memoryLimit:100,cpuShare:0.5};
-
- $scope.ok = function () {
+  $scope.deployTpl = {name:"",startCmd:"",pkgType:0,pkgSrc:"",replicate:0,memoryLimit:3,cpuShare:0.5};
+  $scope.ok = function () {
     $scope.alerts = [];
     $scope.disableBtn=true;
     $http(
@@ -181,3 +182,4 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   
 });
 
+}(angular));

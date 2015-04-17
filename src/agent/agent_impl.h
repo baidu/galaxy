@@ -11,6 +11,7 @@
 #include "proto/master.pb.h"
 #include "agent/workspace_manager.h"
 #include "agent/task_manager.h"
+#include "agent/resource_manager.h"
 #include "common/thread_pool.h"
 #include "agent/workspace.h"
 namespace galaxy {
@@ -39,6 +40,7 @@ private:
     Master_Stub* master_;
     WorkspaceManager* ws_mgr_;
     TaskManager* task_mgr_;
+    ResourceManager* resource_mgr_;
     //agent workspace 根目录
     std::string workspace_root_path_;
 };

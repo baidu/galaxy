@@ -66,33 +66,52 @@ public:
     ~CpuCtrl(){}
 };
 
+class CpuAcctCtrl:public AbstractCtrl{
 
+public:
+    CpuAcctCtrl(std::string my_cg_root)
+        :AbstractCtrl(my_cg_root){}
+    ~CpuAcctCtrl(){}
+
+};
 
 
 class ContainerTaskRunner:public AbstractTaskRunner{
 
 public:
+    static bool RecoverRunner(
+            const std::string& persistence_path);
+
     ContainerTaskRunner(TaskInfo task_info,
                         std::string cg_root,
                         DefaultWorkspace* workspace)
                        :AbstractTaskRunner(task_info,workspace),
-                        _cg_root(cg_root){}
+                        _cg_root(cg_root),
+                        collector_(NULL),
+                        collector_id_(-1),
+                        persistence_path_dir_(), 
+                        sequence_id_(0) {}
     int Prepare();
     int Start();
     int Stop();
-    ~ContainerTaskRunner(){
-        delete _cg_ctrl;
-        delete _mem_ctrl;
-        delete _cpu_ctrl;
+    void PersistenceAble(const std::string& persistence_path) {
+        persistence_path_dir_ = persistence_path;
     }
+    virtual void StopPost();
+    virtual void Status(TaskStatus* status);
+    ~ContainerTaskRunner();
 private:
     void PutToCGroup();
-    void StartAfterDownload(int ret);
 private:
     std::string _cg_root;
     CGroupCtrl* _cg_ctrl;
     MemoryCtrl* _mem_ctrl;
     CpuCtrl*    _cpu_ctrl;
+    CpuAcctCtrl * _cpu_acct_ctrl;
+    CGroupResourceCollector* collector_;
+    long collector_id_;
+    std::string persistence_path_dir_;
+    int64_t sequence_id_;
 };
 
 }

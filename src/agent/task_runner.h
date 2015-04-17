@@ -6,14 +6,18 @@
 
 #ifndef AGENT_TASK_RUNNER_H
 #define AGENT_TASK_RUNNER_H
+#include <boost/function.hpp>
 #include "proto/task.pb.h"
 #include "common/mutex.h"
 #include "agent/workspace.h"
+#include "agent/resource_collector.h"
 namespace galaxy{
 
 class TaskRunner{
 
 public:
+
+   virtual void AsyncDownload(boost::function<void()>) = 0;
 
    virtual int Prepare() = 0 ;
    /**
@@ -35,22 +39,40 @@ public:
     * */
    virtual int IsRunning() = 0 ;
 
+   virtual void PersistenceAble(const std::string& persistence_path) = 0;
+
+   virtual void Status(TaskStatus* status) = 0;
    virtual ~TaskRunner(){}
 };
+
 class AbstractTaskRunner:public TaskRunner{
 
 public:
     AbstractTaskRunner(TaskInfo task_info,
                        DefaultWorkspace * workspace)
                        :m_task_info(task_info),
+                       m_child_pid(-1),
+                       m_group_pid(-1),
                        m_workspace(workspace),
-                       m_has_retry_times(0){}
+                       m_has_retry_times(0),
+                       m_task_state(DEPLOYING),
+                       downloader_id_(-1) {}
     virtual int Prepare() = 0;
     virtual int Start() = 0;
     int IsRunning();
     int Stop();
     int ReStart();
+    void AsyncDownload(boost::function<void()> callback);
+    // do something after stop
+    virtual void StopPost() = 0;
+    virtual void Status(TaskStatus* status) = 0;
+
+    virtual void PersistenceAble(const std::string& persistence_path) = 0;
+
 protected:
+    void StartAfterDownload(
+            boost::function<void()> callback, 
+            int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
 protected:
@@ -60,6 +82,8 @@ protected:
     pid_t  m_group_pid;
     DefaultWorkspace * m_workspace;
     int m_has_retry_times;
+    int m_task_state;
+    int downloader_id_;
 };
 
 class CommandTaskRunner:public AbstractTaskRunner{
@@ -67,15 +91,32 @@ class CommandTaskRunner:public AbstractTaskRunner{
 public:
     CommandTaskRunner(TaskInfo _task_info,
                       DefaultWorkspace * _workspace)
-                      :AbstractTaskRunner(_task_info,_workspace){
+                      :AbstractTaskRunner(_task_info,_workspace),
+                       collector_(NULL),
+                       collector_id_(-1),
+                       persistence_path_dir_(),
+                       sequence_id_(0) {
     }
 
-    ~CommandTaskRunner() {
+    virtual ~CommandTaskRunner();
+    void PersistenceAble(const std::string& persistence_path) {
+        persistence_path_dir_ = persistence_path; 
     }
-    int Prepare();
+    virtual int Prepare();
     int Start();
-    void StartAfterDownload(int ret);
+    virtual void Status(TaskStatus* status);
+    virtual void StopPost();
+
+    static bool RecoverRunner(
+            const std::string& persistence_path);
+protected:
+
+    ProcResourceCollector* collector_;
+    long collector_id_;
+    std::string persistence_path_dir_;
+    int64_t sequence_id_;
 };
+
 
 
 }//galaxy
