@@ -25,6 +25,7 @@ message TaskInfo{
     optional int32 fail_retry_times = 7;
     optional int32 task_offset=8;
     optional int32 job_replicate_num = 9;
+    optional string acct = 10;
 }
 
 
