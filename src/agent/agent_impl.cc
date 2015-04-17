@@ -25,9 +25,11 @@ AgentImpl::AgentImpl() {
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
     if (!task_mgr_->Init()) {
+        LOG(FATAL, "task manager init failed");
         assert(0); 
     }
     if (!ws_mgr_->Init()) {
+        LOG(FATAL, "task manager init failed");
         assert(0); 
     }
     AgentResource resource;
