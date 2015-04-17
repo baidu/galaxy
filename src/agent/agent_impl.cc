@@ -24,7 +24,14 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
-    ws_mgr_->Init();
+    if (!task_mgr_->Init()) {
+        LOG(FATAL, "task manager init failed");
+        assert(0); 
+    }
+    if (!ws_mgr_->Init()) {
+        LOG(FATAL, "task manager init failed");
+        assert(0); 
+    }
     AgentResource resource;
     resource.total_cpu = FLAGS_cpu_num;
     resource.total_mem = FLAGS_mem_bytes;
@@ -69,8 +76,11 @@ void AgentImpl::Report() {
         "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld",
         addr.c_str(),request.task_status_size(), FLAGS_cpu_num,
         request.used_cpu_share(), FLAGS_mem_bytes, request.used_mem_share());
-    rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
+    bool ret = rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
+    if (!ret) {
+        LOG(WARNING, "Report to master failed"); 
+    }
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
 }
 
@@ -129,6 +139,10 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"kill task %d",request->task_id());
     int status = task_mgr_->Remove(request->task_id());
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
+    if (status != 0) {
+        done->Run();
+        return; 
+    }
     status = ws_mgr_->Remove(request->task_id());
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
