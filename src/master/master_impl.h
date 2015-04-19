@@ -160,6 +160,7 @@ private:
     int64_t next_task_id_;
     int64_t next_job_id_;
     Mutex agent_lock_;
+
     RpcClient* rpc_client_;
     AgentLoadIndex index_;
 };
