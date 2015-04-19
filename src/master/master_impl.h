@@ -12,6 +12,11 @@
 #include <map>
 #include <queue>
 #include <set>
+#include <functional> 
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
 
 #include "common/mutex.h"
 #include "common/thread_pool.h"
@@ -34,17 +39,38 @@ struct AgentInfo {
 
 struct AgentLoad{
     double load;
-    AgentInfo agent_info;
-};
-
-struct AgentLoadAscCompare{
-    bool operator()(AgentLoad& l1, AgentLoad& l2)const{
-        if (l1.load < l2.load){
-            return false;
-        }
-        return true;
+    double cpu_left;
+    int64_t mem_left;
+    int64_t agent_id;
+    int64_t agent_addr;
+    AgentLoad(double load,double cpu_left,
+              int64_t mem_left,int64_t agent_id,
+              int64_t agent_addr):load(load),cpu_left(cpu_left),
+              mem_left(mem_left),agent_id(agent_id),agent_addr(agent_addr)
+    {}
+    void operator()(AgentLoad& l){
+        l.load = load;
+        l.cpu_left = cpu_left;
+        l.mem_left = mem_left;
+        l.agent_addr = agent_addr;
     }
 };
+
+//agent load index includes agent id index and cpu-left index
+typedef boost::multi_index::multi_index_container<
+    AgentLoad,
+    boost::multi_index::indexed_by<
+        boost::multi_index::ordered_unique<
+            boost::multi_index::identity<
+                boost::multi_index::member<AgentLoad,int64_t,AgentLoad::agent_id>
+            >
+        >,
+        boost::multi_index::ordered_non_unique<
+            boost::multi_index::member<AgentLoad,double,AgentLoad::cpu_left>,
+            std::greater<double>
+            >
+    >
+> AgentLoadIndex;
 
 
 struct JobInfo {
@@ -121,6 +147,8 @@ private:
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
     void ListTaskForJob(int64_t job_id,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
+
+    void SaveIndex(const AgentLoad& load);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
@@ -132,6 +160,7 @@ private:
     int64_t next_job_id_;
     Mutex agent_lock_;
     RpcClient* rpc_client_;
+    AgentLoadIndex index_;
 };
 
 } // namespace galaxy

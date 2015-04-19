@@ -16,6 +16,20 @@ extern int FLAGS_agent_keepalive_timeout;
 
 namespace galaxy {
 
+
+typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_view;
+typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_view;
+MasterImpl::SaveIndex(const AgentLoad& load){
+    agent_lock_.AssertHeld();
+    agent_id_view& aiv = boost::multi_index::get<0>(index_);
+    agent_id_view::iterator aiv_it = aiv.find(load.agent_id);
+    if(aiv_it != aiv.end()){
+        aiv.modify(aiv_it,load);
+    }else{
+        aiv.insert(load);
+    }
+}
+
 MasterImpl::MasterImpl()
     : next_agent_id_(0),
       next_task_id_(0),
