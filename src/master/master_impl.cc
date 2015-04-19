@@ -15,20 +15,11 @@ extern int FLAGS_task_deloy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
 
 namespace galaxy {
+//agent load id index
+typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_index;
+//agent load cpu left index
+typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
-
-typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_view;
-typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_view;
-MasterImpl::SaveIndex(const AgentLoad& load){
-    agent_lock_.AssertHeld();
-    agent_id_view& aiv = boost::multi_index::get<0>(index_);
-    agent_id_view::iterator aiv_it = aiv.find(load.agent_id);
-    if(aiv_it != aiv.end()){
-        aiv.modify(aiv_it,load);
-    }else{
-        aiv.insert(load);
-    }
-}
 
 MasterImpl::MasterImpl()
     : next_agent_id_(0),
@@ -194,6 +185,7 @@ void MasterImpl::DeadCheck() {
                 agent.addr.c_str(), agent.running_tasks.size());
             std::set<int64_t> running_tasks;
             UpdateJobsOnAgent(&agent, running_tasks, true);
+            RemoveIndex(agent.id);
             agents_.erase(*node);
             it->second.erase(node);
             node = it->second.begin();
@@ -342,6 +334,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     agent->task_num = request->task_status_size();
 
     UpdateJobsOnAgent(agent, running_tasks);
+    SaveIndex(*agent);
     done->Run();
 }
 
@@ -521,6 +514,14 @@ void MasterImpl::Schedule() {
                     job.job_name.c_str());
                 continue;
             }
+            //update index
+            std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
+            //这里更新后heart beat可能又给改回去勒
+            if(agent_it != agents_.end()){
+                agent_it->second.mem_used += job.mem_share;
+                agent_it->second.cpu_used += job.cpu_share;
+                SaveIndex(agent_it->second);
+            }
             ScheduleTask(&job, agent_addr);
         }
     }
@@ -538,44 +539,89 @@ void MasterImpl::Schedule() {
 //3、当前机器上的任务数，负载与任务数成正比，需要考虑为0情况
 //例子:
 //   一台机器内存10g 使用量4g ,cpu数5个，使用量1.0，任务数1 当前负载load = 4/10 * 1.0/5 * 1 = 0.08
-double MasterImpl::CalcLoad(AgentInfo* agent){
-    if(agent->mem_share == 0 || agent->cpu_share == 0.0 ){
-        LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent->mem_share,agent->cpu_share);
+double MasterImpl::CalcLoad(const AgentInfo& agent){
+    if(agent.mem_share <= 0 || agent.cpu_share <= 0.0 ){
+        LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent.mem_share,agent.cpu_share);
         return 0.0;
     }
-    int64_t mem_used = agent->mem_used > 0 ? agent->mem_used : 1;
-    double cpu_used = agent->cpu_used > 0 ? agent->cpu_used : 0.1;
-    double mem_factor = mem_used/static_cast<double>(agent->mem_share);
-    double cpu_factor = cpu_used/agent->cpu_share;
-    double task_count_factor = agent->task_num > 0 ? agent->task_num : 0.1;
+    int64_t mem_used = agent.mem_used > 0 ? agent.mem_used : 1;
+    double cpu_used = agent.cpu_used > 0 ? agent.cpu_used : 0.1;
+    double mem_factor = mem_used/static_cast<double>(agent.mem_share);
+    double cpu_factor = cpu_used/agent.cpu_share;
+    double task_count_factor = agent.task_num > 0 ? agent.task_num : 0.1;
     return task_count_factor * mem_factor * cpu_factor;
 
 }
 
 std::string MasterImpl::AllocResource(const JobInfo& job){
+    LOG(INFO,"alloc resource for job %ld,mem_require %ld, cpu_require %f",
+        job.id,job.mem_share,job.cpu_share);
     agent_lock_.AssertHeld();
-    std::string agent_addr;
-    std::priority_queue<AgentLoad,std::vector<AgentLoad>,AgentLoadAscCompare> agent_load_queue;
-    std::map<std::string,AgentInfo>::iterator it = agents_.begin();
-    for(;it!=agents_.end();++it){
-        double cpu_left = it->second.cpu_share -  it->second.cpu_used;
-        int64_t mem_left = it->second.mem_share - it->second.mem_used ;
-        if(cpu_left < job.cpu_share ||  mem_left < job.mem_share){
+    std::string addr;
+    cpu_left_index& cidx = boost::multi_index::get<1>(index_);
+    cpu_left_index::iterator it = cidx.lower_bound(job.cpu_share);
+    cpu_left_index::iterator it_start = cidx.begin();
+    bool last_found = false;
+    double current_min_load = 0;
+    if(it!=cidx.end() && it->mem_left >= job.mem_share){
+        last_found = true;
+        current_min_load = it->load;
+        addr = it->agent_addr;
+    }
+    for(;it_start != it;++it_start){
+        //判断内存是否满足需求
+        if(it_start->mem_left < job.mem_share){
             continue;
         }
-        AgentLoad load;
-        load.load = CalcLoad(&it->second);
-        load.agent_info = it->second;
-        agent_load_queue.push(load);
-
+        //第一次赋值current_min_load;
+        if(!last_found){
+            current_min_load = it_start->load;
+            addr = it_start->agent_addr;
+            last_found = true;
+            continue;
+        }
+        //找到负载更小的节点
+        if(current_min_load > it_start->load){
+            addr = it_start->agent_addr;
+            current_min_load = it_start->load;
+        }
     }
-    if(!agent_load_queue.empty()){
-        agent_addr = agent_load_queue.top().agent_info.addr;
-        LOG(INFO,"schedule job %ld task to %s load is %f",job.id,agent_addr.c_str(), agent_load_queue.top().load);
+    if(last_found){
+        LOG(INFO,"alloc resource for job %ld on host %s with load %f",job.id,addr.c_str(),current_min_load);
     }else{
-        LOG(WARNING,"fail to schedule job %ld, no enough resource to allocate",job.id);
+        LOG(WARNING,"no enough  resource to alloc for job %ld",job.id);
     }
-    return agent_addr;
+    return addr;
+}
+
+
+void MasterImpl::SaveIndex(const AgentInfo& agent){
+    agent_lock_.AssertHeld();
+    double load_factor = CalcLoad(agent);
+    AgentLoad load(agent,load_factor);
+    LOG(INFO,"save agent[%s] %ld load index load %f,mem_left %ld,cpu_left %f ",
+              load.agent_addr.c_str(),
+              load.agent_id,
+              load_factor,
+              load.mem_left,
+              load.cpu_left);
+    agent_id_index& aidx = boost::multi_index::get<0>(index_);
+    agent_id_index::iterator it = aidx.find(load.agent_id);
+    if(it != aidx.end()){
+        aidx.modify(it,load);
+    }else{
+        aidx.insert(load);
+    }
+}
+
+void MasterImpl::RemoveIndex(int64_t agent_id){
+    agent_lock_.AssertHeld();
+    LOG(INFO,"remove agent %ld load index ",agent_id);
+    agent_id_index& aidx = boost::multi_index::get<0>(index_);
+    agent_id_index::iterator it = aidx.find(agent_id);
+    if(it != aidx.end()){
+        aidx.erase(it);
+    }
 }
 
 } // namespace galasy
