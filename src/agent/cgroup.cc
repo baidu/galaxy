@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <signal.h>
 #include <errno.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -19,10 +20,13 @@
 #include "agent/downloader_manager.h"
 #include "agent/resource_collector.h"
 #include "agent/resource_collector_engine.h"
+#include "agent/utils.h"
+
+extern std::string FLAGS_cgroup_root; 
 
 namespace galaxy {
 
-
+static const std::string RUNNER_META_PREFIX = "task_runner_";
 static int CPU_CFS_PERIOD = 100000;
 static int MIN_CPU_CFS_QUOTA = 1000;
 
@@ -71,8 +75,12 @@ int CGroupCtrl::Destroy(int64_t task_id) {
         std::stringstream ss ;
         ss << _cg_root << "/" << *it << "/" << task_id;
         int status = rmdir(ss.str().c_str());
-        if(status != 0 ){
-            LOG(FATAL,"fail to delete subsystem %s status %d",ss.str().c_str(),status);
+        if(status != 0 && errno != ENOENT){
+            LOG(FATAL,"fail to delete subsystem %s status %d err[%d: %s]",
+                    ss.str().c_str(),
+                    status, 
+                    errno,
+                    strerror(errno));
             return status;
         }
     }
@@ -199,30 +207,7 @@ int ContainerTaskRunner::Prepare() {
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
     _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
-
-    std::string uri = m_task_info.task_raw();
-    std::string path = m_workspace->GetPath();
-    path.append("/");
-    path.append("tmp.tar.gz");
-
-    DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
-    downloader_handler->DownloadInThread(
-            uri,
-            path,
-            boost::bind(&ContainerTaskRunner::StartAfterDownload, this, _1));
-    return 0;
-}
-
-void ContainerTaskRunner::StartAfterDownload(int ret) {
-    if (ret == 0) {
-        std::string tar_cmd = "cd " + m_workspace->GetPath() + " && tar -xzf tmp.tar.gz";
-        int status = system(tar_cmd.c_str());
-        if (status != 0) {
-            LOG(WARNING, "tar -xf failed");
-            return;
-        }
-        Start();
-    }
+    return Start();
 }
 
 void ContainerTaskRunner::PutToCGroup(){
@@ -267,14 +252,52 @@ int ContainerTaskRunner::Start() {
     int stdout_fd, stderr_fd;
     std::vector<int> fds;
     PrepareStart(fds, &stdout_fd, &stderr_fd);
+    //sequence_id_ ++;
     m_child_pid = fork();
 
     if (m_child_pid == 0) {
+        pid_t my_pid = getpid();
+        int ret = setpgid(my_pid, my_pid);
+        if (ret != 0) {
+            assert(0);
+        }
+        std::string meta_file = persistence_path_dir_ 
+            + "/" + RUNNER_META_PREFIX 
+            + boost::lexical_cast<std::string>(sequence_id_);
+        int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+        if (meta_fd == -1) {
+            assert(0);
+        }
+        int64_t value = my_pid;
+        int len = write(meta_fd, (void*)&value, sizeof(value));
+        if (len == -1) {
+            close(meta_fd);
+            assert(0);
+        }
+        value = m_task_info.task_id();
+        len = write(meta_fd, (void*)&value, sizeof(value));
+        if (len == -1) {
+            close(meta_fd); 
+            assert(0);
+        }
+        if (0 != fsync(meta_fd)) {
+            close(meta_fd); 
+            assert(0);
+        }
+        close(meta_fd);
+
         PutToCGroup();
         StartTaskAfterFork(fds, stdout_fd, stderr_fd);
     } else {
         close(stdout_fd);
         close(stderr_fd);
+        if (m_child_pid == -1) {
+            LOG(WARNING, "task with id %ld fork failed err[%d: %s]",
+                    m_task_info.task_id(), 
+                    errno,
+                    strerror(errno));
+            return -1; 
+        }
         m_group_pid = m_child_pid;
     }
     return 0;
@@ -287,6 +310,34 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
         LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());
     }
+    // check if it is running
+    int ret = IsRunning();
+    if (ret == 0) {
+        m_task_state = RUNNING;
+        status->set_status(RUNNING);
+    }
+    else if (ret == 1) {
+        m_task_state = COMPLETE; 
+        status->set_status(COMPLETE);
+    }
+    // last state is running ==> download finish
+    else if (m_task_state == RUNNING) {
+        if (ReStart() == 0) {
+            m_task_state = RESTART;
+            status->set_status(RESTART); 
+        }
+        else {
+            m_task_state = ERROR;
+            status->set_status(ERROR); 
+        }
+    }
+    // other state
+    else {
+        status->set_status(m_task_state); 
+    }
+    LOG(WARNING, "task with id %ld state %s", 
+            m_task_info.task_id(), 
+            TaskState_Name(TaskState(m_task_state)).c_str());
     return;
 }
 
@@ -303,12 +354,117 @@ int ContainerTaskRunner::Stop(){
     if(status != 0 ){
         return status;
     }
-    //sleep 500 ms for cgroup clear tasks
-    common::ThisThread::Sleep(500);
+    if (_cg_ctrl != NULL) {
+        //sleep 500 ms for cgroup clear tasks
+        common::ThisThread::Sleep(500);
+        status = _cg_ctrl->Destroy(m_task_info.task_id());
+        LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
+    }
     StopPost();
-    status = _cg_ctrl->Destroy(m_task_info.task_id());
-    LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
     return status;
+}
+
+bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
+    std::vector<std::string> files;
+    if (!GetDirFilesByPrefix(
+                persistence_path,
+                RUNNER_META_PREFIX,
+                &files)) {
+        LOG(WARNING, "get meta files failed"); 
+        return false;
+    }
+
+    if (files.size() == 0) {
+        return true; 
+    }
+
+    int max_seq_id = -1;
+    std::string last_meta_file;
+    for (size_t i = 0; i < files.size(); i++) {
+        std::string file = files[i]; 
+        size_t pos = file.find(RUNNER_META_PREFIX);
+        if (pos == std::string::npos) {
+            continue; 
+        }
+
+        if (pos + RUNNER_META_PREFIX.size() >= file.size()) {
+            LOG(WARNING, "meta file format err %s", file.c_str()); 
+            continue;
+        }
+
+        int cur_id = atoi(file.substr(
+                    pos + RUNNER_META_PREFIX.size()).c_str());
+        if (max_seq_id < cur_id) {
+            max_seq_id = cur_id; 
+            last_meta_file = file;
+        }
+    }
+
+    if (max_seq_id < 0) {
+        return false; 
+    }
+
+    std::string meta_file = persistence_path + "/" + last_meta_file;
+    LOG(DEBUG, "start to recover %s", meta_file.c_str());
+    int fin = open(meta_file.c_str(), O_RDONLY);
+    if (fin == -1) {
+        LOG(WARNING, "open meta file failed %s err[%d: %s]", 
+                meta_file.c_str(),
+                errno,
+                strerror(errno)); 
+        return false;
+    }
+
+    size_t value;
+    int len = read(fin, (void*)&value, sizeof(value));
+    if (len == -1) {
+        LOG(WARNING, "read meta file failed err[%d: %s]",
+                errno,
+                strerror(errno)); 
+        close(fin);
+        return false;
+    }
+    LOG(DEBUG, "recove gpid %lu", value);
+    int ret = killpg((pid_t)value, 9);
+    if (ret != 0 && errno != ESRCH) {
+        LOG(WARNING, "fail to kill process group %lu", value); 
+        return false;
+    }
+
+    value = 0;
+    len = read(fin, (void*)&value, sizeof(value));
+    if (len == -1) {
+        LOG(WARNING, "read meta file failed err[%d: %s]",
+                errno,
+                strerror(errno));
+        close(fin);
+        return false;
+    }
+    close(fin);
+
+    std::vector<std::string> support_cgroup;  
+    // TODO configable
+    support_cgroup.push_back("memory");
+    support_cgroup.push_back("cpu");
+    support_cgroup.push_back("cpuacct");
+    
+    LOG(DEBUG, "destroy cgroup %lu", value);
+    CGroupCtrl ctl(FLAGS_cgroup_root, support_cgroup);
+    int max_retry_times = 10;
+    ret = -1;
+    while (max_retry_times-- > 0) {
+        ret = ctl.Destroy(value);
+        if (ret != 0) {
+            common::ThisThread::Sleep(100);
+            continue;
+        }    
+        break;
+    }
+    if (ret == 0) {
+        LOG(DEBUG, "destroy cgroup %lu success", value);
+        return true; 
+    }
+    return false;
 }
 
 }

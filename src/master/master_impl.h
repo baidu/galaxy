@@ -12,7 +12,7 @@
 #include <map>
 #include <queue>
 #include <set>
-#include <functional> 
+#include <functional>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
@@ -42,12 +42,14 @@ struct AgentLoad{
     double cpu_left;
     int64_t mem_left;
     int64_t agent_id;
-    int64_t agent_addr;
-    AgentLoad(double load,double cpu_left,
-              int64_t mem_left,int64_t agent_id,
-              int64_t agent_addr):load(load),cpu_left(cpu_left),
-              mem_left(mem_left),agent_id(agent_id),agent_addr(agent_addr)
-    {}
+    std::string agent_addr;
+    AgentLoad(const AgentInfo& agent,double load):load(load){
+        mem_left = agent.mem_share - agent.mem_used;
+        cpu_left = agent.cpu_share - agent.cpu_used;
+        agent_id = agent.id;
+        agent_addr = agent.addr;
+    }
+
     void operator()(AgentLoad& l){
         l.load = load;
         l.cpu_left = cpu_left;
@@ -61,12 +63,10 @@ typedef boost::multi_index::multi_index_container<
     AgentLoad,
     boost::multi_index::indexed_by<
         boost::multi_index::ordered_unique<
-            boost::multi_index::identity<
-                boost::multi_index::member<AgentLoad,int64_t,AgentLoad::agent_id>
-            >
+            boost::multi_index::member<AgentLoad,int64_t,&AgentLoad::agent_id>
         >,
         boost::multi_index::ordered_non_unique<
-            boost::multi_index::member<AgentLoad,double,AgentLoad::cpu_left>,
+            boost::multi_index::member<AgentLoad,double,&AgentLoad::cpu_left>,
             std::greater<double>
             >
     >
@@ -133,8 +133,6 @@ public:
 private:
     void DeadCheck();
     void Schedule();
-    std::string AllocResource(const JobInfo& job);
-    double CalcLoad(AgentInfo* agent);
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
     void UpdateJobsOnAgent(AgentInfo* agent,
                            const std::set<int64_t>& running_tasks,
@@ -148,7 +146,10 @@ private:
     void ListTaskForJob(int64_t job_id,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
 
-    void SaveIndex(const AgentLoad& load);
+    void SaveIndex(const AgentInfo& agent);
+    void RemoveIndex(int64_t agent_id);
+    double CalcLoad(const AgentInfo& agent);
+    std::string AllocResource(const JobInfo& job);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
@@ -159,6 +160,7 @@ private:
     int64_t next_task_id_;
     int64_t next_job_id_;
     Mutex agent_lock_;
+
     RpcClient* rpc_client_;
     AgentLoadIndex index_;
 };

@@ -10,7 +10,6 @@
 
 #include <stdio.h>
 #include <signal.h>
-#include "agent/resource_collector_engine.h"
 
 extern std::string FLAGS_agent_port;
 extern std::string FLAGS_master_addr;
