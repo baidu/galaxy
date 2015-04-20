@@ -14,8 +14,9 @@
 #include <string.h>
 #include <sstream>
 #include <unistd.h>
-#include <pwd.h>
 #include "common/logging.h"
+
+extern std::string FLAGS_task_acct;
 
 namespace galaxy {
 
@@ -25,39 +26,21 @@ int DefaultWorkspace::Create() {
         return 0;
     }
     //TODO safe path join
-    // check users dir
+    //create work dir
     std::stringstream private_path;
     private_path << m_root_path;
     int status = 0;
-    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (0 != status) {
-        LOG(WARNING, "create orient path failed %s err[%d: %s]",
-                private_path.str().c_str(), errno, strerror(errno));
-    }
-    //create acct
-    passwd *pw = getpwnam(m_task_info.acct().c_str());
-    if (NULL == pw) {
-        std::stringstream add_user;
-        add_user << "useradd -d /home/users/" << m_task_info.acct().c_str()
-            << " -m " << m_task_info.acct().c_str();
-        system(add_user.str().c_str());
-        if (errno) {
-            LOG(WARNING, "create acct failed %s err[%d: %s]",
-                m_task_info.acct().c_str(), errno, strerror(errno));
-        }
-    }
-
-    //create work dir
-    private_path << m_task_info.acct();
-    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    private_path << FLAGS_task_acct;
+    status = mk_pach(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     m_task_root_path = private_path.str();
     if (0 != status) {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
                 m_task_root_path.c_str(), errno, strerror(errno));
+        return status;
     }
 
     private_path << "/" << m_task_info.task_id();
-    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = mk_pach(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     if (status == 0) {
         m_task_root_path = private_path.str();
@@ -65,11 +48,12 @@ int DefaultWorkspace::Create() {
     } else {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
                 m_task_root_path.c_str(), errno, strerror(errno));
+        return status;
     }
     return status;
 }
 
-int DefaultWorkspace::mk_patch(const char *path, mode_t mode)
+int DefaultWorkspace::mk_pach(const char *path, mode_t mode)
 {
     struct stat st = {0};
     int status = 0;

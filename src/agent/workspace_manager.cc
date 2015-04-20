@@ -12,8 +12,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-
+#include <pwd.h>
+#include <sstream>
 #include "common/logging.h"
+
+extern std::string FLAGS_task_acct;
 
 namespace galaxy {
 
@@ -72,6 +75,22 @@ bool WorkspaceManager::Init() {
         return false;
     }
     LOG(INFO, "init workdir %s", dir.c_str());
+
+
+    //create acct
+    passwd *pw = getpwnam(FLAGS_task_acct.c_str());
+    if (NULL == pw) {
+        std::stringstream add_user;
+        add_user << "useradd -d /home/users/" << FLAGS_task_acct.c_str()
+            << " -m " << FLAGS_task_acct.c_str();
+        system(add_user.str().c_str());
+        if (errno) {
+            LOG(WARNING, "create acct failed %s err[%d: %s]",
+                FLAGS_task_acct.c_str(), errno, strerror(errno));
+            return false;
+        }
+    }
+
     return true;
 }
 

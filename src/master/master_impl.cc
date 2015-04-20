@@ -211,7 +211,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == DEPLOYING 
+            if (instance.status() == DEPLOYING
                     && instance.start_time() + FLAGS_task_deploy_timeout > now_time
                         && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
@@ -231,7 +231,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         }else{
             TaskInstance& instance = tasks_[task_id];
-            if(instance.status() != ERROR 
+            if(instance.status() != ERROR
                     && instance.status() != COMPLETE){
                 continue;
             }
@@ -385,7 +385,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.job_name = request->job_name();
     job.job_raw = request->job_raw();
     job.cmd_line = request->cmd_line();
-    job.acct = request->acct();
     job.replica_num = request->replica_num();
     job.running_num = 0;
     job.scale_down_time = 0;
@@ -430,7 +429,6 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_task_name(job->job_name);
     rt_request.set_task_raw(job->job_raw);
     rt_request.set_cmd_line(job->cmd_line);
-    rt_request.set_acct(job->acct);
     rt_request.set_cpu_share(job->cpu_share);
     rt_request.set_mem_share(job->mem_share);
     rt_request.set_task_offset(job->running_num);
@@ -487,7 +485,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
                 job->job_name.c_str(),
                 job->running_num,
-                job->replica_num); 
+                job->replica_num);
         return;
     }
     for (; it != job->agent_tasks.end(); ++it) {
@@ -495,7 +493,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
-        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d", 
+        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d",
                 job->job_name.c_str(),
                 it->first.c_str(),
                 ai.task_num,

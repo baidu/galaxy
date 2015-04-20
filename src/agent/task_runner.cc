@@ -16,15 +16,16 @@
 #include <sys/types.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <string.h>
+#include <pwd.h>
 #include "common/logging.h"
 #include "common/util.h"
 #include "downloader_manager.h"
-#include "agent/downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
-#include <pwd.h>
 
 extern int FLAGS_task_retry_times;
+extern std::string FLAGS_task_acct;
 
 namespace galaxy {
 
@@ -165,7 +166,7 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
 
     //chroot(m_workspace->GetPath().c_str());
     chdir(m_workspace->GetPath().c_str());
-    passwd *pw = getpwnam(m_task_info.acct().c_str());
+    passwd *pw = getpwnam(FLAGS_task_acct.c_str());
     if (NULL == pw) {
         pw = getpwnam("default");
         if (NULL == pw)

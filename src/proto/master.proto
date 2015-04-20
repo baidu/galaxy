@@ -42,7 +42,6 @@ message NewJobRequest {
     optional int32 replica_num = 5;
     optional double cpu_share = 6;
     optional int64 mem_share = 7;
-    optional string acct = 8;
 }
 
 message NewJobResponse {
