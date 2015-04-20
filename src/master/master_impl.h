@@ -35,6 +35,7 @@ struct AgentInfo {
     Agent_Stub* stub;
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
+    int32_t version;
 };
 
 struct AgentLoad{
