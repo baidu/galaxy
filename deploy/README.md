@@ -1,7 +1,7 @@
 ## deployer
 deployer 是基于ssh,用于在多台机器上面执行部署命令已经初始化命令
 * 支持使用python编写描述文件，提升部署脚本的维护性
-
+* 支持并发执行（TODO）
 ### 安装依赖
 
 * install python-pip ,对于内部同学请参考pip.baidu.com
