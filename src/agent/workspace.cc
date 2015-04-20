@@ -27,7 +27,7 @@ int DefaultWorkspace::Create() {
     //TODO safe path join
     // check users dir
     std::stringstream private_path;
-    private_path << "/home/users/";
+    private_path << m_root_path;
     int status = 0;
     status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (0 != status) {
@@ -35,11 +35,11 @@ int DefaultWorkspace::Create() {
                 private_path.str().c_str(), errno, strerror(errno));
     }
     //create acct
-    private_path << m_task_info.acct();
     passwd *pw = getpwnam(m_task_info.acct().c_str());
     if (NULL == pw) {
         std::stringstream add_user;
-        add_user << "useradd -d " << private_path.str().c_str() << " -m " << m_task_info.acct().c_str();
+        add_user << "useradd -d /home/users/" << m_task_info.acct().c_str()
+            << " -m " << m_task_info.acct().c_str();
         system(add_user.str().c_str());
         if (errno) {
             LOG(WARNING, "create acct failed %s err[%d: %s]",
@@ -48,16 +48,8 @@ int DefaultWorkspace::Create() {
     }
 
     //create work dir
+    private_path << m_task_info.acct();
     status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    m_task_root_path = private_path.str();
-    if (0 != status) {
-        LOG(WARNING, "create task root path failed %s err[%d: %s]",
-                m_task_root_path.c_str(), errno, strerror(errno));
-    }
-
-    private_path << "/data";
-    status = mk_patch(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
     m_task_root_path = private_path.str();
     if (0 != status) {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
