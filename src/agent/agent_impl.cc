@@ -11,6 +11,7 @@
 #include <string.h>
 #include "common/util.h"
 #include "rpc/rpc_client.h"
+#include "proto/task.pb.h"
 
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
@@ -136,6 +137,15 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::KillTaskRequest* request,
                          ::galaxy::KillTaskResponse* response,
                          ::google::protobuf::Closure* done){
+    int last_status = COMPLETE;
+    std::vector<TaskStatus > status_vector;
+    task_mgr_->Status(status_vector);
+    if (status_vector.size() != 1) {
+        LOG(WARNING, "what happend not status task id: %ld", request->task_id()); 
+    }
+    else {
+        last_status = status_vector[0].status();    
+    }
     LOG(INFO,"kill task %d",request->task_id());
     int status = task_mgr_->Remove(request->task_id());
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
@@ -143,7 +153,11 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
         done->Run();
         return; 
     }
-    status = ws_mgr_->Remove(request->task_id());
+    if (last_status == ERROR) {
+        status = ws_mgr_->Remove(request->task_id(), true); 
+    } else {
+        status = ws_mgr_->Remove(request->task_id());
+    }
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
     response->set_status(status);

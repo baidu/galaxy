@@ -34,6 +34,9 @@ public:
      *工作目录是否已经过期，会有一个任务停止后多长时间清除工作目录的需求
      * */
     virtual bool IsExpire() = 0 ;
+
+    // change dir to a new dir
+    virtual int MoveTo(const std::string& new_dir) = 0;
     /**
      *获取一个已经准备好的路径
      * */
@@ -55,6 +58,7 @@ public:
     int Clean();
     bool IsExpire();
     std::string GetPath();
+    virtual int MoveTo(const std::string& new_dir);
     ~DefaultWorkspace(){
     }
     TaskInfo GetTaskInfo();

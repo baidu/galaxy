@@ -162,16 +162,26 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     return status;
 }
 
-int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
-   MutexLock lock(m_mutex);
-   std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
-   for (; it != m_task_runner_map.end(); ++it) {
-       TaskStatus status;
-       status.set_task_id(it->first);
-       it->second->Status(&status);
-       task_status_vector.push_back(status);
-   }
-   return 0;
+int TaskManager::Status(std::vector< TaskStatus >& task_status_vector, int64_t id) {
+    MutexLock lock(m_mutex);
+    std::map<int64_t, TaskRunner*>::iterator it;
+    if (id >= 0) {
+        it = m_task_runner_map.find(id);
+        if (it != m_task_runner_map.end()) {
+            TaskStatus status;
+            it->second->Status(&status); 
+            task_status_vector.push_back(status);
+        }
+        return 0;
+    }
+    it = m_task_runner_map.begin();
+    for (; it != m_task_runner_map.end(); ++it) {
+        TaskStatus status;
+        status.set_task_id(it->first);
+        it->second->Status(&status);
+        task_status_vector.push_back(status);
+    }
+    return 0;
 }
 
 }

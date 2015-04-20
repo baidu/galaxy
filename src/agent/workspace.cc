@@ -68,6 +68,30 @@ TaskInfo DefaultWorkspace::GetTaskInfo() {
     return m_task_info;
 }
 
+int DefaultWorkspace::MoveTo(const std::string& new_dir) {
+    if (access(new_dir.c_str(), F_OK) != 0) {
+        LOG(WARNING, "access path %s failed",
+                new_dir.c_str());
+        return -1; 
+    }
+    // TODO
+    std::stringstream ss;
+    ss << new_dir << "/" << m_task_info.task_id();
+    std::string new_task_root_path = ss.str();
+    if (access(new_task_root_path.c_str(), F_OK) == 0) {
+        LOG(WARNING, "path %s already exists", new_task_root_path.c_str()); 
+    }
+    
+    int ret = rename(m_task_root_path.c_str(), new_task_root_path.c_str());
+    if (ret == -1) {
+        LOG(WARNING, "rename %s failed err[%d: %s]",
+                m_task_root_path.c_str(), errno, strerror(errno));
+        return -1;
+    }
+    m_task_root_path = new_task_root_path;
+    return 0;
+}
+
 }
 
 
