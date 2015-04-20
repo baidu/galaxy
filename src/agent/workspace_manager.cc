@@ -17,6 +17,8 @@
 
 namespace galaxy {
 
+const std::string DATA_PATH = "/data/";
+
 int WorkspaceManager::Add(const TaskInfo& task_info) {
     MutexLock lock(m_mutex);
     TaskInfo my_task_info(task_info);
@@ -37,7 +39,7 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
 bool WorkspaceManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     // clear work_dir and kill tasks
-    std::string dir = m_root_path + "/data";
+    std::string dir = m_root_path + DATA_PATH;
     m_data_path = dir;
     if (access(m_root_path.c_str(), F_OK) != 0) {
         if (mkdir(m_root_path.c_str(), MKDIR_MODE) != 0) {
