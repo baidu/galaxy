@@ -10,7 +10,10 @@ deployer 是基于ssh,用于在多台机器上面执行部署命令已经初始�
 ### 简单使用
 启动galaxy集群
 ```
+#未建立信任关系
 python deployer.py migrate -f galaxy.py -u xxx -p xxxx
+#建立了信任关系
+python deployer.py migrate -f galaxy.py
 ```
 
 ### 所有子命令
