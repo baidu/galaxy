@@ -12,11 +12,19 @@ from galaxy import sdk
 master_port = 9876
 def set_up():
     pass
-def test_list_job():
+
+
+def get_all_job():
     galaxy_client = sdk.GalaxySDK("yq01-tera81.yq01.baidu.com:%d"%master_port)
     status, job_list = galaxy_client.list_all_job()
+    return status,job_list 
+
+
+def test_job_main():
+    status,job_list = get_all_job()
     assert status
     assert len(job_list) == 0
+
 
 def clean():
     pass

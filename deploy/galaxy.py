@@ -14,7 +14,7 @@ def build_init_cgroup_cmd(subsys_list):
     for subsys in subsys_list:
         sub_path = os.path.sep.join([cgroup_root,subsys])
         all_cmd.append("mkdir -p %s"%sub_path)
-        all_cmd.append("mount -t cgroup -o%s %s"%(subsys,sub_path))
+        all_cmd.append("mount -t cgroup -o%s none %s"%(subsys,sub_path))
     return all_cmd
 def build_clean_cgroup_cmd(subsys_list):
     all_cmd = []
