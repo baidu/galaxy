@@ -5,18 +5,21 @@
 #
 # Author: wangtaize@baidu.com
 # Date: 2015-04-21
+import subprocess
+import os
+import time
 from galaxy import sdk
-
-master_port = 9527
-agent_port = 9529
+master_port = 8102
 def set_up():
-    print "start master"
-    print "start agent"
-
+    os.system("cd ../../sandbox && sh local-killall.sh >/dev/null 2>&1")
+    os.system("cd ../../sandbox && sh local-run.sh >/dev/null 2>&1")
+    time.sleep(5)
 
 def test_list_node():
     galaxy_client = sdk.GalaxySDK("localhost:%d"%master_port)
-    galaxy_client.list_all_node()
+    node_list = galaxy_client.list_all_node()
+
+    assert len(node_list) == 3
 
 def clean():
-    print "clean"
+    os.system("cd ../../sandbox && sh local-killall.sh >/dev/null 2>&1")

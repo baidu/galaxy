@@ -8,6 +8,8 @@
 import argparse
 import sys
 import os
+#from inspect import getmembers, isfunction
+import inspect
 
 from argparse import RawTextHelpFormatter
 
@@ -111,14 +113,53 @@ def find_cases(case_dir):
 
 def run_a_case(case_dir,case_file):
     current_path = os.getcwd()
+    statics = {}
+    no_exception = True
     try:
         os.chdir(case_dir)
         print "start to run %s"%RichText.render_green_text(case_file)
+        print "======================output============================"
         module_name = case_file.replace(".py","")
         module = __import__(module_name)
+        set_up_func = None
+        clean_func = None
+        test_func_dict={}
+        for o in inspect.getmembers(module):
+            if not inspect.isfunction(o[1]):
+                continue
+            if o[0]=="set_up":
+                set_up_func = o[1]
+                continue
+            if o[0]=="clean":
+                clean_func=o[1]
+            if o[0].find("test") != -1:
+                test_func_dict[o[0]] = o[1]
+        if set_up_func:
+            try:
+                set_up_func()
+                print "set_up %s"%RichText.render_green_text("ok")
+            except Exception as ex:
+                print "set_up %s %s"%(RichText.render_red_text("error"),str(ex))
 
+        for key in test_func_dict:
+            try:
+                test_func_dict[key]()
+                print "%s %s"%(key,RichText.render_green_text("ok"))
+                statics[key]=(True,"")
+            except Exception as e:
+                print "%s %s %s"%(key,RichText.render_red_text("error"),str(e))
+                statics[key]=(False,str(e))
+                no_exception=False
+        if clean_func:
+            try:
+                clean_func()
+                print "clean %s"%RichText.render_green_text("ok")
+            except Excetpion as e:
+                print "clean %s %s"(RichText.render_red_text("error"),str(e))
+        print "======================end=============================="
     finally:
         os.chdir(current_path)
+    return no_exception,statics
 
 def main(options):
     if not options.case_dir:
@@ -128,8 +169,24 @@ def main(options):
     if not os.path.exists(case_dir):
         print "%s does not exist"%RictText.render_red_text(case_dir)
         sys.exit(-1)
-    case_list = find_case(case_dir)
+    case_list = find_cases(case_dir)
+    case_statics_dict = {}
+    for case in case_list:
+        status,statics = run_a_case(case_dir,case)
+        case_statics_dict[case] = (status,statics)
+    print "======================case statics============================="
+    has_error = False
+    for key in case_statics_dict:
+        case_statics = case_statics_dict[key]
+        if case_statics[0]:
+            print "run %s successully"%RichText.render_green_text(key)
+        else:
+            print "run %s with error"%RichText.render_red_text(key)
+            has_error = True
+    if has_error:
+        sys.exit(-2)
 
 if __name__ == "__main__":
     parser = build_parser()
     options = parser.parse_args()
+    main(options)
