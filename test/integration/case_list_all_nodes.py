@@ -9,17 +9,14 @@ import subprocess
 import os
 import time
 from galaxy import sdk
-master_port = 8102
+master_port = 9876
 def set_up():
-    os.system("cd ../../sandbox && sh local-killall.sh >/dev/null 2>&1")
-    os.system("cd ../../sandbox && sh local-run.sh >/dev/null 2>&1")
-    time.sleep(5)
-
+    pass
 def test_list_node():
-    galaxy_client = sdk.GalaxySDK("localhost:%d"%master_port)
+    galaxy_client = sdk.GalaxySDK("yq01-tera81.yq01.baidu.com:%d"%master_port)
     node_list = galaxy_client.list_all_node()
 
-    assert len(node_list) == 3
+    assert len(node_list) == 7
 
 def clean():
-    os.system("cd ../../sandbox && sh local-killall.sh >/dev/null 2>&1")
+    pass

@@ -1,3 +1,4 @@
+#!/usr/bin/env python2.7
 # -*- coding:utf-8 -*-
 # Copyright (c) 2015, Galaxy Authors. All Rights Reserved
 # Use of this source code is governed by a BSD-style license that can be
@@ -8,6 +9,7 @@
 import argparse
 import json
 import sys
+import os
 import traceback
 from paramiko import client 
 from argparse import RawTextHelpFormatter
@@ -282,8 +284,8 @@ class Deployer(object):
     def init(self,options):
         self.password = options.password
         self.user = options.user
-        for node in NODE_LIST:
-            ret_dict = self._exec_cmd_on_host(node,INIT_SYS_CMDS,options.show_output)
+        for node in options.module.NODE_LIST:
+            ret_dict = self._exec_cmd_on_host(node,options.module.INIT_SYS_CMDS,options.show_output)
             for key in ret_dict:
                 if ret_dict[key] == 0:
                     print "exec %s on %s %s"%(key,node,RichText.render_green_text("succssfully"))
@@ -293,8 +295,8 @@ class Deployer(object):
     def clean(self,options):
         self.password = options.password
         self.user = options.user
-        for node in NODE_LIST:
-            ret_dict = self._exec_cmd_on_host(node,CLEAN_SYS_CMDS,options.show_output)
+        for node in options.module.NODE_LIST:
+            ret_dict = self._exec_cmd_on_host(node,options.module.CLEAN_SYS_CMDS,options.show_output)
             for key in ret_dict:
                 if ret_dict[key] == 0:
                     print "exec %s on %s %s"%(key,node,RichText.render_green_text("succssfully"))
@@ -304,7 +306,7 @@ class Deployer(object):
     def fetch(self,options):
         self.password = options.password
         self.user = options.user
-        for app in APPS:
+        for app in options.module.APPS:
             print "fetch app %s"%RichText.render_green_text(app['name']) 
             fetch_cmd = "mkdir -p %s && cd %s  && wget -O tmp.tar.gz %s && tar -zxvf tmp.tar.gz"%(app['workspace'], 
  		      							          app['workspace'],
@@ -320,7 +322,7 @@ class Deployer(object):
     def start(self,options):
         self.password = options.password
         self.user = options.user 
-        for app in APPS:
+        for app in options.module.APPS:
             print "start app %s"%RichText.render_green_text(app["name"])
             start_cmd = "cd %s && %s"%(app['workspace'],
                                        app['start_cmd'])
@@ -335,7 +337,7 @@ class Deployer(object):
     def stop(self,options):
         self.password = options.password
         self.user = options.user 
-        for app in APPS:
+        for app in options.module.APPS:
             print "stop app %s"%app["name"]
             stop_cmd = "cd %s && %s"%(app["workspace"],app["stop_cmd"])
             print "exec %s"%stop_cmd
@@ -361,9 +363,11 @@ if __name__ == "__main__":
     deploy = Deployer()
     parser = build_parser(deploy)
     options = parser.parse_args()
+    sys.path.append(os.getcwd())
     if not options.config:
         print "-c parameter is required"
         sys.exit(-1)
     md = options.config.replace(".py","")
-    exec("from %s import *"%md)
+    module = __import__(md)
+    options.module = module
     options.func(options)
