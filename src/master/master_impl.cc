@@ -299,7 +299,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         alives_[now_time].insert(agent_addr);
         agent->alive_timestamp = now_time;
         if(request->version() < agent->version){
-            LOG(WARNING,"mismatch agent version expect %d but %d ,heart beat message is discard",agent->version,request->version());
+            LOG(WARNING,"mismatch agent version expect %d but %d ,heart beat message is discard", agent->version, request->version());
             response->set_agent_id(agent->id);
             response->set_version(agent->version);
             done->Run();
@@ -539,7 +539,6 @@ void MasterImpl::Schedule() {
             if(ret){
                //update index
                std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
-               //这里更新后heart beat可能又给改回去勒
                if(agent_it != agents_.end()){
                    agent_it->second.mem_used += job.mem_share;
                    agent_it->second.cpu_used += job.cpu_share;

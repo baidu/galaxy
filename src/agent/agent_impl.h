@@ -43,7 +43,7 @@ private:
     ResourceManager* resource_mgr_;
     //agent workspace 根目录
     std::string workspace_root_path_;
-    int32_t version_;
+    int64_t version_;
 };
 
 } // namespace galaxy

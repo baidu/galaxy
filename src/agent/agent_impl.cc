@@ -42,6 +42,7 @@ AgentImpl::AgentImpl() {
         assert(0);
     }
     thread_pool_.Start();
+    version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
 }
 
