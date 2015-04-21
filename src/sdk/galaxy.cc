@@ -214,17 +214,17 @@ bool GalaxyImpl::ListTask(int64_t job_id,
         }
 
         if (response.tasks(i).has_cpu_usage()) {
-            cpu_usage = response.tasks(i).cpu_usage(); 
+            cpu_usage = response.tasks(i).cpu_usage();
         }
 
         if (response.tasks(i).has_memory_usage()) {
-            memory_usage = response.tasks(i).memory_usage(); 
+            memory_usage = response.tasks(i).memory_usage();
         }
-        
-        fprintf(stdout, "%ld\t%s\t%s\t%s\t%f\t", 
-                task_id, 
-                task_name.c_str(), 
-                state.c_str(), 
+
+        fprintf(stdout, "%ld\t%s\t%s\t%s\t%f\t",
+                task_id,
+                task_name.c_str(),
+                state.c_str(),
                 agent_addr.c_str(),
                 cpu_usage);
         double memory_formated = 0.0;
@@ -235,11 +235,11 @@ bool GalaxyImpl::ListTask(int64_t job_id,
                 fprintf(stdout, "%f %s\n",
                         memory_formated,
                         MEMORY_UNIT_NAME[order]);
-                break; 
+                break;
             }
         }
         if (order < 0) {
-            fprintf(stdout, "\n"); 
+            fprintf(stdout, "\n");
         }
     }
     fprintf(stdout, "================================\n");

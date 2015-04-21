@@ -24,13 +24,13 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
+    if (!ws_mgr_->Init()) {
+        LOG(FATAL, "workspace manager init failed");
+        assert(0);
+    }
     if (!task_mgr_->Init()) {
         LOG(FATAL, "task manager init failed");
-        assert(0); 
-    }
-    if (!ws_mgr_->Init()) {
-        LOG(FATAL, "task manager init failed");
-        assert(0); 
+        assert(0);
     }
     AgentResource resource;
     resource.total_cpu = FLAGS_cpu_num;
@@ -79,7 +79,7 @@ void AgentImpl::Report() {
     bool ret = rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
     if (!ret) {
-        LOG(WARNING, "Report to master failed"); 
+        LOG(WARNING, "Report to master failed");
     }
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
 }
@@ -88,7 +88,8 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s", request->task_name().c_str(), request->cmd_line().c_str());
+    LOG(INFO, "Run Task %s %s %s", request->task_name().c_str(),
+        request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
     task_info.set_task_name(request->task_name());
@@ -141,7 +142,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
     if (status != 0) {
         done->Run();
-        return; 
+        return;
     }
     status = ws_mgr_->Remove(request->task_id());
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
