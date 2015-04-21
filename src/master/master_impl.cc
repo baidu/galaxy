@@ -218,7 +218,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == DEPLOYING 
+            if (instance.status() == DEPLOYING
                     && instance.start_time() + FLAGS_task_deploy_timeout > now_time
                         && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
@@ -238,7 +238,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         }else{
             TaskInstance& instance = tasks_[task_id];
-            if(instance.status() != ERROR 
+            if(instance.status() != ERROR
                     && instance.status() != COMPLETE){
                 continue;
             }
@@ -273,9 +273,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
     LOG(DEBUG, "HeartBeat from %s", agent_addr.c_str());
-
     int now_time = common::timer::now_time();
-
     MutexLock lock(&agent_lock_);
     std::map<std::string, AgentInfo>::iterator it;
     it = agents_.find(agent_addr);
@@ -292,18 +290,27 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->mem_used = request->used_mem_share();
         agent->task_num = request->task_status_size();
         agent->stub = NULL;
+        agent->version = 1;
+        agent->alive_timestamp = now_time;
     } else {
         agent = &(it->second);
-        agent->cpu_used = request->used_cpu_share();
-        agent->mem_used = request->used_mem_share();
         int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
         assert(es);
         alives_[now_time].insert(agent_addr);
+        agent->alive_timestamp = now_time;
+        if(request->version() < agent->version){
+            LOG(WARNING,"mismatch agent version expect %d but %d ,heart beat message is discard",agent->version,request->version());
+            response->set_agent_id(agent->id);
+            response->set_version(agent->version);
+            done->Run();
+            return;
+        }
+        agent->cpu_used = request->used_cpu_share();
+        agent->mem_used = request->used_mem_share();
         LOG(DEBUG, "cpu_use:%lf, mem_use:%ld", agent->cpu_used, agent->mem_used);
     }
-    agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
-
+    response->set_version(agent->version);
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
@@ -477,7 +484,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
                 job->job_name.c_str(),
                 job->running_num,
-                job->replica_num); 
+                job->replica_num);
         return;
     }
     for (; it != job->agent_tasks.end(); ++it) {
@@ -485,7 +492,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
-        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d", 
+        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d",
                 job->job_name.c_str(),
                 it->first.c_str(),
                 ai.task_num,
@@ -528,15 +535,19 @@ void MasterImpl::Schedule() {
                     job.job_name.c_str());
                 continue;
             }
-            //update index
-            std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
-            //这里更新后heart beat可能又给改回去勒
-            if(agent_it != agents_.end()){
-                agent_it->second.mem_used += job.mem_share;
-                agent_it->second.cpu_used += job.cpu_share;
-                SaveIndex(agent_it->second);
+            bool ret = ScheduleTask(&job, agent_addr);
+            if(ret){
+               //update index
+               std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
+               //这里更新后heart beat可能又给改回去勒
+               if(agent_it != agents_.end()){
+                   agent_it->second.mem_used += job.mem_share;
+                   agent_it->second.cpu_used += job.cpu_share;
+                   agent_it->second.version += 1;
+                   SaveIndex(agent_it->second);
+               }
+
             }
-            ScheduleTask(&job, agent_addr);
         }
     }
     for(uint32_t i = 0;i < should_rm_job.size();i++){
