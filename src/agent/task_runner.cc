@@ -16,13 +16,15 @@
 #include <sys/types.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <pwd.h>
 #include "common/logging.h"
 #include "common/util.h"
-#include "agent/downloader_manager.h"
+#include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
 
 extern int FLAGS_task_retry_times;
+extern std::string FLAGS_task_acct;
 
 namespace galaxy {
 
@@ -85,28 +87,28 @@ void AbstractTaskRunner::AsyncDownload(boost::function<void()> callback) {
 
 void AbstractTaskRunner::StartAfterDownload(boost::function<void()> callback, int ret) {
     if (ret == 0) {
-        std::string tar_cmd = "cd " 
-            + m_workspace->GetPath() 
+        std::string tar_cmd = "cd "
+            + m_workspace->GetPath()
             + " && tar -xzf tmp.tar.gz";
         int status = system(tar_cmd.c_str());
         if (status != 0) {
-            LOG(WARNING, "task with id %ld extract failed", 
+            LOG(WARNING, "task with id %ld extract failed",
                     m_task_info.task_id());
-        } 
+        }
         else {
             callback();
             return;
         }
-    }        
-    LOG(WARNING, "task with id %ld deploy failed", 
+    }
+    LOG(WARNING, "task with id %ld deploy failed",
             m_task_info.task_id());
-    m_task_state = ERROR; 
+    m_task_state = ERROR;
     return;
 }
 
 int AbstractTaskRunner::Stop(){
     if (m_task_state == DEPLOYING) {
-        // do download stop 
+        // do download stop
         DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
         downloader_handler->KillDownload(downloader_id_);
         LOG(DEBUG, "task id %ld stop failed with deploying", m_task_info.task_id());
@@ -114,7 +116,7 @@ int AbstractTaskRunner::Stop(){
     }
 
     if (IsRunning() != 0) {
-        return 0; 
+        return 0;
     }
     LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
@@ -139,8 +141,10 @@ void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd
     common::util::GetProcessFdList(current_pid, fd_vector);
     std::string task_stdout = m_workspace->GetPath() + "/./stdout";
     std::string task_stderr = m_workspace->GetPath() + "/./stderr";
-    *stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
-    *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY, S_IRWXU);
+    *stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
+                      S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
+                      S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd){
@@ -158,16 +162,36 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
          }
          close(fd_vector[i]);
     }
+
+    //chroot(m_workspace->GetPath().c_str());
     chdir(m_workspace->GetPath().c_str());
+    passwd *pw = getpwnam(FLAGS_task_acct.c_str());
+    if (NULL == pw) {
+        pw = getpwnam("default");
+        if (NULL == pw)
+        {
+            LOG(FATAL,"fail to find acct ");
+            return;
+        }
+    }
+
+    chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
+    setuid(pw->pw_uid);
     char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
     task_id_env <<"TASK_ID="<<m_task_info.task_offset();
     std::stringstream task_num_env;
     task_num_env <<"TASK_NUM="<<m_task_info.job_replicate_num();
+    std::stringstream task_user_env;
+    task_user_env <<"USER="<<pw->pw_uid;
     char *env[] = {const_cast<char*>(task_id_env.str().c_str()),
                    const_cast<char*>(task_num_env.str().c_str()),
+                   const_cast<char*>(task_user_env.str().c_str()),
                    NULL};
+
     execve("/bin/sh", argv, env);
+    LOG(FATAL,"fail to kill exec %s errno %d %s",
+        m_task_info.task_name().c_str(), errno, strerror(errno));
     assert(0);
     _exit(127);
 }
@@ -202,20 +226,20 @@ void CommandTaskRunner::StopPost() {
 }
 
 CommandTaskRunner::~CommandTaskRunner() {
-    ResourceCollectorEngine* engine 
+    ResourceCollectorEngine* engine
         = GetResourceCollectorEngine();
     engine->DelCollector(collector_id_);
     if (collector_ != NULL) {
-        delete collector_; 
+        delete collector_;
         collector_ = NULL;
     }
 }
 
 void CommandTaskRunner::Status(TaskStatus* status) {
     if (collector_ != NULL) {
-        status->set_cpu_usage(collector_->GetCpuUsage()); 
+        status->set_cpu_usage(collector_->GetCpuUsage());
         status->set_memory_usage(collector_->GetMemoryUsage());
-        LOG(WARNING, "cpu usage %f memory usage %ld", 
+        LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());
     }
 
@@ -226,23 +250,23 @@ void CommandTaskRunner::Status(TaskStatus* status) {
         status->set_status(RUNNING);
     }
     else if (ret == 1) {
-        m_task_state = COMPLETE; 
+        m_task_state = COMPLETE;
         status->set_status(COMPLETE);
     }
     // last state is running ==> download finish
     else if (m_task_state == RUNNING) {
         if (ReStart() == 0) {
             m_task_state = RESTART;
-            status->set_status(RESTART); 
+            status->set_status(RESTART);
         }
         else {
             m_task_state = ERROR;
-            status->set_status(ERROR); 
+            status->set_status(ERROR);
         }
     }
     // other state
     else {
-        status->set_status(m_task_state); 
+        status->set_status(m_task_state);
     }
     return;
 }
@@ -269,8 +293,8 @@ int CommandTaskRunner::Start() {
         if (ret != 0) {
             assert(0);
         }
-        std::string meta_file = persistence_path_dir_ 
-            + "/" + RUNNER_META_PREFIX 
+        std::string meta_file = persistence_path_dir_
+            + "/" + RUNNER_META_PREFIX
             + boost::lexical_cast<std::string>(sequence_id_);
         int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
         if (meta_fd == -1) {
@@ -284,7 +308,7 @@ int CommandTaskRunner::Start() {
             assert(0);
         }
         if (0 != fsync(meta_fd)) {
-            close(meta_fd); 
+            close(meta_fd);
             assert(0);
         }
         close(meta_fd);
@@ -297,18 +321,18 @@ int CommandTaskRunner::Start() {
                     m_task_info.task_id(),
                     errno,
                     strerror(errno));
-            return -1; 
+            return -1;
         }
         m_group_pid = m_child_pid;
-        // NOTE not multi thread safe 
+        // NOTE not multi thread safe
         if (collector_ == NULL) {
-            collector_ = new ProcResourceCollector(m_child_pid); 
-            ResourceCollectorEngine* engine 
-                = GetResourceCollectorEngine(); 
+            collector_ = new ProcResourceCollector(m_child_pid);
+            ResourceCollectorEngine* engine
+                = GetResourceCollectorEngine();
             collector_id_ = engine->AddCollector(collector_);
         }
         else {
-            collector_->ResetPid(m_child_pid); 
+            collector_->ResetPid(m_child_pid);
         }
         m_task_state = RUNNING;
     }
@@ -320,17 +344,17 @@ int CommandTaskRunner::Prepare() {
 }
 
 bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
-    std::vector<std::string> files;    
+    std::vector<std::string> files;
     if (!GetDirFilesByPrefix(
-                persistence_path, 
-                RUNNER_META_PREFIX, 
+                persistence_path,
+                RUNNER_META_PREFIX,
                 &files)) {
-        LOG(WARNING, "get meta files failed"); 
+        LOG(WARNING, "get meta files failed");
         return false;
     }
     LOG(DEBUG, "get meta files size %lu", files.size());
     if (files.size() == 0) {
-        return true; 
+        return true;
     }
     int max_seq_id = -1;
     std::string last_meta_file;
@@ -338,32 +362,32 @@ bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
         std::string file = files[i];
         size_t pos = file.find(RUNNER_META_PREFIX);
         if (pos == std::string::npos) {
-            continue;  
+            continue;
         }
 
         if (pos + RUNNER_META_PREFIX.size() >= file.size()) {
-            LOG(WARNING, "meta file format err %s", file.c_str()); 
+            LOG(WARNING, "meta file format err %s", file.c_str());
             continue;
         }
 
         int cur_id = atoi(file.substr(pos + RUNNER_META_PREFIX.size()).c_str());
         if (max_seq_id < cur_id) {
-            max_seq_id = cur_id; 
+            max_seq_id = cur_id;
             last_meta_file = file;
         }
     }
     if (max_seq_id < 0) {
-        return false; 
+        return false;
     }
-    
+
     std::string meta_file = persistence_path + "/" + last_meta_file;
     LOG(DEBUG, "start to recover %s", meta_file.c_str());
     int fin = open(meta_file.c_str(), O_RDONLY);
     if (fin == -1) {
-        LOG(WARNING, "open meta file failed %s err[%d: %s]", 
+        LOG(WARNING, "open meta file failed %s err[%d: %s]",
                 meta_file.c_str(),
                 errno,
-                strerror(errno)); 
+                strerror(errno));
         return false;
     }
 
@@ -372,7 +396,7 @@ bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
     if (len == -1) {
         LOG(WARNING, "read meta file failed err[%d: %s]",
                 errno,
-                strerror(errno)); 
+                strerror(errno));
         close(fin);
         return false;
     }
@@ -381,7 +405,7 @@ bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
     LOG(DEBUG, "recove gpid %lu", value);
     int ret = killpg((pid_t)value, 9);
     if (ret != 0 && errno != ESRCH) {
-        LOG(WARNING, "fail to kill process group %lu", value); 
+        LOG(WARNING, "fail to kill process group %lu", value);
         return false;
     }
     return true;

@@ -24,11 +24,11 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
-    if (!task_mgr_->Init()) {
-        LOG(FATAL, "task manager init failed");
+    if (!ws_mgr_->Init()) {
+        LOG(FATAL, "workspace manager init failed");
         assert(0);
     }
-    if (!ws_mgr_->Init()) {
+    if (!task_mgr_->Init()) {
         LOG(FATAL, "task manager init failed");
         assert(0);
     }
@@ -90,7 +90,8 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s", request->task_name().c_str(), request->cmd_line().c_str());
+    LOG(INFO, "Run Task %s %s %s", request->task_name().c_str(),
+        request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
     task_info.set_task_name(request->task_name());
