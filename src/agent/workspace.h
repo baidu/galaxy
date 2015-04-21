@@ -62,7 +62,7 @@ public:
 
 private:
     void DeployInThread();
-    int mk_pach(const char *path, mode_t mode);
+    int mk_path(const char *path, mode_t mode);
 
     TaskInfo m_task_info;
     std::string m_root_path;

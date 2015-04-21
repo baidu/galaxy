@@ -31,7 +31,7 @@ int DefaultWorkspace::Create() {
     private_path << m_root_path;
     int status = 0;
     private_path << FLAGS_task_acct;
-    status = mk_pach(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = mk_path(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     m_task_root_path = private_path.str();
     if (0 != status) {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
@@ -40,7 +40,7 @@ int DefaultWorkspace::Create() {
     }
 
     private_path << "/" << m_task_info.task_id();
-    status = mk_pach(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = mk_path(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     if (status == 0) {
         m_task_root_path = private_path.str();
@@ -53,7 +53,7 @@ int DefaultWorkspace::Create() {
     return status;
 }
 
-int DefaultWorkspace::mk_pach(const char *path, mode_t mode)
+int DefaultWorkspace::mk_path(const char *path, mode_t mode)
 {
     struct stat st = {0};
     int status = 0;

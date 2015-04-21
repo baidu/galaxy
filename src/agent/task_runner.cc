@@ -16,7 +16,6 @@
 #include <sys/types.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
-#include <string.h>
 #include <pwd.h>
 #include "common/logging.h"
 #include "common/util.h"
