@@ -69,7 +69,7 @@ bool TaskManager::Init() {
             return false;
         }
         std::string rmdir = "rm -rf " + meta_file_name; 
-        if (system(rmdir.c_str()) == -1) {
+        if (system(rmdir.c_str()) != 0) {
             LOG(WARNING, "rm meta failed rm %s err[%d: %s]",
                     rmdir.c_str(),
                     errno, strerror(errno)); 
@@ -159,7 +159,7 @@ int TaskManager::Remove(const int64_t& task_info_id) {
             + "/" + META_FILE_PREFIX 
             + boost::lexical_cast<std::string>(task_info_id);
         std::string rm_cmd = "rm -rf " + persistence_path;
-        if (system(rm_cmd.c_str()) == -1) {
+        if (system(rm_cmd.c_str()) != 0) {
             LOG(WARNING, "task with id %ld meta dir rm failed rm %s err[%d: %s]",
                     task_info_id,
                     rm_cmd.c_str(),

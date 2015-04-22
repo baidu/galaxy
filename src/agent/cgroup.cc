@@ -350,7 +350,7 @@ void ContainerTaskRunner::StopPost() {
         + "/" + RUNNER_META_PREFIX 
         + boost::lexical_cast<std::string>(sequence_id_);
     std::string rm_cmd = "rm -rf " + meta_file; 
-    if (system(rm_cmd.c_str()) == -1) {
+    if (system(rm_cmd.c_str()) != 0) {
         LOG(WARNING, "rm meta failed rm %s err[%d: %s]", 
                 rm_cmd.c_str(),
                 errno,

@@ -76,7 +76,7 @@ bool WorkspaceManager::Init() {
     
     if (access(dir.c_str(), F_OK) == 0) {
         std::string rm_cmd = "rm -rf " + dir;
-        if (system(rm_cmd.c_str()) == -1) {
+        if (system(rm_cmd.c_str()) != 0) {
             LOG(WARNING, "rm data failed cmd %s err[%d: %s]",
                     rm_cmd.c_str(), errno, strerror(errno));
             return false;
@@ -92,7 +92,7 @@ bool WorkspaceManager::Init() {
     LOG(INFO, "init workdir %s", dir.c_str());
     if (access(m_gc_path.c_str(), F_OK) == 0) {
         std::string rm_cmd = "rm -rf " + m_gc_path; 
-        if (system(rm_cmd.c_str()) == -1) {
+        if (system(rm_cmd.c_str()) != 0) {
             LOG(WARNING, "rm gc dir failed cmd %s err[%d: %s]",
                     m_gc_path.c_str(), errno, strerror(errno)); 
         }
@@ -123,7 +123,7 @@ bool WorkspaceManager::Init() {
 }
 
 void WorkspaceManager::OnGCTimeout(const std::string rm_cmd) {
-    if (system(rm_cmd.c_str()) == -1) {
+    if (system(rm_cmd.c_str()) != 0) {
         LOG(WARNING, "rm gc %s failed err[%d: %s]",
                 rm_cmd.c_str(), errno, strerror(errno)); 
     }        

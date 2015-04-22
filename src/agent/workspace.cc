@@ -32,7 +32,7 @@ int DefaultWorkspace::Create() {
     private_path << m_root_path;
     int status = 0;
     private_path << FLAGS_task_acct;
-    status = mk_path(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = MkPath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     m_task_root_path = private_path.str();
     if (0 != status) {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
@@ -41,7 +41,7 @@ int DefaultWorkspace::Create() {
     }
 
     private_path << "/" << m_task_info.task_id();
-    status = mk_path(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = MkPath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     if (status == 0) {
         m_task_root_path = private_path.str();
@@ -54,9 +54,10 @@ int DefaultWorkspace::Create() {
     return status;
 }
 
-int DefaultWorkspace::mk_path(const char *path, mode_t mode)
+int DefaultWorkspace::MkPath(const char *path, mode_t mode)
 {
-    struct stat st = {0};
+    struct stat st;
+    memset(&st, 0, sizeof(st));
     int status = 0;
     if (stat(path, &st) != 0) {
         if (mkdir(path, mode) != 0 && errno != EEXIST) {
@@ -88,6 +89,12 @@ int DefaultWorkspace::Clean() {
         if (ret == 0) {
             LOG(INFO,"clean task %d workspace successfully",m_task_info.task_id());
             m_has_created = false;
+        }
+        else {
+            LOG(WARNING, "clean task %d workspace failed err[%d: %s]",
+                    m_task_info.task_id(),
+                    errno,
+                    strerror(errno)); 
         }
     }
     return ret;
