@@ -211,9 +211,9 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == DEPLOYING &&
-                instance.start_time() + FLAGS_task_deloy_timeout > now_time
-                && !clear_all) {
+            if (instance.status() == DEPLOYING
+                    && instance.start_time() + FLAGS_task_deloy_timeout > now_time
+                    && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
                 continue;
             }
