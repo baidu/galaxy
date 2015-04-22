@@ -11,7 +11,7 @@ std::string FLAGS_master_port = "8101";
 std::string FLAGS_agent_port = "8102";
 std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
 int FLAGS_task_retry_times = 3;
-int FLAGS_task_deloy_timeout = 20;
+int FLAGS_task_deploy_timeout = 20;
 int FLAGS_agent_keepalive_timeout = 20;
 
 std::string FLAGS_agent_work_dir = "/tmp";
@@ -25,4 +25,6 @@ int FLAGS_resource_collector_engine_interval = 1000;
 
 int64_t FLAGS_mem_gbytes = 32;
 int64_t FLAGS_mem_bytes = FLAGS_mem_gbytes * 1024 * 1024 * 1024;
+
+std::string FLAGS_task_acct = "galaxy";
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

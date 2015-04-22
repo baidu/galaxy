@@ -134,7 +134,7 @@ bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
 
 }
 bool GalaxyImpl::ListTaskByAgent(const std::string& agent_addr,
-                                 std::vector<TaskDescription>* tasks){
+                                 std::vector<TaskDescription>* /*tasks*/){
 
 
     ListTaskRequest request;
@@ -175,7 +175,7 @@ bool GalaxyImpl::ListTaskByAgent(const std::string& agent_addr,
 }
 bool GalaxyImpl::ListTask(int64_t job_id,
                           int64_t task_id,
-                          std::vector<TaskDescription>* tasks) {
+                          std::vector<TaskDescription>* /*tasks*/) {
     ListTaskRequest request;
     if (task_id != -1) {
         request.set_task_id(task_id);
@@ -214,32 +214,32 @@ bool GalaxyImpl::ListTask(int64_t job_id,
         }
 
         if (response.tasks(i).has_cpu_usage()) {
-            cpu_usage = response.tasks(i).cpu_usage(); 
+            cpu_usage = response.tasks(i).cpu_usage();
         }
 
         if (response.tasks(i).has_memory_usage()) {
-            memory_usage = response.tasks(i).memory_usage(); 
+            memory_usage = response.tasks(i).memory_usage();
         }
-        
-        fprintf(stdout, "%ld\t%s\t%s\t%s\t%f\t", 
-                task_id, 
-                task_name.c_str(), 
-                state.c_str(), 
+
+        fprintf(stdout, "%ld\t%s\t%s\t%s\t%f\t",
+                task_id,
+                task_name.c_str(),
+                state.c_str(),
                 agent_addr.c_str(),
                 cpu_usage);
         double memory_formated = 0.0;
-        int i;
-        for (i = MEMORY_UNIT_SIZE - 1; i >= 0; i--) {
-            memory_formated = memory_usage * 1.0 / (1L << (i * 10));
+        int order;
+        for (order = MEMORY_UNIT_SIZE - 1; order >= 0; order--) {
+            memory_formated = memory_usage * 1.0 / (1L << (order * 10));
             if (memory_formated - 1 > 0.001) {
                 fprintf(stdout, "%f %s\n",
                         memory_formated,
-                        MEMORY_UNIT_NAME[i]);
-                break; 
+                        MEMORY_UNIT_NAME[order]);
+                break;
             }
         }
-        if (i < 0) {
-            fprintf(stdout, "\n"); 
+        if (order < 0) {
+            fprintf(stdout, "\n");
         }
     }
     fprintf(stdout, "================================\n");

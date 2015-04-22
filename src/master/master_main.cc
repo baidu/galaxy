@@ -12,6 +12,7 @@
 #include <signal.h>
 
 extern std::string FLAGS_master_port;
+extern int FLAGS_task_deploy_timeout;
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
@@ -25,6 +26,8 @@ int main(int argc, char* argv[])
         char s[1024];
         if (sscanf(argv[i], "--port=%s", s) == 1) {
             FLAGS_master_port = s;
+        } else if (sscanf(argv[i], "--task_deploy_timeout=%s", s) == 1)  {
+            FLAGS_task_deploy_timeout = atol(s); 
         } else {
             fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
             exit(1);
