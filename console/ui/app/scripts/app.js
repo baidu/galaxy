@@ -3,8 +3,9 @@
 
 (function(angular){
 
-
-/**
+require(['echarts'],
+        function(ec){
+ /**
  * @ngdoc overview
  * @name uidemoApp
  * @description
@@ -24,6 +25,7 @@ var galaxy = angular.module('galaxy.ui', [
     'galaxy.ui.promot',
     'cgNotify',
     'galaxy.ui.loader',
+    'galaxy.chart.pie',
     'galaxy.ui.treeview',
     'ui.select'
   ])
@@ -69,7 +71,7 @@ var galaxy = angular.module('galaxy.ui', [
         masterAddr = $cookies.masterAddr;
     }
     return $http.get("/conf/get").then(function(response) {
-            galaxy.constant("config", {config:response.data.data.config,masterAddr:masterAddr,home:response.data.data.home,service:response.data.data.service});
+            galaxy.constant("config", {chart:{pie:ec},config:response.data.data.config,masterAddr:masterAddr,home:response.data.data.home,service:response.data.data.service});
         }, function(errorResponse) {
 
      });
@@ -80,5 +82,9 @@ var galaxy = angular.module('galaxy.ui', [
       });
   });
 
+
+
+}
+); 
 
 }(angular));
