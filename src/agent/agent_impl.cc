@@ -43,6 +43,7 @@ AgentImpl::AgentImpl() {
         assert(0);
     }
     thread_pool_.Start();
+    version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
 }
 
@@ -57,7 +58,6 @@ void AgentImpl::Report() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     std::string addr = common::util::GetLocalHostName() + ":" + FLAGS_agent_port;
-
     std::vector<TaskStatus > status_vector;
     task_mgr_->Status(status_vector);
     std::vector<TaskStatus>::iterator it = status_vector.begin();
@@ -72,13 +72,15 @@ void AgentImpl::Report() {
     request.set_mem_share(resource.total_mem);
     request.set_used_cpu_share(resource.total_cpu - resource.the_left_cpu);
     request.set_used_mem_share(resource.total_mem - resource.the_left_mem);
-
-    LOG(INFO, "Reprot to master %s,task count %d,"
-        "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld",
+    request.set_version(version_);
+    LOG(INFO, "Report to master %s,task count %d,"
+        "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld,version %d",
         addr.c_str(),request.task_status_size(), FLAGS_cpu_num,
-        request.used_cpu_share(), FLAGS_mem_bytes, request.used_mem_share());
+        request.used_cpu_share(), FLAGS_mem_bytes, request.used_mem_share(),version_);
     bool ret = rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
+    version_ = response.version();
+    LOG(INFO,"Report response version is %d ",version_);
     if (!ret) {
         LOG(WARNING, "Report to master failed");
     }

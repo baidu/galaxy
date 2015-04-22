@@ -12,6 +12,11 @@
 #include <map>
 #include <queue>
 #include <set>
+#include <functional>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
 
 #include "common/mutex.h"
 #include "common/thread_pool.h"
@@ -30,7 +35,44 @@ struct AgentInfo {
     Agent_Stub* stub;
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
+    int64_t version;
 };
+
+struct AgentLoad{
+    double load;
+    double cpu_left;
+    int64_t mem_left;
+    int64_t agent_id;
+    std::string agent_addr;
+    AgentLoad(const AgentInfo& agent,double load):load(load){
+        mem_left = agent.mem_share - agent.mem_used;
+        cpu_left = agent.cpu_share - agent.cpu_used;
+        agent_id = agent.id;
+        agent_addr = agent.addr;
+    }
+
+    void operator()(AgentLoad& l){
+        l.load = load;
+        l.cpu_left = cpu_left;
+        l.mem_left = mem_left;
+        l.agent_addr = agent_addr;
+    }
+};
+
+//agent load index includes agent id index and cpu-left index
+typedef boost::multi_index::multi_index_container<
+    AgentLoad,
+    boost::multi_index::indexed_by<
+        boost::multi_index::ordered_unique<
+            boost::multi_index::member<AgentLoad,int64_t,&AgentLoad::agent_id>
+        >,
+        boost::multi_index::ordered_non_unique<
+            boost::multi_index::member<AgentLoad,double,&AgentLoad::cpu_left>,
+            std::greater<double>
+            >
+    >
+> AgentLoadIndex;
+
 
 struct JobInfo {
     int64_t id;
@@ -52,7 +94,8 @@ class RpcClient;
 class MasterImpl : public Master {
 public:
     MasterImpl();
-    ~MasterImpl() {}
+    ~MasterImpl() {
+    }
 public:
     void HeartBeat(::google::protobuf::RpcController* controller,
                    const ::galaxy::HeartBeatRequest* request,
@@ -91,7 +134,6 @@ public:
 private:
     void DeadCheck();
     void Schedule();
-    std::string AllocResource();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
     void UpdateJobsOnAgent(AgentInfo* agent,
                            const std::set<int64_t>& running_tasks,
@@ -104,6 +146,11 @@ private:
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
     void ListTaskForJob(int64_t job_id,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
+
+    void SaveIndex(const AgentInfo& agent);
+    void RemoveIndex(int64_t agent_id);
+    double CalcLoad(const AgentInfo& agent);
+    std::string AllocResource(const JobInfo& job);
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
@@ -116,6 +163,7 @@ private:
     Mutex agent_lock_;
 
     RpcClient* rpc_client_;
+    AgentLoadIndex index_;
 };
 
 } // namespace galaxy
