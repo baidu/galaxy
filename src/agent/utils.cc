@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
@@ -40,6 +41,22 @@ bool GetDirFilesByPrefix(const std::string& dir, const std::string& prefix, std:
         files->push_back(log_file_name);
     }
     return true;
+}
+
+void GetStrFTime(std::string* time_str) {
+    const int TIME_BUFFER_LEN = 100;        
+    char time_buffer[TIME_BUFFER_LEN];
+    time_t seconds = time(NULL);
+    struct tm t;
+    localtime_r(&seconds, &t);
+    size_t len = strftime(time_buffer,
+            TIME_BUFFER_LEN - 1,
+            "%Y%m%d%H%M%S",
+            &t);
+    time_buffer[len] = '\0';
+    time_str->clear();
+    time_str->append(time_buffer, len);
+    return ;
 }
 
 }   // ending namespace galaxy

@@ -15,6 +15,7 @@
 #include <sstream>
 #include <unistd.h>
 #include "common/logging.h"
+#include "agent/utils.h"
 
 namespace galaxy {
 
@@ -75,11 +76,15 @@ int DefaultWorkspace::MoveTo(const std::string& new_dir) {
         return -1; 
     }
     // TODO
+    std::string time_str;
+    GetStrFTime(&time_str);
     std::stringstream ss;
-    ss << new_dir << "/" << m_task_info.task_id();
+    ss << new_dir << "/" << m_task_info.task_id() << "_" << time_str;
     std::string new_task_root_path = ss.str();
     if (access(new_task_root_path.c_str(), F_OK) == 0) {
-        LOG(WARNING, "path %s already exists", new_task_root_path.c_str()); 
+        LOG(FATAL, "path %s already exists", 
+                new_task_root_path.c_str()); 
+        return -1;
     }
     
     int ret = rename(m_task_root_path.c_str(), new_task_root_path.c_str());

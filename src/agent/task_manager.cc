@@ -153,6 +153,19 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     if(status == 0){
         LOG(INFO,"stop task %d successfully", task_info_id);
         m_task_runner_map.erase(task_info_id);
+
+        std::string persistence_path = FLAGS_agent_work_dir 
+            + "/" + META_PATH 
+            + "/" + META_FILE_PREFIX 
+            + boost::lexical_cast<std::string>(task_info_id);
+        std::string rm_cmd = "rm -rf " + persistence_path;
+        if (system(rm_cmd.c_str()) == -1) {
+            LOG(WARNING, "task with id %ld meta dir rm failed rm %s err[%d: %s]",
+                    task_info_id,
+                    rm_cmd.c_str(),
+                    errno,
+                    strerror(errno)); 
+        }
         delete runner;
     }    
     else {

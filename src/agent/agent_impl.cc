@@ -139,7 +139,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          ::google::protobuf::Closure* done){
     int last_status = COMPLETE;
     std::vector<TaskStatus > status_vector;
-    task_mgr_->Status(status_vector);
+    task_mgr_->Status(status_vector, request->task_id());
     if (status_vector.size() != 1) {
         LOG(WARNING, "what happend not status task id: %ld", request->task_id()); 
     }
@@ -153,8 +153,9 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
         done->Run();
         return; 
     }
+    bool delay = true;
     if (last_status == ERROR) {
-        status = ws_mgr_->Remove(request->task_id(), true); 
+        status = ws_mgr_->Remove(request->task_id(), delay); 
     } else {
         status = ws_mgr_->Remove(request->task_id());
     }

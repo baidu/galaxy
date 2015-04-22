@@ -19,6 +19,9 @@ bool GetDirFilesByPrefix(
         const std::string& prefix, 
         std::vector<std::string>* files);
 
+// %Y%m%d%H%M%S
+void GetStrFTime(std::string* time_str);
+
 }   // ending namespace galaxy
 
 #endif  //_AGENT_UTILS_H

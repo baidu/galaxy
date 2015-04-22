@@ -299,6 +299,7 @@ int ContainerTaskRunner::Start() {
             return -1; 
         }
         m_group_pid = m_child_pid;
+        m_task_state = RUNNING;
     }
     return 0;
 }
@@ -344,6 +345,16 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
 void ContainerTaskRunner::StopPost() {
     if (collector_ != NULL) {
         collector_->Clear();
+    }
+    std::string meta_file = persistence_path_dir_ 
+        + "/" + RUNNER_META_PREFIX 
+        + boost::lexical_cast<std::string>(sequence_id_);
+    std::string rm_cmd = "rm -rf " + meta_file; 
+    if (system(rm_cmd.c_str()) == -1) {
+        LOG(WARNING, "rm meta failed rm %s err[%d: %s]", 
+                rm_cmd.c_str(),
+                errno,
+                strerror(errno)); 
     }
     return;
 }
