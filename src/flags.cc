@@ -27,4 +27,6 @@ int64_t FLAGS_mem_gbytes = 32;
 int64_t FLAGS_mem_bytes = FLAGS_mem_gbytes * 1024 * 1024 * 1024;
 // 5 hour
 int FLAGS_agent_gc_timeout = 1000 * 60 * 60 * 5;
+
+std::string FLAGS_task_acct = "galaxy";
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

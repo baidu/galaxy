@@ -13,10 +13,14 @@
 #include <errno.h>
 #include <string.h>
 #include <boost/bind.hpp>
+#include <pwd.h>
+#include <sstream>
 
 #include "common/logging.h"
 
 extern int FLAGS_agent_gc_timeout;
+
+extern std::string FLAGS_task_acct;
 
 namespace galaxy {
 
@@ -91,7 +95,6 @@ bool WorkspaceManager::Init() {
         if (system(rm_cmd.c_str()) == -1) {
             LOG(WARNING, "rm gc dir failed cmd %s err[%d: %s]",
                     m_gc_path.c_str(), errno, strerror(errno)); 
-            return false;
         }
     }
 
@@ -101,6 +104,21 @@ bool WorkspaceManager::Init() {
         return false;
     }
     LOG(INFO, "init gcpath %s", m_gc_path.c_str());
+
+    //create acct
+    passwd *pw = getpwnam(FLAGS_task_acct.c_str());
+    if (NULL == pw) {
+        std::stringstream add_user;
+        add_user << "useradd -d /home/users/" << FLAGS_task_acct.c_str()
+            << " -m " << FLAGS_task_acct.c_str();
+        system(add_user.str().c_str());
+        if (errno) {
+            LOG(WARNING, "create acct failed %s err[%d: %s]",
+                FLAGS_task_acct.c_str(), errno, strerror(errno));
+            return false;
+        }
+    }
+
     return true;
 }
 
