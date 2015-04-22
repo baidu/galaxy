@@ -7,6 +7,7 @@
 #include "master_impl.h"
 
 #include <vector>
+#include <queue>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 
@@ -14,6 +15,11 @@ extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
 
 namespace galaxy {
+//agent load id index
+typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_index;
+//agent load cpu left index
+typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
+
 
 MasterImpl::MasterImpl()
     : next_agent_id_(0),
@@ -179,6 +185,7 @@ void MasterImpl::DeadCheck() {
                 agent.addr.c_str(), agent.running_tasks.size());
             std::set<int64_t> running_tasks;
             UpdateJobsOnAgent(&agent, running_tasks, true);
+            RemoveIndex(agent.id);
             agents_.erase(*node);
             it->second.erase(node);
             node = it->second.begin();
@@ -211,7 +218,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         int64_t task_id = *it;
         if (running_tasks.find(task_id) == running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == DEPLOYING 
+            if (instance.status() == DEPLOYING
                     && instance.start_time() + FLAGS_task_deploy_timeout > now_time
                         && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
@@ -231,7 +238,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         }else{
             TaskInstance& instance = tasks_[task_id];
-            if(instance.status() != ERROR 
+            if(instance.status() != ERROR
                     && instance.status() != COMPLETE){
                 continue;
             }
@@ -266,9 +273,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
     LOG(DEBUG, "HeartBeat from %s", agent_addr.c_str());
-
     int now_time = common::timer::now_time();
-
     MutexLock lock(&agent_lock_);
     std::map<std::string, AgentInfo>::iterator it;
     it = agents_.find(agent_addr);
@@ -285,18 +290,27 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->mem_used = request->used_mem_share();
         agent->task_num = request->task_status_size();
         agent->stub = NULL;
+        agent->version = 1;
+        agent->alive_timestamp = now_time;
     } else {
         agent = &(it->second);
-        agent->cpu_used = request->used_cpu_share();
-        agent->mem_used = request->used_mem_share();
         int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
         assert(es);
         alives_[now_time].insert(agent_addr);
+        agent->alive_timestamp = now_time;
+        if(request->version() < agent->version){
+            LOG(WARNING,"mismatch agent version expect %d but %d ,heart beat message is discard", agent->version, request->version());
+            response->set_agent_id(agent->id);
+            response->set_version(agent->version);
+            done->Run();
+            return;
+        }
+        agent->cpu_used = request->used_cpu_share();
+        agent->mem_used = request->used_mem_share();
         LOG(DEBUG, "cpu_use:%lf, mem_use:%ld", agent->cpu_used, agent->mem_used);
     }
-    agent->alive_timestamp = now_time;
     response->set_agent_id(agent->id);
-
+    response->set_version(agent->version);
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
@@ -329,6 +343,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     agent->task_num = request->task_status_size();
 
     UpdateJobsOnAgent(agent, running_tasks);
+    SaveIndex(*agent);
     done->Run();
 }
 
@@ -397,22 +412,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-std::string MasterImpl::AllocResource(/*ResourceRequirement*/) {
-    agent_lock_.AssertHeld();
-    std::string agent_addr;
-    int low_load = 1 << 30;
-    ///TODO: Use priority queue
-    std::map<std::string, AgentInfo>::iterator it = agents_.begin();
-    for (; it != agents_.end(); ++it) {
-        AgentInfo& ai = it->second;
-        if (ai.task_num < low_load) {
-            low_load = ai.task_num;
-            agent_addr = ai.addr;
-        }
-    }
-    LOG(INFO, "Allocate resource %s", agent_addr.c_str());
-    return agent_addr;
-}
 
 bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     agent_lock_.AssertHeld();
@@ -485,7 +484,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
                 job->job_name.c_str(),
                 job->running_num,
-                job->replica_num); 
+                job->replica_num);
         return;
     }
     for (; it != job->agent_tasks.end(); ++it) {
@@ -493,7 +492,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
-        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d", 
+        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d",
                 job->job_name.c_str(),
                 it->first.c_str(),
                 ai.task_num,
@@ -530,19 +529,123 @@ void MasterImpl::Schedule() {
         for (int i = job.running_num; i < job.replica_num; i++) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
-            std::string agent_addr = AllocResource();
+            std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",
                     job.job_name.c_str());
                 continue;
             }
-            ScheduleTask(&job, agent_addr);
+            bool ret = ScheduleTask(&job, agent_addr);
+            if(ret){
+               //update index
+               std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
+               if(agent_it != agents_.end()){
+                   agent_it->second.mem_used += job.mem_share;
+                   agent_it->second.cpu_used += job.cpu_share;
+                   agent_it->second.version += 1;
+                   SaveIndex(agent_it->second);
+               }
+
+            }
         }
     }
     for(uint32_t i = 0;i < should_rm_job.size();i++){
         jobs_.erase(should_rm_job[i]);
     }
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
+}
+
+//负载计算
+//目前使用3个因数
+//1、当前机器mem使用量，负载与内存使用量成正比，与内存总量成反比，但是需要考虑内存使用量为零情况
+//   需要设置一个默认值比如1 byte,避免总负债变为零
+//2、当前机器的cpu使用量，负载与cpu使用量成正比，与cpu总量成反比，同时需要考虑内存使用量为0状态
+//3、当前机器上的任务数，负载与任务数成正比，需要考虑为0情况
+//例子:
+//   一台机器内存10g 使用量4g ,cpu数5个，使用量1.0，任务数1 当前负载load = 4/10 * 1.0/5 * 1 = 0.08
+double MasterImpl::CalcLoad(const AgentInfo& agent){
+    if(agent.mem_share <= 0 || agent.cpu_share <= 0.0 ){
+        LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent.mem_share,agent.cpu_share);
+        return 0.0;
+    }
+    int64_t mem_used = agent.mem_used > 0 ? agent.mem_used : 1;
+    double cpu_used = agent.cpu_used > 0 ? agent.cpu_used : 0.1;
+    double mem_factor = mem_used/static_cast<double>(agent.mem_share);
+    double cpu_factor = cpu_used/agent.cpu_share;
+    double task_count_factor = agent.task_num > 0 ? agent.task_num : 0.1;
+    return task_count_factor * mem_factor * cpu_factor;
+
+}
+
+std::string MasterImpl::AllocResource(const JobInfo& job){
+    LOG(INFO,"alloc resource for job %ld,mem_require %ld, cpu_require %f",
+        job.id,job.mem_share,job.cpu_share);
+    agent_lock_.AssertHeld();
+    std::string addr;
+    cpu_left_index& cidx = boost::multi_index::get<1>(index_);
+    cpu_left_index::iterator it = cidx.lower_bound(job.cpu_share);
+    cpu_left_index::iterator it_start = cidx.begin();
+    bool last_found = false;
+    double current_min_load = 0;
+    if(it!=cidx.end() && it->mem_left >= job.mem_share){
+        last_found = true;
+        current_min_load = it->load;
+        addr = it->agent_addr;
+    }
+    for(;it_start != it;++it_start){
+        //判断内存是否满足需求
+        if(it_start->mem_left < job.mem_share){
+            continue;
+        }
+        //第一次赋值current_min_load;
+        if(!last_found){
+            current_min_load = it_start->load;
+            addr = it_start->agent_addr;
+            last_found = true;
+            continue;
+        }
+        //找到负载更小的节点
+        if(current_min_load > it_start->load){
+            addr = it_start->agent_addr;
+            current_min_load = it_start->load;
+        }
+    }
+    if(last_found){
+        LOG(INFO,"alloc resource for job %ld on host %s with load %f",job.id,addr.c_str(),current_min_load);
+    }else{
+        LOG(WARNING,"no enough  resource to alloc for job %ld",job.id);
+    }
+    return addr;
+}
+
+
+void MasterImpl::SaveIndex(const AgentInfo& agent){
+    agent_lock_.AssertHeld();
+    double load_factor = CalcLoad(agent);
+    AgentLoad load(agent,load_factor);
+    LOG(INFO,"save agent[%s] %ld load index load %f,mem_left %ld,cpu_left %f ",
+              load.agent_addr.c_str(),
+              load.agent_id,
+              load_factor,
+              load.mem_left,
+              load.cpu_left);
+    agent_id_index& aidx = boost::multi_index::get<0>(index_);
+    agent_id_index::iterator it = aidx.find(load.agent_id);
+    if(it != aidx.end()){
+        aidx.modify(it,load);
+    }else{
+        aidx.insert(load);
+    }
+}
+
+void MasterImpl::RemoveIndex(int64_t agent_id){
+    agent_lock_.AssertHeld();
+    LOG(INFO,"remove agent %ld load index ",agent_id);
+    agent_id_index& aidx = boost::multi_index::get<0>(index_);
+    agent_id_index::iterator it = aidx.find(agent_id);
+    if(it != aidx.end()){
+        aidx.erase(it);
+    }
 }
 
 } // namespace galasy
