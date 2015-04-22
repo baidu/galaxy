@@ -47,9 +47,8 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
 bool WorkspaceManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     // clear work_dir and kill tasks
-    std::string dir = m_root_path + DATA_PATH;
+    m_data_path = m_root_path + DATA_PATH;
     m_gc_path  = m_root_path + GC_PATH;
-    m_data_path = dir;
     if (access(m_root_path.c_str(), F_OK) != 0) {
         if (mkdir(m_root_path.c_str(), MKDIR_MODE) != 0) {
             LOG(WARNING, "mkdir data failed %s err[%d: %s]",
@@ -61,35 +60,33 @@ bool WorkspaceManager::Init() {
                     m_data_path.c_str(), errno, strerror(errno));
             return false;
         }
-        LOG(INFO, "init workdir %s", dir.c_str());
-        if (access(m_gc_path.c_str(), F_OK) != 0) {
-            if (mkdir(m_gc_path.c_str(), MKDIR_MODE) != 0) {
-                LOG(WARNING, "mkdir gc failed %s err[%d: %s]",
-                        m_gc_path.c_str(), errno, strerror(errno)); 
-                return false;
-            } 
-        }
+        LOG(INFO, "init workdir %s", m_data_path.c_str());
+        if (mkdir(m_gc_path.c_str(), MKDIR_MODE) != 0) {
+            LOG(WARNING, "mkdir gc failed %s err[%d: %s]",
+                    m_gc_path.c_str(), errno, strerror(errno)); 
+            return false;
+        } 
         LOG(INFO, "init gcpath %s", m_gc_path.c_str());
         return true;
     }
 
     
-    if (access(dir.c_str(), F_OK) == 0) {
-        std::string rm_cmd = "rm -rf " + dir;
+    if (access(m_data_path.c_str(), F_OK) == 0) {
+        std::string rm_cmd = "rm -rf " + m_data_path;
         if (system(rm_cmd.c_str()) != 0) {
             LOG(WARNING, "rm data failed cmd %s err[%d: %s]",
                     rm_cmd.c_str(), errno, strerror(errno));
             return false;
         }
-        LOG(INFO, "clear dirty data %s by cmd[%s]", dir.c_str(), rm_cmd.c_str());
+        LOG(INFO, "clear dirty data %s by cmd[%s]", m_data_path.c_str(), rm_cmd.c_str());
     }
 
-    if (mkdir(dir.c_str(), MKDIR_MODE) != 0) {
+    if (mkdir(m_data_path.c_str(), MKDIR_MODE) != 0) {
         LOG(WARNING, "mkdir data failed %s err[%d: %s]",
-                dir.c_str(), errno, strerror(errno));
+                m_data_path.c_str(), errno, strerror(errno));
         return false;
     }
-    LOG(INFO, "init workdir %s", dir.c_str());
+    LOG(INFO, "init workdir %s", m_data_path.c_str());
     if (access(m_gc_path.c_str(), F_OK) == 0) {
         std::string rm_cmd = "rm -rf " + m_gc_path; 
         if (system(rm_cmd.c_str()) != 0) {
