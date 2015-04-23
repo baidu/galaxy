@@ -25,12 +25,13 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
-    if (!ws_mgr_->Init()) {
-        LOG(FATAL, "workspace manager init failed");
-        assert(0);
-    }
     if (!task_mgr_->Init()) {
         LOG(FATAL, "task manager init failed");
+        assert(0);
+    }
+    // should kill task first
+    if (!ws_mgr_->Init()) {
+        LOG(FATAL, "workspace manager init failed");
         assert(0);
     }
     AgentResource resource;

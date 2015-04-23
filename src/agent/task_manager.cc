@@ -32,6 +32,16 @@ const std::string META_FILE_PREFIX = "meta_";
 
 bool TaskManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+
+    if (access(FLAGS_agent_work_dir.c_str(), F_OK) != 0) {
+        if (mkdir(FLAGS_agent_work_dir.c_str(), MKDIR_MODE) != 0) {
+            LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                    FLAGS_agent_work_dir.c_str(),
+                    errno,
+                    strerror(errno)); 
+            return false;
+        }
+    }
     m_task_meta_dir = FLAGS_agent_work_dir + "/" + META_PATH;
     if (access(m_task_meta_dir.c_str(), F_OK) != 0) {
         if (mkdir(m_task_meta_dir.c_str(), MKDIR_MODE) != 0) {
