@@ -37,6 +37,7 @@ LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
 CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('third-64/libcurl@base')
 
+
 #为32位/64位指定不同的依赖路径.
 #CONFIGS_32('lib2/ullib')
 #CONFIGS_64('lib2-64/ullib')
@@ -52,10 +53,13 @@ agent_sources='src/flags.cc\
                src/agent/binary_downloader.cc \
                src/agent/resource_collector.cc \
                src/agent/resource_manager.cc \
-               src/agent/resource_collector_engine.cc'
+               src/agent/resource_collector_engine.cc \
+               src/agent/utils.cc '
+
 
 master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto\
-                common/logging.cc src/master/master_impl.cc src/master/master_main.cc'
+                common/logging.cc src/master/master_impl.cc src/master/master_main.cc '
+
 sdk_sources='common/logging.cc src/sdk/galaxy.cc src/proto/task.proto src/proto/master.proto'
 sdk_headers='src/sdk/galaxy.h'
 client_sources='src/client/galaxy_client.cc'

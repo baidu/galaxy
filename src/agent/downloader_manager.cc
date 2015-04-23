@@ -38,10 +38,10 @@ void DownloaderManager::DownloadThreadWrapper(
     int ret = downloader->Fetch(uri, path);
     callback(ret);
 
-    delete downloader;
     MutexLock lock(&handler_lock_);
     if (it != downloader_handler_.end()) {
         downloader_handler_.erase(it);
+        delete downloader;
     }
     return;
 }

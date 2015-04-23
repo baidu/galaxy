@@ -24,7 +24,14 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
-    ws_mgr_->Init();
+    if (!ws_mgr_->Init()) {
+        LOG(FATAL, "workspace manager init failed");
+        assert(0);
+    }
+    if (!task_mgr_->Init()) {
+        LOG(FATAL, "task manager init failed");
+        assert(0);
+    }
     AgentResource resource;
     resource.total_cpu = FLAGS_cpu_num;
     resource.total_mem = FLAGS_mem_bytes;
@@ -35,6 +42,7 @@ AgentImpl::AgentImpl() {
         assert(0);
     }
     thread_pool_.Start();
+    version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
 }
 
@@ -49,7 +57,6 @@ void AgentImpl::Report() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     std::string addr = common::util::GetLocalHostName() + ":" + FLAGS_agent_port;
-
     std::vector<TaskStatus > status_vector;
     task_mgr_->Status(status_vector);
     std::vector<TaskStatus>::iterator it = status_vector.begin();
@@ -64,13 +71,18 @@ void AgentImpl::Report() {
     request.set_mem_share(resource.total_mem);
     request.set_used_cpu_share(resource.total_cpu - resource.the_left_cpu);
     request.set_used_mem_share(resource.total_mem - resource.the_left_mem);
-
-    LOG(INFO, "Reprot to master %s,task count %d,"
-        "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld",
+    request.set_version(version_);
+    LOG(INFO, "Report to master %s,task count %d,"
+        "cpu_share %f, cpu_used %f, mem_share %ld, mem_used %ld,version %d",
         addr.c_str(),request.task_status_size(), FLAGS_cpu_num,
-        request.used_cpu_share(), FLAGS_mem_bytes, request.used_mem_share());
-    rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
+        request.used_cpu_share(), FLAGS_mem_bytes, request.used_mem_share(),version_);
+    bool ret = rpc_client_->SendRequest(master_, &Master_Stub::HeartBeat,
                                 &request, &response, 5, 1);
+    version_ = response.version();
+    LOG(INFO,"Report response version is %d ",version_);
+    if (!ret) {
+        LOG(WARNING, "Report to master failed");
+    }
     thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::Report, this));
 }
 
@@ -78,7 +90,8 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s", request->task_name().c_str(), request->cmd_line().c_str());
+    LOG(INFO, "Run Task %s %s %s", request->task_name().c_str(),
+        request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
     task_info.set_task_name(request->task_name());
@@ -129,6 +142,10 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"kill task %d",request->task_id());
     int status = task_mgr_->Remove(request->task_id());
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
+    if (status != 0) {
+        done->Run();
+        return;
+    }
     status = ws_mgr_->Remove(request->task_id());
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
