@@ -67,7 +67,7 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
         NodeInstance* node = response->add_nodes();
         node->set_node_id(agent.id);
         node->set_addr(agent.addr);
-        node->set_task_num(agent.task_num);
+        node->set_task_num(agent.running_tasks.size());
         node->set_cpu_share(agent.cpu_share);
         node->set_mem_share(agent.mem_share);
         node->set_cpu_used(agent.cpu_used);
@@ -210,34 +210,29 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                                    bool clear_all) {
     const std::string& agent_addr = agent->addr;
     assert(!agent_addr.empty());
-
+    LOG(INFO,"update jobs on agent %s",agent_addr.c_str());
     int32_t now_time = common::timer::now_time();
     std::set<int64_t>::iterator it = agent->running_tasks.begin();
     std::vector<int64_t> del_tasks;
     for (; it != agent->running_tasks.end(); ++it) {
         int64_t task_id = *it;
-        if (running_tasks.find(task_id) == running_tasks.end()) {
+        if (running_tasks.find(task_id) == running_tasks.end()) { 
             TaskInstance& instance = tasks_[task_id];
-            if (instance.status() == KILLED){
-                LOG(INFO,"task %ld has been killed,remove it",task_id);
-                tasks_.erase(task_id);
-                continue;
-            }
+            int64_t job_id = instance.job_id();
             if (instance.status() == DEPLOYING
                     && instance.start_time() + FLAGS_task_deploy_timeout > now_time
                         && !clear_all) {
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
                 continue;
             }
-            int64_t job_id = instance.job_id();
+            del_tasks.push_back(task_id);
             assert(jobs_.find(job_id) != jobs_.end());
-            JobInfo& job = jobs_[job_id];
+            JobInfo& job = jobs_[job_id]; 
             job.agent_tasks[agent_addr].erase(task_id);
             if (job.agent_tasks[agent_addr].empty()) {
                 job.agent_tasks.erase(agent_addr);
             }
             job.running_num --;
-            del_tasks.push_back(task_id);
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
@@ -264,7 +259,6 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             //释放资源
             LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
             thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
-
         }
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
@@ -277,7 +271,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                            ::galaxy::HeartBeatResponse* response,
                            ::google::protobuf::Closure* done) {
     const std::string& agent_addr = request->agent_addr();
-    LOG(DEBUG, "HeartBeat from %s", agent_addr.c_str());
+    LOG(DEBUG, "HeartBeat from %s task_status_size  %d ", agent_addr.c_str(),request->task_status_size());
     int now_time = common::timer::now_time();
     MutexLock lock(&agent_lock_);
     std::map<std::string, AgentInfo>::iterator it;
@@ -293,7 +287,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->mem_share = request->mem_share();
         agent->cpu_used = request->used_cpu_share();
         agent->mem_used = request->used_mem_share();
-        agent->task_num = request->task_status_size();
         agent->stub = NULL;
         agent->version = 1;
         agent->alive_timestamp = now_time;
@@ -319,14 +312,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
-    std::set<int64_t> complete_tasks;
     for (int i = 0; i < task_num; i++) {
         assert(request->task_status(i).has_task_id());
         int64_t task_id = request->task_status(i).task_id();
-        running_tasks.insert(task_id);
-
         TaskInstance& instance = tasks_[task_id];
-
+        running_tasks.insert(task_id);
         int task_status = request->task_status(i).status();
         instance.set_status(task_status);
         LOG(INFO, "Task %d status: %s",
@@ -345,8 +335,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             LOG(INFO, "%d use memory %ld", task_id, instance.memory_usage());
         }
     }
-    agent->task_num = request->task_status_size();
-
     UpdateJobsOnAgent(agent, running_tasks);
     SaveIndex(*agent);
     done->Run();
@@ -447,7 +435,6 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         return false;
     } else {
         agent.running_tasks.insert(task_id);
-        agent.task_num ++;
         TaskInstance& instance = tasks_[task_id];
         instance.mutable_info()->set_task_name(job->job_name);
         instance.mutable_info()->set_task_id(task_id);
@@ -464,8 +451,9 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     }
 }
 
-void MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
+bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     agent_lock_.AssertHeld();
+    LOG(INFO,"cancel task %ld on agent %s",task_id,agent->addr.c_str());
     if (agent->stub == NULL) {
     bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
         assert(ret);
@@ -475,17 +463,20 @@ void MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     KillTaskResponse kill_response;
     bool ret = rpc_client_->SendRequest(agent->stub, &Agent_Stub::KillTask,
                                         &kill_request, &kill_response, 5, 1);
-    if (!ret) {
+    if (!ret || (kill_response.has_status()
+                 && kill_response.status() != 0)) {
         LOG(WARNING, "Kill task %ld agent= %s",
             task_id, agent->addr.c_str());
+        return false;
     }
+    return true;
 }
 
 void MasterImpl::ScaleDown(JobInfo* job) {
     agent_lock_.AssertHeld();
     std::string agent_addr;
     int64_t task_id = -1;
-    int high_load = 0;
+    std::set<int64_t>::size_type high_load = 0;
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
     if (job->running_num <= 0) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
@@ -499,13 +490,13 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
-        LOG(DEBUG, "[ScaleDown] %s[%s: %ld] high_load %d",
+        LOG(DEBUG, "[ScaleDown] %s[%s: %d] high_load %d",
                 job->job_name.c_str(),
                 it->first.c_str(),
-                ai.task_num,
+                ai.running_tasks.size(),
                 high_load);
-        if (ai.task_num > high_load) {
-            high_load = ai.task_num;
+        if (ai.running_tasks.size() > high_load) {
+            high_load = ai.running_tasks.size();
             agent_addr = ai.addr;
             task_id = *(it->second.begin());
         }
@@ -514,10 +505,16 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     LOG(INFO, "[ScaleDown] %s[%d/%d] on %s will be canceled",
         job->job_name.c_str(), job->running_num, job->replica_num, agent_addr.c_str());
     AgentInfo& agent = agents_[agent_addr];
-    CancelTaskOnAgent(&agent, task_id);
-    std::map<int64_t,TaskInstance>::iterator instance_it = tasks_.find(task_id);
-    if(instance_it != tasks_.end()){
-        instance_it->second.set_status(KILLED);
+    bool success = CancelTaskOnAgent(&agent, task_id);
+    if(success){
+        LOG(INFO,"kill task %ld successfully",task_id);
+        std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(task_id);
+        if(intance_it != tasks_.end()){
+            intance_it->second.set_status(KILLED);
+            agent.version += 1;
+        }
+    }else{
+        LOG(INFO,"fail to kill task %ld",task_id);
     }
 }
 
@@ -528,6 +525,7 @@ void MasterImpl::Schedule() {
     std::vector<int64_t> should_rm_job;
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
+        LOG(INFO,"job %ld ,running_num %ld",job.id,job.running_num);
         if (job.running_num == 0 && job.killed) {
             should_rm_job.push_back(job_it->first);
             continue;
@@ -561,6 +559,7 @@ void MasterImpl::Schedule() {
         }
     }
     for(uint32_t i = 0;i < should_rm_job.size();i++){
+        LOG(INFO,"remove job %ld",should_rm_job[i]);
         jobs_.erase(should_rm_job[i]);
     }
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
@@ -583,7 +582,7 @@ double MasterImpl::CalcLoad(const AgentInfo& agent){
     double cpu_used = agent.cpu_used > 0 ? agent.cpu_used : 0.1;
     double mem_factor = mem_used/static_cast<double>(agent.mem_share);
     double cpu_factor = cpu_used/agent.cpu_share;
-    double task_count_factor = agent.task_num > 0 ? agent.task_num : 0.1;
+    double task_count_factor = agent.running_tasks.size() > 0 ? agent.running_tasks.size() : 0.1;
     return task_count_factor * mem_factor * cpu_factor;
 
 }
