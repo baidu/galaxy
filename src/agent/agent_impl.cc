@@ -41,7 +41,6 @@ AgentImpl::AgentImpl() {
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }
-    thread_pool_.Start();
     version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
 }
