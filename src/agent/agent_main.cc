@@ -12,6 +12,7 @@
 #include <signal.h>
 
 extern std::string FLAGS_agent_port;
+extern std::string FLAGS_agent_http_port;
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_work_dir;
 extern std::string FLAGS_container;
@@ -42,6 +43,8 @@ int main(int argc, char* argv[]) {
             FLAGS_container = s;
         } else if(sscanf(argv[i], "--cgroup_mount_path=%s", s) == 1) {
             FLAGS_cgroup_root = s; 
+        } else if(sscanf(argv[i], "--http-port=%s", s) == 1) {
+            FLAGS_agent_http_port = s;
         }
          
         else {
