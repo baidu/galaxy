@@ -198,7 +198,6 @@ private:
             std::string real_path;
             std::string http_path(path);
             real_path = root_path_ + http_path.substr(1);
-            fprintf(stderr, "%s\n", http_path.c_str());
             if (::access(real_path.c_str(), F_OK) == 0) {
                 int file_fd = ::open(real_path.c_str(), O_RDONLY);
                 struct stat stat_buf;
