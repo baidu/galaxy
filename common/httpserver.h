@@ -1,7 +1,8 @@
-/**
- * @file httpserver.h: A simple HTTP file server
- * @author sunjunyi01
- **/
+// Copyright (c) 2014, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: sunjunyi01@baidu.com
 #ifndef  COMMON_HTTPSERVER_H_
 #define  COMMON_HTTPSERVER_H_
 
@@ -137,16 +138,16 @@ private:
             fprintf(out_stream_, "%.*s", out.size(), out.data());
             close(file_fd);
         }
-        void SendFile(int file_fd, int file_size){
-            int transfer_bytes = 0;
+        void SendFile(int file_fd, off_t file_size){
+            off_t transfer_bytes = 0;
             int sock_fd = fileno(out_stream_);
             off_t pos = 0;
             fprintf(out_stream_, "HTTP/1.1 200 OK\n");
-            fprintf(out_stream_, "Content-Length: %d\n", file_size);
+            fprintf(out_stream_, "Content-Length: %lu\n", file_size);
             fprintf(out_stream_, "Server: Galaxy\n");
             fprintf(out_stream_, "Connection: Close\n\n");
             while (transfer_bytes < file_size) {
-                int ret = ::sendfile(sock_fd, file_fd, &pos, file_size - transfer_bytes);
+                ssize_t ret = ::sendfile(sock_fd, file_fd, &pos, file_size - transfer_bytes);
                 if (ret < 0) {
                     LOG(WARNING, "failed to sendfile");
                     perror("");
@@ -190,6 +191,7 @@ private:
         FILE* out_stream = ::fdopen(dup(client_fd), "w");
         if (!in_stream || !out_stream) {
             perror("call fdopen failed");
+            close(client_fd);
             return;
         }
         Session session(in_stream, out_stream); 
@@ -206,7 +208,7 @@ private:
                     session.ShowDir(file_fd, real_path, root_path_.size());
                     return ;
                 }
-                int file_size = stat_buf.st_size;
+                off_t file_size = stat_buf.st_size;
                 session.SendFile(file_fd, file_size);
             } else {
                 LOG(WARNING, "%s can not be found", real_path.c_str());
