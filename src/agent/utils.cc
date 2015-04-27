@@ -184,7 +184,8 @@ bool GetDirFilesByPrefixInternal(
         std::vector<std::string>* files) {
 
     if (max_deep > 0 && deep >= max_deep) {
-        LOG(WARNING, "search dir too deep MAX %d", max_deep);
+        LOG(WARNING, "search dir too deep MAX %d has %lu", 
+                max_deep, files->size());
         return true; 
     }
 
@@ -198,6 +199,7 @@ bool GetDirFilesByPrefixInternal(
 
     struct dirent* dir_entity;
     while ((dir_entity = readdir(dir_desc)) != NULL) {
+        LOG(DEBUG, "search %s", dir_entity->d_name);
         if (IsSpecialDir(dir_entity->d_name)) {
             continue; 
         }
@@ -213,7 +215,6 @@ bool GetDirFilesByPrefixInternal(
                         abs_path, prefix, deep+1, max_deep, files)) {
                 LOG(WARNING, "search dir %s failed", abs_path.c_str()); 
             }
-            continue;
         }
 
         if (!prefix.empty() 
@@ -221,7 +222,6 @@ bool GetDirFilesByPrefixInternal(
                     prefix)) {
             continue; 
         }
-
         files->push_back(abs_path);
     }
     closedir(dir_desc);

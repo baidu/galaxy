@@ -66,21 +66,21 @@ bool TaskManager::Init() {
         return false;
     }
     for (size_t i = 0; i < meta_files.size(); i++) {
-        LOG(DEBUG, "recove meta file %s", meta_files[i].c_str());
-        std::string meta_file_name =  meta_files[i];
+        LOG(DEBUG, "recove meta dir %s", meta_files[i].c_str());
+        std::string meta_dir_name =  meta_files[i];
         bool ret = false;
         if (FLAGS_container.compare("cgroup") == 0) {
-            ret = ContainerTaskRunner::RecoverRunner(meta_file_name);     
+            ret = ContainerTaskRunner::RecoverRunner(meta_dir_name);     
         }
         else {
-            ret = CommandTaskRunner::RecoverRunner(meta_file_name);            
+            ret = CommandTaskRunner::RecoverRunner(meta_dir_name);            
         }
         if (!ret) {
             return false;
         }
-        if (!file::Remove(meta_file_name)) {
+        if (!file::Remove(meta_dir_name)) {
             LOG(WARNING, "rm meta failed rm %s",
-                    meta_file_name.c_str());
+                    meta_dir_name.c_str());
             return false;
         }
     }
