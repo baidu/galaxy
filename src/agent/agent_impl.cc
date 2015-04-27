@@ -12,9 +12,12 @@
 #include "common/util.h"
 #include "rpc/rpc_client.h"
 #include "proto/task.pb.h"
+#include "common/httpserver.h"
 
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_port;
+extern std::string FLAGS_agent_http_port;
+extern int FLAGS_agent_http_server_threads;
 extern std::string FLAGS_agent_work_dir;
 extern double FLAGS_cpu_num;
 extern int64_t FLAGS_mem_bytes;
@@ -43,16 +46,18 @@ AgentImpl::AgentImpl() {
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }
-    thread_pool_.Start();
     version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
+    http_server_ = new common::HttpFileServer(FLAGS_agent_work_dir,
+                                              atoi(FLAGS_agent_http_port.c_str()));
+    http_server_->Start(FLAGS_agent_http_server_threads);
 }
 
 AgentImpl::~AgentImpl() {
     delete ws_mgr_;
     delete task_mgr_;
     delete resource_mgr_;
-
+    delete http_server_;
 }
 
 void AgentImpl::Report() {

@@ -649,7 +649,7 @@ bool GetProcCpuUsage(int pid, ResourceStatistics* statistics) {
     boost::split(values, str_line, boost::is_any_of(" "));
     LOG(DEBUG, "split items %lu", values.size());
     SAFE_FREE(line);
-    if (values.size() !=  PROC_STAT_FILE_SPLIT_SIZE) {
+    if (values.size() < PROC_STAT_FILE_SPLIT_SIZE) {
         LOG(WARNING, "proc[%ld] stat file format err", pid);    
         return false;
     }

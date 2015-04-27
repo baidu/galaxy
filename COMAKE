@@ -35,6 +35,7 @@ LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
 
 #依赖模块
 CONFIGS('public/sofa-pbrpc@trunk@comake')
+CONFIGS('third-64/gtest@1.6.0.100')
 CONFIGS('third-64/libcurl@base')
 
 
@@ -74,6 +75,9 @@ downloadermgr_headers='src/agent/curl_downloader.h src/agent/downloader_manager.
 resource_collector_sources='src/agent/resource_collector.cc test/resource_collector_test.cc common/logging.cc src/agent/resource_collector_engine.cc'
 resource_collector_headers='src/agent/resource_collector.h common/logging.h src/agent/resource_collector_engine.h'
 
+agent_utils_sources='src/agent/utils.cc common/logging.cc test/agent_utils_test.cc'
+agent_utils_remove_sources='src/agent/utils.cc common/logging.cc test/agent_utils_remove_test.cc'
+
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
 Application('master',Sources(master_sources))
@@ -85,7 +89,8 @@ Application('galaxy_client',Sources(client_sources), Libraries('./libgalaxy.a'))
 Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
 Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
 Application('resource_collector_test', Sources(resource_collector_sources), HeaderFiles(resource_collector_headers));
-
+Application('agent_utils', Sources(agent_utils_sources));
+Application('agent_utils_remove', Sources(agent_utils_remove_sources));
 #共享库
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
 #子目录
