@@ -170,9 +170,15 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
         pw = getpwnam("default");
         if (NULL == pw)
         {
-            LOG(FATAL,"fail to find acct ");
-            return;
+            abort();
         }
+    }
+    std::stringstream cmd;
+    cmd << "chown -R " << FLAGS_task_acct.c_str()
+        <<":"<< FLAGS_task_acct.c_str() << " . ";
+    system(cmd.str().c_str());
+    if (errno) {
+        abort();
     }
 
     chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
