@@ -49,7 +49,7 @@ public:
 
 private:
     // TODO just for a trick
-    static void OnGCTimeout(const std::string rm_cmd);
+    static void OnGCTimeout(const std::string path);
 
     std::map<int64_t, DefaultWorkspace*>  m_workspace_map;
     common::Mutex * m_mutex;

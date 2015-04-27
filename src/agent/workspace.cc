@@ -32,7 +32,7 @@ int DefaultWorkspace::Create() {
     private_path << m_root_path;
     int status = 0;
     private_path << FLAGS_task_acct;
-    status = MkPath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = MakePath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     m_task_root_path = private_path.str();
     if (0 != status) {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
@@ -41,7 +41,7 @@ int DefaultWorkspace::Create() {
     }
 
     private_path << "/" << m_task_info.task_id();
-    status = MkPath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    status = MakePath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     if (status == 0) {
         m_task_root_path = private_path.str();
@@ -54,7 +54,7 @@ int DefaultWorkspace::Create() {
     return status;
 }
 
-int DefaultWorkspace::MkPath(const char *path, mode_t mode)
+int DefaultWorkspace::MakePath(const char *path, mode_t mode)
 {
     struct stat st;
     memset(&st, 0, sizeof(st));
@@ -83,18 +83,14 @@ int DefaultWorkspace::Clean() {
     struct stat st;
     int ret = 0;
     if (stat(m_task_root_path.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) {
-        std::string rm_cmd ;
-        rm_cmd = "rm -rf " + m_task_root_path;
-        ret = system(rm_cmd.c_str());
-        if (ret == 0) {
-            LOG(INFO,"clean task %d workspace successfully",m_task_info.task_id());
-            m_has_created = false;
-        }
-        else {
-            LOG(WARNING, "clean task %d workspace failed err[%d: %s]",
-                    m_task_info.task_id(),
-                    errno,
-                    strerror(errno)); 
+        if (!file::Remove(m_task_root_path)) {
+            LOG(WARNING, "clean task %d workspace %s failed", 
+                    m_task_info.task_id(), 
+                    m_task_root_path.c_str());
+            ret = -1;
+        } else {
+            LOG(INFO, "clean task %d success", m_task_info.task_id());    
+            ret = 0;
         }
     }
     return ret;
@@ -113,7 +109,7 @@ int DefaultWorkspace::MoveTo(const std::string& new_dir) {
                 new_dir.c_str());
         return -1; 
     }
-    // TODO
+
     std::string time_str;
     GetStrFTime(&time_str);
     std::stringstream ss;

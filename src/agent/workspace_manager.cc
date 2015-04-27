@@ -17,6 +17,7 @@
 #include <sstream>
 
 #include "common/logging.h"
+#include "agent/utils.h"
 
 extern int FLAGS_agent_gc_timeout;
 
@@ -72,13 +73,11 @@ bool WorkspaceManager::Init() {
 
     
     if (access(m_data_path.c_str(), F_OK) == 0) {
-        std::string rm_cmd = "rm -rf " + m_data_path;
-        if (system(rm_cmd.c_str()) != 0) {
-            LOG(WARNING, "rm data failed cmd %s err[%d: %s]",
-                    rm_cmd.c_str(), errno, strerror(errno));
+        if (!file::Remove(m_data_path)) {
+            LOG(WARNING, "clera dirty data %s failed", m_data_path.c_str());
             return false;
         }
-        LOG(INFO, "clear dirty data %s by cmd[%s]", m_data_path.c_str(), rm_cmd.c_str());
+        LOG(INFO, "clear dirty data %s", m_data_path.c_str());
     }
 
     if (mkdir(m_data_path.c_str(), MKDIR_MODE) != 0) {
@@ -88,10 +87,9 @@ bool WorkspaceManager::Init() {
     }
     LOG(INFO, "init workdir %s", m_data_path.c_str());
     if (access(m_gc_path.c_str(), F_OK) == 0) {
-        std::string rm_cmd = "rm -rf " + m_gc_path; 
-        if (system(rm_cmd.c_str()) != 0) {
-            LOG(WARNING, "rm gc dir failed cmd %s err[%d: %s]",
-                    m_gc_path.c_str(), errno, strerror(errno)); 
+        if (!file::Remove(m_gc_path)) {
+            LOG(WARNING, "clear gc path %s failed", m_gc_path.c_str());
+            return false;
         }
     }
 
@@ -119,10 +117,9 @@ bool WorkspaceManager::Init() {
     return true;
 }
 
-void WorkspaceManager::OnGCTimeout(const std::string rm_cmd) {
-    if (system(rm_cmd.c_str()) != 0) {
-        LOG(WARNING, "rm gc %s failed err[%d: %s]",
-                rm_cmd.c_str(), errno, strerror(errno)); 
+void WorkspaceManager::OnGCTimeout(const std::string path) {
+    if (!file::Remove(path)) {
+        LOG(WARNING, "rm gc %s failed", path.c_str()); 
     }        
 }
 
@@ -146,9 +143,8 @@ int WorkspaceManager::Remove(int64_t task_info_id, bool delay) {
             if (0 != ws->MoveTo(m_gc_path)) {
                 return -1; 
             }
-            std::string rm_cmd = "rm -rf " + ws->GetPath();
             m_gc_thread->DelayTask(FLAGS_agent_gc_timeout, 
-                    boost::bind(WorkspaceManager::OnGCTimeout, rm_cmd));
+                    boost::bind(WorkspaceManager::OnGCTimeout, ws->GetPath()));
         }
 
         m_workspace_map.erase(task_info_id);

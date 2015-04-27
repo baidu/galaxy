@@ -58,7 +58,7 @@ bool TaskManager::Init() {
     // if meta_path exists do clear for process
     // clear by Runner Static Function 
     std::vector<std::string> meta_files;
-    if (!GetDirFilesByPrefix(
+    if (!file::GetDirFilesByPrefix(
                 m_task_meta_dir, 
                 META_FILE_PREFIX, 
                 &meta_files)) {
@@ -67,7 +67,7 @@ bool TaskManager::Init() {
     }
     for (size_t i = 0; i < meta_files.size(); i++) {
         LOG(DEBUG, "recove meta file %s", meta_files[i].c_str());
-        std::string meta_file_name = m_task_meta_dir + "/" + meta_files[i];
+        std::string meta_file_name =  meta_files[i];
         bool ret = false;
         if (FLAGS_container.compare("cgroup") == 0) {
             ret = ContainerTaskRunner::RecoverRunner(meta_file_name);     
@@ -78,14 +78,25 @@ bool TaskManager::Init() {
         if (!ret) {
             return false;
         }
-        std::string rmdir = "rm -rf " + meta_file_name; 
-        if (system(rmdir.c_str()) != 0) {
-            LOG(WARNING, "rm meta failed rm %s err[%d: %s]",
-                    rmdir.c_str(),
-                    errno, strerror(errno)); 
+        if (!file::Remove(meta_file_name)) {
+            LOG(WARNING, "rm meta failed rm %s",
+                    meta_file_name.c_str());
             return false;
         }
     }
+    if (!file::Remove(m_task_meta_dir)) {
+        LOG(WARNING, "rm %s failed",
+                m_task_meta_dir.c_str()); 
+        return false;
+    }
+    if (mkdir(m_task_meta_dir.c_str(), MKDIR_MODE) != 0) {
+        LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                m_task_meta_dir.c_str(),
+                errno,
+                strerror(errno)); 
+        return false;
+    }         
+
     return true;
 }
 
@@ -168,13 +179,10 @@ int TaskManager::Remove(const int64_t& task_info_id) {
             + "/" + META_PATH 
             + "/" + META_FILE_PREFIX 
             + boost::lexical_cast<std::string>(task_info_id);
-        std::string rm_cmd = "rm -rf " + persistence_path;
-        if (system(rm_cmd.c_str()) != 0) {
-            LOG(WARNING, "task with id %ld meta dir rm failed rm %s err[%d: %s]",
+        if (!file::Remove(persistence_path)) {
+            LOG(WARNING, "task with id %ld meta dir rm failed rm %s",
                     task_info_id,
-                    rm_cmd.c_str(),
-                    errno,
-                    strerror(errno)); 
+                    persistence_path.c_str());
         }
         delete runner;
     }    

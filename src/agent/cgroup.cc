@@ -349,12 +349,8 @@ void ContainerTaskRunner::StopPost() {
     std::string meta_file = persistence_path_dir_ 
         + "/" + RUNNER_META_PREFIX 
         + boost::lexical_cast<std::string>(sequence_id_);
-    std::string rm_cmd = "rm -rf " + meta_file; 
-    if (system(rm_cmd.c_str()) != 0) {
-        LOG(WARNING, "rm meta failed rm %s err[%d: %s]", 
-                rm_cmd.c_str(),
-                errno,
-                strerror(errno)); 
+    if (!file::Remove(meta_file)) {
+        LOG(WARNING, "remove %s failed", meta_file.c_str()); 
     }
     return;
 }
@@ -377,7 +373,7 @@ int ContainerTaskRunner::Stop(){
 
 bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     std::vector<std::string> files;
-    if (!GetDirFilesByPrefix(
+    if (!file::GetDirFilesByPrefix(
                 persistence_path,
                 RUNNER_META_PREFIX,
                 &files)) {
@@ -415,7 +411,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         return false; 
     }
 
-    std::string meta_file = persistence_path + "/" + last_meta_file;
+    std::string meta_file = last_meta_file;
     LOG(DEBUG, "start to recover %s", meta_file.c_str());
     int fin = open(meta_file.c_str(), O_RDONLY);
     if (fin == -1) {
