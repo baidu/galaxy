@@ -178,6 +178,13 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     if (NULL == pw) {
         assert(0);    
     }
+    std::stringstream cmd;
+    cmd << "chown -R " << FLAGS_task_acct.c_str()
+        <<":"<< FLAGS_task_acct.c_str() << " . ";
+    system(cmd.str().c_str());
+    if (errno) {
+        abort();
+    }
 
     chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
     setuid(pw->pw_uid);
