@@ -97,7 +97,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s %s", request->task_name().c_str(),
+    LOG(INFO, "Run Task %s %s", request->task_name().c_str(),
         request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());

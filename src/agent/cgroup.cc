@@ -299,7 +299,7 @@ int ContainerTaskRunner::Start() {
             return -1; 
         }
         m_group_pid = m_child_pid;
-        m_task_state = RUNNING;
+        SetStatus(RUNNING);
     }
     return 0;
 }
@@ -314,21 +314,22 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
     // check if it is running
     int ret = IsRunning();
     if (ret == 0) {
-        m_task_state = RUNNING;
+        SetStatus(RUNNING);
         status->set_status(RUNNING);
     }
     else if (ret == 1) {
-        m_task_state = COMPLETE; 
+        SetStatus(COMPLETE);
         status->set_status(COMPLETE);
     }
     // last state is running ==> download finish
-    else if (m_task_state == RUNNING) {
+    else if (m_task_state == RUNNING
+             || m_task_state == RESTART) {
+        SetStatus(RESTART);
         if (ReStart() == 0) {
-            m_task_state = RESTART;
             status->set_status(RESTART); 
         }
         else {
-            m_task_state = ERROR;
+            SetStatus(ERROR);
             status->set_status(ERROR); 
         }
     }
