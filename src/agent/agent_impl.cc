@@ -149,6 +149,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     int status = task_mgr_->Remove(request->task_id());
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
     if (status != 0) {
+        response->set_status(status);
         done->Run();
         return;
     }
