@@ -181,7 +181,7 @@ private:
         }
     }
 
-    void HandleClient(sockaddr_in client_addr,
+    void HandleClient(sockaddr_in /*client_addr*/,
                       int client_fd) {
         char header[256] = {'\0'};
         char method[256] = {'\0'};

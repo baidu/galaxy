@@ -70,12 +70,20 @@ int AbstractTaskRunner::IsRunning(){
     return ret;
 }
 
+void AbstractTaskRunner::SetStatus(int status) {
+    LOG(DEBUG, "task with id %ld change state from %d to %d",
+            m_task_info.task_id(),
+            m_task_state,
+            status);
+    m_task_state = status;
+}
+
 void AbstractTaskRunner::AsyncDownload(boost::function<void()> callback) {
     std::string uri = m_task_info.task_raw();
     std::string path = m_workspace->GetPath();
     path.append("/");
     path.append("tmp.tar.gz");
-    m_task_state = DEPLOYING;
+    SetStatus(DEPLOYING);
     // set deploying state
     DownloaderManager* downloader_handler = DownloaderManager::GetInstance();
     downloader_id_ = downloader_handler->DownloadInThread(
@@ -102,7 +110,7 @@ void AbstractTaskRunner::StartAfterDownload(boost::function<void()> callback, in
     }
     LOG(WARNING, "task with id %ld deploy failed",
             m_task_info.task_id());
-    m_task_state = ERROR;
+    SetStatus(ERROR);
     return;
 }
 
@@ -126,6 +134,7 @@ int AbstractTaskRunner::Stop(){
     pid_t killed_pid = wait(&ret);
     if (killed_pid == -1){
         LOG(FATAL,"fail to kill process group %d",m_group_pid);
+        SetStatus(ERROR);
         return -1;
     }else{
         StopPost();
@@ -167,11 +176,7 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     chdir(m_workspace->GetPath().c_str());
     passwd *pw = getpwnam(FLAGS_task_acct.c_str());
     if (NULL == pw) {
-        pw = getpwnam("default");
-        if (NULL == pw)
-        {
-            abort();
-        }
+        assert(0);    
     }
     std::stringstream cmd;
     cmd << "chown -R " << FLAGS_task_acct.c_str()
@@ -209,13 +214,13 @@ int AbstractTaskRunner::ReStart(){
     }
     if (m_has_retry_times
             >= max_retry_times) {
-        m_task_state = ERROR;
+        SetStatus(ERROR);
         return -1;
     }
 
     m_has_retry_times ++;
     if (IsRunning() == 0) {
-        if (!Stop()) {
+        if (Stop() != 0) {
             // stop failed need retry last heartbeat
             return 0;
         }
@@ -228,6 +233,13 @@ int AbstractTaskRunner::ReStart(){
 void CommandTaskRunner::StopPost() {
     if (collector_ != NULL) {
         collector_->Clear();
+    }
+    std::string meta_file = persistence_path_dir_ 
+        + "/" + RUNNER_META_PREFIX 
+        + boost::lexical_cast<std::string>(sequence_id_);
+    if (!file::Remove(meta_file)) {
+        LOG(WARNING, "rm meta failed rm %s", 
+                meta_file.c_str());
     }
 }
 
@@ -249,29 +261,36 @@ void CommandTaskRunner::Status(TaskStatus* status) {
                 status->cpu_usage(), status->memory_usage());
     }
 
+    LOG(INFO, "task with id %ld state %d", 
+            m_task_info.task_id(),
+            m_task_state);
     // check if it is running
     int ret = IsRunning();
     if (ret == 0) {
-        m_task_state = RUNNING;
+        SetStatus(RUNNING);
         status->set_status(RUNNING);
     }
     else if (ret == 1) {
-        m_task_state = COMPLETE;
+        SetStatus(COMPLETE);
         status->set_status(COMPLETE);
     }
     // last state is running ==> download finish
-    else if (m_task_state == RUNNING) {
+    else if (m_task_state == RUNNING
+            || m_task_state == RESTART) {
+        SetStatus(RESTART);
         if (ReStart() == 0) {
-            m_task_state = RESTART;
             status->set_status(RESTART);
         }
         else {
-            m_task_state = ERROR;
+            SetStatus(ERROR);
             status->set_status(ERROR);
         }
     }
     // other state
     else {
+        LOG(DEBUG, "task with id %ld state %d",
+                m_task_info.task_id(),
+                m_task_state);
         status->set_status(m_task_state);
     }
     return;
@@ -285,6 +304,7 @@ int CommandTaskRunner::Start() {
     LOG(INFO, "start a task with id %d", m_task_info.task_id());
     if (IsRunning() == 0) {
         LOG(WARNING, "task with id %d has been runing", m_task_info.task_id());
+        SetStatus(RUNNING);
         return -1;
     }
     int stdout_fd,stderr_fd;
@@ -307,7 +327,6 @@ int CommandTaskRunner::Start() {
             assert(0);
         }
         int64_t value = my_pid;
-        LOG(WARNING, "value = %d", my_pid);
         int len = write(meta_fd, (void*)&value, sizeof(value));
         if (len == -1) {
             close(meta_fd);
@@ -327,8 +346,10 @@ int CommandTaskRunner::Start() {
                     m_task_info.task_id(),
                     errno,
                     strerror(errno));
+            SetStatus(ERROR);
             return -1;
         }
+        SetStatus(RUNNING);
         m_group_pid = m_child_pid;
         // NOTE not multi thread safe
         if (collector_ == NULL) {
@@ -340,7 +361,6 @@ int CommandTaskRunner::Start() {
         else {
             collector_->ResetPid(m_child_pid);
         }
-        m_task_state = RUNNING;
     }
     return 0;
 }
@@ -351,7 +371,7 @@ int CommandTaskRunner::Prepare() {
 
 bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
     std::vector<std::string> files;
-    if (!GetDirFilesByPrefix(
+    if (!file::GetDirFilesByPrefix(
                 persistence_path,
                 RUNNER_META_PREFIX,
                 &files)) {
@@ -386,7 +406,7 @@ bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
         return false;
     }
 
-    std::string meta_file = persistence_path + "/" + last_meta_file;
+    std::string meta_file = last_meta_file;
     LOG(DEBUG, "start to recover %s", meta_file.c_str());
     int fin = open(meta_file.c_str(), O_RDONLY);
     if (fin == -1) {

@@ -11,6 +11,7 @@
 #include <string.h>
 #include "common/util.h"
 #include "rpc/rpc_client.h"
+#include "proto/task.pb.h"
 #include "common/httpserver.h"
 
 extern std::string FLAGS_master_addr;
@@ -27,12 +28,13 @@ AgentImpl::AgentImpl() {
     rpc_client_ = new RpcClient();
     ws_mgr_ = new WorkspaceManager(FLAGS_agent_work_dir);
     task_mgr_ = new TaskManager();
-    if (!ws_mgr_->Init()) {
-        LOG(FATAL, "workspace manager init failed");
-        assert(0);
-    }
     if (!task_mgr_->Init()) {
         LOG(FATAL, "task manager init failed");
+        assert(0);
+    }
+    // should kill task first
+    if (!ws_mgr_->Init()) {
+        LOG(FATAL, "workspace manager init failed");
         assert(0);
     }
     AgentResource resource;
@@ -95,7 +97,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s %s", request->task_name().c_str(),
+    LOG(INFO, "Run Task %s %s", request->task_name().c_str(),
         request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
@@ -145,6 +147,14 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::KillTaskRequest* request,
                          ::galaxy::KillTaskResponse* response,
                          ::google::protobuf::Closure* done){
+    int last_status = COMPLETE;
+    std::vector<TaskStatus > status_vector;
+    task_mgr_->Status(status_vector, request->task_id());
+    if (status_vector.size() != 1) {
+        LOG(WARNING, "what happend not status task id: %ld", request->task_id()); 
+    } else {
+        last_status = status_vector[0].status();    
+    }
     LOG(INFO,"kill task %d",request->task_id());
     int status = task_mgr_->Remove(request->task_id());
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
@@ -153,7 +163,11 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
         done->Run();
         return;
     }
-    status = ws_mgr_->Remove(request->task_id());
+    if (last_status == ERROR) {
+        status = ws_mgr_->Remove(request->task_id(), true); 
+    } else {
+        status = ws_mgr_->Remove(request->task_id());
+    }
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
     response->set_status(status);

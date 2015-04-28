@@ -9,16 +9,32 @@
 
 #include <string>
 #include <vector>
+#include <boost/function.hpp>
 
 #include "google/protobuf/message.h"
 
 namespace galaxy {
 
+// %Y%m%d%H%M%S
+void GetStrFTime(std::string* time_str);
+
+namespace file {
+
 bool GetDirFilesByPrefix(
         const std::string& dir, 
         const std::string& prefix, 
-        std::vector<std::string>* files);
+        std::vector<std::string>* files,
+        unsigned max_deep = 1);
 
+bool Remove(const std::string& path); 
+
+bool IsDir(const std::string& path, bool& is_dir);
+
+bool IsFile(const std::string& path, bool& is_file);
+
+bool IsLink(const std::string& path, bool& is_link);
+
+}   // ending namespace galaxy
 }   // ending namespace galaxy
 
 #endif  //_AGENT_UTILS_H
