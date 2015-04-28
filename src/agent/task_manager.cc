@@ -32,6 +32,16 @@ const std::string META_FILE_PREFIX = "meta_";
 
 bool TaskManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+
+    if (access(FLAGS_agent_work_dir.c_str(), F_OK) != 0) {
+        if (mkdir(FLAGS_agent_work_dir.c_str(), MKDIR_MODE) != 0) {
+            LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                    FLAGS_agent_work_dir.c_str(),
+                    errno,
+                    strerror(errno)); 
+            return false;
+        }
+    }
     m_task_meta_dir = FLAGS_agent_work_dir + "/" + META_PATH;
     if (access(m_task_meta_dir.c_str(), F_OK) != 0) {
         if (mkdir(m_task_meta_dir.c_str(), MKDIR_MODE) != 0) {
@@ -48,7 +58,7 @@ bool TaskManager::Init() {
     // if meta_path exists do clear for process
     // clear by Runner Static Function 
     std::vector<std::string> meta_files;
-    if (!GetDirFilesByPrefix(
+    if (!file::GetDirFilesByPrefix(
                 m_task_meta_dir, 
                 META_FILE_PREFIX, 
                 &meta_files)) {
@@ -56,26 +66,37 @@ bool TaskManager::Init() {
         return false;
     }
     for (size_t i = 0; i < meta_files.size(); i++) {
-        LOG(DEBUG, "recove meta file %s", meta_files[i].c_str());
-        std::string meta_file_name = m_task_meta_dir + "/" + meta_files[i];
+        LOG(DEBUG, "recove meta dir %s", meta_files[i].c_str());
+        std::string meta_dir_name =  meta_files[i];
         bool ret = false;
         if (FLAGS_container.compare("cgroup") == 0) {
-            ret = ContainerTaskRunner::RecoverRunner(meta_file_name);     
+            ret = ContainerTaskRunner::RecoverRunner(meta_dir_name);     
         }
         else {
-            ret = CommandTaskRunner::RecoverRunner(meta_file_name);            
+            ret = CommandTaskRunner::RecoverRunner(meta_dir_name);            
         }
         if (!ret) {
             return false;
         }
-        std::string rmdir = "rm -rf " + meta_file_name; 
-        if (system(rmdir.c_str()) == -1) {
-            LOG(WARNING, "rm meta failed rm %s err[%d: %s]",
-                    rmdir.c_str(),
-                    errno, strerror(errno)); 
+        if (!file::Remove(meta_dir_name)) {
+            LOG(WARNING, "rm meta failed rm %s",
+                    meta_dir_name.c_str());
             return false;
         }
     }
+    if (!file::Remove(m_task_meta_dir)) {
+        LOG(WARNING, "rm %s failed",
+                m_task_meta_dir.c_str()); 
+        return false;
+    }
+    if (mkdir(m_task_meta_dir.c_str(), MKDIR_MODE) != 0) {
+        LOG(WARNING, "mkdir data failed %s err[%d: %s]",
+                m_task_meta_dir.c_str(),
+                errno,
+                strerror(errno)); 
+        return false;
+    }         
+
     return true;
 }
 
@@ -153,6 +174,16 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     if(status == 0){
         LOG(INFO,"stop task %d successfully", task_info_id);
         m_task_runner_map.erase(task_info_id);
+
+        std::string persistence_path = FLAGS_agent_work_dir 
+            + "/" + META_PATH 
+            + "/" + META_FILE_PREFIX 
+            + boost::lexical_cast<std::string>(task_info_id);
+        if (!file::Remove(persistence_path)) {
+            LOG(WARNING, "task with id %ld meta dir rm failed rm %s",
+                    task_info_id,
+                    persistence_path.c_str());
+        }
         delete runner;
     }    
     else {
@@ -162,16 +193,26 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     return status;
 }
 
-int TaskManager::Status(std::vector< TaskStatus >& task_status_vector) {
-   MutexLock lock(m_mutex);
-   std::map<int64_t, TaskRunner*>::iterator it = m_task_runner_map.begin();
-   for (; it != m_task_runner_map.end(); ++it) {
-       TaskStatus status;
-       status.set_task_id(it->first);
-       it->second->Status(&status);
-       task_status_vector.push_back(status);
-   }
-   return 0;
+int TaskManager::Status(std::vector< TaskStatus >& task_status_vector, int64_t id) {
+    MutexLock lock(m_mutex);
+    std::map<int64_t, TaskRunner*>::iterator it;
+    if (id >= 0) {
+        it = m_task_runner_map.find(id);
+        if (it != m_task_runner_map.end()) {
+            TaskStatus status;
+            it->second->Status(&status); 
+            task_status_vector.push_back(status);
+        }
+        return 0;
+    }
+    it = m_task_runner_map.begin();
+    for (; it != m_task_runner_map.end(); ++it) {
+        TaskStatus status;
+        status.set_task_id(it->first);
+        it->second->Status(&status);
+        task_status_vector.push_back(status);
+    }
+    return 0;
 }
 
 }

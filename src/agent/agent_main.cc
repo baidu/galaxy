@@ -12,6 +12,7 @@
 #include <signal.h>
 
 extern std::string FLAGS_agent_port;
+extern std::string FLAGS_agent_http_port;
 extern std::string FLAGS_master_addr;
 extern std::string FLAGS_agent_work_dir;
 extern std::string FLAGS_container;
@@ -35,16 +36,18 @@ int main(int argc, char* argv[]) {
             FLAGS_master_addr = s;
         } else if (sscanf(argv[i], "--work_dir=%s", s) == 1) {
             FLAGS_agent_work_dir = s;
-        } else if(sscanf(argv[i],"--cpu=%s",s) == 1) {
+        } else if (sscanf(argv[i],"--cpu=%s",s) == 1) {
             FLAGS_cpu_num = atof(s);
-        } else if(sscanf(argv[i],"--mem=%s",s) == 1) {
+        } else if (sscanf(argv[i],"--mem=%s",s) == 1) {
             FLAGS_mem_gbytes = atoi(s);
-        } else if(sscanf(argv[i],"--container=%s",s) == 1) {
+        } else if (sscanf(argv[i],"--container=%s",s) == 1) {
             FLAGS_container = s;
-        } else if(sscanf(argv[i], "--cgroup_mount_path=%s", s) == 1) {
+        } else if (sscanf(argv[i], "--cgroup_mount_path=%s", s) == 1) {
             FLAGS_cgroup_root = s; 
-        } else if(sscanf(argv[i], "--acct=%s", s) ==1) {
-            FLAGS_task_acct = s;
+        } else if (sscanf(argv[i], "--user=%s", s) == 1) {
+            FLAGS_task_acct = s; 
+        } else if(sscanf(argv[i], "--http-port=%s", s) == 1) {
+            FLAGS_agent_http_port = s;
         }
 
          

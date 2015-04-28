@@ -32,7 +32,7 @@ public:
             DefaultWorkspace* workspace);
     int Start(const int64_t& task_info_id);
     int Remove(const int64_t& task_info_id);
-    int Status(std::vector<TaskStatus>& task_status_vector);
+    int Status(std::vector<TaskStatus>& task_status_vector, int64_t id = -1);
 
 private:
     common::Mutex * m_mutex;

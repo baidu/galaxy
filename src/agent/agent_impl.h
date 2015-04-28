@@ -14,6 +14,11 @@
 #include "agent/resource_manager.h"
 #include "common/thread_pool.h"
 #include "agent/workspace.h"
+
+namespace common {
+    class HttpFileServer;
+}
+
 namespace galaxy {
 
 class RpcClient;
@@ -44,6 +49,7 @@ private:
     //agent workspace 根目录
     std::string workspace_root_path_;
     int64_t version_;
+    common::HttpFileServer* http_server_;
 };
 
 } // namespace galaxy
