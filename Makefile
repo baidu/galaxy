@@ -83,5 +83,5 @@ clean:
 
 .PHONY: test
 test:
-	echo "Test done"
+	cd test/integeration && sh run.sh
 
