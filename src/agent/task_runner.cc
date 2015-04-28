@@ -163,8 +163,6 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
          close(fd_vector[i]);
     }
 
-    //chroot(m_workspace->GetPath().c_str());
-    
     chdir(m_workspace->GetPath().c_str());
     passwd *pw = getpwnam(FLAGS_task_acct.c_str());
     if (NULL == pw) {
@@ -179,10 +177,11 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
         if (errno) {
             abort();
         }
-
         chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
+        chroot(m_workspace->GetPath().c_str());
         setuid(pw->pw_uid);
     }
+
     char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
     task_id_env <<"TASK_ID="<<m_task_info.task_offset();

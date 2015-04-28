@@ -50,12 +50,38 @@ int DefaultWorkspace::Create() {
                 m_task_root_path.c_str(), errno, strerror(errno));
         return status;
     }
+    private_path.str("");
+    private_path << m_task_root_path << "/bin";
+    status = symlink("/bin", private_path.str().c_str());
+    private_path.str("");
+    private_path << m_task_root_path << "/dev";
+    status = symlink("/dev", private_path.str().c_str());
+    private_path.str("");
+    private_path << m_task_root_path << "/lib";
+    status = symlink("/lib", private_path.str().c_str());
+    private_path.str("");
+    private_path << m_task_root_path << "/lib64";
+    status = symlink("/lib64", private_path.str().c_str());
+    private_path.str("");
+    private_path << m_task_root_path << "/proc";
+    status = symlink("/proc", private_path.str().c_str());
+    private_path.str("");
+    private_path << m_task_root_path << "/sbin";
+    status = symlink("/sbin", private_path.str().c_str());
+
+    if (0 != status) {
+        LOG(WARNING, "create jail symlink failed err[%d: %s]", errno, strerror(errno));
+        rmdir(m_task_root_path.c_str());
+        return status;
+    }
+
     return status;
 }
 
 int DefaultWorkspace::mk_path(const char *path, mode_t mode)
 {
-    struct stat st = {0};
+    struct stat st;
+    memset(&st, 0, sizeof(st));
     int status = 0;
     if (stat(path, &st) != 0) {
         if (mkdir(path, mode) != 0 && errno != EEXIST) {
