@@ -154,12 +154,14 @@ int64_t GalaxyNewJob(galaxy::Galaxy* galaxy,
     job.cmd_line = cmd_line;
     job.replicate_count = replica;
     job.job_name = job_name;
+    job.cpu_share = 1;
+    job.mem_share = 1024*1024*1024;
     return galaxy->NewJob(job);
 }
 
 bool MapReduceMaster(const MapReduceSpecification& spec, MapReduceResult* result) {
 
-    galaxy::Galaxy* cluster = galaxy::Galaxy::ConnectGalaxy("localhost:8102");
+    galaxy::Galaxy* cluster = galaxy::Galaxy::ConnectGalaxy("yq01-tera60.yq01:8101");
     std::vector<galaxy::JobInstanceDescription> jobs;
     /// map
     int64_t mapper_id = 
