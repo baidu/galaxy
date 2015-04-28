@@ -263,7 +263,6 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
         agent->running_tasks.erase(del_tasks[i]);
-        agent->task_num --;
     }
 }
 
