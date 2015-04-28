@@ -77,6 +77,8 @@ message TaskInstance {
     optional int32 offset = 6;
     optional double cpu_usage = 7;
     optional int64 memory_usage = 8;
+    optional string root_path = 9;
+    optional int32 end_time = 10;
 }
 message ListTaskRequest {
     optional int64 job_id = 2;
@@ -85,6 +87,7 @@ message ListTaskRequest {
 }
 message ListTaskResponse {
     repeated TaskInstance tasks = 2;
+    repeated TaskInstance scheduled_tasks = 3;
 }
 
 message JobInstance {
