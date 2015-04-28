@@ -9,6 +9,8 @@
 
 std::string FLAGS_master_port = "8101";
 std::string FLAGS_agent_port = "8102";
+std::string FLAGS_agent_http_port = "8103";
+int FLAGS_agent_http_server_threads = 10;
 std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
 int FLAGS_task_retry_times = 3;
 int FLAGS_task_deploy_timeout = 20;

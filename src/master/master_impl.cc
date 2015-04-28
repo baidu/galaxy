@@ -358,6 +358,7 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
                    ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
+    MutexLock lock(&agent_lock_);
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
