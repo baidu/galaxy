@@ -7,6 +7,7 @@
 # Date: 2015-04-28
 import subprocess
 import os
+import signal
 
 class ShellHelper(object):
 
@@ -36,6 +37,16 @@ class ShellHelper(object):
                             shell=True)
         return p
 
+    @classmethod
+    def kill_child_processes(cls,parent_pid, 
+                                 sig=signal.SIGTERM):
+        p = subprocess.Popen("ps -o pid --ppid %d --noheaders" % parent_pid, 
+                                      shell=True,
+                                      stdout=subprocess.PIPE)
+        output, errout = p.communicate()
+        retcode = p.returncode
+        for pid_str in output.splitlines():
+            os.kill(int(pid_str), sig)
 
 class MasterCtrl(object):
     """
@@ -45,8 +56,8 @@ class MasterCtrl(object):
                       run_path,
                       port,
                       output="./log"):
-        self.master_bin = master_bin
-        self.run_path = run_path
+        self.master_bin = str(master_bin)
+        self.run_path = str(run_path)
         self.port = port
         self.output = output
         self.master_process = None
@@ -56,12 +67,12 @@ class MasterCtrl(object):
             ShellHelper.run_with_returncode("mkdir -p %s"%self.run_path)
         os.chdir(self.run_path)
         start_cmd = "%s --port=%s >%s 2>&1"%(self.master_bin,self.port,self.output)
-        self.master_process = ShellHelper.run_with_process("mkdir -p %s"%self.run_path)
+        self.master_process = ShellHelper.run_with_process(start_cmd)
 
     def stop(self):
         if not self.master_process:
             return -1,None,None
-        self.master_process.kill()
+        ShellHelper.kill_child_processes(self.master_process.pid)
         output, errout = self.master_process.communicate()
-        return self.master_process,output,errout
+        return self.master_process.returncode,output,errout
 
