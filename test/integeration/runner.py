@@ -8,7 +8,6 @@
 import argparse
 import sys
 import os
-#from inspect import getmembers, isfunction
 import inspect
 
 from argparse import RawTextHelpFormatter
