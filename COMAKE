@@ -89,8 +89,8 @@ Application('galaxy_client',Sources(client_sources), Libraries('./libgalaxy.a'))
 Application('curl_downloader_test', Sources(downloader_sources), HeaderFiles(downloader_headers))
 Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(downloadermgr_headers));
 Application('resource_collector_test', Sources(resource_collector_sources), HeaderFiles(resource_collector_headers));
-Application('agent_utils', Sources(agent_utils_sources));
-Application('agent_utils_remove', Sources(agent_utils_remove_sources));
+Application('agent_utils_test', Sources(agent_utils_sources));
+Application('agent_utils_remove_test', Sources(agent_utils_remove_sources));
 #共享库
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
 #子目录

@@ -41,7 +41,7 @@ int AbstractTaskRunner::IsRunning(){
     int ret = ::kill(m_child_pid, 0);
     if(ret == 0 ){
         //check process status
-        pid_t pid = waitpid(m_child_pid,&ret,WNOHANG);
+        pid_t pid = waitpid(m_child_pid, &ret, WNOHANG);
         if(pid == 0 ){
             LOG(INFO,"process %d is running",m_child_pid);
             return 0;
@@ -65,7 +65,7 @@ int AbstractTaskRunner::IsRunning(){
     }
     LOG(INFO, "check task %d error[%d:%s] ",
             m_task_info.task_id(),
-            errno,
+            ret,
             strerror(errno));
     return ret;
 }

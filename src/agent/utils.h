@@ -24,7 +24,7 @@ bool GetDirFilesByPrefix(
         const std::string& dir, 
         const std::string& prefix, 
         std::vector<std::string>* files,
-        int max_deep = 1);
+        unsigned max_deep = 1);
 
 bool Remove(const std::string& path); 
 

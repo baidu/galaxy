@@ -45,16 +45,16 @@ namespace file {
 static bool GetDirFilesByPrefixInternal(
         const std::string& dir,
         const std::string& prefix,
-        int deep,
-        int max_deep,
+        unsigned deep,
+        unsigned max_deep,
         std::vector<std::string>* files);
 
 bool GetDirFilesByPrefix(
         const std::string& dir,
         const std::string& prefix,
         std::vector<std::string>* files,
-        int max_deep) {
-    int deep = 0;
+        unsigned max_deep) {
+    unsigned deep = 0;
     return GetDirFilesByPrefixInternal(dir, 
             prefix, deep, max_deep, files);
 }
@@ -179,12 +179,12 @@ bool Remove(const std::string& path) {
 bool GetDirFilesByPrefixInternal(
         const std::string& dir,
         const std::string& prefix,
-        int deep,
-        int max_deep,
+        unsigned deep,
+        unsigned max_deep,
         std::vector<std::string>* files) {
 
     if (max_deep > 0 && deep >= max_deep) {
-        LOG(WARNING, "search dir too deep MAX %d has %lu", 
+        LOG(WARNING, "search dir too deep MAX %u has %lu", 
                 max_deep, files->size());
         return true; 
     }
@@ -212,7 +212,7 @@ bool GetDirFilesByPrefixInternal(
         }
         if (is_dir) {
             if (!GetDirFilesByPrefixInternal(
-                        abs_path, prefix, deep+1, max_deep, files)) {
+                        abs_path, prefix, deep + 1, max_deep, files)) {
                 LOG(WARNING, "search dir %s failed", abs_path.c_str()); 
             }
         }

@@ -108,6 +108,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_required_mem(request->mem_share());
     task_info.set_task_offset(request->task_offset());
     task_info.set_job_replicate_num(request->job_replicate_num());
+
     TaskResourceRequirement requirement;
     requirement.cpu_limit = request->cpu_share();
     requirement.mem_limit = request->mem_share();
@@ -129,7 +130,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"start to prepare workspace for %s",request->task_name().c_str());
     DefaultWorkspace * workspace ;
     workspace = ws_mgr_->GetWorkspace(task_info);
-    LOG(INFO,"start  task for %s",request->task_name().c_str());
+    LOG(INFO,"start task for %s",request->task_name().c_str());
     ret = task_mgr_->Add(task_info,workspace);
     if (ret != 0){
         LOG(FATAL,"fail to start task");
@@ -140,8 +141,8 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     }
     response->set_status(0);
     done->Run();
-
 }
+
 void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::KillTaskRequest* request,
                          ::galaxy::KillTaskResponse* response,
@@ -159,6 +160,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
     int status = task_mgr_->Remove(request->task_id());
     LOG(INFO,"kill task %d status %d",request->task_id(),status);
     if (status != 0) {
+        response->set_status(status);
         done->Run();
         return;
     }

@@ -27,7 +27,6 @@ class Agent_Stub;
 struct AgentInfo {
     int64_t id;
     std::string addr;
-    int32_t task_num;
     double cpu_share;
     int64_t mem_share;
     double cpu_used;
@@ -139,7 +138,7 @@ private:
     void UpdateJobsOnAgent(AgentInfo* agent,
                            const std::set<int64_t>& running_tasks,
                            bool clear_all = false);
-    void CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
+    bool CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
     void ScaleDown(JobInfo* job);
 
     void DelayRemoveZombieTaskOnAgent(AgentInfo * agent,int64_t task_id);
