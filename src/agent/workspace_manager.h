@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include "agent/workspace.h"
 #include "common/mutex.h"
+#include "common/thread_pool.h"
 #include "proto/task.pb.h"
 namespace galaxy{
 
@@ -19,8 +20,11 @@ public:
     WorkspaceManager(const std::string & root_path)
         : m_mutex(NULL),
           m_root_path(root_path),
-          m_data_path() {
+          m_data_path(),
+          m_gc_path(),
+          m_gc_thread(NULL) {
         m_mutex = new common::Mutex();
+        m_gc_thread = new common::ThreadPool(1);
     }
     ~WorkspaceManager(){
         delete m_mutex;
@@ -34,18 +38,25 @@ public:
                 delete tmp;
             }
         }
+        delete m_gc_thread;
     }
     bool Init();
     //根据task info 创建一个workspace
     int Add(const TaskInfo &task_info);
-    int Remove(int64_t  task_info_id);
+    int Remove(int64_t  task_info_id, bool delay = false);
+    int DelayGC(DefaultWorkspace* workspace);
     DefaultWorkspace* GetWorkspace(const ::galaxy::TaskInfo &task_info);
 
 private:
+    // TODO just for a trick
+    static void OnGCTimeout(const std::string path);
+
     std::map<int64_t, DefaultWorkspace*>  m_workspace_map;
     common::Mutex * m_mutex;
     std::string m_root_path;
     std::string m_data_path;
+    std::string m_gc_path;
+    common::ThreadPool* m_gc_thread;
 };
 
 }

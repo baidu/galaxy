@@ -70,6 +70,7 @@ public:
     virtual void PersistenceAble(const std::string& persistence_path) = 0;
 
 protected:
+    void SetStatus(int status);
     void StartAfterDownload(
             boost::function<void()> callback, 
             int ret);

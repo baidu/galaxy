@@ -299,6 +299,7 @@ int ContainerTaskRunner::Start() {
             return -1; 
         }
         m_group_pid = m_child_pid;
+        SetStatus(RUNNING);
     }
     return 0;
 }
@@ -313,21 +314,22 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
     // check if it is running
     int ret = IsRunning();
     if (ret == 0) {
-        m_task_state = RUNNING;
+        SetStatus(RUNNING);
         status->set_status(RUNNING);
     }
     else if (ret == 1) {
-        m_task_state = COMPLETE; 
+        SetStatus(COMPLETE);
         status->set_status(COMPLETE);
     }
     // last state is running ==> download finish
-    else if (m_task_state == RUNNING) {
+    else if (m_task_state == RUNNING
+             || m_task_state == RESTART) {
+        SetStatus(RESTART);
         if (ReStart() == 0) {
-            m_task_state = RESTART;
             status->set_status(RESTART); 
         }
         else {
-            m_task_state = ERROR;
+            SetStatus(ERROR);
             status->set_status(ERROR); 
         }
     }
@@ -344,6 +346,12 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
 void ContainerTaskRunner::StopPost() {
     if (collector_ != NULL) {
         collector_->Clear();
+    }
+    std::string meta_file = persistence_path_dir_ 
+        + "/" + RUNNER_META_PREFIX 
+        + boost::lexical_cast<std::string>(sequence_id_);
+    if (!file::Remove(meta_file)) {
+        LOG(WARNING, "remove %s failed", meta_file.c_str()); 
     }
     return;
 }
@@ -366,7 +374,7 @@ int ContainerTaskRunner::Stop(){
 
 bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     std::vector<std::string> files;
-    if (!GetDirFilesByPrefix(
+    if (!file::GetDirFilesByPrefix(
                 persistence_path,
                 RUNNER_META_PREFIX,
                 &files)) {
@@ -404,7 +412,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         return false; 
     }
 
-    std::string meta_file = persistence_path + "/" + last_meta_file;
+    std::string meta_file = last_meta_file;
     LOG(DEBUG, "start to recover %s", meta_file.c_str());
     int fin = open(meta_file.c_str(), O_RDONLY);
     if (fin == -1) {

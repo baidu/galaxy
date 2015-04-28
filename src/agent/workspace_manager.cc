@@ -12,15 +12,21 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <boost/bind.hpp>
 #include <pwd.h>
 #include <sstream>
+
 #include "common/logging.h"
+#include "agent/utils.h"
+
+extern int FLAGS_agent_gc_timeout;
 
 extern std::string FLAGS_task_acct;
 
 namespace galaxy {
 
 const std::string DATA_PATH = "/data/";
+const std::string GC_PATH = "/gc/";
 
 int WorkspaceManager::Add(const TaskInfo& task_info) {
     MutexLock lock(m_mutex);
@@ -42,8 +48,8 @@ int WorkspaceManager::Add(const TaskInfo& task_info) {
 bool WorkspaceManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     // clear work_dir and kill tasks
-    std::string dir = m_root_path + DATA_PATH;
-    m_data_path = dir;
+    m_data_path = m_root_path + DATA_PATH;
+    m_gc_path  = m_root_path + GC_PATH;
     if (access(m_root_path.c_str(), F_OK) != 0) {
         if (mkdir(m_root_path.c_str(), MKDIR_MODE) != 0) {
             LOG(WARNING, "mkdir data failed %s err[%d: %s]",
@@ -55,27 +61,44 @@ bool WorkspaceManager::Init() {
                     m_data_path.c_str(), errno, strerror(errno));
             return false;
         }
-        LOG(INFO, "init workdir %s", dir.c_str());
+        LOG(INFO, "init workdir %s", m_data_path.c_str());
+        if (mkdir(m_gc_path.c_str(), MKDIR_MODE) != 0) {
+            LOG(WARNING, "mkdir gc failed %s err[%d: %s]",
+                    m_gc_path.c_str(), errno, strerror(errno)); 
+            return false;
+        } 
+        LOG(INFO, "init gcpath %s", m_gc_path.c_str());
         return true;
     }
 
-    if (access(dir.c_str(), F_OK) == 0) {
-        std::string rm_cmd = "rm -rf " + dir;
-        if (system(rm_cmd.c_str()) == -1) {
-            LOG(WARNING, "rm data failed cmd %s err[%d: %s]",
-                    rm_cmd.c_str(), errno, strerror(errno));
+    
+    if (access(m_data_path.c_str(), F_OK) == 0) {
+        if (!file::Remove(m_data_path)) {
+            LOG(WARNING, "clera dirty data %s failed", m_data_path.c_str());
             return false;
         }
-        LOG(INFO, "clear dirty data %s by cmd[%s]", dir.c_str(), rm_cmd.c_str());
+        LOG(INFO, "clear dirty data %s", m_data_path.c_str());
     }
 
-    if (mkdir(dir.c_str(), MKDIR_MODE) != 0) {
+    if (mkdir(m_data_path.c_str(), MKDIR_MODE) != 0) {
         LOG(WARNING, "mkdir data failed %s err[%d: %s]",
-                dir.c_str(), errno, strerror(errno));
+                m_data_path.c_str(), errno, strerror(errno));
         return false;
     }
-    LOG(INFO, "init workdir %s", dir.c_str());
+    LOG(INFO, "init workdir %s", m_data_path.c_str());
+    if (access(m_gc_path.c_str(), F_OK) == 0) {
+        if (!file::Remove(m_gc_path)) {
+            LOG(WARNING, "clear gc path %s failed", m_gc_path.c_str());
+            return false;
+        }
+    }
 
+    if (mkdir(m_gc_path.c_str(), MKDIR_MODE) != 0) {
+        LOG(WARNING, "mkdir gcpath failed %s err[%d: %s]",
+                m_gc_path.c_str(), errno, strerror(errno)); 
+        return false;
+    }
+    LOG(INFO, "init gcpath %s", m_gc_path.c_str());
 
     //create acct
     passwd *pw = getpwnam(FLAGS_task_acct.c_str());
@@ -94,7 +117,13 @@ bool WorkspaceManager::Init() {
     return true;
 }
 
-int WorkspaceManager::Remove(int64_t task_info_id) {
+void WorkspaceManager::OnGCTimeout(const std::string path) {
+    if (!file::Remove(path)) {
+        LOG(WARNING, "rm gc %s failed", path.c_str()); 
+    }        
+}
+
+int WorkspaceManager::Remove(int64_t task_info_id, bool delay) {
     MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
         return 0;
@@ -104,9 +133,18 @@ int WorkspaceManager::Remove(int64_t task_info_id) {
 
     if (ws != NULL) {
 
-        int status =  ws->Clean();
-        if (status != 0) {
-            return status;
+        if (!delay) {
+            int status =  ws->Clean();
+            if (status != 0) {
+                return status;
+            }
+        }
+        else {
+            if (0 != ws->MoveTo(m_gc_path)) {
+                return -1; 
+            }
+            m_gc_thread->DelayTask(FLAGS_agent_gc_timeout, 
+                    boost::bind(WorkspaceManager::OnGCTimeout, ws->GetPath()));
         }
 
         m_workspace_map.erase(task_info_id);
