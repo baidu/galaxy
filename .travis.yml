@@ -16,5 +16,5 @@ install:
     - sudo pip install nose protobuf
 script: 
     - make -j4 && make install 
-    - cd test/integeration && sh inte-test-on-local.sh
+    - cd test/integeration && sudo sh inte-test-on-local.sh
 
