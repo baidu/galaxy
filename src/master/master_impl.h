@@ -12,6 +12,7 @@
 #include <map>
 #include <queue>
 #include <set>
+#include <deque>
 #include <functional>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -86,7 +87,7 @@ struct JobInfo {
     std::map<std::string, std::set<int64_t> > agent_tasks;
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
-    std::vector<TaskInstance> scheduled_tasks;
+    std::deque<TaskInstance> scheduled_tasks;
 };
 
 class RpcClient;

@@ -13,6 +13,7 @@
 
 extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
+extern unsigned long FLAGS_master_max_len_sched_task_list;
 
 namespace galaxy {
 //agent load id index
@@ -124,7 +125,7 @@ void MasterImpl::ListTaskForJob(int64_t job_id,
             return; 
         }
 
-        std::vector<TaskInstance>::iterator sched_it;
+        std::deque<TaskInstance>::iterator sched_it;
         LOG(DEBUG, "liat schedule tasks %u for job %ld", job.scheduled_tasks.size(), job_id);
         for (sched_it = job.scheduled_tasks.begin();
                 sched_it != job.scheduled_tasks.end(); ++sched_it) {
@@ -253,6 +254,9 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.replica_num --;
             }
             tasks_[task_id].set_end_time(common::timer::now_time());
+            if (job.scheduled_tasks.size() >= FLAGS_master_max_len_sched_task_list) {
+                job.scheduled_tasks.pop_front(); 
+            }                
             job.scheduled_tasks.push_back(tasks_[task_id]);  
             LOG(DEBUG, "job %ld has schedule tasks %u : id %ld state %d ", 
                     job_id,
