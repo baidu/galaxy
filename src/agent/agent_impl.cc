@@ -13,14 +13,15 @@
 #include "rpc/rpc_client.h"
 #include "proto/task.pb.h"
 #include "common/httpserver.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_master_addr;
-extern std::string FLAGS_agent_port;
-extern std::string FLAGS_agent_http_port;
-extern int FLAGS_agent_http_server_threads;
-extern std::string FLAGS_agent_work_dir;
-extern double FLAGS_cpu_num;
-extern int64_t FLAGS_mem_bytes;
+DECLARE_string(master_addr);
+DECLARE_string(agent_port);
+DECLARE_int32(agent_http_port);
+DECLARE_int32(agent_http_server_threads);
+DECLARE_string(agent_work_dir);
+DECLARE_double(cpu_num);
+DECLARE_int64(mem_bytes);
 
 namespace galaxy {
 
@@ -49,7 +50,7 @@ AgentImpl::AgentImpl() {
     version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
     http_server_ = new common::HttpFileServer(FLAGS_agent_work_dir,
-                                              atoi(FLAGS_agent_http_port.c_str()));
+                                              FLAGS_agent_http_port);
     http_server_->Start(FLAGS_agent_http_server_threads);
 }
 

@@ -22,9 +22,10 @@
 #include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern int FLAGS_task_retry_times;
-extern std::string FLAGS_task_acct;
+DECLARE_int32(task_retry_times);
+DECLARE_string(task_acct);
 
 namespace galaxy {
 

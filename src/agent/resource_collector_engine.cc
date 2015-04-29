@@ -9,8 +9,9 @@
 #include <pthread.h>
 #include <boost/bind.hpp>
 #include "common/logging.h"
+#include <gflags/gflags.h>
 
-extern int FLAGS_resource_collector_engine_interval;
+DECLARE_int32(resource_collector_engine_interval);
 
 namespace galaxy {
 

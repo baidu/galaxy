@@ -10,9 +10,10 @@
 #include <queue>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
+#include <gflags/gflags.h>
 
-extern int FLAGS_task_deploy_timeout;
-extern int FLAGS_agent_keepalive_timeout;
+DECLARE_int32(task_deploy_timeout);
+DECLARE_int32(agent_keepalive_timeout);
 
 namespace galaxy {
 //agent load id index

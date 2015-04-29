@@ -18,10 +18,10 @@
 
 #include "common/logging.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern int FLAGS_agent_gc_timeout;
-
-extern std::string FLAGS_task_acct;
+DECLARE_int32(agent_gc_timeout);
+DECLARE_string(task_acct);
 
 namespace galaxy {
 

@@ -2,33 +2,38 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-// Author: yanshiguang02@baidu.com
+// Author: yanshiguang02@baidu.com, sunjunyi01@baidu.com
 
 #include <string>
 #include <stdint.h>
+#include <gflags/gflags.h>
 
-std::string FLAGS_master_port = "8101";
-std::string FLAGS_agent_port = "8102";
-std::string FLAGS_agent_http_port = "8103";
-int FLAGS_agent_http_server_threads = 10;
-std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
-int FLAGS_task_retry_times = 3;
-int FLAGS_task_deploy_timeout = 20;
-int FLAGS_agent_keepalive_timeout = 20;
+DEFINE_string(master_port, "8101", "master rpc-server listen on this port");
+DEFINE_string(agent_port, "8102", "agent rpc-server listen on this port");
+DEFINE_int32(agent_http_port, 8089, "agent http-server listen on this port");
 
-std::string FLAGS_agent_work_dir = "/tmp";
-std::string FLAGS_container = "cmd";// cmd or cgroup
-std::string FLAGS_cgroup_root = "/cgroups";
-int FLAGS_agent_curl_recv_buffer_size = 1024 * 10;
+DEFINE_int32(agent_http_server_threads, 10, "agent http-server thread pool size");
 
-double FLAGS_cpu_num = 4;
+DEFINE_string(master_addr, "localhost:" + FLAGS_master_port, "master rpc-server endpoint");
+DEFINE_int32(task_retry_times, 3, "retry times of task ");
+DEFINE_int32(task_deploy_timeout, 20, "task package deploy timeout");
+DEFINE_int32(agent_keepalive_timeout, 20, "keepalive timeout of agent");
 
-int FLAGS_resource_collector_engine_interval = 1000;
+DEFINE_string(agent_work_dir, "/tmp", "agent work directory");
+DEFINE_string(container, "cmd", "container type : cmd or cgroup");
 
-int64_t FLAGS_mem_gbytes = 32;
-int64_t FLAGS_mem_bytes = FLAGS_mem_gbytes * 1024 * 1024 * 1024;
+DEFINE_string(cgroup_root, "/cgroups", "cgroup mount point");
+DEFINE_int32(agent_curl_recv_buffer_size, 1024 * 10, "agent downloader recv buffer size");
+
+DEFINE_double(cpu_num, 4, "cpu number");
+
+DEFINE_int32(resource_collector_engine_interval, 1000, "rc collect engine interval");
+
+DEFINE_int64(mem_gbytes, 32, "mem in giga bytes");
+DEFINE_int64(mem_bytes, FLAGS_mem_gbytes * 1024 * 1024 * 1024, "mem in bytes");
 // 5 hour
-int FLAGS_agent_gc_timeout = 1000 * 60 * 60 * 5;
+DEFINE_int32(agent_gc_timeout, 1000 * 60 * 60 * 5, "garbage collection timeout");
 
-std::string FLAGS_task_acct = "galaxy";
+DEFINE_string(task_acct, "galaxy", "task user/role of system");
+
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

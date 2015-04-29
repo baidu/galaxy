@@ -20,10 +20,11 @@
 #include "agent/cgroup.h"
 
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_container;
-extern std::string FLAGS_cgroup_root;
-extern std::string FLAGS_agent_work_dir;
+DECLARE_string(container);
+DECLARE_string(cgroup_root);
+DECLARE_string(agent_work_dir);
 
 namespace galaxy {
 
