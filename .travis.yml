@@ -14,5 +14,7 @@ install:
     - ( cd thirdparty/sofa-pbrpc && make -j4 && make install && cd python && sudo python setup.py install)
     - sudo apt-get install libcurl4-openssl-dev
     - sudo pip install nose protobuf
-script: make -j4 && make install &&  make test
+script: 
+    - make -j4 && make install 
+    - cd test/integeration && sh inte-test-on-local.sh
 
