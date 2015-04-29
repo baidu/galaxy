@@ -6,6 +6,7 @@
 
 #include "master_impl.h"
 
+#include <cmath>
 #include <vector>
 #include <queue>
 #include "proto/agent.pb.h"
@@ -580,13 +581,13 @@ double MasterImpl::CalcLoad(const AgentInfo& agent){
         LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent.mem_share,agent.cpu_share);
         return 0.0;
     }
-    int64_t mem_used = agent.mem_used > 0 ? agent.mem_used : 1;
-    double cpu_used = agent.cpu_used > 0 ? agent.cpu_used : 0.1;
-    double mem_factor = mem_used/static_cast<double>(agent.mem_share);
-    double cpu_factor = cpu_used/agent.cpu_share;
-    double task_count_factor = agent.running_tasks.size() > 0 ? agent.running_tasks.size() : 0.1;
-    return task_count_factor * mem_factor * cpu_factor;
-
+    const double tasks_count_base_line = 32.0;
+    int64_t mem_used = agent.mem_used;
+    double cpu_used = agent.cpu_used;
+    double mem_factor = mem_used / static_cast<double>(agent.mem_share);
+    double cpu_factor = cpu_used / agent.cpu_share;
+    double task_count_factor = agent.running_tasks.size() / tasks_count_base_line;
+    return exp(cpu_factor) + exp(mem_factor) + exp(task_count_factor);
 }
 
 std::string MasterImpl::AllocResource(const JobInfo& job){
