@@ -25,10 +25,15 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 MasterImpl::MasterImpl()
     : next_agent_id_(0),
       next_task_id_(0),
-      next_job_id_(0) {
+      next_job_id_(0),
+      rpc_client_(NULL) {
     rpc_client_ = new RpcClient();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
     thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
+}
+
+MasterImpl::~MasterImpl() {
+    delete rpc_client_;
 }
 
 void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/,

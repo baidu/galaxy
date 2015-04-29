@@ -93,8 +93,7 @@ class RpcClient;
 class MasterImpl : public Master {
 public:
     MasterImpl();
-    ~MasterImpl() {
-    }
+    virtual ~MasterImpl();
 public:
     void HeartBeat(::google::protobuf::RpcController* controller,
                    const ::galaxy::HeartBeatRequest* request,
