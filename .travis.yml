@@ -13,6 +13,6 @@ install:
     - git clone https://github.com/bluebore/sofa-pbrpc ./thirdparty/sofa-pbrpc
     - ( cd thirdparty/sofa-pbrpc && make -j4 && make install && cd python && python setup.py install)
     - sudo apt-get install libcurl4-openssl-dev
-    - sudo pip install nose
+    - sudo pip install nose protobuf
 script: make -j4 && make test
 

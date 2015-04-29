@@ -93,5 +93,5 @@ install: $(BIN) $(LIBS)
 
 .PHONY: test
 test:
-	cd test/integeration && sh run.sh
+	cd test/integeration && sh inte-test-on-local.sh
 
