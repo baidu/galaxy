@@ -12,6 +12,7 @@ CFLAGS=-g \
   -pipe \
   -W \
   -Wall \
+  -Werror \
   -fPIC
 CPPFLAGS=-D_GNU_SOURCE \
   -D__STDC_LIMIT_MACROS \
@@ -62,11 +63,11 @@ CCP_FLAGS=
 
 
 #COMAKE UUID
-COMAKE_MD5=f59b814bd03127d41f10e724a71a04e9  COMAKE
+COMAKE_MD5=b64673ab268efd2171edf0b0da7fb845  COMAKE
 
 
 .PHONY:all
-all:comake2_makefile_check agent master libgalaxy.a galaxy_client curl_downloader_test downloader_mgr_test resource_collector_test agent_utils_test agent_utils_remove_test 
+all:comake2_makefile_check agent master libgalaxy.a galaxy_client curl_downloader_test downloader_mgr_test resource_collector_test agent_utils_test agent_utils_remove_test agent_mock master_mock 
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mall[0m']"
 	@echo "make all done"
 
@@ -105,6 +106,10 @@ clean:ccpclean
 	rm -rf ./output/bin/agent_utils_test
 	rm -rf agent_utils_remove_test
 	rm -rf ./output/bin/agent_utils_remove_test
+	rm -rf agent_mock
+	rm -rf ./output/bin/agent_mock
+	rm -rf master_mock
+	rm -rf ./output/bin/master_mock
 	rm -rf src/agent_flags.o
 	rm -rf common/agent_logging.o
 	rm -rf common/agent_util.o
@@ -174,6 +179,26 @@ clean:ccpclean
 	rm -rf src/agent/agent_utils_remove_test_utils.o
 	rm -rf common/agent_utils_remove_test_logging.o
 	rm -rf test/agent_utils_remove_test_agent_utils_remove_test.o
+	rm -rf src/proto/master.pb.cc
+	rm -rf src/proto/master.pb.h
+	rm -rf src/proto/agent_mock_master.pb.o
+	rm -rf common/agent_mock_logging.o
+	rm -rf src/proto/task.pb.cc
+	rm -rf src/proto/task.pb.h
+	rm -rf src/proto/agent_mock_task.pb.o
+	rm -rf src/proto/agent.pb.cc
+	rm -rf src/proto/agent.pb.h
+	rm -rf src/proto/agent_mock_agent.pb.o
+	rm -rf test/agent_mock_pb_file_parser.o
+	rm -rf test/agent_mock_agent_test_mock.o
+	rm -rf src/proto/master.pb.cc
+	rm -rf src/proto/master.pb.h
+	rm -rf src/proto/master_mock_master.pb.o
+	rm -rf src/proto/task.pb.cc
+	rm -rf src/proto/task.pb.h
+	rm -rf src/proto/master_mock_task.pb.o
+	rm -rf test/master_mock_pb_file_parser.o
+	rm -rf test/master_mock_master_test_mock.o
 
 .PHONY:dist
 dist:
@@ -706,6 +731,126 @@ agent_utils_remove_test:src/agent/agent_utils_remove_test_utils.o \
 	mkdir -p ./output/bin
 	cp -f --link agent_utils_remove_test ./output/bin
 
+agent_mock:src/proto/agent_mock_master.pb.o \
+  common/agent_mock_logging.o \
+  src/proto/agent_mock_task.pb.o \
+  src/proto/agent_mock_agent.pb.o \
+  test/agent_mock_pb_file_parser.o \
+  test/agent_mock_agent_test_mock.o
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40magent_mock[0m']"
+	$(CXX) src/proto/agent_mock_master.pb.o \
+  common/agent_mock_logging.o \
+  src/proto/agent_mock_task.pb.o \
+  src/proto/agent_mock_agent.pb.o \
+  test/agent_mock_pb_file_parser.o \
+  test/agent_mock_agent_test_mock.o -Xlinker "-("  ../../../public/sofa-pbrpc/libsofa-pbrpc.a \
+  ../../../third-64/boost/lib/libboost_atomic.a \
+  ../../../third-64/boost/lib/libboost_chrono.a \
+  ../../../third-64/boost/lib/libboost_container.a \
+  ../../../third-64/boost/lib/libboost_context.a \
+  ../../../third-64/boost/lib/libboost_coroutine.a \
+  ../../../third-64/boost/lib/libboost_date_time.a \
+  ../../../third-64/boost/lib/libboost_exception.a \
+  ../../../third-64/boost/lib/libboost_filesystem.a \
+  ../../../third-64/boost/lib/libboost_graph.a \
+  ../../../third-64/boost/lib/libboost_locale.a \
+  ../../../third-64/boost/lib/libboost_log_setup.a \
+  ../../../third-64/boost/lib/libboost_math_c99.a \
+  ../../../third-64/boost/lib/libboost_math_c99f.a \
+  ../../../third-64/boost/lib/libboost_math_c99l.a \
+  ../../../third-64/boost/lib/libboost_math_tr1.a \
+  ../../../third-64/boost/lib/libboost_math_tr1f.a \
+  ../../../third-64/boost/lib/libboost_math_tr1l.a \
+  ../../../third-64/boost/lib/libboost_prg_exec_monitor.a \
+  ../../../third-64/boost/lib/libboost_program_options.a \
+  ../../../third-64/boost/lib/libboost_python.a \
+  ../../../third-64/boost/lib/libboost_random.a \
+  ../../../third-64/boost/lib/libboost_regex.a \
+  ../../../third-64/boost/lib/libboost_serialization.a \
+  ../../../third-64/boost/lib/libboost_signals.a \
+  ../../../third-64/boost/lib/libboost_system.a \
+  ../../../third-64/boost/lib/libboost_test_exec_monitor.a \
+  ../../../third-64/boost/lib/libboost_thread.a \
+  ../../../third-64/boost/lib/libboost_timer.a \
+  ../../../third-64/boost/lib/libboost_unit_test_framework.a \
+  ../../../third-64/boost/lib/libboost_wave.a \
+  ../../../third-64/boost/lib/libboost_wserialization.a \
+  ../../../third-64/gflags/lib/libgflags.a \
+  ../../../third-64/gflags/lib/libgflags_nothreads.a \
+  ../../../third-64/gtest/lib/libgtest.a \
+  ../../../third-64/gtest/lib/libgtest_main.a \
+  ../../../third-64/leveldb/lib/libleveldb.a \
+  ../../../third-64/libcurl/lib/libcurl.a \
+  ../../../third-64/protobuf/lib/libprotobuf-lite.a \
+  ../../../third-64/protobuf/lib/libprotobuf.a \
+  ../../../third-64/protobuf/lib/libprotoc.a \
+  ../../../third-64/snappy/lib/libsnappy.a -lpthread \
+  -lcrypto \
+  -lrt \
+  -lidn \
+  -lssl \
+  -lldap -Xlinker "-)" -o agent_mock
+	mkdir -p ./output/bin
+	cp -f --link agent_mock ./output/bin
+
+master_mock:src/proto/master_mock_master.pb.o \
+  src/proto/master_mock_task.pb.o \
+  test/master_mock_pb_file_parser.o \
+  test/master_mock_master_test_mock.o
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mmaster_mock[0m']"
+	$(CXX) src/proto/master_mock_master.pb.o \
+  src/proto/master_mock_task.pb.o \
+  test/master_mock_pb_file_parser.o \
+  test/master_mock_master_test_mock.o -Xlinker "-("  ../../../public/sofa-pbrpc/libsofa-pbrpc.a \
+  ../../../third-64/boost/lib/libboost_atomic.a \
+  ../../../third-64/boost/lib/libboost_chrono.a \
+  ../../../third-64/boost/lib/libboost_container.a \
+  ../../../third-64/boost/lib/libboost_context.a \
+  ../../../third-64/boost/lib/libboost_coroutine.a \
+  ../../../third-64/boost/lib/libboost_date_time.a \
+  ../../../third-64/boost/lib/libboost_exception.a \
+  ../../../third-64/boost/lib/libboost_filesystem.a \
+  ../../../third-64/boost/lib/libboost_graph.a \
+  ../../../third-64/boost/lib/libboost_locale.a \
+  ../../../third-64/boost/lib/libboost_log_setup.a \
+  ../../../third-64/boost/lib/libboost_math_c99.a \
+  ../../../third-64/boost/lib/libboost_math_c99f.a \
+  ../../../third-64/boost/lib/libboost_math_c99l.a \
+  ../../../third-64/boost/lib/libboost_math_tr1.a \
+  ../../../third-64/boost/lib/libboost_math_tr1f.a \
+  ../../../third-64/boost/lib/libboost_math_tr1l.a \
+  ../../../third-64/boost/lib/libboost_prg_exec_monitor.a \
+  ../../../third-64/boost/lib/libboost_program_options.a \
+  ../../../third-64/boost/lib/libboost_python.a \
+  ../../../third-64/boost/lib/libboost_random.a \
+  ../../../third-64/boost/lib/libboost_regex.a \
+  ../../../third-64/boost/lib/libboost_serialization.a \
+  ../../../third-64/boost/lib/libboost_signals.a \
+  ../../../third-64/boost/lib/libboost_system.a \
+  ../../../third-64/boost/lib/libboost_test_exec_monitor.a \
+  ../../../third-64/boost/lib/libboost_thread.a \
+  ../../../third-64/boost/lib/libboost_timer.a \
+  ../../../third-64/boost/lib/libboost_unit_test_framework.a \
+  ../../../third-64/boost/lib/libboost_wave.a \
+  ../../../third-64/boost/lib/libboost_wserialization.a \
+  ../../../third-64/gflags/lib/libgflags.a \
+  ../../../third-64/gflags/lib/libgflags_nothreads.a \
+  ../../../third-64/gtest/lib/libgtest.a \
+  ../../../third-64/gtest/lib/libgtest_main.a \
+  ../../../third-64/leveldb/lib/libleveldb.a \
+  ../../../third-64/libcurl/lib/libcurl.a \
+  ../../../third-64/protobuf/lib/libprotobuf-lite.a \
+  ../../../third-64/protobuf/lib/libprotobuf.a \
+  ../../../third-64/protobuf/lib/libprotoc.a \
+  ../../../third-64/snappy/lib/libsnappy.a -lpthread \
+  -lcrypto \
+  -lrt \
+  -lidn \
+  -lssl \
+  -lldap -Xlinker "-)" -o master_mock
+	mkdir -p ./output/bin
+	cp -f --link master_mock ./output/bin
+
 src/agent_flags.o:src/flags.cc
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msrc/agent_flags.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o src/agent_flags.o src/flags.cc
@@ -1181,6 +1326,70 @@ test/agent_utils_remove_test_agent_utils_remove_test.o:test/agent_utils_remove_t
 	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest/agent_utils_remove_test_agent_utils_remove_test.o[0m']"
 	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test/agent_utils_remove_test_agent_utils_remove_test.o test/agent_utils_remove_test.cc
 
+src/proto/agent_mock_master.pb.o:src/proto/master.pb.cc \
+  src/proto/master.pb.h \
+  src/proto/task.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msrc/proto/agent_mock_master.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o src/proto/agent_mock_master.pb.o src/proto/master.pb.cc
+
+common/agent_mock_logging.o:common/logging.cc \
+  common/logging.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mcommon/agent_mock_logging.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o common/agent_mock_logging.o common/logging.cc
+
+src/proto/agent_mock_task.pb.o:src/proto/task.pb.cc \
+  src/proto/task.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msrc/proto/agent_mock_task.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o src/proto/agent_mock_task.pb.o src/proto/task.pb.cc
+
+src/proto/agent_mock_agent.pb.o:src/proto/agent.pb.cc \
+  src/proto/agent.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msrc/proto/agent_mock_agent.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o src/proto/agent_mock_agent.pb.o src/proto/agent.pb.cc
+
+test/agent_mock_pb_file_parser.o:test/pb_file_parser.cc \
+  test/pb_file_parser.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest/agent_mock_pb_file_parser.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test/agent_mock_pb_file_parser.o test/pb_file_parser.cc
+
+test/agent_mock_agent_test_mock.o:test/agent_test_mock.cc \
+  test/pb_file_parser.h \
+  src/proto/agent.pb.h \
+  src/proto/master.pb.h \
+  src/proto/task.pb.h \
+  src/rpc/rpc_client.h \
+  common/mutex.h \
+  common/timer.h \
+  common/thread_pool.h \
+  common/mutex.h \
+  common/logging.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest/agent_mock_agent_test_mock.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test/agent_mock_agent_test_mock.o test/agent_test_mock.cc
+
+src/proto/master_mock_master.pb.o:src/proto/master.pb.cc \
+  src/proto/master.pb.h \
+  src/proto/task.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msrc/proto/master_mock_master.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o src/proto/master_mock_master.pb.o src/proto/master.pb.cc
+
+src/proto/master_mock_task.pb.o:src/proto/task.pb.cc \
+  src/proto/task.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40msrc/proto/master_mock_task.pb.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o src/proto/master_mock_task.pb.o src/proto/task.pb.cc
+
+test/master_mock_pb_file_parser.o:test/pb_file_parser.cc \
+  test/pb_file_parser.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest/master_mock_pb_file_parser.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test/master_mock_pb_file_parser.o test/pb_file_parser.cc
+
+test/master_mock_master_test_mock.o:test/master_test_mock.cc \
+  test/pb_file_parser.h \
+  src/proto/master.pb.h \
+  src/proto/task.pb.h
+	@echo "[[1;32;40mCOMAKE:BUILD[0m][Target:'[1;32;40mtest/master_mock_master_test_mock.o[0m']"
+	$(CXX) -c $(INCPATH) $(DEP_INCPATH) $(CPPFLAGS) $(CXXFLAGS)  -o test/master_mock_master_test_mock.o test/master_test_mock.cc
+
 endif #ifeq ($(shell uname -m),x86_64)
+
 
 
