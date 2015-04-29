@@ -33,7 +33,7 @@ def setup():
     package = "ftp://%s/tmp/task.sh.tar.gz"%socket.gethostname()
 
 def test_create_job():
-    client = sdk.GalaxySDK("localhost:%d"%MASTER_PORT)
+    client = sdk.GalaxySDK("127.0.0.1:%d"%MASTER_PORT)
     ret,job_id = client.make_job("task","ftp",package,"sh task.sh",replicate_num=0)
     assert job_id >= 0
     status,job_list = client.list_all_job()
