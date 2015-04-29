@@ -7,4 +7,4 @@ cd $GALAXY_SRC_HOME/console/backend && sh compile-proto.sh && export PYTHONPATH=
 cd $CUR_DIR && mkdir -p case_tmp
 export GALAXY_CASE_FOLDER=$CUR_DIR/case_tmp
 
-nosetests -vs
+nosetests -vs -w$CUR_DIR
