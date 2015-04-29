@@ -81,5 +81,8 @@ class MasterCtrl(object):
             return -1,None,None
         ShellHelper.kill_child_processes(self.master_process.pid)
         output, errout = self.master_process.communicate()
+        with open(self.output,"r") as fd:
+            for line in fd.readlines():
+                print line
         return self.master_process.returncode,output,errout
     
