@@ -26,7 +26,7 @@ def setup():
     global package
     master_ctrl = utils.MasterCtrl(MASTER_BIN_PATH,CASE_TMP_FOLDER,MASTER_PORT) 
     master_ctrl.start()
-    time.sleep(1)
+    time.sleep(5)
     with open("task.sh","w") as fd:
         fd.write(TASK_SCRIPT)
     utils.ShellHelper.run_with_returncode("tar -zxvf task.sh.tar.gz task.sh && cp task.sh.tar.gz /tmp")
