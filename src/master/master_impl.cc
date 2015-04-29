@@ -10,10 +10,14 @@
 #include <queue>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
+#include "common/timer.h"
 #include <gflags/gflags.h>
 
 DECLARE_int32(task_deploy_timeout);
 DECLARE_int32(agent_keepalive_timeout);
+DECLARE_string(master_checkpoint_path);
+DECLARE_int32(master_max_len_sched_task_list);
+DECLARE_int32(master_safe_mode_last);
 
 namespace galaxy {
 //agent load id index
@@ -118,6 +122,18 @@ void MasterImpl::ListTaskForJob(int64_t job_id,
                     task->CopyFrom(task_it->second);
                 }
             }
+            LOG(DEBUG, "list tasks %u for job %ld", task_set.size(), job_id);
+        }
+
+        if (sched_tasks == NULL) {
+            return; 
+        }
+
+        std::deque<TaskInstance>::iterator sched_it = job.scheduled_tasks.begin();
+        LOG(DEBUG, "list schedule tasks %u for job %ld", job.scheduled_tasks.size(), job_id);
+        for (; sched_it != job.scheduled_tasks.end(); ++sched_it) {
+            TaskInstance* task = sched_tasks->Add(); 
+            task->CopyFrom(*sched_it);
         }
     }
 }

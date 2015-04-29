@@ -13,8 +13,19 @@ install:
     - git clone https://github.com/bluebore/sofa-pbrpc ./thirdparty/sofa-pbrpc
     - ( cd thirdparty/sofa-pbrpc && make -j4 && make install);
     - sudo apt-get install libcurl4-openssl-dev
+<<<<<<< Updated upstream
+=======
+    - sudo pip install nose protobuf
+script: 
+    - make -j4 && make install
+    - cd test/integeration && sudo sh inte-test-on-local.sh
+>>>>>>> Stashed changes
     - wget https://github.com/gflags/gflags/archive/v2.1.2.tar.gz
     - tar xf v2.1.2.tar.gz
     - ( cd gflags-2.1.2 && cmake -DGFLAGS_NAMESPACE=google && make -j4 && sudo make install )
 script: make -j4 && make test
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 
