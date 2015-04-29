@@ -222,6 +222,7 @@ void MasterImpl::DeadCheck() {
 void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                                    const std::set<int64_t>& running_tasks,
                                    bool clear_all) {
+    agent_lock_.AssertHeld();
     const std::string& agent_addr = agent->addr;
     assert(!agent_addr.empty());
     LOG(INFO,"update jobs on agent %s",agent_addr.c_str());
@@ -253,9 +254,11 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
             tasks_[task_id].set_end_time(common::timer::now_time());
             job.scheduled_tasks.push_back(tasks_[task_id]);  
-            LOG(DEBUG, "job %ld has schedule tasks %u", 
+            LOG(DEBUG, "job %ld has schedule tasks %u : id %ld state %d ", 
                     job_id,
-                    job.scheduled_tasks.size());
+                    job.scheduled_tasks.size(),
+                    task_id,
+                    instance.status());
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
