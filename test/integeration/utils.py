@@ -68,6 +68,13 @@ class MasterCtrl(object):
         os.chdir(self.run_path)
         start_cmd = "%s --port=%s >%s 2>&1"%(self.master_bin,self.port,self.output)
         self.master_process = ShellHelper.run_with_process(start_cmd)
+        if self.master_process.poll() is None:
+            print "%s has been started"%self.master_bin
+            return True
+        else: 
+            print "fail to start %s "%self.master_bin
+            self.master_process = None
+            return False
 
     def stop(self):
         if not self.master_process:
@@ -75,4 +82,4 @@ class MasterCtrl(object):
         ShellHelper.kill_child_processes(self.master_process.pid)
         output, errout = self.master_process.communicate()
         return self.master_process.returncode,output,errout
-
+    
