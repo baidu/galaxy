@@ -26,8 +26,11 @@ pip install nose
 sh compile-proto.sh
 export PYTHONPATH=`pwd`/src
 ```
-### 运行集成测试
-sh run.sh
+### 本地运行集成测试
+sh inte-test-on-local.sh
+
+### 集群测试部署
+sh inte-test-on-cluster.sh
 
 ### python 怎么和master通讯
 使用sofapb-rpc python实现和master 通讯，目前在[python-sdk](../../console/backend/src/galaxy/sdk.py),实现了一些sdk功能，如果要测试
