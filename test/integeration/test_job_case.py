@@ -11,6 +11,7 @@ import time
 import utils
 import socket
 from galaxy import sdk
+from nose import tools
 
 CASE_TMP_FOLDER = os.sep.join([os.environ.get("GALAXY_CASE_FOLDER"),"case_job_test"])
 MASTER_BIN_PATH = os.environ.get("MASTER_BIN_PATH")
@@ -29,7 +30,7 @@ def setup():
     if not ret :
         print "fail to start master"
         assert False
-    time.sleep(5)
+    time.sleep(1)
     with open("task.sh","w") as fd:
         fd.write(TASK_SCRIPT)
     utils.ShellHelper.run_with_returncode("tar -zxvf task.sh.tar.gz task.sh && cp task.sh.tar.gz /tmp")
@@ -42,7 +43,11 @@ def test_create_job():
     status,job_list = client.list_all_job()
     assert status
     assert len(job_list) == 1
-
+    client.kill_job(job_id)
+    time.sleep(1)
+    status,job_list = client.list_all_job()
+    assert status
+    assert len(job_list) == 0
 
 def teardown():
     status,output,stderr = master_ctrl.stop()
