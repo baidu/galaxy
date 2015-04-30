@@ -177,6 +177,6 @@ class RpcServer(object):
     def stop(self):
         with self._mutex:
             self._is_running = False
-
+            self._serversocket.shutdown(1)
 
 
