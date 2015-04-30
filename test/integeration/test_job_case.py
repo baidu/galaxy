@@ -11,6 +11,7 @@ import time
 import utils
 import socket
 from galaxy import sdk
+from nose import tools
 
 CASE_TMP_FOLDER = os.sep.join([os.environ.get("GALAXY_CASE_FOLDER"),"case_job_test"])
 MASTER_BIN_PATH = os.environ.get("MASTER_BIN_PATH")
@@ -25,7 +26,10 @@ def setup():
     global master_ctrl
     global package
     master_ctrl = utils.MasterCtrl(MASTER_BIN_PATH,CASE_TMP_FOLDER,MASTER_PORT) 
-    master_ctrl.start()
+    ret = master_ctrl.start()
+    if not ret :
+        print "fail to start master"
+        assert False
     time.sleep(1)
     with open("task.sh","w") as fd:
         fd.write(TASK_SCRIPT)
@@ -33,13 +37,17 @@ def setup():
     package = "ftp://%s/tmp/task.sh.tar.gz"%socket.gethostname()
 
 def test_create_job():
-    client = sdk.GalaxySDK("localhost:%d"%MASTER_PORT)
+    client = sdk.GalaxySDK("127.0.0.1:%d"%MASTER_PORT)
     ret,job_id = client.make_job("task","ftp",package,"sh task.sh",replicate_num=0)
     assert job_id >= 0
     status,job_list = client.list_all_job()
     assert status
     assert len(job_list) == 1
-
+    client.kill_job(job_id)
+    time.sleep(1)
+    status,job_list = client.list_all_job()
+    assert status
+    assert len(job_list) == 0
 
 def teardown():
     status,output,stderr = master_ctrl.stop()

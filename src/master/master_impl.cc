@@ -388,6 +388,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
+    LOG(INFO,"new job req ");
     int64_t job_id = next_job_id_++;
     JobInfo& job = jobs_[job_id];
     job.id = job_id;
