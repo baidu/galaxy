@@ -575,12 +575,13 @@ void MasterImpl::Schedule() {
 
 //负载计算
 //目前使用3个因数
-//1、当前机器mem使用量，负载与内存使用量成正比，与内存总量成反比，但是需要考虑内存使用量为零情况
-//   需要设置一个默认值比如1 byte,避免总负债变为零
-//2、当前机器的cpu使用量，负载与cpu使用量成正比，与cpu总量成反比，同时需要考虑内存使用量为0状态
-//3、当前机器上的任务数，负载与任务数成正比，需要考虑为0情况
-//例子:
-//   一台机器内存10g 使用量4g ,cpu数5个，使用量1.0，任务数1 当前负载load = 4/10 * 1.0/5 * 1 = 0.08
+//1、当前机器mem使用量，负载与内存使用量成正比，与内存总量成反比
+//2、当前机器的cpu使用量，负载与cpu使用量成正比，与cpu总量成反比
+//3、当前机器上的任务数，负载与任务数成正比
+// 由于各个维度的度量单位不同，所以通过资源的“占用比”来衡量；
+// 各维度资源的综合评估通过指数相加的方式，这种方式比直接求和或求乘积更加平滑，
+// 且能避免选出各维度资源消耗不平衡的机器。
+// 参考资料：http://www.columbia.edu/~cs2035/courses/ieor4405.S13/datacenter_scheduling.ppt
 double MasterImpl::CalcLoad(const AgentInfo& agent){
     if(agent.mem_share <= 0 || agent.cpu_share <= 0.0 ){
         LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent.mem_share,agent.cpu_share);
