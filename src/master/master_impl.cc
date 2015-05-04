@@ -23,8 +23,8 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
 MasterImpl::MasterImpl()
     : next_agent_id_(0),
-      next_task_id_(0),
-      next_job_id_(0) {
+      next_job_id_(0),
+      next_task_id_(0) {
     rpc_client_ = new RpcClient();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
     thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
@@ -190,6 +190,7 @@ void MasterImpl::DeadCheck() {
             it->second.erase(node);
             node = it->second.begin();
         }
+        assert(it->second.empty());
         alives_.erase(it);
         it = alives_.begin();
     }
@@ -293,6 +294,9 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     } else {
         agent = &(it->second);
         int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
+        if (alives_[agent->alive_timestamp].empty()) {
+            alives_.erase(agent->alive_timestamp);
+        }
         assert(es);
         alives_[now_time].insert(agent_addr);
         agent->alive_timestamp = now_time;
@@ -405,7 +409,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     response->set_job_id(job_id);
     done->Run();
 }
-
 
 bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     agent_lock_.AssertHeld();
