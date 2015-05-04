@@ -19,12 +19,12 @@ from nose import tools
 
 CASE_TMP_FOLDER = os.sep.join([os.environ.get("GALAXY_CASE_FOLDER"),"case_node_test"])
 MASTER_BIN_PATH = os.environ.get("MASTER_BIN_PATH")
-MASTER_PORT = 21059
-AGENT_PORT = 23460
+MASTER_PORT = 11059
+AGENT_PORT = 13460
 def setup():
     global master_ctrl
     global package
-    global mock_agent
+    global server
     master_ctrl = utils.MasterCtrl(MASTER_BIN_PATH,CASE_TMP_FOLDER,MASTER_PORT) 
     ret = master_ctrl.start()
     if not ret :
@@ -49,6 +49,7 @@ def test_list_node():
 
 def teardown():
     status,output,stderr = master_ctrl.stop()
+    server.stop()
     if os.path.exists(CASE_TMP_FOLDER):
         utils.ShellHelper.run_with_returncode("rm -rf %s"%CASE_TMP_FOLDER)
 

@@ -15,7 +15,7 @@ from nose import tools
 
 CASE_TMP_FOLDER = os.sep.join([os.environ.get("GALAXY_CASE_FOLDER"),"case_job_test"])
 MASTER_BIN_PATH = os.environ.get("MASTER_BIN_PATH")
-MASTER_PORT = 23456
+MASTER_PORT = 13456
 TASK_SCRIPT="""#!/usr/bin/env sh
 for ((i=0;i<1000;i++)) do
     echo $i;
