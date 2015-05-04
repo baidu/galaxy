@@ -155,7 +155,6 @@ class RequestHandler(threading.Thread):
 class RpcServer(object):
     def __init__(self,port,host="127.0.0.1"):
         self._serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._mutex =  thread.allocate_lock()
         self._is_running = False
         self._port = port
         self._host = host
@@ -164,19 +163,17 @@ class RpcServer(object):
         self._service_router[service.GetDescriptor().full_name] = service
 
     def start(self):
-        with self._mutex:
-            self._serversocket.bind((self._host, self._port))
-            self._serversocket.listen(5)
-            self._is_running = True
-            while self._is_running:
-                conn, _ = self._serversocket.accept()
-                myconn = Connection(4096,conn)
-                req_handler = RequestHandler(myconn,self._service_router)
-                req_handler.start()
+        self._serversocket.bind((self._host, self._port))
+        self._serversocket.listen(5)
+        self._is_running = True
+        while self._is_running:
+            conn, _ = self._serversocket.accept()
+            myconn = Connection(4096,conn)
+            req_handler = RequestHandler(myconn,self._service_router)
+            req_handler.start()
 
     def stop(self):
-        with self._mutex:
-            self._is_running = False
-            self._serversocket.shutdown(1)
+        self._is_running = False
+        self._serversocket.shutdown(1)
 
 
