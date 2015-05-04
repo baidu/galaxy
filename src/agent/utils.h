@@ -20,6 +20,11 @@ void GetStrFTime(std::string* time_str);
 
 namespace file {
 
+struct ChownArg {
+	uid_t uid;
+	gid_t gid;
+};
+
 bool GetDirFilesByPrefix(
         const std::string& dir, 
         const std::string& prefix, 
@@ -27,6 +32,10 @@ bool GetDirFilesByPrefix(
         unsigned max_deep = 1);
 
 bool Remove(const std::string& path); 
+
+bool Chown(const std::string path, void* argv); 
+
+bool OptForEach(const std::string& path, bool (*func)(const std::string, void*), void *argv);
 
 bool IsDir(const std::string& path, bool& is_dir);
 

@@ -174,6 +174,137 @@ bool Remove(const std::string& path) {
     return true;
 }
 
+bool Chown(const std::string path, void* argv) 
+{
+	if (0 == path.length() || NULL == argv) {
+		return false;
+	}
+	ChownArg* arg = (ChownArg*)argv;
+	if (lchown(path.c_str(), arg->uid, arg->gid)) {
+		LOG(WARNING, "chown %s failed. err[%d: %s]", 
+			path.c_str(), errno, strerror(errno));
+		return false;
+	}
+    struct stat st;
+    stat(path.c_str(), &st);
+	return true;
+}
+bool OptForEach(const std::string& path, 
+	bool (*func)(const std::string, void*), void *argv) {
+    bool rs = false;
+    if (!IsFile(path, rs)) {
+		LOG(WARNING, "IsFile %s failed err", path.c_str());
+        return false; 
+    }
+    if (!rs) {
+        if (!IsLink(path, rs)) {
+			LOG(WARNING, "IsLink %s failed err", path.c_str());
+            return false; 
+        } 
+    }
+    if (rs) {
+        if (!func(path, argv)) {
+            LOG(WARNING, "opt %s failed err[%d: %s]",
+                    path.c_str(),
+                    errno,
+                    strerror(errno));
+            return false;
+        }
+        return true;
+    }
+
+    if (!IsDir(path.c_str(), rs)) {
+		LOG(WARNING, "IsDir %s failed err", path.c_str());
+        return false; 
+    }
+    if (!rs) {
+        LOG(WARNING, "opt %s failed because neither dir nor file");
+        return false;
+    }
+
+    std::vector<std::string> stack;
+    stack.push_back(path);
+    std::set<std::string> visited;
+    std::string cur_path;
+    while (stack.size() != 0) {
+        cur_path = stack.back();
+        
+        bool is_dir;
+        if (!IsDir(cur_path, is_dir)) {
+			LOG(WARNING, "IsDir %s failed err", path.c_str());
+            return false; 
+        }
+
+        if (is_dir) {
+            if (visited.find(cur_path) != visited.end()) {
+                stack.pop_back();
+                if (!func(cur_path, argv)) {
+                    LOG(WARNING, "opt %s failed err[%d: %s]",
+                            cur_path.c_str(),
+                            errno,
+                            strerror(errno)); 
+                    return false;
+                } 
+                continue;
+            }
+            visited.insert(cur_path);
+            DIR* dir_desc = opendir(cur_path.c_str());
+            if (dir_desc == NULL) {
+                LOG(WARNING, "open dir %s failed err[%d: %s]",
+                        cur_path.c_str(),
+                        errno,
+                        strerror(errno)); 
+                return false;
+            }
+            bool ret = true;
+            struct dirent* dir_entity;
+            while ((dir_entity = readdir(dir_desc)) != NULL) {
+                if (IsSpecialDir(dir_entity->d_name)) {
+                    continue; 
+                } 
+                std::string tmp_path = cur_path + "/";
+                tmp_path.append(dir_entity->d_name);
+                bool is_file;
+                if (!IsFile(tmp_path, is_file)) {
+                    ret = false; 
+                    break;
+                }
+                if (!is_file) {
+                    if (!IsLink(tmp_path, is_file)) {
+                        ret = false; 
+                        break;
+                    }
+                }
+                if (is_file) {
+                    if (!func(tmp_path, argv)) { 
+                        LOG(WARNING, "opt %s failed err[%d: %s]",
+                                tmp_path.c_str(),
+                                errno,
+                                strerror(errno));
+                        ret = false; 
+                        break;
+                    }
+                    continue;
+                }
+                is_dir = false;
+                if (!IsDir(tmp_path, is_dir)) {
+                    ret = false;
+                    break;
+                } 
+                if (is_dir) {
+                    stack.push_back(tmp_path);
+                }
+            }
+            closedir(dir_desc);
+            if (!ret) {
+				LOG(WARNING, "IsDir %s failed err", path.c_str());
+                return ret;
+            } 
+        } 
+    }
+
+    return true;
+}
 
 
 bool GetDirFilesByPrefixInternal(
