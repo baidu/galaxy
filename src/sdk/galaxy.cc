@@ -9,7 +9,7 @@
 #include "proto/master.pb.h"
 #include "rpc/rpc_client.h"
 
-static char* MEMORY_UNIT_NAME[] = {"Byte", "KB", "MB", "GB", "PB"};
+static const char* MEMORY_UNIT_NAME[] = {"Byte", "KB", "MB", "GB", "PB"};
 static int MEMORY_UNIT_SIZE = 5;
 
 namespace galaxy {

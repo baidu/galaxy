@@ -188,7 +188,8 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
 
     chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
     setuid(pw->pw_uid);
-    char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
+    char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
+                    const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
     task_id_env <<"TASK_ID="<<m_task_info.task_offset();
     std::stringstream task_num_env;
