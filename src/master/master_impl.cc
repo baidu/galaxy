@@ -13,7 +13,7 @@
 
 extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
-extern unsigned long FLAGS_master_max_len_sched_task_list;
+extern int FLAGS_master_max_len_sched_task_list;
 
 namespace galaxy {
 //agent load id index
@@ -253,7 +253,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.replica_num --;
             }
             tasks_[task_id].set_end_time(common::timer::now_time());
-            if (job.scheduled_tasks.size() >= FLAGS_master_max_len_sched_task_list) {
+            if ((int)job.scheduled_tasks.size() >= FLAGS_master_max_len_sched_task_list) {
                 job.scheduled_tasks.pop_front(); 
             }                
             job.scheduled_tasks.push_back(tasks_[task_id]);  
@@ -265,7 +265,6 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
-            
         } else {
             TaskInstance& instance = tasks_[task_id];
             if(instance.status() != ERROR
@@ -369,7 +368,7 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
                    ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
-    MutexLock lock(&agent_lock_);    
+    MutexLock lock(&agent_lock_);
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
@@ -483,8 +482,7 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     KillTaskResponse kill_response;
     bool ret = rpc_client_->SendRequest(agent->stub, &Agent_Stub::KillTask,
                                         &kill_request, &kill_response, 5, 1);
-    if (!ret || 
-            (kill_response.has_status() 
+    if (!ret || (kill_response.has_status() 
              && kill_response.status() != 0)) {
         LOG(WARNING, "Kill task %ld agent= %s",
             task_id, agent->addr.c_str());
