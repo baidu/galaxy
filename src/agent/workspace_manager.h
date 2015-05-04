@@ -43,7 +43,7 @@ public:
     bool Init();
     //根据task info 创建一个workspace
     int Add(const TaskInfo &task_info);
-    int Remove(int64_t  task_info_id, bool delay = false);
+    int Remove(int64_t task_info_id, std::string* gc_path = NULL, bool delay = false);
     int DelayGC(DefaultWorkspace* workspace);
     DefaultWorkspace* GetWorkspace(const ::galaxy::TaskInfo &task_info);
 

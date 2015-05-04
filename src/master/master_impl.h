@@ -12,6 +12,7 @@
 #include <map>
 #include <queue>
 #include <set>
+#include <deque>
 #include <functional>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -87,6 +88,7 @@ struct JobInfo {
     std::map<std::string, std::set<int64_t> > agent_tasks;
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
+    std::deque<TaskInstance> scheduled_tasks;
 };
 
 class RpcClient;
@@ -145,7 +147,8 @@ private:
     void ListTaskForAgent(const std::string& agent_addr,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
     void ListTaskForJob(int64_t job_id,
-        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks,
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* sched_tasks);
 
     void SaveIndex(const AgentInfo& agent);
     void RemoveIndex(int64_t agent_id);

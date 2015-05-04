@@ -243,6 +243,24 @@ bool GalaxyImpl::ListTask(int64_t job_id,
         }
     }
     fprintf(stdout, "================================\n");
+    if (response.scheduled_tasks_size() > 0) {
+        fprintf(stdout, "=============sched tasks =======\n");
+        int sched_tasks = response.scheduled_tasks_size();
+        for (int sched_index = 0; 
+                sched_index < sched_tasks; ++sched_index) {
+            const TaskInstance& instance = response.scheduled_tasks(sched_index);
+            std::string state = TaskState_Name((TaskState)instance.status());
+            fprintf(stdout, "%ld\t%s\t%d\t%d\t%s:%s\n", 
+                    instance.info().task_id(),
+                    state.c_str(),
+                    instance.start_time(),
+                    instance.end_time(),
+                    instance.agent_addr().c_str(),
+                    instance.root_path().c_str());     
+
+        }
+    }
+
     return true;
 }
 

@@ -148,6 +148,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          ::galaxy::KillTaskResponse* response,
                          ::google::protobuf::Closure* done){
     int last_status = COMPLETE;
+    std::string gc_path;
     std::vector<TaskStatus > status_vector;
     task_mgr_->Status(status_vector, request->task_id());
     if (status_vector.size() != 1) {
@@ -164,13 +165,14 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
         return;
     }
     if (last_status == ERROR) {
-        status = ws_mgr_->Remove(request->task_id(), true); 
+        status = ws_mgr_->Remove(request->task_id(), &gc_path, true); 
     } else {
         status = ws_mgr_->Remove(request->task_id());
     }
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
     response->set_status(status);
+    response->set_gc_path(gc_path);
     done->Run();
 }
 } // namespace galxay
