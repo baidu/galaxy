@@ -19,7 +19,6 @@ class AgentImpl(agent_pb2.Agent):
     def __init__(self,cpu,mem,port,master_addr):
         self._cpu = cpu
         self._mem = mem
-        self._port = port
         self._master_addr = master_addr
         self._mutex = thread.allocate_lock()
         self._channel = client.Channel(master_addr)
