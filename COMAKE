@@ -16,7 +16,7 @@ CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\"')
 #CPPFLAGS_32('-D_XOPEN_SOURE=500')
 
 #C编译参数.
-CFLAGS('-g -pipe -W -Wall -fPIC')
+CFLAGS('-g -pipe -W -Wall -Werror -fPIC')
 
 #C++编译参数.
 CXXFLAGS('-g -pipe -W -Wall -fPIC')
@@ -77,6 +77,9 @@ resource_collector_headers='src/agent/resource_collector.h common/logging.h src/
 
 agent_utils_sources='src/agent/utils.cc common/logging.cc test/agent_utils_test.cc'
 agent_utils_remove_sources='src/agent/utils.cc common/logging.cc test/agent_utils_remove_test.cc'
+agent_mock_sources='src/proto/master.proto common/logging.cc src/proto/task.proto src/proto/agent.proto test/pb_file_parser.cc test/agent_test_mock.cc'
+master_mock_sources='src/proto/master.proto src/proto/task.proto test/pb_file_parser.cc test/master_test_mock.cc'
+
 
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
@@ -91,6 +94,8 @@ Application('downloader_mgr_test', Sources(downloadermgr_sources), HeaderFiles(d
 Application('resource_collector_test', Sources(resource_collector_sources), HeaderFiles(resource_collector_headers));
 Application('agent_utils_test', Sources(agent_utils_sources));
 Application('agent_utils_remove_test', Sources(agent_utils_remove_sources));
+Application('agent_mock', Sources(agent_mock_sources));
+Application('master_mock', Sources(master_mock_sources));
 #共享库
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
 #子目录

@@ -132,10 +132,10 @@ private:
             out += "</ul>";
             fprintf(out_stream_, "HTTP/1.1 200 OK\n");
             fprintf(out_stream_, "Content-Type: text/html\n");
-            fprintf(out_stream_, "Content-Length: %d\n", out.size());
+            fprintf(out_stream_, "Content-Length: %lu\n", out.size());
             fprintf(out_stream_, "Server: Galaxy\n");
             fprintf(out_stream_, "Connection: Close\n\n");
-            fprintf(out_stream_, "%.*s", out.size(), out.data());
+            fprintf(out_stream_, "%.*s", static_cast<int>(out.size()), out.data());
             close(file_fd);
         }
         void SendFile(int file_fd, off_t file_size){

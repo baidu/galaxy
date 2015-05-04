@@ -25,6 +25,7 @@ message KillTaskRequest {
 
 message KillTaskResponse {
     optional int32 status = 2;
+    optional string gc_path = 3;
 }
 
 service Agent {
