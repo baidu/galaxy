@@ -2,6 +2,7 @@
 package galaxy;
 
 option cc_generic_services = true;
+option py_generic_services = true;
 
 message RunTaskRequest {
     optional int64 task_id = 1;
