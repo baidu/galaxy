@@ -125,10 +125,9 @@ void MasterImpl::ListTaskForJob(int64_t job_id,
             return; 
         }
 
-        std::deque<TaskInstance>::iterator sched_it;
+        std::deque<TaskInstance>::iterator sched_it = job.scheduled_tasks.begin();
         LOG(DEBUG, "liat schedule tasks %u for job %ld", job.scheduled_tasks.size(), job_id);
-        for (sched_it = job.scheduled_tasks.begin();
-                sched_it != job.scheduled_tasks.end(); ++sched_it) {
+        for (; sched_it != job.scheduled_tasks.end(); ++sched_it) {
             TaskInstance* task = sched_tasks->Add(); 
             task->CopyFrom(*sched_it);
         }
@@ -275,19 +274,6 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
             int64_t job_id = instance.job_id();
             assert(jobs_.find(job_id) != jobs_.end());
-            //JobInfo& job = jobs_[job_id];
-            //job.agent_tasks[agent_addr].erase(task_id);
-            //if (job.agent_tasks[agent_addr].empty()) {
-            //    job.agent_tasks.erase(agent_addr);
-            //}
-            // NOTE not erase until killed by master
-            //job.running_num --;
-            //del_tasks.push_back(task_id);
-            //tasks_.erase(task_id);
-            //if(instance.status() == COMPLETE){
-            //    job.complete_tasks[agent_addr].insert(task_id);
-            //    job.replica_num --;
-            //}
             //ÊÍ·Å×ÊÔ´
             LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
             thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
@@ -383,6 +369,7 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
                    ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
+    MutexLock lock(&agent_lock_);    
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
@@ -501,6 +488,7 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
              && kill_response.status() != 0)) {
         LOG(WARNING, "Kill task %ld agent= %s",
             task_id, agent->addr.c_str());
+        return false;
     } else {
         std::map<int64_t, TaskInstance>::iterator it;         
         it = tasks_.find(task_id);
