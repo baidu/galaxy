@@ -89,9 +89,6 @@ struct JobInfo {
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
     std::deque<TaskInstance> scheduled_tasks;
-
-    bool internal_enable_schedule;
-    int64_t deploy_step_interval;
     int32_t deploy_step_size;
 };
 
@@ -159,8 +156,6 @@ private:
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
 
-    void DeployByStep(int64_t job_id, int32_t start);
-    void AllocAndDeploy(JobInfo& job);
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;

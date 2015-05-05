@@ -60,14 +60,13 @@ def test_deploy_task():
                                   replicate_num=4,
                                   mem_limit=1024,
                                   cpu_limit=1,
-                                  deploy_step_interval=1000,
                                   deploy_step_size=1)
     assert status
-    time.sleep(6)
+    time.sleep(2)
     with open(master_ctrl.output) as fd:
         log = fd.read()
-        assert log.find("deploy job using concurrent controller") != 0
-        assert log.find("deploying with concurrent controller is done") != 0
+        assert log.find("schedule job deploy size is 1") != 0
+        assert log.find("schedule job deploy size is 0") != 0
     
 
 def teardown():

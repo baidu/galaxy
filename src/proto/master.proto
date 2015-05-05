@@ -44,11 +44,8 @@ message NewJobRequest {
     optional int32 replica_num = 5;
     optional double cpu_share = 6;
     optional int64 mem_share = 7;
-    //部署步骤间隔时间
-    optional int64 deploy_step_interval = 8;
     //单个步骤部署实例个数
     optional int32 deploy_step_size = 9;
-    optional bool deploy_stop_on_error = 10;
 }
 
 message NewJobResponse {
