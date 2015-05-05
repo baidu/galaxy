@@ -8,13 +8,16 @@
 
 #include <vector>
 #include <queue>
+#include <boost/lexical_cast.hpp>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
+#include "common/timer.h"
 
 extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
 extern int FLAGS_master_max_len_sched_task_list;
 extern std::string FLAGS_master_checkpoint_path;
+extern int64_t FLAGS_master_safe_mode_last;
 
 namespace galaxy {
 //agent load id index
@@ -24,20 +27,101 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
 
 MasterImpl::MasterImpl()
-    : next_agent_id_(0),
-      next_task_id_(0),
-      next_job_id_(0),
-      is_safe_mode_(true) {
+    : next_agent_id_(1),
+      next_task_id_(1),
+      next_job_id_(1),
+      is_safe_mode_(false),
+      persistence_handler_(NULL) {
     rpc_client_ = new RpcClient();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
     thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
+}
+
+bool MasterImpl::Recover() {
+    std::string checkpoint_path = FLAGS_master_checkpoint_path;
+    common::MutexLock lock(&agent_lock_);
+    // clear jobs 
+    jobs_.clear();
+
+    if (persistence_handler_ == NULL) {
+        // open leveldb  TODO do some config
+        leveldb::Status status;
+        leveldb::Options options;
+        options.create_if_missing = true;
+        status = leveldb::DB::Open(options, 
+                checkpoint_path, &persistence_handler_);
+        if (!status.ok()) {
+            LOG(FATAL, "open checkpoint %s failed res[%s]",
+                    checkpoint_path.c_str(), status.ToString().c_str()); 
+            return false;
+        }
+    }
+    // scan JobCheckPointCell 
+    // TODO JobInfo is equal to JobCheckpointCell, use pb later
+
+    // TODO do some config options
+    leveldb::Status scan_status;
+    leveldb::Iterator*  it = 
+        persistence_handler_->NewIterator(leveldb::ReadOptions());
+    it->SeekToFirst();
+    int64_t max_job_id = 0;
+    while (it->Valid()) {
+        std::string job_key = it->key().ToString();
+        std::string job_cell = it->value().ToString();
+        int64_t job_id = atol(job_key.c_str());
+        if (job_id == 0) {
+            LOG(WARNING, "job id invalid %s", job_key.c_str()); 
+            return false;
+        }
+        JobCheckPointCell cell;
+        if (!cell.ParseFromString(job_cell)) {
+            LOG(WARNING, "job cell invalid %s", job_key.c_str());
+            return false;
+        }
+        if (cell.replica_num() == 0) {
+            //TODO maybe erase job do persistence ?
+            LOG(WARNING, "recover job replica_num = 0 %s %s", 
+                    job_key.c_str(), cell.job_name().c_str()); 
+            continue;
+        }
+        if (max_job_id < job_id) {
+            max_job_id = job_id; 
+        }
+        JobInfo& job_info = jobs_[job_id];
+        job_info.id = cell.job_id();
+        job_info.replica_num = cell.replica_num();
+        job_info.job_name = cell.job_name();
+        job_info.job_raw = cell.job_raw();
+        job_info.cmd_line = cell.cmd_line();
+        job_info.cpu_share = cell.cpu_share();
+        job_info.mem_share = cell.mem_share();
+        
+        job_info.running_num = 0;
+        job_info.scale_down_time = 0;
+        job_info.killed = false;
+
+        LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld", 
+                job_info.job_name.c_str(),
+                job_info.cpu_share,
+                job_info.mem_share);
+        // only safe_mode when recovered, 
+        is_safe_mode_ = true;
+        it->Next();
+    }
+    // NOTE failed before should not work on
+    delete it;
+    
+    next_job_id_ = max_job_id + 1;
+    start_time_ = common::timer::now_time();
+    LOG(INFO, "master recover success");
+    return true;
 }
 
 void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/,
                  const ::galaxy::TerminateTaskRequest* request,
                  ::galaxy::TerminateTaskResponse* response,
                  ::google::protobuf::Closure* done) {
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) {
         response->set_status(ERR_IN_SAFE_MODE);
         LOG(WARNING, "can't terminate task in safe mode");
         done->Run(); 
@@ -127,6 +211,7 @@ void MasterImpl::ListTaskForJob(int64_t job_id,
                     task->CopyFrom(task_it->second);
                 }
             }
+            LOG(DEBUG, "list tasks %u for job %ld", task_set.size(), job_id);
         }
 
         if (sched_tasks == NULL) {
@@ -199,7 +284,7 @@ void MasterImpl::DeadCheck() {
     std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
 
     int idle_time = 5;
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) {
         LOG(WARNING, "no deadcheck in safe mode"); 
         thread_pool_.DelayTask(idle_time * 1000,
                            boost::bind(&MasterImpl::DeadCheck, this));
@@ -305,6 +390,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
 
     if (internal_running_tasks.size() != 0) {
         // Task not in agentInfo which reported by this agent should be killed
+        // scheduler shake
         std::set<int64_t>::iterator rt_it = internal_running_tasks.begin();
         for (; rt_it != internal_running_tasks.end(); ++rt_it) {
             LOG(WARNING, "task %ld not in master should be killed", *rt_it);
@@ -370,34 +456,44 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         // when agent resurgence after dead, task_id not exists in tasks_
         // So instance without jobId
         instance.set_job_id(request->task_status(i).job_id());
-        LOG(INFO, "Task %d status: %s",
+        LOG(DEBUG, "Task %d status: %s",
             task_id, TaskState_Name((TaskState)task_status).c_str());
         instance.set_agent_addr(agent_addr);
-        LOG(INFO, "%s run task %d %d", agent_addr.c_str(),
+        LOG(DEBUG, "%s run task %d %d", agent_addr.c_str(),
             task_id, request->task_status(i).status());
         if (request->task_status(i).has_cpu_usage()) {
             instance.set_cpu_usage(
                     request->task_status(i).cpu_usage());
-            LOG(INFO, "%d use cpu %f", task_id, instance.cpu_usage());
+            LOG(DEBUG, "%d use cpu %f", task_id, instance.cpu_usage());
         }
         if (request->task_status(i).has_memory_usage()) {
             instance.set_memory_usage(
                     request->task_status(i).memory_usage());
-            LOG(INFO, "%d use memory %ld", task_id, instance.memory_usage());
+            LOG(DEBUG, "%d use memory %ld", task_id, instance.memory_usage());
         }
     }
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) {
         //rebuild agent, task relationship
         agent->running_tasks = running_tasks;
-        //rebuild task, job relationship
+        // rebuild task, job relationship
         std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
-        for (; rt_it != agent->running_tasks.end(); ++ rt_it) {
-            int task_id = *rt_it;     
-            TaskInstance& instance = tasks_[task_id];
-            JobInfo& job_info = jobs_[instance.job_id()];
-            job_info.running_num ++;
-            job_info.agent_tasks[agent_addr].insert(task_id);
+        for (; rt_it != agent->running_tasks.end(); ++rt_it) {
+            int rt_task_id = *rt_it; 
+            TaskInstance& rt_instance = tasks_[rt_task_id];
+            JobInfo& job_info = jobs_[rt_instance.job_id()];
+            if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
+                    == job_info.agent_tasks[agent_addr].end()) {
+                job_info.running_num ++;
+            }
+            rt_instance.mutable_info()->set_task_name(job_info.job_name);
+            rt_instance.mutable_info()->set_task_id(rt_task_id);
+            rt_instance.mutable_info()->set_required_cpu(job_info.cpu_share);
+            rt_instance.mutable_info()->set_required_mem(job_info.mem_share);
+            // TODO rt_instance.mutable_info->set_offset()
+            //      rt_instance.mutable_info->set_start_time()
+            job_info.agent_tasks[agent_addr].insert(rt_task_id);
         }
+        // TODO complete_tasks scheduled_tasks rebuild
     } else {
         UpdateJobsOnAgent(agent, running_tasks);
     }
@@ -416,7 +512,7 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
                    ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) { 
         LOG(WARNING, "can't kill job in safe mode"); 
         done->Run();
         return;
@@ -430,7 +526,16 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
     }
 
     JobInfo& job = it->second;
+    int64_t old_replica_num = job.replica_num;
     job.replica_num = 0;
+    // Not Delete here, delete by recover
+    if (!PersistenceJobInfo(job)) {
+        LOG(WARNING, "kill job failed for persistence"); 
+        job.replica_num = old_replica_num;
+        done->Run();
+        return;
+    }
+    
     job.killed = true;
     done->Run();
 }
@@ -439,7 +544,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::UpdateJobRequest* request,
                          ::galaxy::UpdateJobResponse* response,
                          ::google::protobuf::Closure* done) {
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) {
         LOG(WARNING, "can't update job in safe mode"); 
         response->set_status(ERR_IN_SAFE_MODE);
         done->Run();
@@ -455,7 +560,16 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
     }
 
     JobInfo& job = it->second;
+    int64_t old_replica_num = job.replica_num;
     job.replica_num = request->replica_num();
+
+    if (!PersistenceJobInfo(job)) {
+        // roll back 
+        job.replica_num = old_replica_num;
+        response->set_status(ERR_INTERNAL);
+    } else {
+        response->set_status(OK); 
+    }
     done->Run();
 }
 
@@ -463,7 +577,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
                          ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) {
         LOG(WARNING, "can't new job in safe mode"); 
         response->set_status(ERR_IN_SAFE_MODE);
         done->Run();
@@ -472,18 +586,33 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
 
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
-    JobInfo& job = jobs_[job_id];
+
+    JobInfo job;
     job.id = job_id;
     job.job_name = request->job_name();
     job.job_raw = request->job_raw();
     job.cmd_line = request->cmd_line();
     job.replica_num = request->replica_num();
+
     job.running_num = 0;
     job.scale_down_time = 0;
     job.killed = false;
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
+    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld",
+            job.job_name.c_str(),
+            job.replica_num,
+            job.cmd_line.c_str(),
+            job.cpu_share,
+            job.mem_share);
 
+    if (!PersistenceJobInfo(job)) {
+        response->set_status(ERR_INTERNAL); 
+        done->Run();
+        return;
+    }
+
+    jobs_[job_id] = job;
     response->set_status(OK);
     response->set_job_id(job_id);
     done->Run();
@@ -615,7 +744,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
 
 void MasterImpl::Schedule() {
     MutexLock lock(&agent_lock_);
-    if (is_safe_mode_) {
+    if (SafeModeCheck()) {
         LOG(WARNING, "no schedule in safe mode");
         thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
         return;
@@ -779,18 +908,63 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
-void MasterImpl::SwitchSafeMode(::google::protobuf::RpcController* /*controller*/,
-        const ::galaxy::SafeModeSwitchRequest* request,
-        ::galaxy::SafeModeSwitchResponse* response,
-        ::google::protobuf::Closure* done) {
-    if (request->switch_on() == 1)  {
-        is_safe_mode_ = true; 
-    } else {
-        is_safe_mode_ = false; 
+bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
+    // setup persistence cell TODO should be only use one struct
+    JobCheckPointCell cell;
+    cell.set_job_id(job_info.id);
+    cell.set_replica_num(job_info.replica_num);
+    cell.set_job_name(job_info.job_name);
+    cell.set_job_raw(job_info.job_raw);
+    cell.set_cmd_line(job_info.cmd_line);
+    cell.set_cpu_share(job_info.cpu_share);
+    cell.set_mem_share(job_info.mem_share);
+
+    LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld",
+            cell.job_name().c_str(),
+            cell.replica_num(),
+            cell.cmd_line().c_str(),
+            cell.cpu_share(),
+            cell.mem_share());
+    // check persistence_handler init
+    if (persistence_handler_ == NULL) {
+        LOG(WARNING, "persistence handler not inited yet");
+        return false;
     }
-    response->set_status(OK);
-    done->Run();
-    return;
+
+    // contruct key
+    std::string key = boost::lexical_cast<std::string>(job_info.id);
+    // serialize cell 
+    std::string cell_value;
+    if (!cell.SerializeToString(&cell_value)) {
+        LOG(WARNING, "serialize job cell %s failed",
+                key.c_str()); 
+        return false;
+    }
+
+    leveldb::Status write_status;
+    write_status = persistence_handler_->Put(
+            leveldb::WriteOptions(), key, cell_value);
+    if (!write_status.ok()) {
+        LOG(WARNING, "serialize job cell %s failed to write",
+                key.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool MasterImpl::SafeModeCheck() {
+    if (!is_safe_mode_) {
+        return false; 
+    }
+
+    int now_time = common::timer::now_time();
+    if (now_time - start_time_ > FLAGS_master_safe_mode_last) {
+        is_safe_mode_ = false; 
+        LOG(INFO, "safe mode close auto");
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace galaxy

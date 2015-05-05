@@ -85,6 +85,16 @@ message ListTaskResponse {
     repeated TaskInstance scheduled_tasks = 3;
 }
 
+message JobCheckPointCell {
+    optional int64 job_id = 1;
+    optional int32 replica_num = 2;
+    optional string job_name = 3;
+    optional bytes job_raw = 4;
+    optional string cmd_line = 5;
+    optional double cpu_share = 6;
+    optional int64 mem_share = 7;
+}
+
 message JobInstance {
     optional int64 job_id = 2;
     optional string job_name = 3;
@@ -120,14 +130,6 @@ message ListNodeResponse {
     repeated NodeInstance nodes = 2;
 }
 
-message SafeModeSwitchRequest {
-    optional int32 switch_on = 1;
-}
-
-message SafeModeSwitchResponse {
-    optional int32 status = 1;    
-}
-
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
 
@@ -138,7 +140,5 @@ service Master {
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);
     rpc ListNode(ListNodeRequest) returns(ListNodeResponse);
-
-    rpc SwitchSafeMode(SafeModeSwitchRequest) returns(SafeModeSwitchResponse);
 }
 

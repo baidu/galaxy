@@ -94,7 +94,6 @@ public:
 
     virtual bool ListTaskByAgent(const std::string& agent_addr,
                                  std::vector<TaskDescription> * tasks) = 0 ;
-    virtual bool SwitchSafeMode(bool on) = 0;
 };
 
 } // namespace galaxy

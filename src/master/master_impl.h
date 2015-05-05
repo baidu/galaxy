@@ -19,12 +19,14 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 
+#include "leveldb/db.h"
 #include "common/mutex.h"
 #include "common/thread_pool.h"
 
 namespace galaxy {
 
 class Agent_Stub;
+// rebuild by agent regist
 struct AgentInfo {
     int64_t id;
     std::string addr;
@@ -75,15 +77,15 @@ typedef boost::multi_index::multi_index_container<
 
 
 struct JobInfo {
-    int64_t id;
-    int32_t replica_num;
-    std::string job_name;
-    std::string job_raw;
-    std::string cmd_line;
+    int64_t id;             // persistence       
+    int32_t replica_num;    // persistence       
+    std::string job_name;   // persistence
+    std::string job_raw;    // persistence
+    std::string cmd_line;   // persistence
     int32_t running_num;
     int32_t scale_down_time;
-    double cpu_share;
-    int64_t mem_share;
+    double cpu_share;       // persistence
+    int64_t mem_share;      // persistence
     std::map<std::string, std::set<int64_t> > agent_tasks;
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
@@ -98,6 +100,8 @@ public:
     ~MasterImpl() {
     }
 public:
+    bool Recover();
+
     void HeartBeat(::google::protobuf::RpcController* controller,
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
@@ -131,13 +135,8 @@ public:
                   const ::galaxy::ListNodeRequest* request,
                   ::galaxy::ListNodeResponse* response,
                   ::google::protobuf::Closure* done);
-
-    void SwitchSafeMode(::google::protobuf::RpcController* controller,
-                  const ::galaxy::SafeModeSwitchRequest* request,
-                  ::galaxy::SafeModeSwitchResponse* response,
-                  ::google::protobuf::Closure* done);
-
 private:
+    bool PersistenceJobInfo(const JobInfo& job_info);
     void DeadCheck();
     void Schedule();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
@@ -158,20 +157,23 @@ private:
     void RemoveIndex(int64_t agent_id);
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
+    bool SafeModeCheck();
 private:
     common::ThreadPool thread_pool_;
     std::map<std::string, AgentInfo> agents_;
     std::map<int64_t, TaskInstance> tasks_;
     std::map<int64_t, JobInfo> jobs_;
     std::map<int32_t, std::set<std::string> > alives_;
-    int64_t next_agent_id_;
-    int64_t next_task_id_;
-    int64_t next_job_id_;
+    int64_t next_agent_id_; // no need rebuild
+    int64_t next_task_id_;  // no need rebuild
+    int64_t next_job_id_;   // need rebuild by recover
     Mutex agent_lock_;
 
     RpcClient* rpc_client_;
     AgentLoadIndex index_;
     bool is_safe_mode_;
+    int64_t start_time_;
+    leveldb::DB* persistence_handler_;
 };
 
 } // namespace galaxy

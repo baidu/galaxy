@@ -11,11 +11,10 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 void help() {
-    fprintf(stderr, "./galaxy_client master_addr command(list/add/kill/safe_mode) args\n");
+    fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
     fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota\n");
     fprintf(stderr, "./galaxy_client master_addr list task_id\n");
     fprintf(stderr, "./galaxy_client master_addr kill task_id\n");
-    fprintf(stderr, "./galaxy_client master_addr safe_mode on/off\n");
     return;
 }
 
@@ -27,8 +26,7 @@ enum Command {
     LISTNODE,
     ADD,
     KILLTASK,
-    KILLJOB,
-    SAFE_MODE_SWITCH
+    KILLJOB
 };
 
 int main(int argc, char* argv[]) {
@@ -72,12 +70,6 @@ int main(int argc, char* argv[]) {
         COMMAND = UPDATEJOB;
         if(argc < 5){
             help();
-            return -1;
-        }
-    } else if (strcmp(argv[2], "safe_mode") == 0) {
-        COMMAND = SAFE_MODE_SWITCH; 
-        if (argc != 4) {
-            help(); 
             return -1;
         }
     } else {
@@ -168,16 +160,6 @@ int main(int argc, char* argv[]) {
         job.replicate_count = atoi(argv[4]);
         job.job_id  =  atoi(argv[3]);
         galaxy->UpdateJob(job);
-    } else if (COMMAND == SAFE_MODE_SWITCH) {
-        galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]); 
-        if (strcmp(argv[3], "on") == 0) {
-            galaxy->SwitchSafeMode(true);
-        } else if (strcmp(argv[3], "off") == 0) {
-            galaxy->SwitchSafeMode(false); 
-        } else {
-            help();
-            return -1;
-        }
     }
     return 0;
 }
