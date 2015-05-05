@@ -255,7 +255,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.agent_tasks.erase(agent_addr);
             }
             job.running_num --;
-            if(instance.status() == COMPLETE){
+            if (instance.status() == COMPLETE) { 
                 job.complete_tasks[agent_addr].insert(task_id);
                 job.replica_num --;
             }
@@ -264,7 +264,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.scheduled_tasks.pop_front(); 
             }
             std::set<int64_t>::iterator deploying_tasks_it = job.deploying_tasks.find(task_id);
-            if(deploying_tasks_it != job.deploying_tasks.end()) {
+            if (deploying_tasks_it != job.deploying_tasks.end()) {
                 job.deploying_tasks.erase(deploying_tasks_it);
             }
 
@@ -283,14 +283,14 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             std::map<int64_t,JobInfo>::iterator job_it = jobs_.find(job_id);
             assert(job_it != jobs_.end());
             JobInfo& job = job_it->second;
-            if(instance.status() != DEPLOYING){
+            if (instance.status() != DEPLOYING) {
                 std::set<int64_t>::iterator deploying_tasks_it = job.deploying_tasks.find(task_id);
                 if(deploying_tasks_it != job.deploying_tasks.end()){
                     job.deploying_tasks.erase(deploying_tasks_it);
                 }
             }
-            if(instance.status() != ERROR
-               && instance.status() != COMPLETE){
+            if (instance.status() != ERROR
+               && instance.status() != COMPLETE) {
                 continue;
             }
             //ÊÍ·Å×ÊÔ´
@@ -440,9 +440,9 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.killed = false;
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
-    if(request->deploy_step_size() > 0){
+    if (request->deploy_step_size() > 0) {
         job.deploy_step_size = request->deploy_step_size();
-    }else{
+    } else {
         job.deploy_step_size = job.replica_num;
     }
     response->set_status(0);
@@ -591,7 +591,7 @@ void MasterImpl::Schedule() {
         }
         LOG(INFO,"job %ld deploying size is %d",job.id,job.deploying_tasks.size());
         int32_t end = job.running_num + job.deploy_step_size - job.deploying_tasks.size();
-        if(end >= job.replica_num){
+        if (end >= job.replica_num) {
             end = job.replica_num ;
         }
         LOG(INFO,"schedule job %ld deploy size is %d ",job.id,(end - job.running_num));
@@ -599,15 +599,15 @@ void MasterImpl::Schedule() {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
             std::string agent_addr = AllocResource(job);
-            if(agent_addr.empty()) {
+            if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
                 continue;
             }
             bool success = ScheduleTask(&job, agent_addr);
-            if(success){
+            if (success) {
                 //update index
                 std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
-                if(agent_it != agents_.end()){
+                if (agent_it != agents_.end()) {
                     agent_it->second.mem_used += job.mem_share;
                     agent_it->second.cpu_used += job.cpu_share;
                     agent_it->second.version += 1;
@@ -617,7 +617,7 @@ void MasterImpl::Schedule() {
 
         }
     }
-    for(uint32_t i = 0;i < should_rm_job.size();i++){
+    for (uint32_t i = 0;i < should_rm_job.size();i++) {
         LOG(INFO,"remove job %ld",should_rm_job[i]);
         jobs_.erase(should_rm_job[i]);
     }
