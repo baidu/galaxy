@@ -106,6 +106,7 @@ int main(int argc, char* argv[]) {
         job.job_name = argv[3];
         job.cpu_share = atof(argv[7]);
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
+        job.deploy_step_size = 0;
         if (argc == 10){
             int32_t size = atoi(argv[9]);
             if(size > 0){

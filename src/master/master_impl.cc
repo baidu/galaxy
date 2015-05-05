@@ -264,7 +264,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.scheduled_tasks.pop_front(); 
             }
             std::set<int64_t>::iterator deploying_tasks_it = job.deploying_tasks.find(task_id);
-            if(deploying_tasks_it != job.deploying_tasks.end()){
+            if(deploying_tasks_it != job.deploying_tasks.end()) {
                 job.deploying_tasks.erase(deploying_tasks_it);
             }
 
