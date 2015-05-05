@@ -85,6 +85,7 @@ bool MasterImpl::Recover() {
             //TODO maybe erase job do persistence ?
             LOG(WARNING, "recover job replica_num = 0 %s %s", 
                     job_key.c_str(), cell.job_name().c_str()); 
+            it->Next();
             continue;
         }
         if (max_job_id < job_id) {
