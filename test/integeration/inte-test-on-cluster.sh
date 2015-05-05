@@ -15,7 +15,7 @@ cd $CUR_DIR && python $GALAXY_SRC_HOME/deploy/deployer.py migrate -c galaxy_ci.p
 
 # start integration test
 
-cd $CUR_DIR && python runner.py -d .
+#cd $CUR_DIR && python runner.py -d .
 
 
 

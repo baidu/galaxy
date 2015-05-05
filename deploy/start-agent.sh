@@ -3,7 +3,7 @@ master=$1
 port=$2
 mem=$3
 cpu=$4
-nohup ./bin/agent --container=cgroup --work_dir=./ --master=$master --port=$port --mem=$3 --cpu=$4 --user=root >agent.log 2>&1&
+nohup ./bin/agent --container=cgroup --work_dir=./ --master=$master --port=$port --mem=$3 --cpu=$4 --user=root >> agent.log 2>&1&
 echo "check port is alive"
 for i in {1..10}
 do

@@ -10,7 +10,7 @@ PROTOC_PATH=
 PROTOC=$(PROTOC_PATH)protoc
 PBRPC_PATH=./thirdparty/sofa-pbrpc/output/
 BOOST_PATH=../boost/
-
+PREFIX=./output
 INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
                -I$(PBRPC_PATH)/include \
                -I$(SNAPPY_PATH)/include \
@@ -80,8 +80,18 @@ clean:
 	rm -rf $(BIN)
 	rm -rf $(MASTER_OBJ) $(AGENT_OBJ) $(SDK_OBJ) $(CLIENT_OBJ) $(OBJS)
 	rm -rf $(PROTO_SRC) $(PROTO_HEADER)
+	rm -rf $(PREFIX)
+	rm $(LIBS) 
+
+install: $(BIN) $(LIBS)
+	mkdir -p $(PREFIX)/bin
+	mkdir -p $(PREFIX)/lib
+	mkdir -p $(PREFIX)/include/sdk
+	cp $(BIN) $(PREFIX)/bin
+	cp $(LIBS) $(PREFIX)/lib
+	cp src/sdk/*.h $(PREFIX)/include/sdk
 
 .PHONY: test
 test:
-	echo "Test done"
+	cd test/integeration && sh inte-test-on-local.sh
 
