@@ -95,6 +95,7 @@ message JobCheckPointCell {
     optional string cmd_line = 5;
     optional double cpu_share = 6;
     optional int64 mem_share = 7;
+    optional int32 deploy_step_size = 8;
 }
 
 message JobInstance {
