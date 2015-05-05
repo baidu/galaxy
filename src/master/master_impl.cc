@@ -589,13 +589,10 @@ void MasterImpl::Schedule() {
             // ±ÜÃâË²¼äËõ³É0ÁË
             job.scale_down_time = now_time;
         }
-        int32_t end = job.running_num + job.deploy_step_size - job.deploying_tasks.size();
-        if (end >= job.replica_num) {
-            end = job.replica_num ;
-        }
-        LOG(INFO,"schedule job %ld deploy  %d instance ,the deploying size is %d",job.id,(end - job.running_num),
-             job.deploying_tasks.size());
-        for (int i = job.running_num; i < end; i++) {
+        LOG(INFO,"schedule job %ld ,the deploying size is %d",job.id,job.deploying_tasks.size());
+        int deploying_tasks_size = job.deploying_tasks.size();
+        for (int i = 0; (i + deploying_tasks_size) < job.deploy_step_size 
+                        && (i+job.running_num) < job.replica_num ; i++) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
             std::string agent_addr = AllocResource(job);
@@ -603,8 +600,8 @@ void MasterImpl::Schedule() {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
                 continue;
             }
-            bool success = ScheduleTask(&job, agent_addr);
-            if (success) {
+            bool ret = ScheduleTask(&job, agent_addr);
+            if (ret) {
                 //update index
                 std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
                 if (agent_it != agents_.end()) {
