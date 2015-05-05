@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
             if( size >0 ){
                 job.deploy_step_size = size;
             }else{
-                fprintf(stdout,"deploy size must no be less than zero ,will ignore the parameters");
+                fprintf(stdout,"deploy size must not be less than zero ,will ignore the parameters");
             }
         } 
         fprintf(stdout,"%ld",galaxy->NewJob(job));
