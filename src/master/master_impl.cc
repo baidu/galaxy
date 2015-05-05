@@ -583,12 +583,12 @@ void MasterImpl::Schedule() {
             // ±ÜÃâË²¼äËõ³É0ÁË
             job.scale_down_time = now_time;
         }
-        LOG(INFO,"job deploying size is %d",job.deploying_tasks.size());
+        LOG(INFO,"job %ld deploying size is %d",job.id,job.deploying_tasks.size());
         int32_t end = job.running_num + job.deploy_step_size - job.deploying_tasks.size();
         if(end >= job.replica_num){
             end = job.replica_num ;
         }
-        LOG(INFO,"schedule job deploy size is %d ",(end - job.running_num));
+        LOG(INFO,"schedule job %ld deploy size is %d ",job.id,(end - job.running_num));
         for (int i = job.running_num; i < end; i++) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
