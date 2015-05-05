@@ -40,7 +40,7 @@ struct AgentInfo {
     int64_t version;
 };
 
-struct AgentLoad{
+struct AgentLoad {
     double load;
     double cpu_left;
     int64_t mem_left;
@@ -53,15 +53,15 @@ struct AgentLoad{
         agent_addr = agent.addr;
     }
 
-    void operator()(AgentLoad& l){
-        l.load = load;
-        l.cpu_left = cpu_left;
-        l.mem_left = mem_left;
-        l.agent_addr = agent_addr;
+    void operator()(AgentLoad& al){
+        al.load = load;
+        al.cpu_left = cpu_left;
+        al.mem_left = mem_left;
+        al.agent_addr = agent_addr;
     }
 };
 
-//agent load index includes agent id index and cpu-left index
+/// Agent load index includes agent id index and cpu-left index
 typedef boost::multi_index::multi_index_container<
     AgentLoad,
     boost::multi_index::indexed_by<
@@ -97,8 +97,7 @@ class RpcClient;
 class MasterImpl : public Master {
 public:
     MasterImpl();
-    ~MasterImpl() {
-    }
+    virtual ~MasterImpl();
 public:
     bool Recover();
 
@@ -159,17 +158,23 @@ private:
     std::string AllocResource(const JobInfo& job);
     bool SafeModeCheck();
 private:
+    /// Global threadpool
     common::ThreadPool thread_pool_;
-    std::map<std::string, AgentInfo> agents_;
-    std::map<int64_t, TaskInstance> tasks_;
-    std::map<int64_t, JobInfo> jobs_;
-    std::map<int32_t, std::set<std::string> > alives_;
-    int64_t next_agent_id_; // no need rebuild
-    int64_t next_task_id_;  // no need rebuild
-    int64_t next_job_id_;   // need rebuild by recover
+    /// Global lock
     Mutex agent_lock_;
-
+    /// Agents manager
+    std::map<std::string, AgentInfo> agents_;
+    int64_t next_agent_id_; // no need rebuild
+    std::map<int32_t, std::set<std::string> > alives_;
+    /// Jobs manager
+    std::map<int64_t, JobInfo> jobs_;
+    int64_t next_job_id_; // need rebuild by recover
+    /// Tasks manager
+    std::map<int64_t, TaskInstance> tasks_;
+    int64_t next_task_id_; // no need rebuild
+    /// Rpc client
     RpcClient* rpc_client_;
+    /// Scheduler
     AgentLoadIndex index_;
     bool is_safe_mode_;
     int64_t start_time_;

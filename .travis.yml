@@ -4,7 +4,7 @@ env:
     - PROTOBUF_VERSION=2.6.0
 install:
     - sudo apt-get install libleveldb-dev
-    - sudo apt-get install libboost-dev
+    - sudo apt-get install libboost-dev python-pip libsnappy-dev
     - wget https://github.com/google/protobuf/releases/download/v$PROTOBUF_VERSION/protobuf-$PROTOBUF_VERSION.tar.gz
     - tar xf protobuf-$PROTOBUF_VERSION.tar.gz
     - ( cd protobuf-$PROTOBUF_VERSION && ./configure && make -j4 && sudo make install && sudo ldconfig )
@@ -12,7 +12,10 @@ install:
     - ( cd snappy && sh ./autogen.sh && ./configure && make -j2 && sudo make install )
     - sudo apt-get install zlib1g-dev
     - git clone https://github.com/bluebore/sofa-pbrpc ./thirdparty/sofa-pbrpc
-    - ( cd thirdparty/sofa-pbrpc && make -j4 && make install);
+    - ( cd thirdparty/sofa-pbrpc && make -j4 && make install && cd python && sudo python setup.py install)
     - sudo apt-get install libcurl4-openssl-dev
-script: make -j4 && make test
+    - sudo pip install nose protobuf
+script: 
+    - make -j4 && make install 
+    - cd test/integeration && sudo sh inte-test-on-local.sh
 

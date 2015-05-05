@@ -6,6 +6,7 @@
 
 #include "master_impl.h"
 
+#include <cmath>
 #include <vector>
 #include <queue>
 #include <boost/lexical_cast.hpp>
@@ -28,9 +29,11 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
 MasterImpl::MasterImpl()
     : next_agent_id_(1),
-      next_task_id_(1),
       next_job_id_(1),
+      next_task_id_(1),
+      rpc_client_(NULL),
       is_safe_mode_(false),
+      start_time_(0),
       persistence_handler_(NULL) {
     rpc_client_ = new RpcClient();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
@@ -115,6 +118,10 @@ bool MasterImpl::Recover() {
     start_time_ = common::timer::now_time();
     LOG(INFO, "master recover success");
     return true;
+}
+
+MasterImpl::~MasterImpl() {
+    delete rpc_client_;
 }
 
 void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/,
@@ -308,6 +315,7 @@ void MasterImpl::DeadCheck() {
             it->second.erase(node);
             node = it->second.begin();
         }
+        assert(it->second.empty());
         alives_.erase(it);
         it = alives_.begin();
     }
@@ -426,6 +434,9 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     } else {
         agent = &(it->second);
         int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
+        if (alives_[agent->alive_timestamp].empty()) {
+            alives_.erase(agent->alive_timestamp);
+        }
         assert(es);
         alives_[now_time].insert(agent_addr);
         agent->alive_timestamp = now_time;
@@ -585,6 +596,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     }
 
     MutexLock lock(&agent_lock_);
+    LOG(INFO,"new job req ");
     int64_t job_id = next_job_id_++;
 
     JobInfo job;
@@ -617,7 +629,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     response->set_job_id(job_id);
     done->Run();
 }
-
 
 bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     agent_lock_.AssertHeld();
@@ -796,24 +807,25 @@ void MasterImpl::Schedule() {
 
 //负载计算
 //目前使用3个因数
-//1、当前机器mem使用量，负载与内存使用量成正比，与内存总量成反比，但是需要考虑内存使用量为零情况
-//   需要设置一个默认值比如1 byte,避免总负债变为零
-//2、当前机器的cpu使用量，负载与cpu使用量成正比，与cpu总量成反比，同时需要考虑内存使用量为0状态
-//3、当前机器上的任务数，负载与任务数成正比，需要考虑为0情况
-//例子:
-//   一台机器内存10g 使用量4g ,cpu数5个，使用量1.0，任务数1 当前负载load = 4/10 * 1.0/5 * 1 = 0.08
+//1、当前机器mem使用量，负载与内存使用量成正比，与内存总量成反比
+//2、当前机器的cpu使用量，负载与cpu使用量成正比，与cpu总量成反比
+//3、当前机器上的任务数，负载与任务数成正比
+// 由于各个维度的度量单位不同，所以通过资源的“占用比”来衡量；
+// 各维度资源的综合评估通过指数相加的方式，这种方式比直接求和或求乘积更加平滑，
+// 且能避免选出各维度资源消耗不平衡的机器。
+// 参考资料：http://www.columbia.edu/~cs2035/courses/ieor4405.S13/datacenter_scheduling.ppt
 double MasterImpl::CalcLoad(const AgentInfo& agent){
     if(agent.mem_share <= 0 || agent.cpu_share <= 0.0 ){
         LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent.mem_share,agent.cpu_share);
         return 0.0;
     }
-    int64_t mem_used = agent.mem_used > 0 ? agent.mem_used : 1;
-    double cpu_used = agent.cpu_used > 0 ? agent.cpu_used : 0.1;
-    double mem_factor = mem_used/static_cast<double>(agent.mem_share);
-    double cpu_factor = cpu_used/agent.cpu_share;
-    double task_count_factor = agent.running_tasks.size() > 0 ? agent.running_tasks.size() : 0.1;
-    return task_count_factor * mem_factor * cpu_factor;
-
+    const double tasks_count_base_line = 32.0;
+    int64_t mem_used = agent.mem_used;
+    double cpu_used = agent.cpu_used;
+    double mem_factor = mem_used / static_cast<double>(agent.mem_share);
+    double cpu_factor = cpu_used / agent.cpu_share;
+    double task_count_factor = agent.running_tasks.size() / tasks_count_base_line;
+    return exp(cpu_factor) + exp(mem_factor) + exp(task_count_factor);
 }
 
 std::string MasterImpl::AllocResource(const JobInfo& job){
