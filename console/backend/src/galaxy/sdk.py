@@ -60,7 +60,9 @@ class GalaxySDK(object):
                       pkg_src,boot_cmd,
                       replicate_num = 1,
                       mem_limit = 1024,
-                      cpu_limit = 2 ):
+                      cpu_limit = 2, 
+                      deploy_step_interval=-1,
+                      deploy_step_size=-1):
         """
         send a new job command to galaxy master
         return:
@@ -74,7 +76,9 @@ class GalaxySDK(object):
                                       boot_cmd,
                                       replicate_num = replicate_num,
                                       mem_limit = mem_limit,
-                                      cpu_limit = cpu_limit)
+                                      cpu_limit = cpu_limit,
+                                      deploy_step_interval=deploy_step_interval,
+                                      deploy_step_size = deploy_step_size)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -205,9 +209,14 @@ class GalaxySDK(object):
                                pkg_src,boot_cmd,
                                replicate_num = 1,
                                mem_limit= 1024,
-                               cpu_limit= 2):
+                               cpu_limit= 2,
+                               deploy_step_interval=-1,
+                               deploy_step_size=-1):
 
         req = master_pb2.NewJobRequest()
+        if deploy_step_interval > 0 and deploy_step_size > 0:
+            req.deploy_step_interval = deploy_step_interval
+            req.deploy_step_size = deploy_step_size
         req.job_name = name
         req.job_raw = pkg_src
         req.cmd_line = boot_cmd
