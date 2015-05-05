@@ -1,4 +1,4 @@
 #! /bin/sh
 export PYTHONPATH=`pwd`/src
-python src/manage.py runserver cp01-rdqa-dev400.cp01.baidu.com:8989
+nohup python src/manage.py runserver cq01-rdqa-pool056.cq01.baidu.com:8989  >log 2>&1 &
 
