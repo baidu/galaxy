@@ -58,7 +58,6 @@ struct JobDescription{
     std::vector<ResourceDescription> resource_vector;
 
     int32_t deploy_step_size;
-    int64_t deploy_step_interval;
 };
 
 struct NodeDescription {
