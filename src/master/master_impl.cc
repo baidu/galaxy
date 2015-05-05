@@ -409,7 +409,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
-    LOG(INFO,"new job req ");
     int64_t job_id = next_job_id_++;
     JobInfo& job = jobs_[job_id];
     job.id = job_id;
@@ -423,6 +422,25 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
 
+    if(request->has_deploy_step_interval() &&
+       request->has_deploy_step_size()&&
+       request->deploy_step_interval()>0&&
+       request->deploy_step_size()>0){
+        LOG(INFO,"deploy job using concurrent controller,interval %ld,step_size %d",
+            request->deploy_step_interval(),
+            request->deploy_step_size());
+        job.internal_enable_schedule = false;
+        job.deploy_step_interval = request->deploy_step_interval();
+        job.deploy_step_size = request->deploy_step_size();
+        thread_pool_.DelayTask(100,
+                               boost::bind(&MasterImpl::DeployByStep, this, job_id, 0));
+ 
+    }else{
+        LOG(INFO,"deploy job using single deploy");
+        job.internal_enable_schedule = true;
+        job.deploy_step_interval = -1;
+        job.deploy_step_size = -1;
+    }
     response->set_status(0);
     response->set_job_id(job_id);
     done->Run();
@@ -557,6 +575,9 @@ void MasterImpl::Schedule() {
     std::vector<int64_t> should_rm_job;
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
+        if(!job.internal_enable_schedule){
+            continue;
+        }
         LOG(INFO,"job %ld ,running_num %ld",job.id,job.running_num);
         if (job.running_num == 0 && job.killed) {
             should_rm_job.push_back(job_it->first);
@@ -570,24 +591,7 @@ void MasterImpl::Schedule() {
         for (int i = job.running_num; i < job.replica_num; i++) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
-            std::string agent_addr = AllocResource(job);
-            if (agent_addr.empty()) {
-                LOG(WARNING, "Allocate resource fail, delay schedule job %s",
-                    job.job_name.c_str());
-                continue;
-            }
-            bool ret = ScheduleTask(&job, agent_addr);
-            if(ret){
-               //update index
-               std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
-               if(agent_it != agents_.end()){
-                   agent_it->second.mem_used += job.mem_share;
-                   agent_it->second.cpu_used += job.cpu_share;
-                   agent_it->second.version += 1;
-                   SaveIndex(agent_it->second);
-               }
-
-            }
+            AllocAndDeploy(job); 
         }
     }
     for(uint32_t i = 0;i < should_rm_job.size();i++){
@@ -708,6 +712,60 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     agent_id_index::iterator it = aidx.find(agent_id);
     if(it != aidx.end()){
         aidx.erase(it);
+    }
+}
+
+void MasterImpl::DeployByStep(int64_t job_id, int32_t start){    
+    MutexLock lock(&agent_lock_);
+    LOG(INFO,"deploying with concurrent controller is under going,finished %d,job_id %ld", start, job_id);
+    std::map<int64_t, JobInfo>::iterator job_it = jobs_.find(job_id);
+    if(job_it == jobs_.end()){
+        LOG(WARNING,"job with id %ld does not exist ",job_id);
+        return;
+    }
+    JobInfo& job = job_it->second;
+    if(start >= job.replica_num){
+        LOG(INFO,"deploying with concurrent controller is done ,job_id %ld",job_id);
+        job.internal_enable_schedule = true;
+        return;
+    }
+    bool has_next_step = true;
+    int32_t end = start + job.deploy_step_size;
+    if(end >= job.replica_num){
+        end = job.replica_num;
+        has_next_step = false;
+    } 
+    for(int32_t index = start;index < end ; index++){
+        AllocAndDeploy(job);
+    }
+    if(has_next_step){
+        thread_pool_.DelayTask(job.deploy_step_interval,
+                               boost::bind(&MasterImpl::DeployByStep, this, job_id, end));
+    }else{
+        LOG(INFO,"deploying with concurrent controller is done ,job_id %ld",job_id);
+        job.internal_enable_schedule = true;
+    }
+   
+}
+
+void MasterImpl::AllocAndDeploy(JobInfo& job){
+    agent_lock_.AssertHeld();
+    std::string agent_addr = AllocResource(job);
+    if(agent_addr.empty()) {
+         LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
+         return ;
+    }
+    bool success = ScheduleTask(&job, agent_addr);
+    if(success){
+        //update index
+        std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
+        if(agent_it != agents_.end()){
+            agent_it->second.mem_used += job.mem_share;
+            agent_it->second.cpu_used += job.cpu_share;
+            agent_it->second.version += 1;
+            SaveIndex(agent_it->second);
+        }
+
     }
 }
 
