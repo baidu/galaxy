@@ -105,10 +105,11 @@ bool MasterImpl::Recover() {
         job_info.scale_down_time = 0;
         job_info.killed = false;
 
-        LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld", 
+        LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
                 job_info.cpu_share,
-                job_info.mem_share);
+                job_info.mem_share,
+                job_info.deploy_step_size);
         // only safe_mode when recovered, 
         is_safe_mode_ = true;
         it->Next();
@@ -413,12 +414,31 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
     }
 
     if (internal_running_tasks.size() != 0) {
-        // Task not in agentInfo which reported by this agent should be killed
+        // TODO Task not in agentInfo which reported 
+        // by this agent may be killed
         // scheduler shake
         std::set<int64_t>::iterator rt_it = internal_running_tasks.begin();
         for (; rt_it != internal_running_tasks.end(); ++rt_it) {
-            LOG(WARNING, "task %ld not in master should be killed", *rt_it);
-            thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
+            int64_t rt_task_id = *rt_it;
+            LOG(WARNING, "task %ld not in master add killed", *rt_it);
+            // rebuild agent, task relationship
+            agent->running_tasks.insert(rt_task_id);
+
+            // rebuild job, task relationship
+            TaskInstance& rt_instance = tasks_[rt_task_id];
+            JobInfo& job_info = jobs_[rt_instance.job_id()];
+            if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
+                    == job_info.agent_tasks[agent_addr].end()) {
+                job_info.running_num ++;
+            }
+            rt_instance.mutable_info()->set_task_name(job_info.job_name);
+            rt_instance.mutable_info()->set_task_id(rt_task_id);
+            rt_instance.mutable_info()->set_required_cpu(job_info.cpu_share);
+            rt_instance.mutable_info()->set_required_mem(job_info.mem_share);
+            // TODO rt_instance.mutable_info->set_offset()
+            //      rt_instance.mutable_info->set_start_time()
+            job_info.agent_tasks[agent_addr].insert(rt_task_id);
+            //thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
         }
     }
 }
@@ -499,31 +519,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             LOG(DEBUG, "%d use memory %ld", task_id, instance.memory_usage());
         }
     }
-    if (SafeModeCheck()) {
-        //rebuild agent, task relationship
-        agent->running_tasks = running_tasks;
-        // rebuild task, job relationship
-        std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
-        for (; rt_it != agent->running_tasks.end(); ++rt_it) {
-            int rt_task_id = *rt_it; 
-            TaskInstance& rt_instance = tasks_[rt_task_id];
-            JobInfo& job_info = jobs_[rt_instance.job_id()];
-            if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
-                    == job_info.agent_tasks[agent_addr].end()) {
-                job_info.running_num ++;
-            }
-            rt_instance.mutable_info()->set_task_name(job_info.job_name);
-            rt_instance.mutable_info()->set_task_id(rt_task_id);
-            rt_instance.mutable_info()->set_required_cpu(job_info.cpu_share);
-            rt_instance.mutable_info()->set_required_mem(job_info.mem_share);
-            // TODO rt_instance.mutable_info->set_offset()
-            //      rt_instance.mutable_info->set_start_time()
-            job_info.agent_tasks[agent_addr].insert(rt_task_id);
-        }
-        // TODO complete_tasks scheduled_tasks rebuild
-    } else {
-        UpdateJobsOnAgent(agent, running_tasks);
-    }
+    UpdateJobsOnAgent(agent, running_tasks);
     SaveIndex(*agent);
     done->Run();
 }
