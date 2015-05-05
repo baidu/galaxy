@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
         if (argc == 10){
             int32_t size = atoi(argv[9]);
-            if( size >0 ){
+            if(size > 0){
                 job.deploy_step_size = size;
             }else{
                 fprintf(stdout,"deploy size must not be less than zero ,will ignore the parameters");
