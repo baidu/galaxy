@@ -7,10 +7,10 @@ option cc_generic_services = true;
 option py_generic_services = true;
 
 enum MasterRespState {
-    OK = 0;
-    ERR_INPUT = -1;   
-    ERR_INTERNAL = -2;
-    ERR_IN_SAFE_MODE = -4;
+    kMasterResponseOK = 0;
+    kMasterResponseErrorInput = -1;   
+    kMasterResponseErrorInternal = -2;
+    kMasterResponseErrorSafeMode = -4;
 }
 
 message HeartBeatRequest {

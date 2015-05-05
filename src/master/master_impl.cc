@@ -130,13 +130,13 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
                  ::galaxy::TerminateTaskResponse* response,
                  ::google::protobuf::Closure* done) {
     if (SafeModeCheck()) {
-        response->set_status(ERR_IN_SAFE_MODE);
+        response->set_status(kMasterResponseErrorSafeMode);
         LOG(WARNING, "can't terminate task in safe mode");
         done->Run(); 
         return;
     }
     if (!request->has_task_id()) {
-        response->set_status(ERR_INPUT);
+        response->set_status(kMasterResponseErrorInput);
         done->Run();
         return;
     }
@@ -146,7 +146,7 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
     std::map<int64_t, TaskInstance>::iterator it;
     it = tasks_.find(task_id);
     if (it == tasks_.end()) {
-        response->set_status(ERR_INTERNAL);
+        response->set_status(kMasterResponseErrorInternal);
         done->Run();
         return;
     }
@@ -558,7 +558,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                          ::google::protobuf::Closure* done) {
     if (SafeModeCheck()) {
         LOG(WARNING, "can't update job in safe mode"); 
-        response->set_status(ERR_IN_SAFE_MODE);
+        response->set_status(kMasterResponseErrorSafeMode);
         done->Run();
         return;
     }
@@ -566,7 +566,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
-        response->set_status(ERR_INTERNAL);
+        response->set_status(kMasterResponseErrorInternal);
         done->Run();
         return;
     }
@@ -578,9 +578,9 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
     if (!PersistenceJobInfo(job)) {
         // roll back 
         job.replica_num = old_replica_num;
-        response->set_status(ERR_INTERNAL);
+        response->set_status(kMasterResponseErrorInternal);
     } else {
-        response->set_status(OK); 
+        response->set_status(kMasterResponseOK); 
     }
     done->Run();
 }
@@ -591,7 +591,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          ::google::protobuf::Closure* done) {
     if (SafeModeCheck()) {
         LOG(WARNING, "can't new job in safe mode"); 
-        response->set_status(ERR_IN_SAFE_MODE);
+        response->set_status(kMasterResponseErrorSafeMode);
         done->Run();
         return;
     }
@@ -620,13 +620,13 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
             job.mem_share);
 
     if (!PersistenceJobInfo(job)) {
-        response->set_status(ERR_INTERNAL); 
+        response->set_status(kMasterResponseErrorInternal); 
         done->Run();
         return;
     }
 
     jobs_[job_id] = job;
-    response->set_status(OK);
+    response->set_status(kMasterResponseOK);
     response->set_job_id(job_id);
     done->Run();
 }

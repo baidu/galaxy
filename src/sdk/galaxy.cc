@@ -45,7 +45,7 @@ bool GalaxyImpl::KillTask(int64_t task_id){
             &Master_Stub::TerminateTask,
             &request, &response, 5, 1);
     if (response.has_status()
-            && response.status() == OK) {
+            && response.status() == kMasterResponseOK) {
         fprintf(stdout, "SUCCESS\n");
     }
     else {
@@ -89,7 +89,7 @@ bool GalaxyImpl::UpdateJob(const JobDescription& job) {
     request.set_replica_num(job.replicate_count);
     rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
                              &request, &response, 5, 1);
-    if (response.status() != OK) 
+    if (response.status() != kMasterResponseOK) 
         return false;
     return true;
 }
