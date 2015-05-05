@@ -89,6 +89,8 @@ struct JobInfo {
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
     std::deque<TaskInstance> scheduled_tasks;
+    int32_t deploy_step_size;
+    std::set<int64_t> deploying_tasks;
 };
 
 class RpcClient;
@@ -153,6 +155,7 @@ private:
     void RemoveIndex(int64_t agent_id);
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
+
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;

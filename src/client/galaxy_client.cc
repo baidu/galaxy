@@ -12,7 +12,7 @@
 
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
-    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota\n");
+    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size\n");
     fprintf(stderr, "./galaxy_client master_addr list task_id\n");
     fprintf(stderr, "./galaxy_client master_addr kill task_id\n");
     return;
@@ -106,6 +106,15 @@ int main(int argc, char* argv[]) {
         job.job_name = argv[3];
         job.cpu_share = atof(argv[7]);
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
+        job.deploy_step_size = 0;
+        if (argc == 10) {
+            int32_t size = atoi(argv[9]);
+            if (size > 0) {
+                job.deploy_step_size = size;
+            } else {
+                fprintf(stdout,"deploy size must not be less than zero ,will ignore the parameters");
+            }
+        } 
         fprintf(stdout,"%ld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
