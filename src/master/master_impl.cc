@@ -99,6 +99,7 @@ bool MasterImpl::Recover() {
         job_info.cmd_line = cell.cmd_line();
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
+        job_info.deploy_step_size = cell.deploy_step_size();
         
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
