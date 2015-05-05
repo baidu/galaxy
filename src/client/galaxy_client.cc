@@ -59,16 +59,16 @@ int main(int argc, char* argv[]) {
             help();
             return -1;
         }
-    } else if(strcmp(argv[2], "listtaskbyagent") == 0){
+    } else if (strcmp(argv[2], "listtaskbyagent") == 0){
         COMMAND = LISTTASKBYAGENT;
-        if(argc < 4){
+        if (argc < 4) {
            help();
            return -1;
         }
 
-    } else if(strcmp(argv[2], "updatejob") == 0) {
+    } else if (strcmp(argv[2], "updatejob") == 0) {
         COMMAND = UPDATEJOB;
-        if(argc < 5){
+        if (argc < 5) {
             help();
             return -1;
         }
