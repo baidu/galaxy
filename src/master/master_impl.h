@@ -132,6 +132,11 @@ public:
                   ::galaxy::ListNodeResponse* response,
                   ::google::protobuf::Closure* done);
 
+    void SwitchSafeMode(::google::protobuf::RpcController* controller,
+                  const ::galaxy::SafeModeSwitchRequest* request,
+                  ::galaxy::SafeModeSwitchResponse* response,
+                  ::google::protobuf::Closure* done);
+
 private:
     void DeadCheck();
     void Schedule();
@@ -166,6 +171,7 @@ private:
 
     RpcClient* rpc_client_;
     AgentLoadIndex index_;
+    bool is_safe_mode_;
 };
 
 } // namespace galaxy

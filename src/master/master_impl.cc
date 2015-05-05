@@ -14,6 +14,7 @@
 extern int FLAGS_task_deploy_timeout;
 extern int FLAGS_agent_keepalive_timeout;
 extern int FLAGS_master_max_len_sched_task_list;
+extern std::string FLAGS_master_checkpoint_path;
 
 namespace galaxy {
 //agent load id index
@@ -25,7 +26,8 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 MasterImpl::MasterImpl()
     : next_agent_id_(0),
       next_task_id_(0),
-      next_job_id_(0) {
+      next_job_id_(0),
+      is_safe_mode_(true) {
     rpc_client_ = new RpcClient();
     thread_pool_.AddTask(boost::bind(&MasterImpl::Schedule, this));
     thread_pool_.AddTask(boost::bind(&MasterImpl::DeadCheck, this));
@@ -35,8 +37,14 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
                  const ::galaxy::TerminateTaskRequest* request,
                  ::galaxy::TerminateTaskResponse* response,
                  ::google::protobuf::Closure* done) {
+    if (is_safe_mode_) {
+        response->set_status(ERR_IN_SAFE_MODE);
+        LOG(WARNING, "can't terminate task in safe mode");
+        done->Run(); 
+        return;
+    }
     if (!request->has_task_id()) {
-        response->set_status(-1);
+        response->set_status(ERR_INPUT);
         done->Run();
         return;
     }
@@ -46,7 +54,7 @@ void MasterImpl::TerminateTask(::google::protobuf::RpcController* /*controller*/
     std::map<int64_t, TaskInstance>::iterator it;
     it = tasks_.find(task_id);
     if (it == tasks_.end()) {
-        response->set_status(-1);
+        response->set_status(ERR_INTERNAL);
         done->Run();
         return;
     }
@@ -190,6 +198,14 @@ void MasterImpl::DeadCheck() {
     MutexLock lock(&agent_lock_);
     std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
 
+    int idle_time = 5;
+    if (is_safe_mode_) {
+        LOG(WARNING, "no deadcheck in safe mode"); 
+        thread_pool_.DelayTask(idle_time * 1000,
+                           boost::bind(&MasterImpl::DeadCheck, this));
+        return;
+    }
+
     while (it != alives_.end()
            && it->first + FLAGS_agent_keepalive_timeout <= now_time) {
         std::set<std::string>::iterator node = it->second.begin();
@@ -198,6 +214,9 @@ void MasterImpl::DeadCheck() {
             LOG(INFO, "[DeadCheck] Agent %s dead, %lu task fail",
                 agent.addr.c_str(), agent.running_tasks.size());
             std::set<int64_t> running_tasks;
+            // agent dead will remove all task on this agent
+            // and scheduler will found job_running_num not enough
+            // reschedule those task with different task id
             UpdateJobsOnAgent(&agent, running_tasks, true);
             RemoveIndex(agent.id);
             agents_.erase(*node);
@@ -207,7 +226,6 @@ void MasterImpl::DeadCheck() {
         alives_.erase(it);
         it = alives_.begin();
     }
-    int idle_time = 5;
     if (it != alives_.end()) {
         idle_time = it->first + FLAGS_agent_keepalive_timeout - now_time;
         // LOG(INFO, "it->first= %d, now_time= %d\n", it->first, now_time);
@@ -222,6 +240,7 @@ void MasterImpl::DeadCheck() {
 void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                                    const std::set<int64_t>& running_tasks,
                                    bool clear_all) {
+    std::set<int64_t> internal_running_tasks = running_tasks;
     agent_lock_.AssertHeld();
     const std::string& agent_addr = agent->addr;
     assert(!agent_addr.empty());
@@ -229,9 +248,10 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
     int32_t now_time = common::timer::now_time();
     std::set<int64_t>::iterator it = agent->running_tasks.begin();
     std::vector<int64_t> del_tasks;
+    // TODO agent->running_tasks and internal_running_tasks all sorted, 
     for (; it != agent->running_tasks.end(); ++it) {
         int64_t task_id = *it;
-        if (running_tasks.find(task_id) == running_tasks.end()) { 
+        if (internal_running_tasks.find(task_id) == internal_running_tasks.end()) { 
             TaskInstance& instance = tasks_[task_id];
             int64_t job_id = instance.job_id();
             if (instance.status() == DEPLOYING
@@ -267,6 +287,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         } else {
             TaskInstance& instance = tasks_[task_id];
+            internal_running_tasks.erase(task_id);
             if(instance.status() != ERROR
                && instance.status() != COMPLETE){
                 continue;
@@ -280,6 +301,15 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
     }
     for (uint64_t i = 0UL; i < del_tasks.size(); ++i) {
         agent->running_tasks.erase(del_tasks[i]);
+    }
+
+    if (internal_running_tasks.size() != 0) {
+        // Task not in agentInfo which reported by this agent should be killed
+        std::set<int64_t>::iterator rt_it = internal_running_tasks.begin();
+        for (; rt_it != internal_running_tasks.end(); ++rt_it) {
+            LOG(WARNING, "task %ld not in master should be killed", *rt_it);
+            thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
+        }
     }
 }
 
@@ -336,6 +366,10 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         running_tasks.insert(task_id);
         int task_status = request->task_status(i).status();
         instance.set_status(task_status);
+        // NOTE task_id should not be equal when task failed and rescheduled
+        // when agent resurgence after dead, task_id not exists in tasks_
+        // So instance without jobId
+        instance.set_job_id(request->task_status(i).job_id());
         LOG(INFO, "Task %d status: %s",
             task_id, TaskState_Name((TaskState)task_status).c_str());
         instance.set_agent_addr(agent_addr);
@@ -352,7 +386,21 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             LOG(INFO, "%d use memory %ld", task_id, instance.memory_usage());
         }
     }
-    UpdateJobsOnAgent(agent, running_tasks);
+    if (is_safe_mode_) {
+        //rebuild agent, task relationship
+        agent->running_tasks = running_tasks;
+        //rebuild task, job relationship
+        std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
+        for (; rt_it != agent->running_tasks.end(); ++ rt_it) {
+            int task_id = *rt_it;     
+            TaskInstance& instance = tasks_[task_id];
+            JobInfo& job_info = jobs_[instance.job_id()];
+            job_info.running_num ++;
+            job_info.agent_tasks[agent_addr].insert(task_id);
+        }
+    } else {
+        UpdateJobsOnAgent(agent, running_tasks);
+    }
     SaveIndex(*agent);
     done->Run();
 }
@@ -368,6 +416,11 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
                    const ::galaxy::KillJobRequest* request,
                    ::galaxy::KillJobResponse* /*response*/,
                    ::google::protobuf::Closure* done) {
+    if (is_safe_mode_) {
+        LOG(WARNING, "can't kill job in safe mode"); 
+        done->Run();
+        return;
+    }
     MutexLock lock(&agent_lock_);
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
@@ -386,11 +439,17 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::UpdateJobRequest* request,
                          ::galaxy::UpdateJobResponse* response,
                          ::google::protobuf::Closure* done) {
+    if (is_safe_mode_) {
+        LOG(WARNING, "can't update job in safe mode"); 
+        response->set_status(ERR_IN_SAFE_MODE);
+        done->Run();
+        return;
+    }
     MutexLock lock(&agent_lock_);
     int64_t job_id = request->job_id();
     std::map<int64_t, JobInfo>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
-        response->set_status(-2);
+        response->set_status(ERR_INTERNAL);
         done->Run();
         return;
     }
@@ -404,6 +463,13 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
                          ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
+    if (is_safe_mode_) {
+        LOG(WARNING, "can't new job in safe mode"); 
+        response->set_status(ERR_IN_SAFE_MODE);
+        done->Run();
+        return;
+    }
+
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
     JobInfo& job = jobs_[job_id];
@@ -418,7 +484,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
 
-    response->set_status(0);
+    response->set_status(OK);
     response->set_job_id(job_id);
     done->Run();
 }
@@ -443,6 +509,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_mem_share(job->mem_share);
     rt_request.set_task_offset(job->running_num);
     rt_request.set_job_replicate_num(job->replica_num);
+    rt_request.set_job_id(job->id);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
@@ -548,6 +615,11 @@ void MasterImpl::ScaleDown(JobInfo* job) {
 
 void MasterImpl::Schedule() {
     MutexLock lock(&agent_lock_);
+    if (is_safe_mode_) {
+        LOG(WARNING, "no schedule in safe mode");
+        thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
+        return;
+    }
     int32_t now_time = common::timer::now_time();
     std::map<int64_t, JobInfo>::iterator job_it = jobs_.begin();
     std::vector<int64_t> should_rm_job;
@@ -707,6 +779,20 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
-} // namespace galasy
+void MasterImpl::SwitchSafeMode(::google::protobuf::RpcController* /*controller*/,
+        const ::galaxy::SafeModeSwitchRequest* request,
+        ::galaxy::SafeModeSwitchResponse* response,
+        ::google::protobuf::Closure* done) {
+    if (request->switch_on() == 1)  {
+        is_safe_mode_ = true; 
+    } else {
+        is_safe_mode_ = false; 
+    }
+    response->set_status(OK);
+    done->Run();
+    return;
+}
+
+} // namespace galaxy
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

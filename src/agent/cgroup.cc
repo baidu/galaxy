@@ -311,6 +311,7 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
         LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());
     }
+    status->set_job_id(m_task_info.job_id());
     // check if it is running
     int ret = IsRunning();
     if (ret == 0) {

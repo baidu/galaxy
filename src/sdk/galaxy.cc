@@ -32,11 +32,32 @@ public:
     bool KillTask(int64_t task_id);
     bool ListTaskByAgent(const std::string& agent_addr,
                          std::vector<TaskDescription> * tasks) ;
+    bool SwitchSafeMode(bool on);
 
 private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
 };
+
+bool GalaxyImpl::SwitchSafeMode(bool on) {
+    SafeModeSwitchRequest request;    
+    SafeModeSwitchResponse response;
+
+    if (on) {
+        request.set_switch_on(1); 
+    } else {
+        request.set_switch_on(0); 
+    }
+
+    rpc_client_->SendRequest(master_,
+            &Master_Stub::SwitchSafeMode, 
+            &request, &response, 5, 1);
+    if (response.has_status() 
+            && response.status() == OK) {
+        return true;
+    }
+    return false;
+}
 
 bool GalaxyImpl::KillTask(int64_t task_id){
     TerminateTaskRequest request;
@@ -46,7 +67,7 @@ bool GalaxyImpl::KillTask(int64_t task_id){
             &Master_Stub::TerminateTask,
             &request, &response, 5, 1);
     if (response.has_status()
-            && response.status() == 0) {
+            && response.status() == OK) {
         fprintf(stdout, "SUCCESS\n");
     }
     else {
@@ -90,7 +111,8 @@ bool GalaxyImpl::UpdateJob(const JobDescription& job) {
     request.set_replica_num(job.replicate_count);
     rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
                              &request, &response, 5, 1);
-    if (response.status() != 0) return false;
+    if (response.status() != OK) 
+        return false;
     return true;
 }
 

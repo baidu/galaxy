@@ -37,6 +37,7 @@ LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
 CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('third-64/gtest@1.6.0.100')
 CONFIGS('third-64/libcurl@base')
+CONFIGS('third-64/leveldb@base')
 
 
 #为32位/64位指定不同的依赖路径.
