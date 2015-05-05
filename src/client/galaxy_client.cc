@@ -112,6 +112,8 @@ int main(int argc, char* argv[]) {
             if(interval >0 && size >0 ){
                 job.deploy_step_interval = interval;
                 job.deploy_step_size = size;
+            }else{
+                fprintf(stdout,"interval and size must no be less than zero ,will ignore the parameters");
             }
         } 
         fprintf(stdout,"%ld",galaxy->NewJob(job));
