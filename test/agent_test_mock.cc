@@ -39,16 +39,16 @@ private:
     ::galaxy::KillTaskResponse killtask_resp_; 
 };
 
-void AgentImplMock::RunTask(::google::protobuf::RpcController* controller,
-        const ::galaxy::RunTaskRequest* req,
+void AgentImplMock::RunTask(::google::protobuf::RpcController* /*controller*/,
+        const ::galaxy::RunTaskRequest* /*req*/,
         ::galaxy::RunTaskResponse* resp,
         ::google::protobuf::Closure* done) {
     resp->CopyFrom(runtask_resp_);
     done->Run();
 }
 
-void AgentImplMock::KillTask(::google::protobuf::RpcController* controller,
-        const ::galaxy::KillTaskRequest* req,
+void AgentImplMock::KillTask(::google::protobuf::RpcController* /*controller*/,
+        const ::galaxy::KillTaskRequest* /*req*/,
         ::galaxy::KillTaskResponse* resp,
         ::google::protobuf::Closure* done) {
     resp->CopyFrom(killtask_resp_);
@@ -90,6 +90,8 @@ int main(int argc, char* argv[]) {
             exit(1);
         }
     }
+
+    request.set_agent_addr(std::string("127.0.0.1:") + mock_port);
     
     if (!galaxy::test::ParseFromFile(run_task_resp_pb_file, &run_task_resp)) {
         fprintf(stderr, "parse run task resp failed\n"); 

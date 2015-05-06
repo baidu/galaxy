@@ -6,16 +6,11 @@ import "task.proto";
 option cc_generic_services = true;
 option py_generic_services = true;
 
-enum MasterCommandType {
-    HEART_BEAT = 0;
-    // Task control
-    LAUNCH_TASK = 1;
-    KILL_TASK = 2;
-    CLEAN_TAKS = 3;     // before GC time, agent should be clean without command ?
-    // Container Control
-    CREATE_CONTAINER = 4;   
-    DESTORY_CONTAINER = 5;
-    UPDATE_CONTAINER = 6;
+enum MasterRespState {
+    kMasterResponseOK = 0;
+    kMasterResponseErrorInput = -1;   
+    kMasterResponseErrorInternal = -2;
+    kMasterResponseErrorSafeMode = -4;
 }
 
 message HeartBeatRequest {
@@ -92,6 +87,18 @@ message ListTaskResponse {
     repeated TaskInstance scheduled_tasks = 3;
 }
 
+message JobCheckPointCell {
+    optional int64 job_id = 1;
+    optional int32 replica_num = 2;
+    optional string job_name = 3;
+    optional bytes job_raw = 4;
+    optional string cmd_line = 5;
+    optional double cpu_share = 6;
+    optional int64 mem_share = 7;
+    optional int32 deploy_step_size = 8;
+    optional bool killed = 9;
+}
+
 message JobInstance {
     optional int64 job_id = 2;
     optional string job_name = 3;
@@ -122,6 +129,7 @@ message NodeInstance {
 
 message ListNodeRequest {
 }
+
 message ListNodeResponse {
     repeated NodeInstance nodes = 2;
 }

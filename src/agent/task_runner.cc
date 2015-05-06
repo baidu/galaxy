@@ -262,6 +262,7 @@ void CommandTaskRunner::Status(TaskStatus* status) {
                 status->cpu_usage(), status->memory_usage());
     }
 
+    status->set_job_id(m_task_info.job_id());
     LOG(INFO, "task with id %ld state %d", 
             m_task_info.task_id(),
             m_task_state);

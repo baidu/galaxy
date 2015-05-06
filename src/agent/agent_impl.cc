@@ -108,6 +108,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_required_mem(request->mem_share());
     task_info.set_task_offset(request->task_offset());
     task_info.set_job_replicate_num(request->job_replicate_num());
+    task_info.set_job_id(request->job_id());
 
     TaskResourceRequirement requirement;
     requirement.cpu_limit = request->cpu_share();

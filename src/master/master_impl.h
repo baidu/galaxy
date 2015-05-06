@@ -19,13 +19,14 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 
+#include "leveldb/db.h"
 #include "common/mutex.h"
 #include "common/thread_pool.h"
 
 namespace galaxy {
 
 class Agent_Stub;
-
+// rebuild by agent regist
 struct AgentInfo {
     int64_t id;
     std::string addr;
@@ -100,6 +101,8 @@ public:
     MasterImpl();
     virtual ~MasterImpl();
 public:
+    bool Recover();
+
     void HeartBeat(::google::protobuf::RpcController* controller,
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
@@ -133,8 +136,9 @@ public:
                   const ::galaxy::ListNodeRequest* request,
                   ::galaxy::ListNodeResponse* response,
                   ::google::protobuf::Closure* done);
-
 private:
+    bool PersistenceJobInfo(const JobInfo& job_info);
+    bool DeletePersistenceJobInfo(const JobInfo& job_info);
     void DeadCheck();
     void Schedule();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
@@ -155,7 +159,7 @@ private:
     void RemoveIndex(int64_t agent_id);
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
-
+    bool SafeModeCheck();
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;
@@ -175,6 +179,9 @@ private:
     RpcClient* rpc_client_;
     /// Scheduler
     AgentLoadIndex index_;
+    bool is_safe_mode_;
+    int64_t start_time_;
+    leveldb::DB* persistence_handler_;
 };
 
 } // namespace galaxy
