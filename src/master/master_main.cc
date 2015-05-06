@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
 
     if (!master_service->Recover()) {
         fprintf(stderr, "master recover from checkpoint failed\n"); 
-        exit(1);
+        return EXIT_FAILURE;
     }
 
     if (!rpc_server.RegisterService(master_service)) {

@@ -80,13 +80,6 @@ bool MasterImpl::Recover() {
             LOG(WARNING, "job cell invalid %s", job_key.c_str());
             return false;
         }
-        //if (cell.replica_num() == 0) {
-        //    //TODO maybe erase job do persistence ?
-        //    LOG(WARNING, "recover job replica_num = 0 %s %s", 
-        //            job_key.c_str(), cell.job_name().c_str()); 
-        //    it->Next();
-        //    continue;
-        //}
         if (max_job_id < job_id) {
             max_job_id = job_id; 
         }
@@ -116,7 +109,6 @@ bool MasterImpl::Recover() {
         is_safe_mode_ = true;
         it->Next();
     }
-    // NOTE failed before should not work on
     delete it;
     
     next_job_id_ = max_job_id + 1;
@@ -296,12 +288,6 @@ void MasterImpl::DeadCheck() {
     std::map<int32_t, std::set<std::string> >::iterator it = alives_.begin();
 
     int idle_time = 5;
-    if (SafeModeCheck()) {
-        LOG(WARNING, "no deadcheck in safe mode"); 
-        thread_pool_.DelayTask(idle_time * 1000,
-                           boost::bind(&MasterImpl::DeadCheck, this));
-        return;
-    }
 
     while (it != alives_.end()
            && it->first + FLAGS_agent_keepalive_timeout <= now_time) {
@@ -311,9 +297,6 @@ void MasterImpl::DeadCheck() {
             LOG(INFO, "[DeadCheck] Agent %s dead, %lu task fail",
                 agent.addr.c_str(), agent.running_tasks.size());
             std::set<int64_t> running_tasks;
-            // agent dead will remove all task on this agent
-            // and scheduler will found job_running_num not enough
-            // reschedule those task with different task id
             UpdateJobsOnAgent(&agent, running_tasks, true);
             RemoveIndex(agent.id);
             agents_.erase(*node);
@@ -415,33 +398,28 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         agent->running_tasks.erase(del_tasks[i]);
     }
 
-    if (internal_running_tasks.size() != 0) {
-        // TODO Task not in agentInfo which reported 
-        // by this agent may be killed
-        // scheduler shake
-        std::set<int64_t>::iterator rt_it = internal_running_tasks.begin();
-        for (; rt_it != internal_running_tasks.end(); ++rt_it) {
-            int64_t rt_task_id = *rt_it;
-            LOG(WARNING, "task %ld not in master add killed", *rt_it);
-            // rebuild agent, task relationship
-            agent->running_tasks.insert(rt_task_id);
+    std::set<int64_t>::iterator rt_it = internal_running_tasks.begin();
+    for (; rt_it != internal_running_tasks.end(); ++rt_it) {
+        int64_t rt_task_id = *rt_it;
+        LOG(WARNING, "task %ld not in master add killed", *rt_it);
+        // rebuild agent, task relationship
+        agent->running_tasks.insert(rt_task_id);
 
-            // rebuild job, task relationship
-            TaskInstance& rt_instance = tasks_[rt_task_id];
-            JobInfo& job_info = jobs_[rt_instance.job_id()];
-            if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
-                    == job_info.agent_tasks[agent_addr].end()) {
-                job_info.running_num ++;
-            }
-            rt_instance.mutable_info()->set_task_name(job_info.job_name);
-            rt_instance.mutable_info()->set_task_id(rt_task_id);
-            rt_instance.mutable_info()->set_required_cpu(job_info.cpu_share);
-            rt_instance.mutable_info()->set_required_mem(job_info.mem_share);
-            // TODO rt_instance.mutable_info->set_offset()
-            //      rt_instance.mutable_info->set_start_time()
-            job_info.agent_tasks[agent_addr].insert(rt_task_id);
-            //thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
+        // rebuild job, task relationship
+        TaskInstance& rt_instance = tasks_[rt_task_id];
+        JobInfo& job_info = jobs_[rt_instance.job_id()];
+        if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
+                == job_info.agent_tasks[agent_addr].end()) {
+            job_info.running_num ++;
         }
+        rt_instance.mutable_info()->set_task_name(job_info.job_name);
+        rt_instance.mutable_info()->set_task_id(rt_task_id);
+        rt_instance.mutable_info()->set_required_cpu(job_info.cpu_share);
+        rt_instance.mutable_info()->set_required_mem(job_info.mem_share);
+        // TODO rt_instance.mutable_info->set_offset()
+        //      rt_instance.mutable_info->set_start_time()
+        job_info.agent_tasks[agent_addr].insert(rt_task_id);
+        //thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
     }
 }
 
@@ -501,9 +479,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         running_tasks.insert(task_id);
         int task_status = request->task_status(i).status();
         instance.set_status(task_status);
-        // NOTE task_id should not be equal when task failed and rescheduled
-        // when agent resurgence after dead, task_id not exists in tasks_
-        // So instance without jobId
         instance.set_job_id(request->task_status(i).job_id());
         LOG(DEBUG, "Task %d status: %s",
             task_id, TaskState_Name((TaskState)task_status).c_str());
