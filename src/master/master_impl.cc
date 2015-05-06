@@ -48,11 +48,11 @@ bool MasterImpl::Recover() {
 
     if (persistence_handler_ == NULL) {
         // open leveldb  TODO do some config
-        leveldb::Status status;
         leveldb::Options options;
         options.create_if_missing = true;
-        status = leveldb::DB::Open(options, 
-                checkpoint_path, &persistence_handler_);
+        leveldb::Status status = 
+            leveldb::DB::Open(options, 
+                    checkpoint_path, &persistence_handler_);
         if (!status.ok()) {
             LOG(FATAL, "open checkpoint %s failed res[%s]",
                     checkpoint_path.c_str(), status.ToString().c_str()); 
@@ -63,7 +63,6 @@ bool MasterImpl::Recover() {
     // TODO JobInfo is equal to JobCheckpointCell, use pb later
 
     // TODO do some config options
-    leveldb::Status scan_status;
     leveldb::Iterator*  it = 
         persistence_handler_->NewIterator(leveldb::ReadOptions());
     it->SeekToFirst();
@@ -100,10 +99,10 @@ bool MasterImpl::Recover() {
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
+        job_info.killed = cell.killed();
         
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
-        job_info.killed = false;
 
         LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
@@ -551,15 +550,16 @@ void MasterImpl::KillJob(::google::protobuf::RpcController* /*controller*/,
     JobInfo& job = it->second;
     int64_t old_replica_num = job.replica_num;
     job.replica_num = 0;
+    job.killed = true;
     // Not Delete here, delete by recover
     if (!PersistenceJobInfo(job)) {
         LOG(WARNING, "kill job failed for persistence"); 
         job.replica_num = old_replica_num;
+        job.killed = false;
         done->Run();
         return;
     }
     
-    job.killed = true;
     done->Run();
 }
 
@@ -600,12 +600,12 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
                          ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
-    if (SafeModeCheck()) {
-        LOG(WARNING, "can't new job in safe mode"); 
-        response->set_status(kMasterResponseErrorSafeMode);
-        done->Run();
-        return;
-    }
+    //if (SafeModeCheck()) {
+    //    LOG(WARNING, "can't new job in safe mode"); 
+    //    response->set_status(kMasterResponseErrorSafeMode);
+    //    done->Run();
+    //    return;
+    //}
 
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
@@ -951,6 +951,7 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     cell.set_cpu_share(job_info.cpu_share);
     cell.set_mem_share(job_info.mem_share);
     cell.set_deploy_step_size(job_info.deploy_step_size);
+    cell.set_killed(job_info.killed);
 
     LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
             cell.job_name().c_str(),
@@ -975,8 +976,8 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
         return false;
     }
 
-    leveldb::Status write_status;
-    write_status = persistence_handler_->Put(
+    leveldb::Status write_status = 
+        persistence_handler_->Put(
             leveldb::WriteOptions(), key, cell_value);
     if (!write_status.ok()) {
         LOG(WARNING, "serialize job cell %s failed to write",

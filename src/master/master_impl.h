@@ -77,20 +77,20 @@ typedef boost::multi_index::multi_index_container<
 
 
 struct JobInfo {
-    int64_t id;             // persistence       
-    int32_t replica_num;    // persistence       
-    std::string job_name;   // persistence
-    std::string job_raw;    // persistence
-    std::string cmd_line;   // persistence
+    int64_t id;                    
+    int32_t replica_num;           
+    std::string job_name;   
+    std::string job_raw;    
+    std::string cmd_line;   
     int32_t running_num;
     int32_t scale_down_time;
-    double cpu_share;       // persistence
-    int64_t mem_share;      // persistence
+    double cpu_share;       
+    int64_t mem_share;      
     std::map<std::string, std::set<int64_t> > agent_tasks;
     std::map<std::string, std::set<int64_t> > complete_tasks;
-    bool killed;
+    bool killed;            
     std::deque<TaskInstance> scheduled_tasks;
-    int32_t deploy_step_size;
+    int32_t deploy_step_size;   
     std::set<int64_t> deploying_tasks;
 };
 
@@ -159,7 +159,6 @@ private:
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
     bool SafeModeCheck();
-
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;
@@ -167,14 +166,14 @@ private:
     Mutex agent_lock_;
     /// Agents manager
     std::map<std::string, AgentInfo> agents_;
-    int64_t next_agent_id_; // no need rebuild
+    int64_t next_agent_id_; 
     std::map<int32_t, std::set<std::string> > alives_;
     /// Jobs manager
     std::map<int64_t, JobInfo> jobs_;
-    int64_t next_job_id_; // need rebuild by recover
+    int64_t next_job_id_; 
     /// Tasks manager
     std::map<int64_t, TaskInstance> tasks_;
-    int64_t next_task_id_; // no need rebuild
+    int64_t next_task_id_; 
     /// Rpc client
     RpcClient* rpc_client_;
     /// Scheduler
