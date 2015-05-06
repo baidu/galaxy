@@ -19,6 +19,7 @@ check_install protoc 'jumbo install protobuf'
 check_install git 'jumbo install git'
 
 
+jumbo install python-pip
 
 # config pip
 mkdir -p $HOME/.pip/
