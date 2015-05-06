@@ -178,13 +178,13 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
         assert(0);
     }
     uid_t userid = getuid();
-	if (0 == userid) {
-	    chroot(m_workspace->GetPath().c_str());
+    if (0 == userid) {
+        chroot(m_workspace->GetPath().c_str());
         if (pw->pw_uid != userid) {
-			setuid(pw->pw_uid);
-	    }
-	}
-	
+            setuid(pw->pw_uid);
+        }
+    }
+    
     char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
     task_id_env <<"TASK_ID="<<m_task_info.task_offset();
@@ -311,17 +311,17 @@ int CommandTaskRunner::Start() {
     passwd *pw = getpwnam(FLAGS_task_acct.c_str());
     if (NULL == pw) {
         LOG(WARNING, "getpwnam %s failed", FLAGS_task_acct.c_str());
-		return -1;;
+        return -1;;
     }
-	uid_t userid = getuid();
+    uid_t userid = getuid();
     if (pw->pw_uid != userid && 0 == userid) {
         file::ChownArg arg;
         arg.uid = pw->pw_uid; 
         arg.gid = pw->pw_gid;
         if (!file::OptForEach(m_workspace->GetPath(), file::Chown, (void*)&arg)) {
             LOG(WARNING, "chown %s failed", m_workspace->GetPath().c_str());
-			return -1;
-        }   
+            return -1;
+        }
     }
 
     m_child_pid = fork();
@@ -332,8 +332,7 @@ int CommandTaskRunner::Start() {
         if (ret != 0) {
             assert(0);
         }
-        std::string meta_file = persistence_path_dir_
-            + "/" + RUNNER_META_PREFIX
+        std::string meta_file = persistence_path_dir_ + "/" + RUNNER_META_PREFIX 
             + boost::lexical_cast<std::string>(sequence_id_);
         int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
         if (meta_fd == -1) {

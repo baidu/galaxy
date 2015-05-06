@@ -29,9 +29,9 @@ int DefaultWorkspace::Create() {
     //TODO safe path join
     //create work dir
     std::stringstream private_path;
-    private_path << m_root_path;
+    private_path << "/" << m_root_path;
     int status = 0;
-    private_path << FLAGS_task_acct;
+    private_path << "/" << FLAGS_task_acct;
     status = MakePath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     m_task_root_path = private_path.str();
     if (0 != status) {

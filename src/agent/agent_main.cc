@@ -46,8 +46,6 @@ int main(int argc, char* argv[]) {
             FLAGS_cgroup_root = s; 
         } else if (sscanf(argv[i], "--user=%s", s) == 1) {
             FLAGS_task_acct = s; 
-        } else if(sscanf(argv[i], "--http-port=%s", s) == 1) {
-            FLAGS_agent_http_port = s;
         }
 
          

@@ -176,29 +176,29 @@ bool Remove(const std::string& path) {
 
 bool Chown(const std::string path, void* argv) 
 {
-	if (0 == path.length() || NULL == argv) {
-		return false;
-	}
-	ChownArg* arg = (ChownArg*)argv;
-	if (lchown(path.c_str(), arg->uid, arg->gid)) {
-		LOG(WARNING, "chown %s failed. err[%d: %s]", 
-			path.c_str(), errno, strerror(errno));
-		return false;
-	}
+    if (0 == path.length() || NULL == argv) {
+        return false;
+    }
+    ChownArg* arg = (ChownArg*)argv;
+    if (lchown(path.c_str(), arg->uid, arg->gid)) {
+        LOG(WARNING, "chown %s failed. err[%d: %s]", 
+            path.c_str(), errno, strerror(errno));
+        return false;
+    }
     struct stat st;
     stat(path.c_str(), &st);
-	return true;
+    return true;
 }
 bool OptForEach(const std::string& path, 
-	bool (*func)(const std::string, void*), void *argv) {
+    bool (*func)(const std::string, void*), void *argv) {
     bool rs = false;
     if (!IsFile(path, rs)) {
-		LOG(WARNING, "IsFile %s failed err", path.c_str());
+        LOG(WARNING, "IsFile %s failed err", path.c_str());
         return false; 
     }
     if (!rs) {
         if (!IsLink(path, rs)) {
-			LOG(WARNING, "IsLink %s failed err", path.c_str());
+            LOG(WARNING, "IsLink %s failed err", path.c_str());
             return false; 
         } 
     }
@@ -214,7 +214,7 @@ bool OptForEach(const std::string& path,
     }
 
     if (!IsDir(path.c_str(), rs)) {
-		LOG(WARNING, "IsDir %s failed err", path.c_str());
+        LOG(WARNING, "IsDir %s failed err", path.c_str());
         return false; 
     }
     if (!rs) {
@@ -231,7 +231,7 @@ bool OptForEach(const std::string& path,
         
         bool is_dir;
         if (!IsDir(cur_path, is_dir)) {
-			LOG(WARNING, "IsDir %s failed err", path.c_str());
+            LOG(WARNING, "IsDir %s failed err", path.c_str());
             return false; 
         }
 
@@ -297,7 +297,7 @@ bool OptForEach(const std::string& path,
             }
             closedir(dir_desc);
             if (!ret) {
-				LOG(WARNING, "IsDir %s failed err", path.c_str());
+                LOG(WARNING, "IsDir %s failed err", path.c_str());
                 return ret;
             } 
         } 
@@ -418,5 +418,4 @@ bool IsDir(const std::string& path, bool& is_dir) {
 
 }   // ending namespace file
 }   // ending namespace galaxy
-
 /* vim: set ts=4 sw=4 sts=4 tw=100 */

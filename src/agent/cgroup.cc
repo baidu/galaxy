@@ -258,19 +258,19 @@ int ContainerTaskRunner::Start() {
     passwd *pw = getpwnam(FLAGS_task_acct.c_str());
     if (NULL == pw) {
         LOG(WARNING, "getpwnam %s failed", FLAGS_task_acct.c_str());
-		return -1;;
+        return -1;
     }
-	uid_t userid = getuid();
+    uid_t userid = getuid();
     if (pw->pw_uid != userid && 0 == userid) {
         file::ChownArg arg;
         arg.uid = pw->pw_uid; 
         arg.gid = pw->pw_gid;
         if (!file::OptForEach(m_workspace->GetPath(), file::Chown, (void*)&arg)) {
             LOG(WARNING, "chown %s failed", m_workspace->GetPath().c_str());
-			return -1;
+            return -1;
         }   
     }
-	
+
     m_child_pid = fork();
 
     if (m_child_pid == 0) {
