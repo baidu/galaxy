@@ -13,6 +13,7 @@ message RunTaskRequest {
     optional int64 mem_share = 6;
     optional int32 job_replicate_num = 7;
     optional int32 task_offset = 8;
+    optional int64 job_id = 9; // use to rebuild master
 }
 
 message RunTaskResponse {

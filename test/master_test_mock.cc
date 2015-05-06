@@ -19,8 +19,8 @@ public:
             const ::galaxy::HeartBeatResponse& resp) {
         heart_beat_resp_ = resp;
     }
-    virtual void HeartBeat(::google::protobuf::RpcController* controller,
-            const ::galaxy::HeartBeatRequest* request,
+    virtual void HeartBeat(::google::protobuf::RpcController* /*controller*/,
+            const ::galaxy::HeartBeatRequest* /*request*/,
             ::galaxy::HeartBeatResponse* response,
             ::google::protobuf::Closure* done) {
         response->CopyFrom(heart_beat_resp_); 

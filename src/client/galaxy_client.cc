@@ -59,20 +59,20 @@ int main(int argc, char* argv[]) {
             help();
             return -1;
         }
-    } else if(strcmp(argv[2], "listtaskbyagent") == 0){
+    } else if (strcmp(argv[2], "listtaskbyagent") == 0){
         COMMAND = LISTTASKBYAGENT;
-        if(argc < 4){
+        if (argc < 4) {
            help();
            return -1;
         }
 
-    }else if(strcmp(argv[2], "updatejob") == 0){
+    } else if (strcmp(argv[2], "updatejob") == 0) {
         COMMAND = UPDATEJOB;
-        if(argc < 5){
+        if (argc < 5) {
             help();
             return -1;
         }
-    }else {
+    } else {
         help();
         return -1;
     }
@@ -127,7 +127,7 @@ int main(int argc, char* argv[]) {
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(job_id, task_id, NULL);
-    }else if(COMMAND== LISTTASKBYAGENT){
+    } else if (COMMAND== LISTTASKBYAGENT) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTaskByAgent(argv[3], NULL);
     } else if (COMMAND == LISTNODE) {
@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
         int64_t job_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->TerminateJob(job_id);
-    } else if(COMMAND == UPDATEJOB){
+    } else if (COMMAND == UPDATEJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy::JobDescription job;
         job.replicate_count = atoi(argv[4]);
