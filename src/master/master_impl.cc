@@ -589,10 +589,13 @@ void MasterImpl::Schedule() {
             // ±‹√‚À≤º‰Àı≥…0¡À
             job.scale_down_time = now_time;
         }
-        LOG(INFO,"schedule job %ld ,the deploying size is %d",job.id,job.deploying_tasks.size());
-        int deploying_tasks_size = job.deploying_tasks.size();
-        for (int i = 0; (i + deploying_tasks_size) < job.deploy_step_size 
-                        && (i+job.running_num) < job.replica_num ; i++) {
+        int count_for_log = 0;
+        //fix warning
+        uint32_t deploy_step_size = job.deploy_step_size;
+        //just for log
+        uint32_t old_deploying_tasks_size = job.deploying_tasks.size();
+        for ( ;job.deploying_tasks.size() < deploy_step_size
+             && job.running_num < job.replica_num ;) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
             std::string agent_addr = AllocResource(job);
@@ -611,8 +614,11 @@ void MasterImpl::Schedule() {
                     SaveIndex(agent_it->second);
                 }   
             }   
+            count_for_log++;
 
         }
+        LOG(INFO,"schedule job %ld ,the deploying size is %d,deployed count %d", job.id,
+                 old_deploying_tasks_size, count_for_log);
     }
     for (uint32_t i = 0;i < should_rm_job.size();i++) {
         LOG(INFO,"remove job %ld",should_rm_job[i]);
