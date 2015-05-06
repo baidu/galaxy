@@ -138,6 +138,7 @@ public:
                   ::google::protobuf::Closure* done);
 private:
     bool PersistenceJobInfo(const JobInfo& job_info);
+    bool DeletePersistenceJobInfo(const JobInfo& job_info);
     void DeadCheck();
     void Schedule();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);

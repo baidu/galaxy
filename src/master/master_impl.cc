@@ -80,13 +80,13 @@ bool MasterImpl::Recover() {
             LOG(WARNING, "job cell invalid %s", job_key.c_str());
             return false;
         }
-        if (cell.replica_num() == 0) {
-            //TODO maybe erase job do persistence ?
-            LOG(WARNING, "recover job replica_num = 0 %s %s", 
-                    job_key.c_str(), cell.job_name().c_str()); 
-            it->Next();
-            continue;
-        }
+        //if (cell.replica_num() == 0) {
+        //    //TODO maybe erase job do persistence ?
+        //    LOG(WARNING, "recover job replica_num = 0 %s %s", 
+        //            job_key.c_str(), cell.job_name().c_str()); 
+        //    it->Next();
+        //    continue;
+        //}
         if (max_job_id < job_id) {
             max_job_id = job_id; 
         }
@@ -99,6 +99,9 @@ bool MasterImpl::Recover() {
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
+        if (job_info.deploy_step_size == 0) {
+            job_info.deploy_step_size = job_info.replica_num;
+        }
         job_info.killed = cell.killed();
         
         job_info.running_num = 0;
@@ -820,6 +823,11 @@ void MasterImpl::Schedule() {
     }
     for (uint32_t i = 0;i < should_rm_job.size();i++) {
         LOG(INFO,"remove job %ld",should_rm_job[i]);
+
+        if (!DeletePersistenceJobInfo(jobs_[should_rm_job[i]])) {
+            LOG(FATAL, "remove job %ld persistence failed", 
+                    should_rm_job[i]);
+        }
         jobs_.erase(should_rm_job[i]);
     }
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
@@ -940,6 +948,22 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
+bool MasterImpl::DeletePersistenceJobInfo(const JobInfo& job_info) {
+    if (persistence_handler_ == NULL) {
+        LOG(WARNING, "persistence handler not inited yet");
+        return false;
+    }    
+    std::string key = boost::lexical_cast<std::string>(job_info.id);
+
+    leveldb::Status status = 
+        persistence_handler_->Delete(leveldb::WriteOptions(), key);
+    if (!status.ok()) {
+        LOG(WARNING, "delete %s failed", key.c_str()); 
+        return false;
+    }
+    return true;
+}
+
 bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     // setup persistence cell TODO should be only use one struct
     JobCheckPointCell cell;
@@ -1001,6 +1025,7 @@ bool MasterImpl::SafeModeCheck() {
 
     return true;
 }
+
 
 } // namespace galaxy
 
