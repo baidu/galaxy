@@ -262,10 +262,7 @@ int ContainerTaskRunner::Start() {
     }
     uid_t userid = getuid();
     if (pw->pw_uid != userid && 0 == userid) {
-        file::ChownArg arg;
-        arg.uid = pw->pw_uid; 
-        arg.gid = pw->pw_gid;
-        if (!file::OptForEach(m_workspace->GetPath(), file::Chown, (void*)&arg)) {
+        if (!file::Chown(m_workspace->GetPath(), pw->pw_uid, pw->pw_gid)) {
             LOG(WARNING, "chown %s failed", m_workspace->GetPath().c_str());
             return -1;
         }   

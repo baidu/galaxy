@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <sys/types.h>
 #include <boost/function.hpp>
 
 #include "google/protobuf/message.h"
@@ -19,6 +20,8 @@ namespace galaxy {
 void GetStrFTime(std::string* time_str);
 
 namespace file {
+
+typedef boost::function<bool(const char* path)> OptFunc; 
 
 struct ChownArg {
 	uid_t uid;
@@ -33,9 +36,9 @@ bool GetDirFilesByPrefix(
 
 bool Remove(const std::string& path); 
 
-bool Chown(const std::string path, void* argv); 
+bool Chown(const std::string& path, uid_t uid, gid_t gid);
 
-bool OptForEach(const std::string& path, bool (*func)(const std::string, void*), void *argv);
+bool OptForEach(const std::string& path, const OptFunc& func);
 
 bool IsDir(const std::string& path, bool& is_dir);
 

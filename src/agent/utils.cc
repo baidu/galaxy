@@ -6,7 +6,6 @@
 
 #include "agent/utils.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -19,6 +18,8 @@
 #include <set>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 
 #include "common/logging.h"
 
@@ -63,134 +64,24 @@ bool IsSpecialDir(const char* path) {
     return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
 }
 
-bool Remove(const std::string& path) {
-    bool rs = false;
-    if (!IsFile(path, rs)) {
-        return false; 
-    }
-    if (!rs) {
-        if (!IsLink(path, rs)) {
-            return false; 
-        } 
-    }
-    if (rs) {
-        if (remove(path.c_str()) != 0) {
-            LOG(WARNING, "remove %s failed err[%d: %s]",
-                    path.c_str(),
-                    errno,
-                    strerror(errno));
-            return false;
-        }
-        return true;
-    }
-
-    if (!IsDir(path.c_str(), rs)) {
-        return false; 
-    }
-    if (!rs) {
-        LOG(WARNING, "remove %s failed because neither dir nor file");
-        return false;
-    }
-
-    std::vector<std::string> stack;
-    stack.push_back(path);
-    std::set<std::string> visited;
-    std::string cur_path;
-    while (stack.size() != 0) {
-        cur_path = stack.back();
-        
-        bool is_dir;
-        if (!IsDir(cur_path, is_dir)) {
-            return false; 
-        }
-
-        if (is_dir) {
-            if (visited.find(cur_path) != visited.end()) {
-                stack.pop_back();
-                if (remove(cur_path.c_str()) != 0) {
-                    LOG(WARNING, "remove %s failed err[%d: %s]",
-                            cur_path.c_str(),
-                            errno,
-                            strerror(errno)); 
-                    return false;
-                } 
-                continue;
-            }
-            visited.insert(cur_path);
-            DIR* dir_desc = opendir(cur_path.c_str());
-            if (dir_desc == NULL) {
-                LOG(WARNING, "open dir %s failed err[%d: %s]",
-                        cur_path.c_str(),
-                        errno,
-                        strerror(errno)); 
-                return false;
-            }
-            bool ret = true;
-            struct dirent* dir_entity;
-            while ((dir_entity = readdir(dir_desc)) != NULL) {
-                if (IsSpecialDir(dir_entity->d_name)) {
-                    continue; 
-                } 
-                std::string tmp_path = cur_path + "/";
-                tmp_path.append(dir_entity->d_name);
-                bool is_file;
-                if (!IsFile(tmp_path, is_file)) {
-                    ret = false; 
-                    break;
-                }
-                if (!is_file) {
-                    if (!IsLink(tmp_path, is_file)) {
-                        ret = false; 
-                        break;
-                    }
-                }
-                if (is_file) {
-                    if (remove(tmp_path.c_str()) != 0) { 
-                        LOG(WARNING, "remove %s failed err[%d: %s]",
-                                tmp_path.c_str(),
-                                errno,
-                                strerror(errno));
-                        ret = false; 
-                        break;
-                    }
-                    continue;
-                }
-                is_dir = false;
-                if (!IsDir(tmp_path, is_dir)) {
-                    ret = false;
-                    break;
-                } 
-                if (is_dir) {
-                    stack.push_back(tmp_path);
-                }
-            }
-            closedir(dir_desc);
-            if (!ret) {
-                return ret;
-            } 
-        } 
-    }
-
-    return true;
-}
-
-bool Chown(const std::string path, void* argv) 
+bool Chown(const std::string& path, uid_t uid, gid_t gid) 
 {
-    if (0 == path.length() || NULL == argv) {
+    if (0 == path.length()) {
         return false;
     }
-    ChownArg* arg = (ChownArg*)argv;
-    if (lchown(path.c_str(), arg->uid, arg->gid)) {
-        LOG(WARNING, "chown %s failed. err[%d: %s]", 
-            path.c_str(), errno, strerror(errno));
-        return false;
-    }
-    struct stat st;
-    stat(path.c_str(), &st);
-    return true;
+    return OptForEach(path, boost::bind(lchown, _1, uid, gid));
 }
-bool OptForEach(const std::string& path, 
-    bool (*func)(const std::string, void*), void *argv) {
+
+bool Remove(const std::string& path)
+{
+    if (0 == path.length()) {
+        return false;
+    }
+    return OptForEach(path, boost::bind(remove, _1));
+}
+
+bool OptForEach(const std::string& path, const OptFunc& opt)
+{
     bool rs = false;
     if (!IsFile(path, rs)) {
         LOG(WARNING, "IsFile %s failed err", path.c_str());
@@ -203,7 +94,7 @@ bool OptForEach(const std::string& path,
         } 
     }
     if (rs) {
-        if (!func(path, argv)) {
+        if (!opt(path.c_str())) {
             LOG(WARNING, "opt %s failed err[%d: %s]",
                     path.c_str(),
                     errno,
@@ -238,7 +129,7 @@ bool OptForEach(const std::string& path,
         if (is_dir) {
             if (visited.find(cur_path) != visited.end()) {
                 stack.pop_back();
-                if (!func(cur_path, argv)) {
+                if (!opt(cur_path.c_str())) {
                     LOG(WARNING, "opt %s failed err[%d: %s]",
                             cur_path.c_str(),
                             errno,
@@ -276,7 +167,7 @@ bool OptForEach(const std::string& path,
                     }
                 }
                 if (is_file) {
-                    if (!func(tmp_path, argv)) { 
+                    if (!opt(tmp_path.c_str())) { 
                         LOG(WARNING, "opt %s failed err[%d: %s]",
                                 tmp_path.c_str(),
                                 errno,
