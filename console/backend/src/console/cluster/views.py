@@ -47,6 +47,8 @@ def get_status(req):
         machine.mem_used = str_pretty(machine.mem_used)
         machine.cpu_used = '%0.2f'%machine.cpu_used
         ret.append(machine.__dict__)
+    mem_usage_p = "%0f"%(100*total_mem_real_used/total_mem_num)
+    cpu_usage_p = "%0f"%(100*total_cpu_real_used/total_cpu_num)
     return builder.ok(data={'machinelist':ret,
                                 'total_node_num':total_node_num,
                                 'total_mem_used':str_pretty(total_mem_used),
@@ -55,7 +57,9 @@ def get_status(req):
                                 'total_mem_num':str_pretty(total_mem_num),
                                 'total_task_num':total_task_num,
                                 'total_mem_real_used':str_pretty(total_mem_real_used),
-                                'total_cpu_real_used':"%0.2f"%total_cpu_real_used}).build_json()
+                                'total_cpu_real_used':"%0.2f"%total_cpu_real_used,
+                                'mem_usage_p':mem_usage_p,
+                                'cpu_usage_p':cpu_usage_p}).build_json()
 def real_time_usage(req):
     builder = http.ResponseBuilder()
     master_addr = req.GET.get('master',None)

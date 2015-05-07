@@ -24,7 +24,8 @@ var galaxy = angular.module('galaxy.ui', [
     'cgNotify',
     'galaxy.ui.loader',
     'galaxy.ui.treeview',
-    'ui.select'
+    'ui.select',
+    'ui.gauge'
   ])
   .config(function ($routeProvider) {
     $routeProvider
