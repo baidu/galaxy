@@ -15,6 +15,7 @@ std::string FLAGS_master_addr = "localhost:" + FLAGS_master_port;
 int FLAGS_task_retry_times = 3;
 int FLAGS_task_deploy_timeout = 20;
 int FLAGS_agent_keepalive_timeout = 20;
+int FLAGS_master_max_len_sched_task_list = 30;
 
 std::string FLAGS_agent_work_dir = "/tmp";
 std::string FLAGS_container = "cmd";// cmd or cgroup
@@ -31,4 +32,6 @@ int64_t FLAGS_mem_bytes = FLAGS_mem_gbytes * 1024 * 1024 * 1024;
 int FLAGS_agent_gc_timeout = 1000 * 60 * 60 * 5;
 
 std::string FLAGS_task_acct = "galaxy";
+std::string FLAGS_master_checkpoint_path = "./data/";
+int64_t FLAGS_master_safe_mode_last = 30; // unit second
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

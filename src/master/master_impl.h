@@ -12,18 +12,21 @@
 #include <map>
 #include <queue>
 #include <set>
+#include <deque>
 #include <functional>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 
+#include "leveldb/db.h"
 #include "common/mutex.h"
 #include "common/thread_pool.h"
 
 namespace galaxy {
 
 class Agent_Stub;
+// rebuild by agent regist
 struct AgentInfo {
     int64_t id;
     std::string addr;
@@ -37,7 +40,7 @@ struct AgentInfo {
     int64_t version;
 };
 
-struct AgentLoad{
+struct AgentLoad {
     double load;
     double cpu_left;
     int64_t mem_left;
@@ -50,15 +53,15 @@ struct AgentLoad{
         agent_addr = agent.addr;
     }
 
-    void operator()(AgentLoad& l){
-        l.load = load;
-        l.cpu_left = cpu_left;
-        l.mem_left = mem_left;
-        l.agent_addr = agent_addr;
+    void operator()(AgentLoad& al){
+        al.load = load;
+        al.cpu_left = cpu_left;
+        al.mem_left = mem_left;
+        al.agent_addr = agent_addr;
     }
 };
 
-//agent load index includes agent id index and cpu-left index
+/// Agent load index includes agent id index and cpu-left index
 typedef boost::multi_index::multi_index_container<
     AgentLoad,
     boost::multi_index::indexed_by<
@@ -86,6 +89,9 @@ struct JobInfo {
     std::map<std::string, std::set<int64_t> > agent_tasks;
     std::map<std::string, std::set<int64_t> > complete_tasks;
     bool killed;
+    std::deque<TaskInstance> scheduled_tasks;
+    int32_t deploy_step_size;
+    std::set<int64_t> deploying_tasks;
 };
 
 class RpcClient;
@@ -93,9 +99,10 @@ class RpcClient;
 class MasterImpl : public Master {
 public:
     MasterImpl();
-    ~MasterImpl() {
-    }
+    virtual ~MasterImpl();
 public:
+    bool Recover();
+
     void HeartBeat(::google::protobuf::RpcController* controller,
                    const ::galaxy::HeartBeatRequest* request,
                    ::galaxy::HeartBeatResponse* response,
@@ -129,8 +136,9 @@ public:
                   const ::galaxy::ListNodeRequest* request,
                   ::galaxy::ListNodeResponse* response,
                   ::google::protobuf::Closure* done);
-
 private:
+    bool PersistenceJobInfo(const JobInfo& job_info);
+    bool DeletePersistenceJobInfo(const JobInfo& job_info);
     void DeadCheck();
     void Schedule();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
@@ -144,25 +152,36 @@ private:
     void ListTaskForAgent(const std::string& agent_addr,
         ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
     void ListTaskForJob(int64_t job_id,
-        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks);
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* tasks,
+        ::google::protobuf::RepeatedPtrField<TaskInstance >* sched_tasks);
 
     void SaveIndex(const AgentInfo& agent);
     void RemoveIndex(int64_t agent_id);
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
+    bool SafeModeCheck();
 private:
+    /// Global threadpool
     common::ThreadPool thread_pool_;
-    std::map<std::string, AgentInfo> agents_;
-    std::map<int64_t, TaskInstance> tasks_;
-    std::map<int64_t, JobInfo> jobs_;
-    std::map<int32_t, std::set<std::string> > alives_;
-    int64_t next_agent_id_;
-    int64_t next_task_id_;
-    int64_t next_job_id_;
+    /// Global lock
     Mutex agent_lock_;
-
+    /// Agents manager
+    std::map<std::string, AgentInfo> agents_;
+    int64_t next_agent_id_;
+    std::map<int32_t, std::set<std::string> > alives_;
+    /// Jobs manager
+    std::map<int64_t, JobInfo> jobs_;
+    int64_t next_job_id_;
+    /// Tasks manager
+    std::map<int64_t, TaskInstance> tasks_;
+    int64_t next_task_id_;
+    /// Rpc client
     RpcClient* rpc_client_;
+    /// Scheduler
     AgentLoadIndex index_;
+    bool is_safe_mode_;
+    int64_t start_time_;
+    leveldb::DB* persistence_handler_;
 };
 
 } // namespace galaxy

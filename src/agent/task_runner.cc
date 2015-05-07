@@ -184,8 +184,9 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
             setuid(pw->pw_uid);
         }
     }
-    
-    char *argv[] = {"sh","-c",const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
+
+    char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
+                    const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
     task_id_env <<"TASK_ID="<<m_task_info.task_offset();
     std::stringstream task_num_env;
@@ -258,6 +259,7 @@ void CommandTaskRunner::Status(TaskStatus* status) {
                 status->cpu_usage(), status->memory_usage());
     }
 
+    status->set_job_id(m_task_info.job_id());
     LOG(INFO, "task with id %ld state %d", 
             m_task_info.task_id(),
             m_task_state);

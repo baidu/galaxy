@@ -51,7 +51,8 @@ def create_service(request):
                                            ret['start_cmd'],
                                            ret['replicate_count'],
                                            ret['memory_limit']*1024*1024*1024,
-                                           ret['cpu_share'])
+                                           ret['cpu_share'],
+                                           deploy_step_size = ret['deploy_step_size'])
         if not status:
             return builder.error('fail create task').build_json()
         return builder.ok().build_json()

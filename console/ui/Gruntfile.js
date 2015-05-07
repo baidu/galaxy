@@ -6,7 +6,6 @@
 // 'test/spec/{,*/}*.js'
 // use this if you want to recursively match all subfolders:
 // 'test/spec/**/*.js'
-var proxySnippet = require('grunt-connect-proxy/lib/utils').proxyRequest;
 module.exports = function (grunt) {
 
   // Load grunt tasks automatically
@@ -71,13 +70,6 @@ module.exports = function (grunt) {
         hostname: '0.0.0.0',
         livereload: 8136
       },
-      proxies: [
-                {
-                    context: '/ajax',
-                    host: '0.0.0.0',
-                    port: 8787
-                }
-            ],
       livereload: {
         options: {
           open: true,
