@@ -169,6 +169,19 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
         node->set_mem_share(agent.mem_share);
         node->set_cpu_used(agent.cpu_used);
         node->set_mem_used(agent.mem_used);
+        int64_t mem_real_used = 0;
+        double cpu_real_used = 0.0;
+        std::set<int64_t>::iterator rt_it = agent.running_tasks.begin();
+        for (; rt_it != agent.running_tasks.end() ; ++rt_it) {
+            std::map<int64_t, TaskInstance>::iterator task_it = tasks_.find(*rt_it);
+            if(task_it == tasks_.end()){
+                continue;
+            }
+            mem_real_used += task_it->second.memory_usage();
+            cpu_real_used += task_it->second.cpu_usage();
+        }
+        node->set_mem_real_used(mem_real_used);
+        node->set_cpu_real_used(cpu_real_used);
     }
     done->Run();
 }

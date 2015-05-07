@@ -125,6 +125,9 @@ message NodeInstance {
     optional int64 mem_share = 6;
     optional double cpu_used = 7;
     optional int64 mem_used = 8;
+
+    optional int64 mem_real_used = 9;
+    optional double cpu_real_used = 10;
 }
 
 message ListNodeRequest {

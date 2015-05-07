@@ -29,6 +29,8 @@ def get_status(req):
     total_node_num = 0
     total_cpu_num = 0
     total_cpu_used = 0
+    total_cpu_real_used = 0
+    total_mem_real_used = 0
     total_mem_num = 0
     total_mem_used = 0
     total_task_num = 0
@@ -39,6 +41,8 @@ def get_status(req):
         total_task_num += machine.task_num
         total_cpu_used += machine.cpu_used
         total_mem_used += machine.mem_used
+        total_mem_real_used += machine.mem_real_used
+        total_cpu_real_used += machine.cpu_real_used 
         machine.mem_share = str_pretty(machine.mem_share)
         machine.mem_used = str_pretty(machine.mem_used)
         machine.cpu_used = '%0.2f'%machine.cpu_used
@@ -49,7 +53,14 @@ def get_status(req):
                                 'total_cpu_used':"%0.2f"%total_cpu_used,
                                 'total_cpu_num':total_cpu_num,
                                 'total_mem_num':str_pretty(total_mem_num),
-                                'total_task_num':total_task_num}).build_json()
-
-
+                                'total_task_num':total_task_num,
+                                'total_mem_real_used':str_pretty(total_mem_real_used),
+                                'total_cpu_real_used':"%0.2f"%total_cpu_real_used}).build_json()
+def real_time_usage(req):
+    builder = http.ResponseBuilder()
+    master_addr = req.GET.get('master',None)
+    if not master_addr:
+        return builder.error('master is required').build_json()
+    client = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    machine_list = client.list_node()
 

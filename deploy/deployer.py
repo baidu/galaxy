@@ -250,23 +250,7 @@ def build_parser(deployer):
                           action="store",
                           help="specify password on host")
     migrate_sub.set_defaults(func=deployer.migrate)
-
-
-
-
     return parser
-class Worker(threading.Thread):
-    def __init__(self,queue):
-        self.queue = queue
-        threading.Thread.__init__(self)
-        self.daemon = True
-    def run(self):
-        while not self.queue.empty():
-            try:
-                func,args = queue.get(False)
-                func(*args)
-            except:
-                pass
 
 class ThreadPool(object):
     def __init__(self,pool_size):
@@ -274,15 +258,15 @@ class ThreadPool(object):
 
     def map(self,func,args_list):
         queue = Queue.Queue()
+        worker_list = []
         for args in args_list:
             queue.put((func,args))
-        worker_list = []
-        for _ in range(self.pool_size):
+
+        for i in range(self.pool_size):
             worker = Worker(queue)
             worker.start()
             worker_list.append(worker)
-        for worker in worker_list:
-            worker.join()
+        queue.join()
 
 class Deployer(object):
     def __init__(self,concurrent_count):

@@ -46,6 +46,8 @@ angular.module('galaxy.ui.ctrl')
                         $scope.total_mem_used = data.data.total_mem_used;
                         $scope.total_mem_num = data.data.total_mem_num;
                         $scope.total_task_num = data.data.total_task_num;
+                        $scope.total_mem_real_used = data.data.total_mem_real_used;
+                        $scope.total_cpu_real_used = data.data.total_cpu_real_used;
                     }else{
                     
                     }
