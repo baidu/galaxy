@@ -402,17 +402,20 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
     for (; rt_it != internal_running_tasks.end(); ++rt_it) {
         int64_t rt_task_id = *rt_it;
         LOG(WARNING, "task %ld not in master add killed", *rt_it);
+        TaskInstance& rt_instance = tasks_[rt_task_id];
         // rebuild agent, task relationship
         agent->running_tasks.insert(rt_task_id);
 
         // rebuild job, task relationship
-        TaskInstance& rt_instance = tasks_[rt_task_id];
-        if (jobs_.find(rt_instance.job_id()) == jobs_.end()) {
-            // not exists job
-            thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
-            continue;
-        }
         JobInfo& job_info = jobs_[rt_instance.job_id()];
+        if (job_info.id != rt_instance.job_id()) {
+            job_info.id = rt_instance.job_id();
+            job_info.replica_num = 0;
+            job_info.killed = true;
+            job_info.job_name = "Out-of-date";
+            job_info.running_num = 0;
+            job_info.deploy_step_size = 1; 
+        }
         if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
                 == job_info.agent_tasks[agent_addr].end()) {
             job_info.running_num ++;
@@ -592,6 +595,9 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
 
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
+    while (jobs_.find(job_id) != jobs_.end()) {
+        job_id = next_job_id_ ++; 
+    }
 
     JobInfo job;
     job.id = job_id;
