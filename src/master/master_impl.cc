@@ -407,8 +407,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         agent->running_tasks.insert(rt_task_id);
 
         // rebuild job, task relationship
-        JobInfo& job_info = jobs_[rt_instance.job_id()];
-        if (job_info.id != rt_instance.job_id()) {
+        JobInfo job_info;
+        if (jobs_.find(rt_instance.job_id()) == jobs_.end()) {
             job_info.id = rt_instance.job_id();
             job_info.replica_num = 0;
             job_info.killed = true;
@@ -416,6 +416,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             job_info.running_num = 0;
             job_info.deploy_step_size = 1; 
         }
+        jobs_[rt_instance.job_id()] = job_info;
+
         if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
                 == job_info.agent_tasks[agent_addr].end()) {
             job_info.running_num ++;
