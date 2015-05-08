@@ -11,9 +11,7 @@ import json
 import sys
 import os
 import traceback
-import threading
-import Queue
-from paramiko import client
+from paramiko import client 
 from argparse import RawTextHelpFormatter
 BACK_GROUND_BLACK = '\033[1;40m'
 BACK_GROUND_RED = '\033[1;41m'
@@ -88,7 +86,7 @@ usage = """
 epilog = """
 bug reports<>
 """
-
+    
 def build_parser(deployer):
     parser = argparse.ArgumentParser(
                        prog="deployer.py",
@@ -97,7 +95,7 @@ def build_parser(deployer):
                        usage=usage)
     subparsers = parser.add_subparsers()
     stop_sub = subparsers.add_parser("stop",
-    		                     help="stop apps on all hosts")
+                                 help="stop apps on all hosts")
     stop_sub.add_argument('-v',
                           default=False,
                           dest="show_output",
@@ -114,14 +112,14 @@ def build_parser(deployer):
                           dest="user",
                           action="store",
                           help="specify user on host")
-
+    
     stop_sub.add_argument('-p',
                           default=None,
                           dest="password",
                           action="store",
                           help="specify password on host")
     stop_sub.set_defaults(func=deployer.stop)
-
+ 
     fetch_sub = subparsers.add_parser("fetch",help="fetch package to all hosts")
     fetch_sub.add_argument('-v',
                           default=False,
@@ -139,13 +137,13 @@ def build_parser(deployer):
                           dest="user",
                           action="store",
                           help="specify user on host")
-
+    
     fetch_sub.add_argument('-p',
                           default=None,
                           dest="password",
                           action="store",
                           help="specify password on host")
-
+    
     fetch_sub.set_defaults(func=deployer.fetch)
 
     start_sub = subparsers.add_parser("start",help="start apps on all hosts")
@@ -165,16 +163,16 @@ def build_parser(deployer):
                           dest="user",
                           action="store",
                           help="specify user on host")
-
+    
     start_sub.add_argument('-p',
                           default=None,
                           dest="password",
                           action="store",
                           help="specify password on host")
-
+   
     start_sub.set_defaults(func=deployer.start)
     init_sub = subparsers.add_parser("init",
-    		                     help="init all nodes")
+                                 help="init all nodes")
     init_sub.add_argument('-v',
                           default=False,
                           dest="show_output",
@@ -191,16 +189,16 @@ def build_parser(deployer):
                           dest="user",
                           action="store",
                           help="specify user on host")
-
+    
     init_sub.add_argument('-p',
                           default=None,
                           dest="password",
                           action="store",
                           help="specify password on host")
     init_sub.set_defaults(func=deployer.init)
-
+ 
     clean_sub = subparsers.add_parser("clean",
-    		                     help="clean all nodes")
+                                 help="clean all nodes")
     clean_sub.add_argument('-v',
                           default=False,
                           dest="show_output",
@@ -217,16 +215,16 @@ def build_parser(deployer):
                           dest="user",
                           action="store",
                           help="specify user on host")
-
+    
     clean_sub.add_argument('-p',
                           default=None,
                           dest="password",
                           action="store",
                           help="specify password on host")
     clean_sub.set_defaults(func=deployer.clean)
-
+     
     migrate_sub = subparsers.add_parser("migrate",
-    		                 help="migrate all apps")
+                             help="migrate all apps")
     migrate_sub.add_argument('-v',
                           default=False,
                           dest="show_output",
@@ -243,35 +241,23 @@ def build_parser(deployer):
                           dest="user",
                           action="store",
                           help="specify user on host")
-
+    
     migrate_sub.add_argument('-p',
                           default=None,
                           dest="password",
                           action="store",
                           help="specify password on host")
     migrate_sub.set_defaults(func=deployer.migrate)
+ 
+
+
+
     return parser
 
-class ThreadPool(object):
-    def __init__(self,pool_size):
-        self.pool_size = pool_size
-
-    def map(self,func,args_list):
-        queue = Queue.Queue()
-        worker_list = []
-        for args in args_list:
-            queue.put((func,args))
-
-        for i in range(self.pool_size):
-            worker = Worker(queue)
-            worker.start()
-            worker_list.append(worker)
-        queue.join()
 
 class Deployer(object):
-    def __init__(self,concurrent_count):
+    def __init__(self):
         self.show_output = False
-        self.pool = ThreadPool(concurrent_count)
 
     def _exec_cmd_on_host(self,host,cmds,real_time=False):
         """
@@ -284,7 +270,7 @@ class Deployer(object):
             for cmd in cmds:
                 stdin,stdout,stderr = sshclient.exec_command(cmd)
                 retcode = stdout.channel.recv_exit_status()
-                ret_dict[cmd] = retcode
+                ret_dict[cmd] = retcode 
                 if not real_time:
                     continue
                 for line in stdout:
@@ -293,79 +279,75 @@ class Deployer(object):
                     print line
             sshclient.close()
         except Exception as e:
-            print "exec %s on %s %s"%(cmds,host,RichText.render_red_text("error"))
+            traceback.print_exc(file=sys.stdout)
         return ret_dict
 
     def init(self,options):
         self.password = options.password
         self.user = options.user
-        parameters = []
         for node in options.module.NODE_LIST:
-            parameters.append((node,options.module.INIT_SYS_CMDS,options.show_output))
-        print "-------------start to init----------------"
-        self.pool.map(self.single_run,parameters)
-        print "-------------finish init----------------"
-
-    def single_run(self,node,cmd,show_output):
-        ret_dict = self._exec_cmd_on_host(node,cmd,show_output)
-        for key in ret_dict:
-            if ret_dict[key] == 0:
-                print "exec %s on %s %s"%(key,node,RichText.render_green_text("succssfully"))
-            else:
-                print "exec %s on %s %s"%(key,node,RichText.render_red_text("error"))
+            ret_dict = self._exec_cmd_on_host(node,options.module.INIT_SYS_CMDS,options.show_output)
+            for key in ret_dict:
+                if ret_dict[key] == 0:
+                    print "exec %s on %s %s"%(key,node,RichText.render_green_text("succssfully"))
+                else: 
+                    print "exec %s on %s %s"%(key,node,RichText.render_red_text("error"))
 
     def clean(self,options):
         self.password = options.password
         self.user = options.user
-        parameters = []
         for node in options.module.NODE_LIST:
-            parameters.append((node,options.module.CLEAN_SYS_CMDS,options.show_output))
-        print "-------------start to clean----------------"
-        self.pool.map(self.single_run,parameters)
-        print "-------------finish cleaning----------------"
+            ret_dict = self._exec_cmd_on_host(node,options.module.CLEAN_SYS_CMDS,options.show_output)
+            for key in ret_dict:
+                if ret_dict[key] == 0:
+                    print "exec %s on %s %s"%(key,node,RichText.render_green_text("succssfully"))
+                else: 
+                    print "exec %s on %s %s"%(key,node,RichText.render_red_text("error"))
 
     def fetch(self,options):
         self.password = options.password
         self.user = options.user
-        parameters = []
         for app in options.module.APPS:
-            fetch_cmd = "mkdir -p %s && cd %s  && wget -O tmp.tar.gz %s && tar -zxvf tmp.tar.gz"%(app['workspace'],
-                                                                                                  app['workspace'],
-                                                                                                  app['package'])
+            print "fetch app %s"%RichText.render_green_text(app['name']) 
+            fetch_cmd = "mkdir -p %s && cd %s  && wget -O tmp.tar.gz %s && tar -zxvf tmp.tar.gz"%(app['workspace'], 
+                                                  app['workspace'],
+                                                                                  app['package'])
+            print "exec %s"%fetch_cmd
             for host in app['hosts']:
-                parameters.append((host,[fetch_cmd],options.show_output))
-
-        print "-------------start to fetch----------------"
-        self.pool.map(self.single_run,parameters)
-        print "-------------finish  fetching----------------"
+                ret_dict = self._exec_cmd_on_host(host,[fetch_cmd],options.show_output)
+                if ret_dict[fetch_cmd] ==0 :
+                    print "fetch on %s %s"%(host,RichText.render_green_text("succssfully"))
+                else: 
+                    print "fetch on %s %s"%(host,RichText.render_red_text("error"))
 
     def start(self,options):
         self.password = options.password
-        self.user = options.user
-        parameters = []
+        self.user = options.user 
         for app in options.module.APPS:
+            print "start app %s"%RichText.render_green_text(app["name"])
             start_cmd = "cd %s && %s"%(app['workspace'],
                                        app['start_cmd'])
+            print "exec %s"%start_cmd
             for host in app['hosts']:
-                parameters.append((host,[start_cmd],True))
-
-        print "-------------start to start----------------"
-        self.pool.map(self.single_run,parameters)
-        print "-------------finish  starting----------------"
+                ret_dict = self._exec_cmd_on_host(host,[start_cmd],True) 
+                if ret_dict[start_cmd] == 0 :           
+                    print "start on %s %s"%(host,RichText.render_green_text("succssfully"))
+                else: 
+                    print "start on %s %s"%(host,RichText.render_red_text("error"))
 
     def stop(self,options):
         self.password = options.password
-        self.user = options.user
-        parameters = []
+        self.user = options.user 
         for app in options.module.APPS:
+            print "stop app %s"%app["name"]
             stop_cmd = "cd %s && %s"%(app["workspace"],app["stop_cmd"])
+            print "exec %s"%stop_cmd
             for host in app["hosts"]:
-                parameters.append((host,[stop_cmd],False))
-
-        print "-------------start to stop----------------"
-        self.pool.map(self.single_run,parameters)
-        print "-------------finish  stop----------------"
-
+                ret_dict = self._exec_cmd_on_host(host,[stop_cmd])          
+                if ret_dict[stop_cmd] == 0 : 
+                    print "stop on %s %s"%(host,RichText.render_green_text("succssfully"))
+                else: 
+                    print "stop on %s %s"%(host,RichText.render_red_text("error"))
     def migrate(self,options):
         self.fetch(options)
         self.stop(options)
@@ -379,7 +361,7 @@ class Deployer(object):
 
 
 if __name__ == "__main__":
-    deploy = Deployer(4)
+    deploy = Deployer()
     parser = build_parser(deploy)
     options = parser.parse_args()
     sys.path.append(os.getcwd())

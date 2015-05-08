@@ -47,8 +47,12 @@ def get_status(req):
         machine.mem_used = str_pretty(machine.mem_used)
         machine.cpu_used = '%0.2f'%machine.cpu_used
         ret.append(machine.__dict__)
-    mem_usage_p = "%0f"%(100*total_mem_real_used/total_mem_num)
-    cpu_usage_p = "%0f"%(100*total_cpu_real_used/total_cpu_num)
+    mem_usage_p = 0
+    cpu_usage_p = 0
+    if total_mem_num:
+        mem_usage_p = "%0.1f"%(100*total_mem_real_used/total_mem_num)
+    if total_cpu_num:
+        cpu_usage_p = "%0.1f"%(100*total_cpu_real_used/total_cpu_num)
     return builder.ok(data={'machinelist':ret,
                                 'total_node_num':total_node_num,
                                 'total_mem_used':str_pretty(total_mem_used),

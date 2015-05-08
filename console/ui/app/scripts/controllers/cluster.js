@@ -38,7 +38,7 @@ angular.module('galaxy.ui.ctrl')
           $scope.memUsage = 0;
           $scope.machineList = [];
           var get_status = function(){
-               $http.get("/cluster/status?master="+config.masterAddr)
+               $http.get("/console/cluster/status?master="+config.masterAddr)
                   .success(function(data){
                       if(data.status == 0){
                           $scope.machineList = data.data.machinelist;
@@ -50,6 +50,8 @@ angular.module('galaxy.ui.ctrl')
                           $scope.total_task_num = data.data.total_task_num;
                           $scope.total_mem_real_used = data.data.total_mem_real_used;
                           $scope.total_cpu_real_used = data.data.total_cpu_real_used;
+                          $scope.cpuUsage = data.data.cpu_usage_p;
+                          $scope.memUsage = data.data.mem_usage_p;
                       }else{
                       
                       }
