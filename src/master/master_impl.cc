@@ -408,6 +408,11 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         // rebuild job, task relationship
         TaskInstance& rt_instance = tasks_[rt_task_id];
         JobInfo& job_info = jobs_[rt_instance.job_id()];
+        if (job_info.id != rt_instance.job_id()) {
+            job_info.replica_num = 0; 
+            job_info.id = rt_instance.job_id();
+            job_info.killed = true;
+        }
         if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
                 == job_info.agent_tasks[agent_addr].end()) {
             job_info.running_num ++;
