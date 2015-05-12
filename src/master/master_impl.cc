@@ -177,8 +177,11 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
             if(task_it == tasks_.end()){
                 continue;
             }
+            task_it->second.info().task_id(),
+            task_it->second.cpu_usage();
             mem_real_used += task_it->second.memory_usage();
-            cpu_real_used += task_it->second.cpu_usage();
+            //»»³Écpu¸öÊı
+            cpu_real_used += task_it->second.cpu_usage() * task_it->second.info().required_cpu();
         }
         node->set_mem_real_used(mem_real_used);
         node->set_cpu_real_used(cpu_real_used);
