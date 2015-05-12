@@ -19,6 +19,7 @@
 #include <sys/fcntl.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <string>
@@ -36,8 +37,12 @@ public:
                                                      pool_(NULL),
                                                      listen_socket_(0),
                                                      stop_(false) {
-
+        size_t path_len = root_path_.length();
+        if (path_len > 0 && root_path_[path_len-1] != '/') {
+            root_path_ += "/";
+        } 
     }
+
     ~HttpFileServer() {
         if (listen_socket_ > 0) {
             close(listen_socket_);
@@ -179,6 +184,7 @@ private:
             }
             closedir(d);
         }
+        std::sort(children.begin(), children.end());
     }
 
     void HandleClient(sockaddr_in /*client_addr*/,
