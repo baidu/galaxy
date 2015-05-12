@@ -44,12 +44,12 @@ angular.module('galaxy.ui.ctrl')
                           $scope.machineList = data.data.machinelist;
                           $scope.total_node_num = data.data.total_node_num;
                           $scope.total_cpu_num = data.data.total_cpu_num;
-                          $scope.total_cpu_used = data.data.total_cpu_used;
-                          $scope.total_mem_used = data.data.total_mem_used;
+                          $scope.total_cpu_allocated = data.data.total_cpu_allocated;
+                          $scope.total_mem_allocated = data.data.total_mem_allocated;
                           $scope.total_mem_num = data.data.total_mem_num;
                           $scope.total_task_num = data.data.total_task_num;
-                          $scope.total_mem_real_used = data.data.total_mem_real_used;
-                          $scope.total_cpu_real_used = data.data.total_cpu_real_used;
+                          $scope.total_mem_used = data.data.total_mem_used;
+                          $scope.total_cpu_used = data.data.total_cpu_used;
                           $scope.cpuUsage = data.data.cpu_usage_p;
                           $scope.memUsage = data.data.mem_usage_p;
                       }else{
