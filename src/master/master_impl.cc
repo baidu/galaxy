@@ -351,6 +351,10 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         if (internal_running_tasks.find(task_id) == internal_running_tasks.end()) {
             TaskInstance& instance = tasks_[task_id];
             int64_t job_id = instance.job_id();
+            LOG(DEBUG,"instance status %s,task_Id %ld,job_id %ld from agent %s",
+                       TaskState_Name((TaskState)instance.status()).c_str(),
+                        task_id,job_id,agent_addr.c_str());
+
             if (instance.status() == DEPLOYING
                     && instance.start_time() + FLAGS_task_deploy_timeout > now_time
                         && !clear_all) {
@@ -389,9 +393,11 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 job.job_name.c_str(), task_id, agent_addr.c_str());
         } else {
             TaskInstance& instance = tasks_[task_id];
-            internal_running_tasks.erase(task_id);
-
             int64_t job_id = instance.job_id();
+            LOG(DEBUG,"instance status %d,task_Id %ld,job_id %ld from agent %s",
+                instance.status(),task_id,job_id,agent_addr.c_str());
+
+            internal_running_tasks.erase(task_id);
             std::map<int64_t,JobInfo>::iterator job_it = jobs_.find(job_id);
             assert(job_it != jobs_.end());
             JobInfo& job = job_it->second;
@@ -724,7 +730,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     agent_lock_.AssertHeld();
     std::string agent_addr;
     int64_t task_id = -1;
-    std::set<int64_t>::size_type high_load = 0;
+    double high_load = 0.0;
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
     if (job->running_num <= 0) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
@@ -733,20 +739,25 @@ void MasterImpl::ScaleDown(JobInfo* job) {
                 job->replica_num);
         return;
     }
+    agent_id_index& aidx = boost::multi_index::get<0>(index_);
     for (; it != job->agent_tasks.end(); ++it) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
-        // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
-        LOG(DEBUG, "[ScaleDown] %s[%s: %d] high_load %d",
+        agent_id_index::iterator index_it = aidx.find(ai.id); 
+        if(index_it != aidx.end() && index_it->load > high_load){
+            high_load = index_it->load;
+            agent_addr = ai.addr;
+            task_id = *(it->second.begin());
+            LOG(DEBUG, "[ScaleDown] %s[%s: %d] high_load %f",
                 job->job_name.c_str(),
                 it->first.c_str(),
                 ai.running_tasks.size(),
                 high_load);
-        if (ai.running_tasks.size() > high_load) {
-            high_load = ai.running_tasks.size();
-            agent_addr = ai.addr;
-            task_id = *(it->second.begin());
+        }
+        if(index_it == aidx.end()){
+            LOG(FATAL,"agent %ld is not in agent load index",ai.id);     
+            assert(0);
         }
     }
     assert(!agent_addr.empty() && task_id != -1);
@@ -758,9 +769,16 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         LOG(INFO,"kill task %ld successfully",task_id);
         std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(task_id);
         if(intance_it != tasks_.end()){
-            intance_it->second.set_status(KILLED);
+            tasks_.erase(task_id);
+            agent.running_tasks.erase(task_id);
             agent.version += 1;
         }
+        job->agent_tasks[agent_addr].erase(task_id);
+        if (job->agent_tasks[agent_addr].empty()) {
+            job->agent_tasks.erase(agent_addr);
+        }
+        job->running_num --;
+
     }else{
         LOG(INFO,"fail to kill task %ld",task_id);
     }
@@ -783,7 +801,7 @@ void MasterImpl::Schedule() {
             should_rm_job.push_back(job_it->first);
             continue;
         }
-        if (job.running_num > job.replica_num && job.scale_down_time + 10 < now_time) {
+        if (job.running_num > job.replica_num && job.scale_down_time + 1 < now_time) {
             ScaleDown(&job);
             // 避免瞬间缩成0了
             job.scale_down_time = now_time;
