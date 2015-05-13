@@ -63,6 +63,12 @@ struct AgentLoad {
     }
 };
 
+struct AgentHighLoad{
+    bool operator()(const AgentLoad& load1, const AgentLoad& load2 )const{
+        return load1.load > load2.load ;
+    }
+};
+
 /// Agent load index includes agent id index and cpu-left index
 typedef boost::multi_index::multi_index_container<
     AgentLoad,

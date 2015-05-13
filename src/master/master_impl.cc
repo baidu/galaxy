@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <queue>
+#include <algorithm> 
 #include <boost/lexical_cast.hpp>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
@@ -351,6 +352,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             assert(jobs_.find(job_id) != jobs_.end());
             JobInfo& job = jobs_[job_id];
             if(instance.status() == KILLED){
+                LOG(INFO,"remove task %ld",task_id);
                 job.terminating_tasks.erase(task_id);
             }
             job.agent_tasks[agent_addr].erase(task_id);
@@ -372,11 +374,12 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
 
             job.scheduled_tasks.push_back(tasks_[task_id]);
-            LOG(DEBUG, "job %ld has schedule tasks %u : id %ld state %d ",
+            LOG(DEBUG, "job %ld has schedule tasks %u : id %ld state %d terminating task size %d ",
                     job_id,
                     job.scheduled_tasks.size(),
                     task_id,
-                    instance.status());
+                    instance.status(),
+                    job.terminating_tasks.size());
             tasks_.erase(task_id);
             LOG(INFO, "Job[%s] task %ld disappear from %s",
                 job.job_name.c_str(), task_id, agent_addr.c_str());
@@ -730,11 +733,8 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
 
 void MasterImpl::ScaleDown(JobInfo* job) {
     agent_lock_.AssertHeld();
-    std::string agent_addr;
-    int64_t task_id = -1;
-    double high_load = 0.0;
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
-    if (job->running_num <= 0) {
+    if (job->running_num <= 0 ) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
                 job->job_name.c_str(),
                 job->running_num,
@@ -742,43 +742,55 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         return;
     }
     agent_id_index& aidx = boost::multi_index::get<0>(index_);
-    for (; it != job->agent_tasks.end(); ++it) {
+    std::vector<AgentLoad> agent_load_vector;
+    for (; it != job->agent_tasks.end() ; ++it) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
         AgentInfo& ai = agents_[it->first];
         agent_id_index::iterator index_it = aidx.find(ai.id);
-        if(index_it != aidx.end() && index_it->load > high_load){
-            high_load = index_it->load;
-            agent_addr = ai.addr;
-            task_id = *(it->second.begin());
-            LOG(DEBUG, "[ScaleDown] %s[%s: %d] high_load %f",
-                job->job_name.c_str(),
-                it->first.c_str(),
-                ai.running_tasks.size(),
-                high_load);
-        }
         if(index_it == aidx.end()){
-            LOG(FATAL,"agent %ld is not in agent load index",ai.id);
+            LOG(FATAL,"agent %s is not in agentload index",ai.addr.c_str());
             assert(0);
         }
+        agent_load_vector.push_back(*index_it);
     }
-    assert(!agent_addr.empty() && task_id != -1);
-    LOG(INFO, "[ScaleDown] %s[%d/%d] on %s will be canceled",
-        job->job_name.c_str(), job->running_num, job->replica_num, agent_addr.c_str());
-    AgentInfo& agent = agents_[agent_addr];
-    bool success = CancelTaskOnAgent(&agent, task_id);
-    if(success){
-        LOG(INFO,"kill task %ld successfully",task_id);
-        std::map<int64_t,TaskInstance>::iterator instance_it = tasks_.find(task_id);
-        if(instance_it != tasks_.end()){
-            instance_it->second.status(KILLED);
-            agent.version += 1;
-        }
-        agent.terminating_tasks.insert(task_id);
+    std::sort(agent_load_vector.begin(), agent_load_vector.end(), AgentHighLoad());
+    std::vector<AgentLoad>::iterator load_it = agent_load_vector.begin(); 
+    uint32_t deploy_step_size = job->deploy_step_size;
+    int32_t old_terminating_size = job->terminating_tasks.size();
+    int32_t count_for_log = 0;
+    for (;job->terminating_tasks.size() < deploy_step_size && 
+         load_it != agent_load_vector.end();
+         ++load_it) {
+        std::set<int64_t>::iterator inner_it = job->agent_tasks[load_it->agent_addr].begin();
+        AgentInfo& agent = agents_[load_it->agent_addr];
+        for(;inner_it != job->agent_tasks[load_it->agent_addr].end()&&
+            job->terminating_tasks.size() < deploy_step_size ;
+            ++inner_it){
+            LOG(INFO, "[ScaleDown] %s[%d/%d] on %s will be canceled",
+                      job->job_name.c_str(), job->running_num, job->replica_num, load_it->agent_addr.c_str());
+            int64_t task_id = *inner_it;
+            count_for_log ++;
+            bool success = CancelTaskOnAgent(&agent, task_id);
+            if(success){
+                LOG(INFO,"kill task %ld successfully",task_id);
+                std::map<int64_t,TaskInstance>::iterator instance_it = tasks_.find(task_id);
+                if(instance_it != tasks_.end()){
+                    instance_it->second.set_status(KILLED);
+                }
+                job->terminating_tasks.insert(task_id);
 
-    }else{
-        LOG(INFO,"fail to kill task %ld",task_id);
+            }else{
+                LOG(INFO,"fail to kill task %ld",task_id);
+            }
+
+        }
+        agent.version += 1;
+         
     }
+    LOG(INFO,"job %ld scale down with concurrent ctrl terminaint size %d do killing count %d ",job->id,
+        old_terminating_size,count_for_log);
+
 }
 
 void MasterImpl::Schedule() {
@@ -798,10 +810,8 @@ void MasterImpl::Schedule() {
             should_rm_job.push_back(job_it->first);
             continue;
         }
-        if (job.running_num > job.replica_num && job.scale_down_time + 1 < now_time) {
+        if (job.running_num > job.replica_num ) {
             ScaleDown(&job);
-            // ±‹√‚À≤º‰Àı≥…0¡À
-            job.scale_down_time = now_time;
         }
         int count_for_log = 0;
         //fix warning
