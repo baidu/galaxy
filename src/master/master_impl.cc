@@ -169,22 +169,8 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
         node->set_mem_share(agent.mem_share);
         node->set_cpu_allocated(agent.cpu_allocated);
         node->set_mem_allocated(agent.mem_allocated);
-        int64_t mem_used = 0;
-        double cpu_used = 0.0;
-        std::set<int64_t>::iterator rt_it = agent.running_tasks.begin();
-        for (; rt_it != agent.running_tasks.end() ; ++rt_it) {
-            std::map<int64_t, TaskInstance>::iterator task_it = tasks_.find(*rt_it);
-            if(task_it == tasks_.end()){
-                continue;
-            }
-            task_it->second.info().task_id(),
-            task_it->second.cpu_usage();
-            mem_used += task_it->second.memory_usage();
-            //换成cpu个数
-            cpu_used += task_it->second.cpu_usage() * task_it->second.info().required_cpu();
-        }
-        node->set_mem_used(mem_used);
-        node->set_cpu_used(cpu_used);
+        node->set_mem_used(agent.mem_used);
+        node->set_cpu_used(agent.cpu_used);
     }
     done->Run();
 }
@@ -364,6 +350,9 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             del_tasks.push_back(task_id);
             assert(jobs_.find(job_id) != jobs_.end());
             JobInfo& job = jobs_[job_id];
+            if(instance.status() == KILLED){
+                job.terminating_tasks.erase(task_id);
+            }
             job.agent_tasks[agent_addr].erase(task_id);
             if (job.agent_tasks[agent_addr].empty()) {
                 job.agent_tasks.erase(agent_addr);
@@ -442,6 +431,19 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         //      rt_instance.mutable_info->set_start_time()
         job_info.agent_tasks[agent_addr].insert(rt_task_id);
         //thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, *rt_it));
+    }
+    // update agent resource usage
+    it = agent->running_tasks.begin();
+    agent->mem_used = 0 ;
+    agent->cpu_used = 0.0;
+    for (;it!=agent->running_tasks.end();++it) {
+        std::map<int64_t, TaskInstance>::iterator task_it = tasks_.find(*it);
+        if(task_it == tasks_.end()){
+            continue;
+        }
+        agent->mem_used += task_it->second.memory_usage();
+        //换成cpu个数
+        agent->cpu_used += task_it->second.cpu_usage() * task_it->second.info().required_cpu();
     }
 }
 
@@ -744,7 +746,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
         AgentInfo& ai = agents_[it->first];
-        agent_id_index::iterator index_it = aidx.find(ai.id); 
+        agent_id_index::iterator index_it = aidx.find(ai.id);
         if(index_it != aidx.end() && index_it->load > high_load){
             high_load = index_it->load;
             agent_addr = ai.addr;
@@ -756,7 +758,7 @@ void MasterImpl::ScaleDown(JobInfo* job) {
                 high_load);
         }
         if(index_it == aidx.end()){
-            LOG(FATAL,"agent %ld is not in agent load index",ai.id);     
+            LOG(FATAL,"agent %ld is not in agent load index",ai.id);
             assert(0);
         }
     }
@@ -767,17 +769,12 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     bool success = CancelTaskOnAgent(&agent, task_id);
     if(success){
         LOG(INFO,"kill task %ld successfully",task_id);
-        std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(task_id);
-        if(intance_it != tasks_.end()){
-            tasks_.erase(task_id);
-            agent.running_tasks.erase(task_id);
+        std::map<int64_t,TaskInstance>::iterator instance_it = tasks_.find(task_id);
+        if(instance_it != tasks_.end()){
+            instance_it->second.status(KILLED);
             agent.version += 1;
         }
-        job->agent_tasks[agent_addr].erase(task_id);
-        if (job->agent_tasks[agent_addr].empty()) {
-            job->agent_tasks.erase(agent_addr);
-        }
-        job->running_num --;
+        agent.terminating_tasks.insert(task_id);
 
     }else{
         LOG(INFO,"fail to kill task %ld",task_id);
@@ -797,7 +794,7 @@ void MasterImpl::Schedule() {
     for (; job_it != jobs_.end(); ++job_it) {
         JobInfo& job = job_it->second;
         LOG(INFO,"job %ld ,running_num %ld",job.id,job.running_num);
-        if (job.running_num == 0 && job.killed) {
+        if (job.running_num == 0 && job.terminating_tasks.size()<= 0 && job.killed) {
             should_rm_job.push_back(job_it->first);
             continue;
         }
