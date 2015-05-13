@@ -92,6 +92,7 @@ struct JobInfo {
     std::deque<TaskInstance> scheduled_tasks;
     int32_t deploy_step_size;
     std::set<int64_t> deploying_tasks;
+    std::string monitor_conf;
 };
 
 class RpcClient;

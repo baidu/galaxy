@@ -29,6 +29,7 @@ namespace galaxy {
 
 const std::string META_PATH = "/meta/";
 const std::string META_FILE_PREFIX = "meta_";
+const std::string MONITOR_PATH = "/monitor/";
 
 bool TaskManager::Init() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
@@ -123,7 +124,8 @@ int TaskManager::Add(const ::galaxy::TaskInfo& task_info,
                 errno,
                 strerror(errno));     
         return -1;
-    }  
+    }
+    
     if(FLAGS_container.compare("cgroup") == 0){
         LOG(INFO,"use cgroup task runner for task %d",task_info.task_id());
         runner = new ContainerTaskRunner(my_task_info,FLAGS_cgroup_root, workspace);

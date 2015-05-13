@@ -8,11 +8,13 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include <boost/algorithm/string/predicate.hpp>
 
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
-    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size\n");
+    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size monitor_conf\n");
     fprintf(stderr, "./galaxy_client master_addr list task_id\n");
     fprintf(stderr, "./galaxy_client master_addr kill task_id\n");
     return;
@@ -37,7 +39,7 @@ int main(int argc, char* argv[]) {
     int COMMAND = 0;
     if (strcmp(argv[2], "add") == 0) {
         COMMAND = ADD;
-        if (argc < 9) {
+        if (argc < 10) {
             help();
             return -1;
         }
@@ -107,8 +109,13 @@ int main(int argc, char* argv[]) {
         job.cpu_share = atof(argv[7]);
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
         job.deploy_step_size = 0;
-        if (argc == 10) {
-            int32_t size = atoi(argv[9]);
+        std::ifstream fs;
+        fs.open(argv[9]);
+        std::stringstream ss;
+        ss << fs.rdbuf();
+        job.monitor_conf = ss.str();
+        if (argc == 11) {
+            int32_t size = atoi(argv[10]);
             if (size > 0) {
                 job.deploy_step_size = size;
             } else {

@@ -29,6 +29,7 @@ extern std::string FLAGS_task_acct;
 namespace galaxy {
 
 static const std::string RUNNER_META_PREFIX = "task_runner_";
+static const std::string MONITOR_ROOT = "/root/moniter/logstash-1.4.2/";
 
 int AbstractTaskRunner::IsRunning(){
     if ((int64_t)m_child_pid == -1) {
@@ -126,6 +127,7 @@ int AbstractTaskRunner::Stop(){
     if (IsRunning() != 0) {
         return 0;
     }
+    //TODO check monitoring
     LOG(INFO,"start to kill process group %d",m_group_pid);
     int ret = killpg(m_group_pid, 9);
     if(ret != 0){
@@ -137,12 +139,29 @@ int AbstractTaskRunner::Stop(){
         SetStatus(ERROR);
         return -1;
     }else{
-        StopPost();
         LOG(INFO,"kill child process %d successfully",killed_pid);
         m_child_pid = -1;
         m_group_pid = -1;
-        return 0;
     }
+    //kill monitor
+    LOG(INFO,"start to kill monitor group %d",m_monitor_gid);
+    ret = killpg (m_monitor_gid, 9);
+    if(ret != 0){
+        LOG(WARNING,"fail to kill monitor group %d", m_monitor_gid);
+    }  
+    killed_pid = wait(&ret);
+    if (killed_pid == -1) {
+        LOG(FATAL,"fail to kill monitor group %d",m_monitor_gid);
+        //SetStatus(ERROR);
+        return -1;
+    } else {
+        LOG(INFO,"kill monitor %d successfully",killed_pid);
+        m_monitor_pid = -1;
+        m_monitor_gid = -1;
+    }
+
+    StopPost();
+    return 0;
 }
 
 void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd){
@@ -201,6 +220,25 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     execve("/bin/sh", argv, env);
     LOG(FATAL,"fail to kill exec %s errno %d %s",
         m_task_info.task_name().c_str(), errno, strerror(errno));
+    assert(0);
+    _exit(127);
+}
+
+void AbstractTaskRunner::StartMonitorAfterFork()
+{
+    std::string conf_path = m_workspace->GetPath() + "/galaxy_monitor/";
+    std::string conf_file = conf_path + "monitor_conf";
+    chdir(conf_path.c_str());
+    std::string cmd_line = MONITOR_ROOT + "/bin/logstash -f " 
+        + conf_file + " > logstash.log";   
+    char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
+        const_cast<char*>(cmd_line.c_str()), NULL};
+    std::stringstream task_id_env;
+    task_id_env <<"TASK_ID="<<m_task_info.task_offset();
+    char *env[] = {const_cast<char*>(task_id_env.str().c_str()), NULL};
+    execve("/bin/sh", argv, env);
+    LOG(FATAL,"fail to  exec monitor %s errno %d %s",
+            m_task_info.task_name().c_str(), errno, strerror(errno));
     assert(0);
     _exit(127);
 }
@@ -371,6 +409,44 @@ int CommandTaskRunner::Start() {
         }
         else {
             collector_->ResetPid(m_child_pid);
+        }
+
+        //monitor
+        m_monitor_pid = fork();
+        if (0 == m_monitor_pid) {
+            pid_t my_pid = getpid();
+            int ret = setpgid(my_pid, my_pid);
+            if (0 != ret) {
+                assert(0);
+            }
+            std::string monitor_conf = m_workspace->GetPath() 
+                + "/galaxy_monitor/monitor.conf";
+            int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+            if (conf_fd == -1) {
+                assert(0);
+            }
+            int len = write(conf_fd, (void*)m_task_info.monitor_conf().c_str(),
+                    m_task_info.monitor_conf().size());
+            if (len == -1) {
+                close(conf_fd);
+                assert(0);
+            }
+            if (0 != fsync(conf_fd)) {
+                close(conf_fd);
+                assert(0);
+            }
+            close(conf_fd);
+            StartMonitorAfterFork();
+        } else {
+            if (m_monitor_pid == -1) {
+                LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
+                        m_task_info.task_id(),
+                        errno,
+                        strerror(errno));
+                //SetStatus(ERROR);
+                //return -1;
+            }
+            m_monitor_gid = m_monitor_pid;
         }
     }
     return 0;
