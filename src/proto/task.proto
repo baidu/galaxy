@@ -29,6 +29,8 @@ message TaskInfo{
     optional int32 task_offset=8;
     optional int32 job_replicate_num = 9;
     optional int64 job_id = 10; // use to rebuild master
+
+    optional double limited_cpu = 11; // required_cpu == quota ; limit_cpu == limit
 }
 
 

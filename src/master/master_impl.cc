@@ -588,12 +588,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
                          ::galaxy::NewJobResponse* response,
                          ::google::protobuf::Closure* done) {
-    //if (SafeModeCheck()) {
-    //    LOG(WARNING, "can't new job in safe mode"); 
-    //    response->set_status(kMasterResponseErrorSafeMode);
-    //    done->Run();
-    //    return;
-    //}
 
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
@@ -613,17 +607,22 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.killed = false;
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
+    job.cpu_limit = job.cpu_share;
+    if (request->has_cpu_limit()) {
+        job.cpu_limit = request->cpu_limit();
+    }  
 
     if (request->deploy_step_size() > 0) {
         job.deploy_step_size = request->deploy_step_size();
     } else {
         job.deploy_step_size = job.replica_num;
     }
-    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
+    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d",
             job.job_name.c_str(),
             job.replica_num,
             job.cmd_line.c_str(),
             job.cpu_share,
+            job.cpu_limit,
             job.mem_share,
             job.deploy_step_size);
 
@@ -659,6 +658,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_task_offset(job->running_num);
     rt_request.set_job_replicate_num(job->replica_num);
     rt_request.set_job_id(job->id);
+    rt_request.set_cpu_limit(job->cpu_limit);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
@@ -796,7 +796,7 @@ void MasterImpl::Schedule() {
             std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
-                continue;
+                break;
             }
             bool ret = ScheduleTask(&job, agent_addr);
             if (ret) {
@@ -970,6 +970,7 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     cell.set_mem_share(job_info.mem_share);
     cell.set_deploy_step_size(job_info.deploy_step_size);
     cell.set_killed(job_info.killed);
+    cell.set_cpu_limit(job_info.cpu_limit);
 
     LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
             cell.job_name().c_str(),
