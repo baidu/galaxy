@@ -759,7 +759,8 @@ void MasterImpl::ScaleDown(JobInfo* job) {
     uint32_t deploy_step_size = job->deploy_step_size;
     int32_t old_terminating_size = job->terminating_tasks.size();
     int32_t count_for_log = 0;
-    for (;job->terminating_tasks.size() < deploy_step_size && 
+    for (uint32_t index = old_terminating_size;
+         index < deploy_step_size && 
          load_it != agent_load_vector.end();
          ++load_it) {
         std::set<int64_t>::iterator inner_it = job->agent_tasks[load_it->agent_addr].begin();
@@ -782,11 +783,12 @@ void MasterImpl::ScaleDown(JobInfo* job) {
 
             }else{
                 LOG(INFO,"fail to kill task %ld",task_id);
+                break;
             }
 
         }
-        agent.version += 1;
-         
+        agent.version += 1; 
+        index ++;
     }
     LOG(INFO,"job %ld scale down with concurrent ctrl terminaint size %d do killing count %d ",job->id,
         old_terminating_size,count_for_log);
@@ -824,7 +826,7 @@ void MasterImpl::Schedule() {
             std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
-                continue;
+                break;
             }
             bool ret = ScheduleTask(&job, agent_addr);
             if (ret) {
