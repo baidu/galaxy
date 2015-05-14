@@ -800,7 +800,6 @@ void MasterImpl::Schedule() {
         thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
         return;
     }
-    int32_t now_time = common::timer::now_time();
     std::map<int64_t, JobInfo>::iterator job_it = jobs_.begin();
     std::vector<int64_t> should_rm_job;
     for (; job_it != jobs_.end(); ++job_it) {
