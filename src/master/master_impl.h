@@ -32,6 +32,8 @@ struct AgentInfo {
     std::string addr;
     double cpu_share;
     int64_t mem_share;
+    double cpu_used;
+    int64_t mem_used;
     double cpu_allocated;
     int64_t mem_allocated;
     Agent_Stub* stub;
@@ -58,12 +60,6 @@ struct AgentLoad {
         al.cpu_left = cpu_left;
         al.mem_left = mem_left;
         al.agent_addr = agent_addr;
-    }
-};
-
-struct AgentHighLoad{
-    bool operator()(const AgentLoad& load1, const AgentLoad& load2 )const{
-        return load1.load > load2.load ;
     }
 };
 
