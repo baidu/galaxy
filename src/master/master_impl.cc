@@ -365,13 +365,6 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             del_tasks.push_back(task_id);
             assert(jobs_.find(job_id) != jobs_.end());
             JobInfo& job = jobs_[job_id];
-<<<<<<< HEAD
-            if(instance.status() == KILLED){
-                LOG(INFO,"remove task %ld",task_id);
-                job.terminating_tasks.erase(task_id);
-            }
-=======
->>>>>>> parent of 1e81168... 更新scaledown策略
             job.agent_tasks[agent_addr].erase(task_id);
             if (job.agent_tasks[agent_addr].empty()) {
                 job.agent_tasks.erase(agent_addr);
