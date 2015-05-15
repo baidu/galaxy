@@ -59,25 +59,7 @@ bool MasterImpl::Recover() {
             return false;
         }
     }
-<<<<<<< HEAD
-    std::string next_task_id_str ;
-    leveldb::Status status = 
-        persistence_handler_->Get(leveldb::ReadOptions(),
-                                  next_task_id_key_,&next_task_id_str);
-    if (status.ok()) {
-        int64_t next_task_id = boost::lexical_cast<int64_t>(next_task_id_str);
-        LOG(INFO,"recover next_task_id is %ld",next_task_id);
-        next_task_id_ = next_task_id;
-        status = persistence_handler_->Delete(leveldb::WriteOptions(),next_task_id_key_);
-        if (!status.ok()) {
-            LOG(FATAL,"fail to delete %s from persistence storage",next_task_id_key_.c_str());
-            assert(0);
-        }
-    }else{
-        LOG(WARNING,"next_task_id_key is not in persistence storage");
-    }
-=======
->>>>>>> parent of 06d7902... persistence next_task_id
+
     // scan JobCheckPointCell 
     // TODO JobInfo is equal to JobCheckpointCell, use pb later
 
