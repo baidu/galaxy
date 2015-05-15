@@ -160,6 +160,8 @@ private:
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
     bool SafeModeCheck();
+
+    bool PersistenceId(const std::string key, int64_t id);
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;
@@ -175,6 +177,8 @@ private:
     /// Tasks manager
     std::map<int64_t, TaskInstance> tasks_;
     int64_t next_task_id_;
+    /// store the next_task_id_ in leveldb
+    std::string next_task_id_key_;
     /// Rpc client
     RpcClient* rpc_client_;
     /// Scheduler
