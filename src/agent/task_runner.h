@@ -76,15 +76,11 @@ protected:
             int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
-    void StartMonitorAfterFork();
-
 protected:
     TaskInfo m_task_info;
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
-    pid_t  m_monitor_pid;
-    pid_t  m_monitor_gid;
     DefaultWorkspace * m_workspace;
     int m_has_retry_times;
     int m_task_state;
@@ -100,16 +96,12 @@ public:
                        collector_(NULL),
                        collector_id_(-1),
                        persistence_path_dir_(),
-                       monitor_conf_dir_(),
                        sequence_id_(0) {
     }
 
     virtual ~CommandTaskRunner();
     void PersistenceAble(const std::string& persistence_path) {
         persistence_path_dir_ = persistence_path; 
-    }
-    void MonitorAble(const std::string& monitor_conf_path) {
-        monitor_conf_dir_ = monitor_conf_path;
     }
     virtual int Prepare();
     int Start();
@@ -123,7 +115,6 @@ protected:
     ProcResourceCollector* collector_;
     long collector_id_;
     std::string persistence_path_dir_;
-    std::string monitor_conf_dir_;
     int64_t sequence_id_;
 };
 

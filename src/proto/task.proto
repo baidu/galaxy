@@ -29,7 +29,6 @@ message TaskInfo{
     optional int32 task_offset=8;
     optional int32 job_replicate_num = 9;
     optional int64 job_id = 10; // use to rebuild master
-    optional string monitor_conf = 11;
 }
 
 

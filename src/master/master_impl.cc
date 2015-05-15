@@ -99,7 +99,6 @@ bool MasterImpl::Recover() {
         
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
-        job_info.monitor_conf = cell.monitor_conf();
 
         LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
@@ -607,8 +606,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     } else {
         job.deploy_step_size = job.replica_num;
     }
-    job.monitor_conf = request->monitor_conf();
-
     LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
             job.job_name.c_str(),
             job.replica_num,
@@ -669,7 +666,6 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.set_start_time(common::timer::now_time());
         instance.set_status(DEPLOYING);
         instance.set_offset(job->running_num);
-        instance.set_monitor_conf(job->monitor_conf);
         job->agent_tasks[agent_addr].insert(task_id);
         job->running_num ++;
         job->deploying_tasks.insert(task_id);
@@ -961,7 +957,6 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     cell.set_mem_share(job_info.mem_share);
     cell.set_deploy_step_size(job_info.deploy_step_size);
     cell.set_killed(job_info.killed);
-    cell.set_monitor_conf(job_info.monitor_conf);
 
     LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
             cell.job_name().c_str(),

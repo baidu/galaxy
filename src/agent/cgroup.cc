@@ -315,42 +315,6 @@ int ContainerTaskRunner::Start() {
         }
         m_group_pid = m_child_pid;
         SetStatus(RUNNING);
-        m_monitor_pid = fork();
-        if (0 == m_monitor_pid) {
-            pid_t my_pid = getpid();
-            int ret = setpgid(my_pid, my_pid);
-            if (0 != ret) {
-                assert(0);
-            }   
-            std::string monitor_conf = m_workspace->GetPath() 
-                + "/galaxy_monitor/monitor.conf";
-            int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
-            if (conf_fd == -1) {
-                assert(0);
-            }   
-            int len = write(conf_fd, (void*)m_task_info.monitor_conf().c_str(),
-                    m_task_info.monitor_conf().size());
-            if (len == -1) {
-                close(conf_fd);
-                assert(0);
-                if (0 != fsync(conf_fd)) {
-                    close(conf_fd);
-                    assert(0);
-                }   
-                close(conf_fd);
-                StartMonitorAfterFork();
-            } else {
-                if (m_monitor_pid == -1) {
-                    LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
-                            m_task_info.task_id(),
-                            errno,
-                            strerror(errno));
-                    SetStatus(ERROR);
-                    return -1; 
-                }   
-                m_monitor_gid = m_monitor_pid;
-            }   
-        }
     }
     return 0;
 }
@@ -405,12 +369,6 @@ void ContainerTaskRunner::StopPost() {
     if (!file::Remove(meta_file)) {
         LOG(WARNING, "remove %s failed", meta_file.c_str()); 
     }
-    std::string monitor_conf = m_workspace->GetPath()
-        + "/galaxy_monitor/monitor_conf";
-    if (!file::Remove(monitor_conf)) {
-        LOG(WARNING, "rm monitor cfg failed rm %s",
-                monitor_conf.c_str());
-    }
     return;
 }
 
@@ -426,6 +384,7 @@ int ContainerTaskRunner::Stop(){
         status = _cg_ctrl->Destroy(m_task_info.task_id());
         LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
     }
+    StopPost();
     return status;
 }
 
