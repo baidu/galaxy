@@ -58,6 +58,7 @@ struct JobDescription{
     std::vector<ResourceDescription> resource_vector;
 
     int32_t deploy_step_size;
+    double cpu_limit;
 };
 
 struct NodeDescription {

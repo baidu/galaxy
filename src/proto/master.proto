@@ -37,10 +37,11 @@ message NewJobRequest {
     optional bytes job_raw = 3;
     optional string cmd_line = 4;
     optional int32 replica_num = 5;
-    optional double cpu_share = 6;
+    optional double cpu_share = 6;      // soft limit
     optional int64 mem_share = 7;
     //单个步骤部署实例个数
     optional int32 deploy_step_size = 9;
+    optional double cpu_limit = 10;     // hard limit
 }
 
 message NewJobResponse {
@@ -52,6 +53,7 @@ message UpdateJobRequest {
     optional int64 job_id = 3;
     optional int32 replica_num = 4;
 };
+
 message UpdateJobResponse {
     optional int32 status = 2;
 }
@@ -97,6 +99,7 @@ message JobCheckPointCell {
     optional int64 mem_share = 7;
     optional int32 deploy_step_size = 8;
     optional bool killed = 9;
+    optional double cpu_limit = 10;
 }
 
 message JobInstance {
