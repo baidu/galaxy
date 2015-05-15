@@ -28,10 +28,9 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
 
 MasterImpl::MasterImpl()
-    : next_agent_id_(1), 
+    : next_agent_id_(1),
       next_job_id_(1),
       next_task_id_(1),
-      next_task_id_key_("NEXT_TASK_ID_KEY"),
       rpc_client_(NULL),
       is_safe_mode_(false),
       start_time_(0),
@@ -60,6 +59,7 @@ bool MasterImpl::Recover() {
             return false;
         }
     }
+<<<<<<< HEAD
     std::string next_task_id_str ;
     leveldb::Status status = 
         persistence_handler_->Get(leveldb::ReadOptions(),
@@ -76,8 +76,11 @@ bool MasterImpl::Recover() {
     }else{
         LOG(WARNING,"next_task_id_key is not in persistence storage");
     }
+=======
+>>>>>>> parent of 06d7902... persistence next_task_id
     // scan JobCheckPointCell 
     // TODO JobInfo is equal to JobCheckpointCell, use pb later
+
     // TODO do some config options
     leveldb::Iterator*  it = 
         persistence_handler_->NewIterator(leveldb::ReadOptions());
@@ -628,7 +631,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
             job.cmd_line.c_str(),
             job.cpu_share,
             job.mem_share,
-            job.deploy_step_size); 
+            job.deploy_step_size);
+
     if (!PersistenceJobInfo(job)) {
         response->set_status(kMasterResponseErrorInternal); 
         done->Run();
@@ -662,9 +666,6 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_job_replicate_num(job->replica_num);
     rt_request.set_job_id(job->id);
     RunTaskResponse rt_response;
-    if(!PersistenceId(next_task_id_key_,next_task_id_)){
-        return false;
-    }
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
                                         &rt_request, &rt_response, 5, 1);
@@ -1025,24 +1026,6 @@ bool MasterImpl::SafeModeCheck() {
     return true;
 }
 
-bool MasterImpl::PersistenceId(const std::string key, int64_t id){
-    // check persistence_handler init
-    if (persistence_handler_ == NULL) {
-        LOG(WARNING, "persistence handler not inited yet");
-        return false;
-    }
-    std::string value = boost::lexical_cast<std::string>(id);
-    leveldb::Status write_status = 
-        persistence_handler_->Put(leveldb::WriteOptions(),
-                                  key, 
-                                  value);
-    if (!write_status.ok()) {
-        LOG(WARNING, "fail to make a persistence for saving  key %s value %s",
-                key.c_str(),value.c_str());
-        return false;
-    }
-    return true;
-}
 
 } // namespace galaxy
 
