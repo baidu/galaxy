@@ -10,6 +10,9 @@
 #include <cstdlib>
 #include <boost/algorithm/string/predicate.hpp>
 
+double FLAGS_cpu_limit = 0;
+int64_t FLAGS_deploy_step_size = 0;
+
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
     fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size cpu_limit\n");
@@ -106,24 +109,24 @@ int main(int argc, char* argv[]) {
         job.job_name = argv[3];
         job.cpu_share = atof(argv[7]);
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
-        job.deploy_step_size = 0;
-        if (argc == 10) {
-            int32_t size = atoi(argv[9]);
-            if (size > 0) {
-                job.deploy_step_size = size;
-            } else {
-                fprintf(stdout,"deploy size must not be less than zero ,will ignore the parameters");
-            }
-        } 
 
-        job.cpu_limit = 0;
-        if (argc == 11) {
-            double cpu_limit = atof(argv[10]);
-            job.cpu_limit = cpu_limit;
-            if (cpu_limit < job.cpu_share) {
-                job.cpu_limit = job.cpu_share; 
+        for (int arg_ind = 9; arg_ind < argc; arg_ind++) {
+            char temp_arg_buffer[1024];
+            if (sscanf(argv[arg_ind], 
+                        "--deploy_step_size=%s", 
+                        temp_arg_buffer) == 1) {
+                FLAGS_deploy_step_size 
+                    = atol(temp_arg_buffer); 
+            } else if (sscanf(argv[arg_ind],
+                        "--cpu_limit=%s", 
+                        temp_arg_buffer)) {
+                FLAGS_cpu_limit 
+                    = atof(temp_arg_buffer); 
             }
         }
+
+        job.deploy_step_size = FLAGS_deploy_step_size;
+        job.cpu_limit = FLAGS_cpu_limit;
         fprintf(stdout,"%ld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;

@@ -407,17 +407,18 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
         agent->running_tasks.insert(rt_task_id);
 
         // rebuild job, task relationship
-        JobInfo job_info;
         if (jobs_.find(rt_instance.job_id()) == jobs_.end()) {
-            job_info.id = rt_instance.job_id();
-            job_info.replica_num = 0;
-            job_info.killed = true;
-            job_info.job_name = "Out-of-date";
-            job_info.running_num = 0;
-            job_info.deploy_step_size = 1; 
+            JobInfo dirty_job_info;
+            dirty_job_info.id = rt_instance.job_id();
+            dirty_job_info.replica_num = 0;
+            dirty_job_info.killed = true;
+            dirty_job_info.job_name = "Out-of-date";
+            dirty_job_info.running_num = 0;
+            dirty_job_info.deploy_step_size = 1; 
+            jobs_[rt_instance.job_id()] = dirty_job_info;
         }
-        jobs_[rt_instance.job_id()] = job_info;
 
+        JobInfo& job_info = jobs_[rt_instance.job_id()];
         if (job_info.agent_tasks[agent_addr].find(rt_task_id) 
                 == job_info.agent_tasks[agent_addr].end()) {
             job_info.running_num ++;
