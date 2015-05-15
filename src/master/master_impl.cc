@@ -66,8 +66,13 @@ bool MasterImpl::Recover() {
                                   next_task_id_key_,&next_task_id_str);
     if (status.ok()) {
         int64_t next_task_id = boost::lexical_cast<int64_t>(next_task_id_str);
-        LOG(INFO,"recove next_task_id is %ld",next_task_id);
+        LOG(INFO,"recover next_task_id is %ld",next_task_id);
         next_task_id_ = next_task_id;
+        status = persistence_handler_->Delete(leveldb::WriteOptions(),next_task_id_key_);
+        if (!status.ok()) {
+            LOG(FATAL,"fail to delete %s from persistence storage",next_task_id_key_.c_str());
+            assert(0);
+        }
     }else{
         LOG(WARNING,"next_task_id_key is not in persistence storage");
     }
