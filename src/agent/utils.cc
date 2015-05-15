@@ -188,7 +188,7 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
             }
             closedir(dir_desc);
             if (!ret) {
-                LOG(WARNING, "IsDir %s failed err", path.c_str());
+                LOG(WARNING, "opt %s failed err", path.c_str());
                 return ret;
             } 
         } 

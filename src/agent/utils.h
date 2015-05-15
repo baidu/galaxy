@@ -23,11 +23,6 @@ namespace file {
 
 typedef boost::function<bool(const char* path)> OptFunc; 
 
-struct ChownArg {
-	uid_t uid;
-	gid_t gid;
-};
-
 bool GetDirFilesByPrefix(
         const std::string& dir, 
         const std::string& prefix, 
