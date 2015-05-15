@@ -94,7 +94,7 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
         } 
     }
     if (rs) {
-        if (!opt(path.c_str())) {
+        if (0 != opt(path.c_str())) {
             LOG(WARNING, "opt %s failed err[%d: %s]",
                     path.c_str(),
                     errno,
@@ -129,7 +129,7 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
         if (is_dir) {
             if (visited.find(cur_path) != visited.end()) {
                 stack.pop_back();
-                if (!opt(cur_path.c_str())) {
+                if (0 != opt(cur_path.c_str())) {
                     LOG(WARNING, "opt %s failed err[%d: %s]",
                             cur_path.c_str(),
                             errno,
@@ -167,7 +167,7 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
                     }
                 }
                 if (is_file) {
-                    if (!opt(tmp_path.c_str())) { 
+                    if (0 != opt(tmp_path.c_str())) { 
                         LOG(WARNING, "opt %s failed err[%d: %s]",
                                 tmp_path.c_str(),
                                 errno,
