@@ -802,7 +802,7 @@ void MasterImpl::Schedule() {
             std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
-                break;
+                continue;
             }
             bool ret = ScheduleTask(&job, agent_addr);
             if (ret) {
