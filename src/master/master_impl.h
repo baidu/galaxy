@@ -38,8 +38,6 @@ struct AgentInfo {
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
     int64_t version;
-    int64_t mem_used;
-    double cpu_used;
 };
 
 struct AgentLoad {
@@ -100,7 +98,6 @@ struct JobInfo {
     std::deque<TaskInstance> scheduled_tasks;
     int32_t deploy_step_size;
     std::set<int64_t> deploying_tasks;
-    std::set<int64_t> terminating_tasks;
 };
 
 class RpcClient;
