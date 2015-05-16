@@ -168,6 +168,8 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
         node->set_task_num(agent.running_tasks.size());
         node->set_cpu_share(agent.cpu_share);
         node->set_mem_share(agent.mem_share);
+        node->set_cpu_allocated(agent.cpu_allocated);
+        node->set_mem_allocated(agent.mem_allocated);
         node->set_cpu_used(agent.cpu_used);
         node->set_mem_used(agent.mem_used);
     }
@@ -454,8 +456,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->id = next_agent_id_ ++;
         agent->cpu_share = request->cpu_share();
         agent->mem_share = request->mem_share();
-        agent->cpu_used = request->used_cpu_share();
-        agent->mem_used = request->used_mem_share();
+        agent->cpu_allocated = request->used_cpu_share();
+        agent->mem_allocated = request->used_mem_share();
         agent->stub = NULL;
         agent->version = 1;
         agent->alive_timestamp = now_time;
@@ -475,9 +477,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             done->Run();
             return;
         }
-        agent->cpu_used = request->used_cpu_share();
-        agent->mem_used = request->used_mem_share();
-        LOG(DEBUG, "cpu_use:%lf, mem_use:%ld", agent->cpu_used, agent->mem_used);
+        agent->cpu_allocated = request->used_cpu_share();
+        agent->mem_allocated = request->used_mem_share();
+        LOG(DEBUG, "cpu_allocated:%lf, mem_allocated:%ld", 
+                   agent->cpu_allocated, 
+                   agent->mem_allocated);
     }
     response->set_agent_id(agent->id);
     response->set_version(agent->version);
@@ -509,6 +513,19 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         }
     }
     UpdateJobsOnAgent(agent, running_tasks);
+    std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
+    agent->mem_used = 0 ;
+    agent->cpu_used = 0.0 ;
+    for (;rt_it != agent->running_tasks.end();++rt_it) {
+        std::map<int64_t, TaskInstance>::iterator inner_it =  
+            tasks_.find(*rt_it);
+        if(inner_it == tasks_.end()){
+            continue;
+        }
+        agent->mem_used += inner_it->second.memory_usage();
+        //
+        agent->cpu_used += inner_it->second.cpu_usage() * inner_it->second.info().required_cpu();
+    }
     SaveIndex(*agent);
     done->Run();
 }
@@ -805,8 +822,8 @@ void MasterImpl::Schedule() {
                 //update index
                 std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
                 if (agent_it != agents_.end()) {
-                    agent_it->second.mem_used += job.mem_share;
-                    agent_it->second.cpu_used += job.cpu_share;
+                    agent_it->second.mem_allocated += job.mem_share;
+                    agent_it->second.cpu_allocated += job.cpu_share;
                     agent_it->second.version += 1;
                     SaveIndex(agent_it->second);
                 }   
@@ -844,10 +861,8 @@ double MasterImpl::CalcLoad(const AgentInfo& agent){
         return 0.0;
     }
     const double tasks_count_base_line = 32.0;
-    int64_t mem_used = agent.mem_used;
-    double cpu_used = agent.cpu_used;
-    double mem_factor = mem_used / static_cast<double>(agent.mem_share);
-    double cpu_factor = cpu_used / agent.cpu_share;
+    double mem_factor = agent.mem_allocated / static_cast<double>(agent.mem_share);
+    double cpu_factor = agent.cpu_allocated / agent.cpu_share;
     double task_count_factor = agent.running_tasks.size() / tasks_count_base_line;
     return exp(cpu_factor) + exp(mem_factor) + exp(task_count_factor);
 }
