@@ -613,7 +613,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     while (jobs_.find(job_id) != jobs_.end()) {
         job_id = next_job_id_ ++; 
     }
-
     JobInfo job;
     job.id = job_id;
     job.job_name = request->job_name();
@@ -667,6 +666,9 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     }
 
     int64_t task_id = next_task_id_++;
+    while(tasks_.find(task_id) != tasks_.end()){
+        task_id = next_task_id_++;
+    }
     RunTaskRequest rt_request;
     rt_request.set_task_id(task_id);
     rt_request.set_task_name(job->job_name);
