@@ -19,6 +19,7 @@
   <!-- endbuild -->
   <!-- build:css(.tmp) styles/main.css -->
   <link rel="stylesheet" href="styles/main.css">
+  <link rel="stylesheet" href="styles/guage.css">
   <link rel="stylesheet" href="styles/treeview.css">
   <link rel="stylesheet" href="styles/loader.css">
   <link rel="stylesheet" href="styles/statistic.css">
@@ -90,17 +91,17 @@
     <script src="bower_components/angular-ui-ace/ui-ace.js"></script>
     <script src="bower_components/angular-notify/dist/angular-notify.js"></script>
     <script src="bower_components/angular-ui-select/dist/select.js"></script>
-    <script src="bower_components/echarts/build/dist/echarts.js"></script>
     <!-- endbower -->
     <!-- endbuild -->
 
     <!-- build:js({.tmp,app}) scripts/scripts.js -->
     <script src="scripts/app.js"></script>
+    <script src="scripts/utils/d3.v3.min.js"></script>
+    <script src="scripts/utils/gauge.js"></script>
     <script src="scripts/controllers/main.js"></script>
     <script src="scripts/controllers/cluster.js"></script>
     <script src="scripts/controllers/setup.js"></script>
     <script src="scripts/controllers/task.js"></script>
-    <script src="scripts/charts/pie.js"></script>
     <script src="scripts/utils/treeview.js"></script>
     <script src="scripts/utils/promot.js"></script>
     <script src="scripts/directives/loader.js"></script>

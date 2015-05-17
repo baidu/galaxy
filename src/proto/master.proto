@@ -6,16 +6,11 @@ import "task.proto";
 option cc_generic_services = true;
 option py_generic_services = true;
 
-enum MasterCommandType {
-    HEART_BEAT = 0;
-    // Task control
-    LAUNCH_TASK = 1;
-    KILL_TASK = 2;
-    CLEAN_TAKS = 3;     // before GC time, agent should be clean without command ?
-    // Container Control
-    CREATE_CONTAINER = 4;   
-    DESTORY_CONTAINER = 5;
-    UPDATE_CONTAINER = 6;
+enum MasterRespState {
+    kMasterResponseOK = 0;
+    kMasterResponseErrorInput = -1;   
+    kMasterResponseErrorInternal = -2;
+    kMasterResponseErrorSafeMode = -4;
 }
 
 message HeartBeatRequest {
@@ -42,8 +37,11 @@ message NewJobRequest {
     optional bytes job_raw = 3;
     optional string cmd_line = 4;
     optional int32 replica_num = 5;
-    optional double cpu_share = 6;
+    optional double cpu_share = 6;      // soft limit
     optional int64 mem_share = 7;
+    //单个步骤部署实例个数
+    optional int32 deploy_step_size = 9;
+    optional double cpu_limit = 10;     // hard limit
 }
 
 message NewJobResponse {
@@ -55,6 +53,7 @@ message UpdateJobRequest {
     optional int64 job_id = 3;
     optional int32 replica_num = 4;
 };
+
 message UpdateJobResponse {
     optional int32 status = 2;
 }
@@ -77,6 +76,8 @@ message TaskInstance {
     optional int32 offset = 6;
     optional double cpu_usage = 7;
     optional int64 memory_usage = 8;
+    optional string root_path = 9;
+    optional int32 end_time = 10;
 }
 message ListTaskRequest {
     optional int64 job_id = 2;
@@ -85,6 +86,20 @@ message ListTaskRequest {
 }
 message ListTaskResponse {
     repeated TaskInstance tasks = 2;
+    repeated TaskInstance scheduled_tasks = 3;
+}
+
+message JobCheckPointCell {
+    optional int64 job_id = 1;
+    optional int32 replica_num = 2;
+    optional string job_name = 3;
+    optional bytes job_raw = 4;
+    optional string cmd_line = 5;
+    optional double cpu_share = 6;
+    optional int64 mem_share = 7;
+    optional int32 deploy_step_size = 8;
+    optional bool killed = 9;
+    optional double cpu_limit = 10;
 }
 
 message JobInstance {
@@ -111,12 +126,17 @@ message NodeInstance {
     optional int32 task_num = 4;
     optional double cpu_share = 5;
     optional int64 mem_share = 6;
+
     optional double cpu_used = 7;
     optional int64 mem_used = 8;
+
+    optional double cpu_allocated = 9;
+    optional int64 mem_allocated = 10;
 }
 
 message ListNodeRequest {
 }
+
 message ListNodeResponse {
     repeated NodeInstance nodes = 2;
 }

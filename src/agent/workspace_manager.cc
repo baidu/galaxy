@@ -123,7 +123,7 @@ void WorkspaceManager::OnGCTimeout(const std::string path) {
     }        
 }
 
-int WorkspaceManager::Remove(int64_t task_info_id, bool delay) {
+int WorkspaceManager::Remove(int64_t task_info_id, std::string* gc_path, bool delay) {
     MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info_id) == m_workspace_map.end()) {
         return 0;
@@ -146,6 +146,9 @@ int WorkspaceManager::Remove(int64_t task_info_id, bool delay) {
             m_gc_thread->DelayTask(FLAGS_agent_gc_timeout, 
                     boost::bind(WorkspaceManager::OnGCTimeout, ws->GetPath()));
         }
+        if (gc_path != NULL) {
+            *gc_path = ws->GetPath(); 
+        }
 
         m_workspace_map.erase(task_info_id);
         delete ws;
@@ -156,6 +159,7 @@ int WorkspaceManager::Remove(int64_t task_info_id, bool delay) {
 }
 
 DefaultWorkspace* WorkspaceManager::GetWorkspace(const TaskInfo& task_info) {
+    MutexLock lock(m_mutex);
     if (m_workspace_map.find(task_info.task_id()) == m_workspace_map.end()) {
         return NULL;
     }

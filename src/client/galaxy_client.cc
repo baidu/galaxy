@@ -10,9 +10,12 @@
 #include <cstdlib>
 #include <boost/algorithm/string/predicate.hpp>
 
+double FLAGS_cpu_limit = 0;
+int64_t FLAGS_deploy_step_size = 0;
+
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
-    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota\n");
+    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size cpu_limit\n");
     fprintf(stderr, "./galaxy_client master_addr list task_id\n");
     fprintf(stderr, "./galaxy_client master_addr kill task_id\n");
     return;
@@ -59,20 +62,20 @@ int main(int argc, char* argv[]) {
             help();
             return -1;
         }
-    } else if(strcmp(argv[2], "listtaskbyagent") == 0){
+    } else if (strcmp(argv[2], "listtaskbyagent") == 0){
         COMMAND = LISTTASKBYAGENT;
-        if(argc < 4){
+        if (argc < 4) {
            help();
            return -1;
         }
 
-    }else if(strcmp(argv[2], "updatejob") == 0){
+    } else if (strcmp(argv[2], "updatejob") == 0) {
         COMMAND = UPDATEJOB;
-        if(argc < 5){
+        if (argc < 5) {
             help();
             return -1;
         }
-    }else {
+    } else {
         help();
         return -1;
     }
@@ -106,7 +109,25 @@ int main(int argc, char* argv[]) {
         job.job_name = argv[3];
         job.cpu_share = atof(argv[7]);
         job.mem_share = 1024 * 1024 * 1024 * atol(argv[8]);
-        fprintf(stdout,"%lld",galaxy->NewJob(job));
+
+        for (int arg_ind = 9; arg_ind < argc; arg_ind++) {
+            char temp_arg_buffer[1024];
+            if (sscanf(argv[arg_ind], 
+                        "--deploy_step_size=%s", 
+                        temp_arg_buffer) == 1) {
+                FLAGS_deploy_step_size 
+                    = atol(temp_arg_buffer); 
+            } else if (sscanf(argv[arg_ind],
+                        "--cpu_limit=%s", 
+                        temp_arg_buffer)) {
+                FLAGS_cpu_limit 
+                    = atof(temp_arg_buffer); 
+            }
+        }
+
+        job.deploy_step_size = FLAGS_deploy_step_size;
+        job.cpu_limit = FLAGS_cpu_limit;
+        fprintf(stdout,"%ld",galaxy->NewJob(job));
     } else if (COMMAND == LIST) {
         int64_t job_id = -1;
         if (argc == 4) {
@@ -118,7 +139,7 @@ int main(int argc, char* argv[]) {
         }
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTask(job_id, task_id, NULL);
-    }else if(COMMAND== LISTTASKBYAGENT){
+    } else if (COMMAND== LISTTASKBYAGENT) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->ListTaskByAgent(argv[3], NULL);
     } else if (COMMAND == LISTNODE) {
@@ -129,7 +150,7 @@ int main(int argc, char* argv[]) {
         fprintf(stdout, "================================\n");
         for(; it != nodes.end(); ++it){
             fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%0.2f\t"
-                    "USED:%0.2f\tMEM:%dGB\tUSED:%dGB\n",
+                    "USED:%0.2f\tMEM:%ldGB\tUSED:%ldGB\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share,
                     it->cpu_used, it->mem_share/(1024*1024*1024),
@@ -154,7 +175,7 @@ int main(int argc, char* argv[]) {
         int64_t job_id = atoi(argv[3]);
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy->TerminateJob(job_id);
-    } else if(COMMAND == UPDATEJOB){
+    } else if (COMMAND == UPDATEJOB) {
         galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(argv[1]);
         galaxy::JobDescription job;
         job.replicate_count = atoi(argv[4]);

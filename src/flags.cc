@@ -11,7 +11,6 @@
 DEFINE_string(master_port, "8101", "master rpc-server listen on this port");
 DEFINE_string(agent_port, "8102", "agent rpc-server listen on this port");
 DEFINE_int32(agent_http_port, 8089, "agent http-server listen on this port");
-
 DEFINE_int32(agent_http_server_threads, 10, "agent http-server thread pool size");
 
 DEFINE_string(master_addr, "localhost:" + FLAGS_master_port, "master rpc-server endpoint");
@@ -40,3 +39,4 @@ DEFINE_string(master_checkpoint_path, "./data/", "directory of master checkpoint
 DEFINE_int32(master_max_len_sched_task_list, 30, "max length of scheduled tasks of a job");
 DEFINE_int32(master_safe_mode_last, 30, "how many seconds the safe-mode goes on");
 
+/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

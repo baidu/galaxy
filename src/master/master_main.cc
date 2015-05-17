@@ -14,6 +14,8 @@
 
 DECLARE_string(master_port);
 DECLARE_int32(task_deploy_timeout);
+DECLARE_string(master_checkpoint_path);
+DECLARE_int32(master_safe_mode_last);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
@@ -29,6 +31,11 @@ int main(int argc, char* argv[])
     sofa::pbrpc::RpcServer rpc_server(options);
 
     galaxy::MasterImpl* master_service = new galaxy::MasterImpl();
+
+    if (!master_service->Recover()) {
+        fprintf(stderr, "master recover from checkpoint failed\n"); 
+        return EXIT_FAILURE;
+    }
 
     if (!rpc_server.RegisterService(master_service)) {
             return EXIT_FAILURE;

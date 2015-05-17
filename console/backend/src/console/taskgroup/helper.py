@@ -5,7 +5,6 @@
 #
 # Author: wangtaize@baidu.com
 # Date: 2015-03-30
-from console import models
 
 class ValidateException(Exception):
     pass
@@ -23,8 +22,6 @@ def validate_init_service_group_req(request):
         raise ValidateException("package type is required")
     pkg_type = int(pkg_type_str)
     ret["pkg_type"] = pkg_type
-    if pkg_type not in models.PKG_TYPE_LIST:
-        raise ValidateException("pkg_type is invalide type")
     pkg_src = request.POST.get("pkgSrc",None)
     if not pkg_src:
         raise ValidateException("pkgSrc is required")
@@ -52,4 +49,10 @@ def validate_init_service_group_req(request):
     ret['replicate_count'] = int(replicate_count_str)
     if ret['replicate_count'] < 0:
         raise ValidateException("replicate_count is invalidate")
+
+    deploy_step_size_str = request.POST.get("deployStepSize",None)
+    if not deploy_step_size_str:
+        ret["deploy_step_size"] = -1
+    else:
+        ret["deploy_step_size"] = int(deploy_step_size_str)
     return ret

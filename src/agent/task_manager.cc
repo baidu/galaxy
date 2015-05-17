@@ -201,6 +201,7 @@ int TaskManager::Status(std::vector< TaskStatus >& task_status_vector, int64_t i
         it = m_task_runner_map.find(id);
         if (it != m_task_runner_map.end()) {
             TaskStatus status;
+            status.set_task_id(id);
             it->second->Status(&status); 
             task_status_vector.push_back(status);
         }

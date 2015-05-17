@@ -98,8 +98,6 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s", request->task_name().c_str(),
-        request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
     task_info.set_task_name(request->task_name());
@@ -109,7 +107,19 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_required_mem(request->mem_share());
     task_info.set_task_offset(request->task_offset());
     task_info.set_job_replicate_num(request->job_replicate_num());
+    task_info.set_job_id(request->job_id());
+    if (request->has_cpu_limit()) {
+        task_info.set_limited_cpu(request->cpu_limit());
+    } else {
+        task_info.set_limited_cpu(request->cpu_share()); 
+    }
 
+    LOG(INFO, "Run Task %s %s [cpu_quota: %lf, cpu_limit: %lf, mem_limit: %ld]", 
+            task_info.task_name().c_str(),
+            task_info.cmd_line().c_str(),
+            task_info.required_cpu(),
+            task_info.limited_cpu(),
+            task_info.required_mem());
     TaskResourceRequirement requirement;
     requirement.cpu_limit = request->cpu_share();
     requirement.mem_limit = request->mem_share();
@@ -149,6 +159,7 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
                          ::galaxy::KillTaskResponse* response,
                          ::google::protobuf::Closure* done){
     int last_status = COMPLETE;
+    std::string gc_path;
     std::vector<TaskStatus > status_vector;
     task_mgr_->Status(status_vector, request->task_id());
     if (status_vector.size() != 1) {
@@ -165,13 +176,14 @@ void AgentImpl::KillTask(::google::protobuf::RpcController* /*controller*/,
         return;
     }
     if (last_status == ERROR) {
-        status = ws_mgr_->Remove(request->task_id(), true); 
+        status = ws_mgr_->Remove(request->task_id(), &gc_path, true); 
     } else {
         status = ws_mgr_->Remove(request->task_id());
     }
     LOG(INFO,"clean workspace task  %d status %d",request->task_id(),status);
     resource_mgr_->Free(request->task_id());
     response->set_status(status);
+    response->set_gc_path(gc_path);
     done->Run();
 }
 } // namespace galxay
