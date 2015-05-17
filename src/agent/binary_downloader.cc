@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "common/logging.h"
+
 namespace galaxy {
     
 static int OPEN_FLAGS = O_CREAT | O_WRONLY;

@@ -1,4 +1,3 @@
-
 # OPT ?= -O2 -DNDEBUG     # (A) Production use (optimized mode)
 OPT ?= -g2 -Wall -Werror  # (B) Debug mode, w/ full line-level debugging symbols
 # OPT ?= -O2 -g2 -DNDEBUG # (C) Profiling mode: opt, but w/debugging symbols
@@ -19,7 +18,7 @@ INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
 LDFLAGS = -L$(PROTOBUF_PATH)/lib -lprotobuf \
           -L$(PBRPC_PATH)/lib -lsofa-pbrpc \
           -L$(SNAPPY_PATH)/lib -lsnappy \
-          -lpthread -lz -lcurl -lidn -lssl -lldap -lleveldb
+          -lpthread -lz -lcurl -lidn -lssl -lldap -lleveldb -lgflags
 
 CXXFLAGS += $(OPT)
 
@@ -94,4 +93,3 @@ install: $(BIN) $(LIBS)
 .PHONY: test
 test:
 	cd test/integeration && sh inte-test-on-local.sh
-

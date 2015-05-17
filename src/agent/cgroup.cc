@@ -21,8 +21,9 @@
 #include "agent/resource_collector.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_cgroup_root; 
+DECLARE_string(cgroup_root); 
 
 namespace galaxy {
 

@@ -38,7 +38,7 @@ CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('third-64/gtest@1.6.0.100')
 CONFIGS('third-64/libcurl@base')
 CONFIGS('third-64/leveldb@base')
-
+CONFIGS('third-64/gflags@gflags_2-0-0-100_PD_BL')
 
 #为32位/64位指定不同的依赖路径.
 #CONFIGS_32('lib2/ullib')
@@ -66,14 +66,14 @@ sdk_sources='common/logging.cc src/sdk/galaxy.cc src/proto/task.proto src/proto/
 sdk_headers='src/sdk/galaxy.h'
 client_sources='src/client/galaxy_client.cc'
 
-downloader_sources='src/agent/curl_downloader.cc test/curl_downloader_test.cc common/logging.cc'
+downloader_sources='src/agent/curl_downloader.cc test/curl_downloader_test.cc common/logging.cc src/flags.cc'
 downloader_headers='src/agent/curl_downloader.h common/logging.h src/agent/downloader.h'
 
-downloadermgr_sources='src/agent/curl_downloader.cc src/agent/downloader_manager.cc test/downloader_manager_test.cc common/logging.cc src/agent/binary_downloader.cc'
+downloadermgr_sources='src/agent/curl_downloader.cc src/agent/downloader_manager.cc src/flags.cc test/downloader_manager_test.cc common/logging.cc src/agent/binary_downloader.cc'
 downloadermgr_headers='src/agent/curl_downloader.h src/agent/downloader_manager.h common/logging.h src/agent/downloader.h'
 
 #resource_collector_sources='test/resource_collector_test.cc'
-resource_collector_sources='src/agent/resource_collector.cc test/resource_collector_test.cc common/logging.cc src/agent/resource_collector_engine.cc'
+resource_collector_sources='src/agent/resource_collector.cc test/resource_collector_test.cc common/logging.cc src/agent/resource_collector_engine.cc src/flags.cc'
 resource_collector_headers='src/agent/resource_collector.h common/logging.h src/agent/resource_collector_engine.h'
 
 agent_utils_sources='src/agent/utils.cc common/logging.cc test/agent_utils_test.cc'
