@@ -605,7 +605,13 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
 
     MutexLock lock(&agent_lock_);
     int64_t job_id = next_job_id_++;
-
+    while(true){
+        if (tasks_.find(job_id) != tasks_.end()) {
+            job_id = next_job_id_++;
+            continue;
+        }
+        break;
+    }
     JobInfo job;
     job.id = job_id;
     job.job_name = request->job_name();
@@ -801,7 +807,7 @@ void MasterImpl::Schedule() {
             std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
-                continue;
+                break;
             }
             bool ret = ScheduleTask(&job, agent_addr);
             if (ret) {

@@ -63,10 +63,11 @@ int AbstractTaskRunner::IsRunning(){
         }
 
     }
-    LOG(INFO, "check task %d error[%d:%s] ",
+    LOG(INFO, "check task %d error[%d:%s]  pid %d",
             m_task_info.task_id(),
             ret,
-            strerror(errno));
+            strerror(errno),
+            m_child_pid);
     return ret;
 }
 
