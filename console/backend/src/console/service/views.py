@@ -45,9 +45,7 @@ def create_service(request):
         return builder.error('master is required').build_json()
     galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
     try:
-        LOG.info(request.POST)
         ret = helper.validate_init_service_group_req(request)
-        LOG.info(ret)
         status,output = galaxy.create_task(ret['name'],ret['pkg_src'],
                                            ret['start_cmd'],
                                            ret['replicate_count'],
