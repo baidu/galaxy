@@ -23,7 +23,6 @@ DECLARE_string(task_acct);
 namespace galaxy {
 
 int DefaultWorkspace::Create() {
-    const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     LOG(INFO, "create workspace for task %d", m_task_info.task_id());
     if (m_has_created) {
         return 0;
@@ -31,10 +30,10 @@ int DefaultWorkspace::Create() {
     //TODO safe path join
     //create work dir
     std::stringstream private_path;
-    private_path << m_root_path;
+    private_path << "/" << m_root_path;
     int status = 0;
     private_path << "/" << FLAGS_task_acct;
-    status = MakePath(private_path.str().c_str(), MKDIR_MODE);
+    status = MakePath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     m_task_root_path = private_path.str();
     if (0 != status) {
         LOG(WARNING, "create task root path failed %s err[%d: %s]",
@@ -43,7 +42,7 @@ int DefaultWorkspace::Create() {
     }
 
     private_path << "/" << m_task_info.task_id();
-    status = MakePath(private_path.str().c_str(), MKDIR_MODE);
+    status = MakePath(private_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
     if (status == 0) {
         m_task_root_path = private_path.str();
