@@ -65,6 +65,21 @@ $http.get("/console/service/list?user=9527&master="+config.masterAddr)
       });
 
     }
+    $scope.listTaskHistory = function(service){
+        var modalInstance = $modal.open({
+        templateUrl: 'views/task.html',
+        controller: 'TaskHistoryCtrl',
+        keyboard:false,
+        size:'lg',
+        backdrop:'static',
+        resolve:{
+            service:function(){
+                return service;
+            }
+        }
+      });
+
+    }
     $scope.listTaskByAgent = function(agent){
         var modalInstance = $modal.open({
         templateUrl: 'views/task.html',
