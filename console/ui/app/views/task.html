@@ -2,14 +2,32 @@
 <button type="button" class="close" ng-click="close()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
    <h4>任务列表</h4>
 </div>
-<div class="modal-body scrollable" style="height:300px;overflow-y:scroll">  
- <table class="table service-table">
+<div class="modal-body scrollable" style="height:400px;overflow-y:scroll">  
+<div class="ui statistics">
+     <div class="blue statistic">
+        <div class="value">{{runningNum}}</div>
+        <div class="label">运行总数</div>
+      </div>
+   
+    <div class="blue statistic">
+        <div class="value">{{deployingNum}}</div>
+        <div class="label">部署中总数</div>
+      </div>
+  
+ <div class="red statistic">
+     <div class="value">{{errorNum}}</div>
+        <div class="label">错误数 </div>
+ </div>
+</div>
+
+
+    <table class="table service-table">
     <thead>
       <tr>
         <th>#id</th>
         <th>任务名称</th>
         <th>任务状态</th>
-        <th>资源状态(used/limit)</th>
+        <th>资源状态(allocated/limit)</th>
         <th>agent</th>
       </tr>
     </thead>

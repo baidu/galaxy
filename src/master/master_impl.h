@@ -34,6 +34,8 @@ struct AgentInfo {
     int64_t mem_share;
     double cpu_used;
     int64_t mem_used;
+    double cpu_allocated;
+    int64_t mem_allocated;
     Agent_Stub* stub;
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
@@ -47,8 +49,8 @@ struct AgentLoad {
     int64_t agent_id;
     std::string agent_addr;
     AgentLoad(const AgentInfo& agent,double load):load(load){
-        mem_left = agent.mem_share - agent.mem_used;
-        cpu_left = agent.cpu_share - agent.cpu_used;
+        mem_left = agent.mem_share - agent.mem_allocated;
+        cpu_left = agent.cpu_share - agent.cpu_allocated;
         agent_id = agent.id;
         agent_addr = agent.addr;
     }
@@ -92,6 +94,7 @@ struct JobInfo {
     std::deque<TaskInstance> scheduled_tasks;
     int32_t deploy_step_size;
     std::set<int64_t> deploying_tasks;
+    double cpu_limit;
 };
 
 class RpcClient;

@@ -10,11 +10,12 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_master_port;
-extern int FLAGS_task_deploy_timeout;
-extern std::string FLAGS_master_checkpoint_path;
-extern int64_t FLAGS_master_safe_mode_last;
+DECLARE_string(master_port);
+DECLARE_int32(task_deploy_timeout);
+DECLARE_string(master_checkpoint_path);
+DECLARE_int32(master_safe_mode_last);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
@@ -24,21 +25,7 @@ static void SignalIntHandler(int /*sig*/)
 
 int main(int argc, char* argv[])
 {
-    for (int i = 1; i < argc; i++) {
-        char s[1024];
-        if (sscanf(argv[i], "--port=%s", s) == 1) {
-            FLAGS_master_port = s;
-        } else if (sscanf(argv[i], "--task_deploy_timeout=%s", s) == 1)  {
-            FLAGS_task_deploy_timeout = atol(s); 
-        } else if (sscanf(argv[i], "--safe_mode_last=%s", s) == 1) {
-            FLAGS_master_safe_mode_last = atol(s);
-        } else if (sscanf(argv[i], "--checkpoint_dir=%s", s) == 1) {
-            FLAGS_master_checkpoint_path = s;
-        } else {
-            fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
-            exit(1);
-        }
-    }
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
 
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);

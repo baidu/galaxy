@@ -18,10 +18,13 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
                                                                 config){
     var stop = null;
    $scope.getTask = function(){
-      $http.get("/taskgroup/status?id="+service.job_id+"&master="+config.masterAddr)
+      $http.get("/console/taskgroup/status?id="+service.job_id+"&master="+config.masterAddr)
            .success(function(data){
                if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
+                  $scope.runningNum = data.data.statics.RUNNING;
+                  $scope.deployingNum = data.data.statics.DEPLOYING;
+                  $scope.errorNum = data.data.statics.ERROR;
                }
           })
            .error(function(err){
@@ -49,10 +52,13 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
                                                                 config){
    var stop = null;
    $scope.getTask = function(){
-      $http.get("/taskgroup/status?agent="+agent.addr+"&master="+config.masterAddr)
+      $http.get("/console/taskgroup/status?agent="+agent.addr+"&master="+config.masterAddr)
            .success(function(data){
                if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
+                  $scope.runningNum = data.data.statics.RUNNING;
+                  $scope.deployingNum = data.data.statics.DEPLOYING;
+                  $scope.errorNum = data.data.statics.ERROR;
                }
           })
            .error(function(err){
@@ -69,7 +75,24 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
    
 });
 
+angular.module('galaxy.ui.ctrl').controller('TaskHistoryCtrl',function($scope,$modalInstance,$http,service,config){
 
+$http.get("/console/taskgroup/history?id="+service.job_id+"&master="+config.masterAddr).success(function(data){
+    
+                if(data.status == 0 ){
+                  $scope.tasklist = data.data.taskList;
+                  $scope.runningNum = data.data.statics.RUNNING;
+                  $scope.deployingNum = data.data.statics.DEPLOYING;
+                  $scope.errorNum = data.data.statics.ERROR;
+               }
+
+    })
+    .error();
+    $scope.close =function(){
+      $modalInstance.dismiss('cancel'); 
+   }
+
+});
 
 
 }(angular));

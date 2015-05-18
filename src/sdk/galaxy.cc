@@ -80,6 +80,9 @@ int64_t GalaxyImpl::NewJob(const JobDescription& job){
     if(job.deploy_step_size > 0){
         request.set_deploy_step_size(job.deploy_step_size);
     }
+    if (job.cpu_limit > 0) {
+        request.set_cpu_limit(job.cpu_limit); 
+    }
     rpc_client_->SendRequest(master_, &Master_Stub::NewJob,
                              &request,&response,5,1);
     return response.job_id();

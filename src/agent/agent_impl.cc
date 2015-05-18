@@ -13,14 +13,15 @@
 #include "rpc/rpc_client.h"
 #include "proto/task.pb.h"
 #include "common/httpserver.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_master_addr;
-extern std::string FLAGS_agent_port;
-extern std::string FLAGS_agent_http_port;
-extern int FLAGS_agent_http_server_threads;
-extern std::string FLAGS_agent_work_dir;
-extern double FLAGS_cpu_num;
-extern int64_t FLAGS_mem_bytes;
+DECLARE_string(master_addr);
+DECLARE_string(agent_port);
+DECLARE_int32(agent_http_port);
+DECLARE_int32(agent_http_server_threads);
+DECLARE_string(agent_work_dir);
+DECLARE_double(cpu_num);
+DECLARE_int64(mem_bytes);
 
 namespace galaxy {
 
@@ -49,7 +50,7 @@ AgentImpl::AgentImpl() {
     version_ = 0;
     thread_pool_.AddTask(boost::bind(&AgentImpl::Report, this));
     http_server_ = new common::HttpFileServer(FLAGS_agent_work_dir,
-                                              atoi(FLAGS_agent_http_port.c_str()));
+                                              FLAGS_agent_http_port);
     http_server_->Start(FLAGS_agent_http_server_threads);
 }
 
@@ -97,8 +98,6 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
                         const ::galaxy::RunTaskRequest* request,
                         ::galaxy::RunTaskResponse* response,
                         ::google::protobuf::Closure* done) {
-    LOG(INFO, "Run Task %s %s", request->task_name().c_str(),
-        request->cmd_line().c_str());
     TaskInfo task_info;
     task_info.set_task_id(request->task_id());
     task_info.set_task_name(request->task_name());
@@ -109,7 +108,18 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     task_info.set_task_offset(request->task_offset());
     task_info.set_job_replicate_num(request->job_replicate_num());
     task_info.set_job_id(request->job_id());
+    if (request->has_cpu_limit()) {
+        task_info.set_limited_cpu(request->cpu_limit());
+    } else {
+        task_info.set_limited_cpu(request->cpu_share()); 
+    }
 
+    LOG(INFO, "Run Task %s %s [cpu_quota: %lf, cpu_limit: %lf, mem_limit: %ld]", 
+            task_info.task_name().c_str(),
+            task_info.cmd_line().c_str(),
+            task_info.required_cpu(),
+            task_info.limited_cpu(),
+            task_info.required_mem());
     TaskResourceRequirement requirement;
     requirement.cpu_limit = request->cpu_share();
     requirement.mem_limit = request->mem_share();

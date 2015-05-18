@@ -22,15 +22,18 @@
 #include "agent/resource_collector.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_cgroup_root; 
-extern std::string FLAGS_task_acct;
+DECLARE_string(task_acct);
+DECLARE_string(cgroup_root); 
 
 namespace galaxy {
 
 static const std::string RUNNER_META_PREFIX = "task_runner_";
 static int CPU_CFS_PERIOD = 100000;
 static int MIN_CPU_CFS_QUOTA = 1000;
+static int CPU_SHARE_PER_CPU = 1024;
+static int MIN_CPU_SHARE = 10;
 
 int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_sys_map) {
     if (_support_cg.size() <= 0) {
@@ -95,10 +98,10 @@ int AbstractCtrl::AttachTask(pid_t pid) {
     int ret = common::util::WriteIntToFile(task_file, pid);
 
     if (ret < 0) {
-        LOG(FATAL, "fail to attach pid  %d for %s", pid, _my_cg_root.c_str());
+        //LOG(FATAL, "fail to attach pid  %d for %s", pid, _my_cg_root.c_str());
         return -1;
     }else{
-        LOG(INFO,"attach pid %d for %s successfully",pid, _my_cg_root.c_str());
+        //LOG(INFO,"attach pid %d for %s successfully",pid, _my_cg_root.c_str());
     }
 
     return 0;
@@ -109,7 +112,7 @@ int MemoryCtrl::SetLimit(int64_t limit) {
     int ret = common::util::WriteIntToFile(limit_file, limit);
 
     if (ret < 0) {
-        LOG(FATAL, "fail to set limt %lld for %s", limit, _my_cg_root.c_str());
+        //LOG(FATAL, "fail to set limt %lld for %s", limit, _my_cg_root.c_str());
         return -1;
     }
 
@@ -133,7 +136,7 @@ int CpuCtrl::SetCpuShare(int64_t cpu_share) {
     std::string cpu_share_file = _my_cg_root + "/" + "cpu.shares";
     int ret = common::util::WriteIntToFile(cpu_share_file, cpu_share);
     if (ret < 0) {
-        LOG(FATAL, "fail to set cpu share %lld for %s", cpu_share, _my_cg_root.c_str());
+        //LOG(FATAL, "fail to set cpu share %lld for %s", cpu_share, _my_cg_root.c_str());
         return -1;
     }
 
@@ -156,10 +159,10 @@ int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
     std::string cpu_quota_file = _my_cg_root + "/" + "cpu.cfs_quota_us";
     int ret = common::util::WriteIntToFile(cpu_quota_file, cpu_quota);
     if (ret < 0) {
-        LOG(FATAL, "fail to set cpu quota  %ld for %s", cpu_quota, _my_cg_root.c_str());
+        //LOG(FATAL, "fail to set cpu quota  %ld for %s", cpu_quota, _my_cg_root.c_str());
         return -1;
     }
-    LOG(INFO, "set cpu quota %ld for %s", cpu_quota, _my_cg_root.c_str());
+    //LOG(INFO, "set cpu quota %ld for %s", cpu_quota, _my_cg_root.c_str());
     return 0;
 
 }
@@ -214,33 +217,34 @@ int ContainerTaskRunner::Prepare() {
 
 void ContainerTaskRunner::PutToCGroup(){
     int64_t mem_size = m_task_info.required_mem();
-    double cpu_core = m_task_info.required_cpu();
-    LOG(INFO, "resource limit cpu %f, mem %ld", cpu_core, mem_size);
-    /*
-    std::string mem_key = "memory";
-    std::string cpu_key = "cpu";
-    for (int i = 0; i< m_task_info.resource_list_size(); i++){
-        ResourceItem item = m_task_info.resource_list(i);
-        if(mem_key.compare(item.name())==0 && item.value() > 0){
-            mem_size = item.value();
-            continue;
+    double cpu_core = m_task_info.required_cpu();    // soft limit  cpu.share
+    double cpu_limit = cpu_core;                     // hard limit  cpu.cfs_quota_us
+    if (m_task_info.has_limited_cpu()) {
+        cpu_limit = m_task_info.limited_cpu(); 
+        if (cpu_limit < cpu_core) {
+            cpu_limit = cpu_core;     
         }
-        if(cpu_key.compare(item.name())==0 && item.value() >0){
-            cpu_share = item.value() * 512;
-        }
-
-    }*/
-    _mem_ctrl->SetLimit(mem_size);
-    //_cpu_ctrl->SetCpuShare(cpu_share);
-    int64_t quota = static_cast<int64_t>(cpu_core * CPU_CFS_PERIOD);
-    if (quota < MIN_CPU_CFS_QUOTA) {
-        quota = MIN_CPU_CFS_QUOTA;
     }
-    _cpu_ctrl->SetCpuQuota(quota);
+    assert(_mem_ctrl->SetLimit(mem_size) == 0);     
+
+    // set cpu hard limit first
+    int64_t limit = static_cast<int64_t>(cpu_limit * CPU_CFS_PERIOD);
+    if (limit < MIN_CPU_CFS_QUOTA) {
+        limit = MIN_CPU_CFS_QUOTA;
+    }
+
+    assert(_cpu_ctrl->SetCpuQuota(limit) == 0);
+    // set cpu qutoa 
+    int64_t quota = static_cast<int64_t>(cpu_core * CPU_SHARE_PER_CPU);
+    if (quota < MIN_CPU_SHARE) {
+        quota = MIN_CPU_SHARE; 
+    }
+    assert(_cpu_ctrl->SetCpuShare(quota) == 0);
+
     pid_t my_pid = getpid();
-    _mem_ctrl->AttachTask(my_pid);
-    _cpu_ctrl->AttachTask(my_pid);
-    _cpu_acct_ctrl->AttachTask(my_pid);
+    assert(_mem_ctrl->AttachTask(my_pid) == 0);
+    assert(_cpu_ctrl->AttachTask(my_pid) == 0);
+    assert(_cpu_acct_ctrl->AttachTask(my_pid) == 0);
 }
 
 int ContainerTaskRunner::Start() {
@@ -269,7 +273,6 @@ int ContainerTaskRunner::Start() {
     }
 
     m_child_pid = fork();
-
     if (m_child_pid == 0) {
         pid_t my_pid = getpid();
         int ret = setpgid(my_pid, my_pid);

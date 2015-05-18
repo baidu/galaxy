@@ -16,8 +16,9 @@
 #include <unistd.h>
 #include "common/logging.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_task_acct;
+DECLARE_string(task_acct);
 
 namespace galaxy {
 

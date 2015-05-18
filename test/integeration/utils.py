@@ -66,7 +66,7 @@ class MasterCtrl(object):
         if not os.path.exists(self.run_path):
             ShellHelper.run_with_returncode("mkdir -p %s"%self.run_path)
         os.chdir(self.run_path)
-        start_cmd = "%s --port=%s >%s 2>&1"%(self.master_bin,self.port,self.output)
+        start_cmd = "%s --master_port=%s >%s 2>&1"%(self.master_bin,self.port,self.output)
         self.master_process = ShellHelper.run_with_process(start_cmd)
         if self.master_process.poll() is None:
             print "%s has been started"%self.master_bin

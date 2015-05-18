@@ -16,8 +16,9 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include "common/logging.h"
 #include "common/mutex.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_cgroup_root;
+DECLARE_string(cgroup_root);
 
 namespace galaxy {
 

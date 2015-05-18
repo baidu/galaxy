@@ -6,16 +6,12 @@
 # Author: wangtaize@baidu.com
 # Date: 2015-04-20
 import os
-def build_init_cgroup_cmd(subsys_list):
+def build_init_cgroup_cmd():
     all_cmd = []
-    cgroup_root = "/cgroups"
-    all_cmd.append("mkdir -p %s"%cgroup_root)
-    all_cmd.append("mount -t tmpfs cgroup %s"%cgroup_root)
-    for subsys in subsys_list:
-        sub_path = os.path.sep.join([cgroup_root,subsys])
-        all_cmd.append("mkdir -p %s"%sub_path)
-        all_cmd.append("mount -t cgroup -o%s none %s"%(subsys,sub_path))
-    return all_cmd
+    all_cmd.append("cd /home/galaxy/agent && babysitter bin/galaxy_agent.conf stop")
+    all_cmd.append("cd /home/galaxy/agent/work_dir && rm -rf data")
+    all_cmd.append("cd /home/galaxy/agent && babysitter bin/galaxy_agent.conf start")
+
 def build_clean_cgroup_cmd(subsys_list):
     all_cmd = []
     cgroup_root = "/cgroups"
@@ -26,14 +22,13 @@ def build_clean_cgroup_cmd(subsys_list):
     return all_cmd
 
 #当初始化一台机器将执行下面命令
-INIT_SYS_CMDS= build_init_cgroup_cmd(["cpu","memory","cpuacct"])
+INIT_SYS_CMDS= build_init_cgroup_cmd()
 #当清理一台机器时执行下面的命令
 CLEAN_SYS_CMDS = build_clean_cgroup_cmd(["cpu","memory","cpuacct"])
 #sampe node list
 def build_node_list():
     nodes = []
-    for i in range(81,88):
-        nodes.append("yq01-tera%d.yq01.baidu.com"%i)
+    nodes.append("yq01-tera%d.yq01.baidu.com"%i)
     return nodes
 #机器列表
 NODE_LIST= build_node_list()

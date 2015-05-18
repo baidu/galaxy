@@ -67,7 +67,7 @@ var galaxy = angular.module('galaxy.ui', [
     if(masterAddr ==null && $cookies.masterAddr != undefined ){
         masterAddr = $cookies.masterAddr;
     }
-    return $http.get("/conf/get").then(function(response) {
+    return $http.get("console/conf/get").then(function(response) {
             galaxy.constant("config", {config:response.data.data.config,masterAddr:masterAddr,home:response.data.data.home,service:response.data.data.service});
         }, function(errorResponse) {
 
