@@ -95,6 +95,7 @@ struct JobInfo {
     int32_t deploy_step_size;
     std::set<int64_t> deploying_tasks;
     double cpu_limit;
+    bool one_task_per_host;
 };
 
 class RpcClient;
@@ -163,6 +164,8 @@ private:
     double CalcLoad(const AgentInfo& agent);
     std::string AllocResource(const JobInfo& job);
     bool SafeModeCheck();
+    bool JobTaskExistsOnAgent(const std::string& agent,
+                              const JobInfo& job);
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;

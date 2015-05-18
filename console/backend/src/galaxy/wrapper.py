@@ -16,14 +16,15 @@ class Galaxy(object):
         self.shell_helper = shell.ShellHelper()
         self.bin_path = bin_path
     def create_task(self,name,url,cmd_line,replicate_count,mem_limit,cpu_quota,
-                    deploy_step_size=-1):
+                    deploy_step_size=-1, one_task_per_host=False):
 
         galaxy_sdk = sdk.GalaxySDK(self.master_addr)
         status,job_id = galaxy_sdk.make_job(name,'ftp',url,cmd_line,
                                            replicate_num = replicate_count,
                                            mem_limit = mem_limit,
                                            cpu_limit = cpu_quota,
-                                           deploy_step_size=deploy_step_size)
+                                           deploy_step_size=deploy_step_size,
+                                           one_task_per_host=one_task_per_host)
         return status,job_id
 
     def list_task_by_job_id(self,job_id):
