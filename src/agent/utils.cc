@@ -64,16 +64,11 @@ bool IsSpecialDir(const char* path) {
 }
 
 bool Remove(const std::string& path) {
-    bool rs = false;
-    if (!IsFile(path, rs)) {
+    bool rs;
+    if (!IsDir(path.c_str(), rs)) {
         return false; 
     }
     if (!rs) {
-        if (!IsLink(path, rs)) {
-            return false; 
-        } 
-    }
-    if (rs) {
         if (remove(path.c_str()) != 0) {
             LOG(WARNING, "remove %s failed err[%d: %s]",
                     path.c_str(),
@@ -82,14 +77,6 @@ bool Remove(const std::string& path) {
             return false;
         }
         return true;
-    }
-
-    if (!IsDir(path.c_str(), rs)) {
-        return false; 
-    }
-    if (!rs) {
-        LOG(WARNING, "remove %s failed because neither dir nor file");
-        return false;
     }
 
     std::vector<std::string> stack;
@@ -133,18 +120,14 @@ bool Remove(const std::string& path) {
                 } 
                 std::string tmp_path = cur_path + "/";
                 tmp_path.append(dir_entity->d_name);
-                bool is_file;
-                if (!IsFile(tmp_path, is_file)) {
-                    ret = false; 
+                is_dir = false;
+                if (!IsDir(tmp_path, is_dir)) {
+                    ret = false;
                     break;
                 }
-                if (!is_file) {
-                    if (!IsLink(tmp_path, is_file)) {
-                        ret = false; 
-                        break;
-                    }
-                }
-                if (is_file) {
+                if (is_dir) {
+                    stack.push_back(tmp_path);
+                } else {
                     if (remove(tmp_path.c_str()) != 0) { 
                         LOG(WARNING, "remove %s failed err[%d: %s]",
                                 tmp_path.c_str(),
@@ -153,15 +136,6 @@ bool Remove(const std::string& path) {
                         ret = false; 
                         break;
                     }
-                    continue;
-                }
-                is_dir = false;
-                if (!IsDir(tmp_path, is_dir)) {
-                    ret = false;
-                    break;
-                } 
-                if (is_dir) {
-                    stack.push_back(tmp_path);
                 }
             }
             closedir(dir_desc);
@@ -173,8 +147,6 @@ bool Remove(const std::string& path) {
 
     return true;
 }
-
-
 
 bool GetDirFilesByPrefixInternal(
         const std::string& dir,
