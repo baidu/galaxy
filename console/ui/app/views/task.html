@@ -3,7 +3,25 @@
    <h4>任务列表</h4>
 </div>
 <div class="modal-body scrollable" style="height:400px;overflow-y:scroll">  
- <table class="table service-table">
+<div class="ui statistics">
+     <div class="blue statistic">
+        <div class="value">{{runningNum}}</div>
+        <div class="label">运行总数</div>
+      </div>
+   
+    <div class="blue statistic">
+        <div class="value">{{deployingNum}}</div>
+        <div class="label">部署中总数</div>
+      </div>
+  
+ <div class="red statistic">
+     <div class="value">{{errorNum}}</div>
+        <div class="label">错误数 </div>
+ </div>
+</div>
+
+
+    <table class="table service-table">
     <thead>
       <tr>
         <th>#id</th>
