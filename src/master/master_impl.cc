@@ -680,6 +680,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.mutable_info()->set_task_id(task_id);
         instance.mutable_info()->set_required_cpu(job->cpu_share);
         instance.mutable_info()->set_required_mem(job->mem_share);
+        instance.mutable_info()->set_limited_cpu(job->cpu_limit);
         instance.set_agent_addr(agent_addr);
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
