@@ -83,7 +83,7 @@ bool Remove(const std::string& path)
 bool OptForEach(const std::string& path, const OptFunc& opt)
 {
     bool rs = false;
-    if (!IsFile(path, rs)) {
+    if (!IsDir(path, rs)) {
         return false; 
     }
     if (!rs) {
