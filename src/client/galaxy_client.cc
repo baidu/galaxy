@@ -176,7 +176,7 @@ int main(int argc, char* argv[]) {
     } else if (strcmp(argv[1], "updatejob") == 0) {
         return UpdateJob();
     } else {
-        fprintf(stderr, USAGE.c_str());
+        fprintf(stderr,"use ./galaxy_client --help for help");
         return -1;
     }
 
