@@ -93,7 +93,8 @@ bool MasterImpl::Recover() {
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
         job_info.cpu_limit = cell.cpu_share();
-        if (cell.has_cpu_limit()) {
+        if (cell.has_cpu_limit() 
+                && cell.cpu_limit() > job_info.cpu_share) {
             job_info.cpu_limit = cell.cpu_limit();
         }
         if (job_info.deploy_step_size == 0) {
@@ -614,7 +615,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
     job.cpu_limit = job.cpu_share;
-    if (request->has_cpu_limit()) {
+    if (request->has_cpu_limit() 
+            && request->cpu_limit() > job.cpu_share) {
         job.cpu_limit = request->cpu_limit();
     }  
 
