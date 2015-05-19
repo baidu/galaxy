@@ -718,7 +718,7 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     agent_lock_.AssertHeld();
     LOG(INFO,"cancel task %ld on agent %s",task_id,agent->addr.c_str());
     if (agent->stub == NULL) {
-    bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
+        bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
         assert(ret);
     }
     KillTaskRequest kill_request;
