@@ -84,16 +84,9 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
 {
     bool rs = false;
     if (!IsFile(path, rs)) {
-        LOG(WARNING, "IsFile %s failed err", path.c_str());
         return false; 
     }
     if (!rs) {
-        if (!IsLink(path, rs)) {
-            LOG(WARNING, "IsLink %s failed err", path.c_str());
-            return false; 
-        } 
-    }
-    if (rs) {
         if (0 != opt(path.c_str())) {
             LOG(WARNING, "opt %s failed err[%d: %s]",
                     path.c_str(),
@@ -102,15 +95,6 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
             return false;
         }
         return true;
-    }
-
-    if (!IsDir(path.c_str(), rs)) {
-        LOG(WARNING, "IsDir %s failed err", path.c_str());
-        return false; 
-    }
-    if (!rs) {
-        LOG(WARNING, "opt %s failed because neither dir nor file");
-        return false;
     }
 
     std::vector<std::string> stack;
@@ -155,19 +139,15 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
                 } 
                 std::string tmp_path = cur_path + "/";
                 tmp_path.append(dir_entity->d_name);
-                bool is_file;
-                if (!IsFile(tmp_path, is_file)) {
-                    ret = false; 
+                is_dir = false;
+                if (!IsDir(tmp_path, is_dir)) {
+                    ret = false;
                     break;
                 }
-                if (!is_file) {
-                    if (!IsLink(tmp_path, is_file)) {
-                        ret = false; 
-                        break;
-                    }
-                }
-                if (is_file) {
-                    if (0 != opt(tmp_path.c_str())) { 
+                if (is_dir) {
+                    stack.push_back(tmp_path);
+                } else {
+                    if (opt(tmp_path.c_str()) != 0) { 
                         LOG(WARNING, "opt %s failed err[%d: %s]",
                                 tmp_path.c_str(),
                                 errno,
@@ -175,15 +155,6 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
                         ret = false; 
                         break;
                     }
-                    continue;
-                }
-                is_dir = false;
-                if (!IsDir(tmp_path, is_dir)) {
-                    ret = false;
-                    break;
-                } 
-                if (is_dir) {
-                    stack.push_back(tmp_path);
                 }
             }
             closedir(dir_desc);
@@ -196,7 +167,6 @@ bool OptForEach(const std::string& path, const OptFunc& opt)
 
     return true;
 }
-
 
 bool GetDirFilesByPrefixInternal(
         const std::string& dir,
