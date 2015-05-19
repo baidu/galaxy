@@ -92,6 +92,10 @@ bool MasterImpl::Recover() {
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
+        job_info.cpu_limit = cell.cpu_share();
+        if (cell.has_cpu_limit()) {
+            job_info.cpu_limit = cell.cpu_limit();
+        }
         if (job_info.deploy_step_size == 0) {
             job_info.deploy_step_size = job_info.replica_num;
         }
@@ -100,9 +104,10 @@ bool MasterImpl::Recover() {
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
 
-        LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld deploy_step_size: %d", 
+        LOG(INFO, "recover job info %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
                 job_info.cpu_share,
+                job_info.cpu_limit,
                 job_info.mem_share,
                 job_info.deploy_step_size);
         // only safe_mode when recovered, 
