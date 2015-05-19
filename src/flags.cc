@@ -40,7 +40,7 @@ DEFINE_int32(master_max_len_sched_task_list, 30, "max length of scheduled tasks 
 DEFINE_int32(master_safe_mode_last, 30, "how many seconds the safe-mode goes on");
 
 
-DEFINE_string(job_name,"","job name showed on galaxy");
+DEFINE_string(job_name,"","job name shown on galaxy");
 DEFINE_string(task_raw,"","job package which could be a ftp address or a local file ");
 DEFINE_string(cmd_line,"","the boot command of job");
 DEFINE_int32(replicate_num,0,"the replication number of job");
@@ -50,7 +50,7 @@ DEFINE_int32(deploy_step_size,0,"how many tasks can be deployed in concurrent");
 DEFINE_bool(one_task_per_host,false,"every node just run one task of job");
 DEFINE_int64(task_id,-1,"the identify of task");
 DEFINE_int64(job_id,-1,"the identify of job");
-DEFINE_string(agent_addr,"","the address of a agent showed by listnode");
+DEFINE_string(agent_addr,"","the address of a agent shown by listnode");
 
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
