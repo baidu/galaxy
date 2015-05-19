@@ -6,7 +6,6 @@
 
 #include "agent/utils.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -19,6 +18,8 @@
 #include <set>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 
 #include "common/logging.h"
 
@@ -63,14 +64,31 @@ bool IsSpecialDir(const char* path) {
     return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
 }
 
-bool Remove(const std::string& path) {
-    bool rs;
-    if (!IsDir(path.c_str(), rs)) {
+bool Chown(const std::string& path, uid_t uid, gid_t gid) 
+{
+    if (0 == path.length()) {
+        return false;
+    }
+    return OptForEach(path, boost::bind(lchown, _1, uid, gid));
+}
+
+bool Remove(const std::string& path)
+{
+    if (0 == path.length()) {
+        return false;
+    }
+    return OptForEach(path, boost::bind(remove, _1));
+}
+
+bool OptForEach(const std::string& path, const OptFunc& opt)
+{
+    bool rs = false;
+    if (!IsDir(path, rs)) {
         return false; 
     }
     if (!rs) {
-        if (remove(path.c_str()) != 0) {
-            LOG(WARNING, "remove %s failed err[%d: %s]",
+        if (0 != opt(path.c_str())) {
+            LOG(WARNING, "opt %s failed err[%d: %s]",
                     path.c_str(),
                     errno,
                     strerror(errno));
@@ -88,14 +106,15 @@ bool Remove(const std::string& path) {
         
         bool is_dir;
         if (!IsDir(cur_path, is_dir)) {
+            LOG(WARNING, "IsDir %s failed err", path.c_str());
             return false; 
         }
 
         if (is_dir) {
             if (visited.find(cur_path) != visited.end()) {
                 stack.pop_back();
-                if (remove(cur_path.c_str()) != 0) {
-                    LOG(WARNING, "remove %s failed err[%d: %s]",
+                if (0 != opt(cur_path.c_str())) {
+                    LOG(WARNING, "opt %s failed err[%d: %s]",
                             cur_path.c_str(),
                             errno,
                             strerror(errno)); 
@@ -128,8 +147,8 @@ bool Remove(const std::string& path) {
                 if (is_dir) {
                     stack.push_back(tmp_path);
                 } else {
-                    if (remove(tmp_path.c_str()) != 0) { 
-                        LOG(WARNING, "remove %s failed err[%d: %s]",
+                    if (opt(tmp_path.c_str()) != 0) { 
+                        LOG(WARNING, "opt %s failed err[%d: %s]",
                                 tmp_path.c_str(),
                                 errno,
                                 strerror(errno));
@@ -140,6 +159,7 @@ bool Remove(const std::string& path) {
             }
             closedir(dir_desc);
             if (!ret) {
+                LOG(WARNING, "opt %s failed err", path.c_str());
                 return ret;
             } 
         } 
@@ -259,5 +279,4 @@ bool IsDir(const std::string& path, bool& is_dir) {
 
 }   // ending namespace file
 }   // ending namespace galaxy
-
 /* vim: set ts=4 sw=4 sts=4 tw=100 */
