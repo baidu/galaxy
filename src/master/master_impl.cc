@@ -94,6 +94,11 @@ bool MasterImpl::Recover() {
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
+        job_info.cpu_limit = cell.cpu_share();
+        if (cell.has_cpu_limit() 
+                && cell.cpu_limit() > job_info.cpu_share) {
+            job_info.cpu_limit = cell.cpu_limit();
+        }
         if (job_info.deploy_step_size == 0) {
             job_info.deploy_step_size = job_info.replica_num;
         }
@@ -102,9 +107,10 @@ bool MasterImpl::Recover() {
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
 
-        LOG(INFO, "recover job info %s cpu_share: %lf mem_share: %ld deploy_step_size: %d", 
+        LOG(INFO, "recover job info %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
                 job_info.cpu_share,
+                job_info.cpu_limit,
                 job_info.mem_share,
                 job_info.deploy_step_size);
         // only safe_mode when recovered, 
@@ -627,7 +633,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.cpu_share = request->cpu_share();
     job.mem_share = request->mem_share();
     job.cpu_limit = job.cpu_share;
-    if (request->has_cpu_limit()) {
+    if (request->has_cpu_limit() 
+            && request->cpu_limit() > job.cpu_share) {
         job.cpu_limit = request->cpu_limit();
     }  
 
@@ -696,6 +703,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.mutable_info()->set_task_id(task_id);
         instance.mutable_info()->set_required_cpu(job->cpu_share);
         instance.mutable_info()->set_required_mem(job->mem_share);
+        instance.mutable_info()->set_limited_cpu(job->cpu_limit);
         instance.set_agent_addr(agent_addr);
         instance.set_job_id(job->id);
         instance.set_start_time(common::timer::now_time());
