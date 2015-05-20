@@ -66,8 +66,7 @@ int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_
 }
 
 
-static int 
-GetCgroupTasks(const std::string& task_path, std::vector<int>* pids) {
+static int GetCgroupTasks(const std::string& task_path, std::vector<int>* pids) {
     if (pids == NULL) {
         return -1; 
     }
