@@ -6,7 +6,6 @@
 
 #include "agent/utils.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -19,6 +18,8 @@
 #include <set>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 
 #include "common/logging.h"
 
@@ -63,33 +64,37 @@ bool IsSpecialDir(const char* path) {
     return strcmp(path, ".") == 0 || strcmp(path, "..") == 0;
 }
 
-bool Remove(const std::string& path) {
+bool Chown(const std::string& path, uid_t uid, gid_t gid) 
+{
+    if (0 == path.length()) {
+        return false;
+    }
+    return OptForEach(path, boost::bind(lchown, _1, uid, gid));
+}
+
+bool Remove(const std::string& path)
+{
+    if (0 == path.length()) {
+        return false;
+    }
+    return OptForEach(path, boost::bind(remove, _1));
+}
+
+bool OptForEach(const std::string& path, const OptFunc& opt)
+{
     bool rs = false;
-    if (!IsFile(path, rs)) {
+    if (!IsDir(path, rs)) {
         return false; 
     }
     if (!rs) {
-        if (!IsLink(path, rs)) {
-            return false; 
-        } 
-    }
-    if (rs) {
-        if (remove(path.c_str()) != 0) {
-            LOG(WARNING, "remove %s failed err[%d: %s]",
+        if (0 != opt(path.c_str())) {
+            LOG(WARNING, "opt %s failed err[%d: %s]",
                     path.c_str(),
                     errno,
                     strerror(errno));
             return false;
         }
         return true;
-    }
-
-    if (!IsDir(path.c_str(), rs)) {
-        return false; 
-    }
-    if (!rs) {
-        LOG(WARNING, "remove %s failed because neither dir nor file");
-        return false;
     }
 
     std::vector<std::string> stack;
@@ -101,14 +106,15 @@ bool Remove(const std::string& path) {
         
         bool is_dir;
         if (!IsDir(cur_path, is_dir)) {
+            LOG(WARNING, "IsDir %s failed err", path.c_str());
             return false; 
         }
 
         if (is_dir) {
             if (visited.find(cur_path) != visited.end()) {
                 stack.pop_back();
-                if (remove(cur_path.c_str()) != 0) {
-                    LOG(WARNING, "remove %s failed err[%d: %s]",
+                if (0 != opt(cur_path.c_str())) {
+                    LOG(WARNING, "opt %s failed err[%d: %s]",
                             cur_path.c_str(),
                             errno,
                             strerror(errno)); 
@@ -133,39 +139,27 @@ bool Remove(const std::string& path) {
                 } 
                 std::string tmp_path = cur_path + "/";
                 tmp_path.append(dir_entity->d_name);
-                bool is_file;
-                if (!IsFile(tmp_path, is_file)) {
-                    ret = false; 
+                is_dir = false;
+                if (!IsDir(tmp_path, is_dir)) {
+                    ret = false;
                     break;
                 }
-                if (!is_file) {
-                    if (!IsLink(tmp_path, is_file)) {
-                        ret = false; 
-                        break;
-                    }
-                }
-                if (is_file) {
-                    if (remove(tmp_path.c_str()) != 0) { 
-                        LOG(WARNING, "remove %s failed err[%d: %s]",
+                if (is_dir) {
+                    stack.push_back(tmp_path);
+                } else {
+                    if (opt(tmp_path.c_str()) != 0) { 
+                        LOG(WARNING, "opt %s failed err[%d: %s]",
                                 tmp_path.c_str(),
                                 errno,
                                 strerror(errno));
                         ret = false; 
                         break;
                     }
-                    continue;
-                }
-                is_dir = false;
-                if (!IsDir(tmp_path, is_dir)) {
-                    ret = false;
-                    break;
-                } 
-                if (is_dir) {
-                    stack.push_back(tmp_path);
                 }
             }
             closedir(dir_desc);
             if (!ret) {
+                LOG(WARNING, "opt %s failed err", path.c_str());
                 return ret;
             } 
         } 
@@ -173,8 +167,6 @@ bool Remove(const std::string& path) {
 
     return true;
 }
-
-
 
 bool GetDirFilesByPrefixInternal(
         const std::string& dir,
@@ -287,5 +279,4 @@ bool IsDir(const std::string& path, bool& is_dir) {
 
 }   // ending namespace file
 }   // ending namespace galaxy
-
 /* vim: set ts=4 sw=4 sts=4 tw=100 */
