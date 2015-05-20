@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <pwd.h>
 #include "common/logging.h"
 #include "common/util.h"
 #include "common/this_thread.h"
@@ -21,8 +22,10 @@
 #include "agent/resource_collector.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_cgroup_root; 
+DECLARE_string(task_acct);
+DECLARE_string(cgroup_root); 
 
 namespace galaxy {
 
@@ -314,6 +317,19 @@ int ContainerTaskRunner::Start() {
     std::vector<int> fds;
     PrepareStart(fds, &stdout_fd, &stderr_fd);
     //sequence_id_ ++;
+    passwd *pw = getpwnam(FLAGS_task_acct.c_str());
+    if (NULL == pw) {
+        LOG(WARNING, "getpwnam %s failed", FLAGS_task_acct.c_str());
+        return -1;
+    }
+    uid_t userid = getuid();
+    if (pw->pw_uid != userid && 0 == userid) {
+        if (!file::Chown(m_workspace->GetPath(), pw->pw_uid, pw->pw_gid)) {
+            LOG(WARNING, "chown %s failed", m_workspace->GetPath().c_str());
+            return -1;
+        }   
+    }
+
     m_child_pid = fork();
     if (m_child_pid == 0) {
         pid_t my_pid = getpid();

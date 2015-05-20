@@ -126,8 +126,12 @@ message NodeInstance {
     optional int32 task_num = 4;
     optional double cpu_share = 5;
     optional int64 mem_share = 6;
+
     optional double cpu_used = 7;
     optional int64 mem_used = 8;
+
+    optional double cpu_allocated = 9;
+    optional int64 mem_allocated = 10;
 }
 
 message ListNodeRequest {

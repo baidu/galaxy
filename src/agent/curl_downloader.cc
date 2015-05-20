@@ -16,11 +16,13 @@
 #include <assert.h>
 #include <unistd.h>
 #include "common/logging.h"
+#include <gflags/gflags.h>
+
 extern "C" {
 #include "curl/curl.h"
 }
 
-extern int FLAGS_agent_curl_recv_buffer_size;
+DECLARE_int32(agent_curl_recv_buffer_size);
 
 static pthread_once_t once_control = PTHREAD_ONCE_INIT;
 

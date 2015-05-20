@@ -10,5 +10,6 @@ from django.conf import urls
 #views
 urlpatterns = urls.patterns("console.taskgroup.views",
         (r'^status','get_task_status'),
+        (r'^history','get_job_sched_history'),
 )
 

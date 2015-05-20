@@ -13,12 +13,13 @@
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
 #include "common/timer.h"
+#include <gflags/gflags.h>
 
-extern int FLAGS_task_deploy_timeout;
-extern int FLAGS_agent_keepalive_timeout;
-extern int FLAGS_master_max_len_sched_task_list;
-extern std::string FLAGS_master_checkpoint_path;
-extern int64_t FLAGS_master_safe_mode_last;
+DECLARE_int32(task_deploy_timeout);
+DECLARE_int32(agent_keepalive_timeout);
+DECLARE_string(master_checkpoint_path);
+DECLARE_int32(master_max_len_sched_task_list);
+DECLARE_int32(master_safe_mode_last);
 
 namespace galaxy {
 //agent load id index
@@ -59,6 +60,7 @@ bool MasterImpl::Recover() {
             return false;
         }
     }
+
     // scan JobCheckPointCell 
     // TODO JobInfo is equal to JobCheckpointCell, use pb later
 
@@ -173,6 +175,8 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
         node->set_task_num(agent.running_tasks.size());
         node->set_cpu_share(agent.cpu_share);
         node->set_mem_share(agent.mem_share);
+        node->set_cpu_allocated(agent.cpu_allocated);
+        node->set_mem_allocated(agent.mem_allocated);
         node->set_cpu_used(agent.cpu_used);
         node->set_mem_used(agent.mem_used);
     }
@@ -229,7 +233,7 @@ void MasterImpl::ListTaskForJob(int64_t job_id,
         }
 
         std::deque<TaskInstance>::iterator sched_it = job.scheduled_tasks.begin();
-        LOG(DEBUG, "liat schedule tasks %u for job %ld", job.scheduled_tasks.size(), job_id);
+        LOG(DEBUG, "list schedule tasks %u for job %ld", job.scheduled_tasks.size(), job_id);
         for (; sched_it != job.scheduled_tasks.end(); ++sched_it) {
             TaskInstance* task = sched_tasks->Add(); 
             task->CopyFrom(*sched_it);
@@ -459,8 +463,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->id = next_agent_id_ ++;
         agent->cpu_share = request->cpu_share();
         agent->mem_share = request->mem_share();
-        agent->cpu_used = request->used_cpu_share();
-        agent->mem_used = request->used_mem_share();
+        agent->cpu_allocated = request->used_cpu_share();
+        agent->mem_allocated = request->used_mem_share();
         agent->stub = NULL;
         agent->version = 1;
         agent->alive_timestamp = now_time;
@@ -480,9 +484,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             done->Run();
             return;
         }
-        agent->cpu_used = request->used_cpu_share();
-        agent->mem_used = request->used_mem_share();
-        LOG(DEBUG, "cpu_use:%lf, mem_use:%ld", agent->cpu_used, agent->mem_used);
+        agent->cpu_allocated = request->used_cpu_share();
+        agent->mem_allocated = request->used_mem_share();
+        LOG(DEBUG, "cpu_allocated:%lf, mem_allocated:%ld", 
+                   agent->cpu_allocated, 
+                   agent->mem_allocated);
     }
     response->set_agent_id(agent->id);
     response->set_version(agent->version);
@@ -514,6 +520,19 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         }
     }
     UpdateJobsOnAgent(agent, running_tasks);
+    std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
+    agent->mem_used = 0 ;
+    agent->cpu_used = 0.0 ;
+    for (;rt_it != agent->running_tasks.end();++rt_it) {
+        std::map<int64_t, TaskInstance>::iterator inner_it =  
+            tasks_.find(*rt_it);
+        if(inner_it == tasks_.end()){
+            continue;
+        }
+        agent->mem_used += inner_it->second.memory_usage();
+        //
+        agent->cpu_used += inner_it->second.cpu_usage() * inner_it->second.info().required_cpu();
+    }
     SaveIndex(*agent);
     done->Run();
 }
@@ -601,7 +620,6 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     while (jobs_.find(job_id) != jobs_.end()) {
         job_id = next_job_id_ ++; 
     }
-
     JobInfo job;
     job.id = job_id;
     job.job_name = request->job_name();
@@ -656,6 +674,9 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     }
 
     int64_t task_id = next_task_id_++;
+    while(tasks_.find(task_id) != tasks_.end()){
+        task_id = next_task_id_++;
+    }
     RunTaskRequest rt_request;
     rt_request.set_task_id(task_id);
     rt_request.set_task_name(job->job_name);
@@ -812,8 +833,8 @@ void MasterImpl::Schedule() {
                 //update index
                 std::map<std::string,AgentInfo>::iterator agent_it = agents_.find(agent_addr);
                 if (agent_it != agents_.end()) {
-                    agent_it->second.mem_used += job.mem_share;
-                    agent_it->second.cpu_used += job.cpu_share;
+                    agent_it->second.mem_allocated += job.mem_share;
+                    agent_it->second.cpu_allocated += job.cpu_share;
                     agent_it->second.version += 1;
                     SaveIndex(agent_it->second);
                 }   
@@ -851,10 +872,8 @@ double MasterImpl::CalcLoad(const AgentInfo& agent){
         return 0.0;
     }
     const double tasks_count_base_line = 32.0;
-    int64_t mem_used = agent.mem_used;
-    double cpu_used = agent.cpu_used;
-    double mem_factor = mem_used / static_cast<double>(agent.mem_share);
-    double cpu_factor = cpu_used / agent.cpu_share;
+    double mem_factor = agent.mem_allocated / static_cast<double>(agent.mem_share);
+    double cpu_factor = agent.cpu_allocated / agent.cpu_share;
     double task_count_factor = agent.running_tasks.size() / tasks_count_base_line;
     return exp(cpu_factor) + exp(mem_factor) + exp(task_count_factor);
 }

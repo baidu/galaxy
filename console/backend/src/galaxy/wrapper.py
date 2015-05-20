@@ -48,6 +48,16 @@ class Galaxy(object):
            ret_task_list.append(task.__dict__)
         return True, ret_task_list
 
+    def job_history(self, job_id):
+        galaxy_sdk = sdk.GalaxySDK(self.master_addr)
+        status ,task_list = galaxy_sdk.get_scheduled_history(int(job_id))
+        if not status:
+            return False,[]
+        ret_task_list = []
+        for task in task_list:
+           ret_task_list.append(task.__dict__)
+        return True, ret_task_list
+
     def list_node(self):
         galaxy_sdk = sdk.GalaxySDK(self.master_addr)
         node_list = galaxy_sdk.list_all_node()

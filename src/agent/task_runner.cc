@@ -22,9 +22,10 @@
 #include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
+#include <gflags/gflags.h>
 
-extern int FLAGS_task_retry_times;
-extern std::string FLAGS_task_acct;
+DECLARE_int32(task_retry_times);
+DECLARE_string(task_acct);
 
 namespace galaxy {
 
@@ -63,10 +64,11 @@ int AbstractTaskRunner::IsRunning(){
         }
 
     }
-    LOG(INFO, "check task %d error[%d:%s] ",
+    LOG(INFO, "check task %d error[%d:%s]  pid %d",
             m_task_info.task_id(),
             ret,
-            strerror(errno));
+            strerror(errno),
+            m_child_pid);
     return ret;
 }
 
@@ -181,22 +183,19 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
          close(fd_vector[i]);
     }
 
-    //chroot(m_workspace->GetPath().c_str());
     chdir(m_workspace->GetPath().c_str());
     passwd *pw = getpwnam(FLAGS_task_acct.c_str());
     if (NULL == pw) {
-        assert(0);    
+        assert(0);
     }
-    std::stringstream cmd;
-    cmd << "chown -R " << FLAGS_task_acct.c_str()
-        <<":"<< FLAGS_task_acct.c_str() << " . ";
-    system(cmd.str().c_str());
-    if (errno) {
-        abort();
+    uid_t userid = getuid();
+    if (0 == userid) {
+        chroot(m_workspace->GetPath().c_str());
+        if (pw->pw_uid != userid) {
+            setuid(pw->pw_uid);
+        }
     }
 
-    chown(m_workspace->GetPath().c_str(), pw->pw_uid, pw->pw_gid);
-    setuid(pw->pw_uid);
     char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
                     const_cast<char*>(m_task_info.cmd_line().c_str()),NULL};
     std::stringstream task_id_env;
@@ -320,6 +319,19 @@ int CommandTaskRunner::Start() {
     std::vector<int> fds;
     PrepareStart(fds,&stdout_fd,&stderr_fd);
     //sequence_id_ ++;
+    passwd *pw = getpwnam(FLAGS_task_acct.c_str());
+    if (NULL == pw) {
+        LOG(WARNING, "getpwnam %s failed", FLAGS_task_acct.c_str());
+        return -1;;
+    }
+    uid_t userid = getuid();
+    if (pw->pw_uid != userid && 0 == userid) {
+        if (!file::Chown(m_workspace->GetPath(), pw->pw_uid, pw->pw_gid)) {
+            LOG(WARNING, "chown %s failed", m_workspace->GetPath().c_str());
+            return -1;
+        }
+    }
+
     m_child_pid = fork();
     //child
     if (m_child_pid == 0) {
@@ -328,8 +340,7 @@ int CommandTaskRunner::Start() {
         if (ret != 0) {
             assert(0);
         }
-        std::string meta_file = persistence_path_dir_
-            + "/" + RUNNER_META_PREFIX
+        std::string meta_file = persistence_path_dir_ + "/" + RUNNER_META_PREFIX 
             + boost::lexical_cast<std::string>(sequence_id_);
         int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
         if (meta_fd == -1) {

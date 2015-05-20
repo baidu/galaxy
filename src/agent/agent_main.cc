@@ -10,17 +10,18 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <gflags/gflags.h>
 
-extern std::string FLAGS_agent_port;
-extern std::string FLAGS_agent_http_port;
-extern std::string FLAGS_master_addr;
-extern std::string FLAGS_agent_work_dir;
-extern std::string FLAGS_container;
-extern std::string FLAGS_cgroup_root;
-extern std::string FLAGS_task_acct;
-extern double FLAGS_cpu_num;
-extern int64_t FLAGS_mem_gbytes;
-extern int64_t FLAGS_mem_bytes;
+DECLARE_string(agent_port);
+DECLARE_int32(agent_http_port);
+DECLARE_string(master_addr);
+DECLARE_string(agent_work_dir);
+DECLARE_string(container);
+DECLARE_string(cgroup_root);
+DECLARE_string(task_acct);
+DECLARE_double(cpu_num);
+DECLARE_int64(mem_gbytes);
+DECLARE_int64(mem_bytes);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/) {
@@ -28,33 +29,7 @@ static void SignalIntHandler(int /*sig*/) {
 }
 
 int main(int argc, char* argv[]) {
-    for (int i = 1; i < argc; i++) {
-        char s[1024];
-        if (sscanf(argv[i], "--port=%s", s) == 1) {
-            FLAGS_agent_port = s;
-        } else if (sscanf(argv[i], "--master=%s", s) == 1) {
-            FLAGS_master_addr = s;
-        } else if (sscanf(argv[i], "--work_dir=%s", s) == 1) {
-            FLAGS_agent_work_dir = s;
-        } else if (sscanf(argv[i],"--cpu=%s",s) == 1) {
-            FLAGS_cpu_num = atof(s);
-        } else if (sscanf(argv[i],"--mem=%s",s) == 1) {
-            FLAGS_mem_gbytes = atoi(s);
-        } else if (sscanf(argv[i],"--container=%s",s) == 1) {
-            FLAGS_container = s;
-        } else if (sscanf(argv[i], "--cgroup_mount_path=%s", s) == 1) {
-            FLAGS_cgroup_root = s; 
-        } else if (sscanf(argv[i], "--user=%s", s) == 1) {
-            FLAGS_task_acct = s; 
-        } else if(sscanf(argv[i], "--http-port=%s", s) == 1) {
-            FLAGS_agent_http_port = s;
-        }
-         
-        else {
-            fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
-            exit(1);
-        }
-    }
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
 
     FLAGS_mem_bytes = FLAGS_mem_gbytes*(1024*1024*1024);
     sofa::pbrpc::RpcServerOptions options;

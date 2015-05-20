@@ -48,8 +48,10 @@ class GalaxySDK(object):
                 base.task_num = node.task_num
                 base.cpu_share = node.cpu_share
                 base.mem_share = node.mem_share
-                base.cpu_used = node.cpu_used
+                base.cpu_allocated = node.cpu_allocated
+                base.mem_allocated = node.mem_allocated
                 base.mem_used = node.mem_used
+                base.cpu_used = node.cpu_used
                 ret.append(base)
             return ret
         except:
@@ -166,7 +168,7 @@ class GalaxySDK(object):
         req.job_id = job_id
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
-        controller.SetTimeout(1.5)
+        controller.SetTimeout(3.5)
         try:
             response = master.ListTask(controller,req)
             if not response:
@@ -190,6 +192,37 @@ class GalaxySDK(object):
             return True,ret
         except:
             LOG.exception('fail to list task')
+        return False,[]
+
+    def get_scheduled_history(self,job_id):
+        req = master_pb2.ListTaskRequest()
+        req.job_id = job_id
+        master = master_pb2.Master_Stub(self.channel)
+        controller = client.Controller()
+        controller.SetTimeout(3.5)
+        try:
+            response = master.ListTask(controller,req)
+            if not response:
+                LOG.error('fail to list task %s'%job_id)
+                return False,[]
+            ret = []
+            for task in response.scheduled_tasks:
+                base = BaseEntity()
+                base.id = task.info.task_id
+                base.status = STATE_MAP[task.status]
+                base.name = task.info.task_name
+                base.agent_addr = task.agent_addr
+                base.job_id = task.job_id
+                base.offset = task.offset
+                base.mem_limit = task.info.required_mem
+                base.cpu_limit = task.info.required_cpu
+                base.mem_used = task.memory_usage
+                base.cpu_used = task.cpu_usage
+                base.start_time = task.start_time
+                ret.append(base)
+            return True,ret
+        except:
+            LOG.exception('fail to list task history')
         return False,[]
 
     def kill_job(self,job_id):
