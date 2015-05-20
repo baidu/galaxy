@@ -889,7 +889,7 @@ bool MasterImpl::JobTaskExistsOnAgent(const std::string& agent_addr,
                                       const JobInfo& job){
     agent_lock_.AssertHeld();
     std::map<std::string, std::set<int64_t> >::const_iterator it = job.agent_tasks.find(agent_addr);
-    if(it == job.agent_tasks.end() || it->second.empty()){
+    if (it == job.agent_tasks.end() || it->second.empty()) {
         return false;
     }
     return true;
