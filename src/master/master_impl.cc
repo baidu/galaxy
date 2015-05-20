@@ -94,6 +94,7 @@ bool MasterImpl::Recover() {
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
+        job_info.one_task_per_host = false;
         if (job_info.deploy_step_size == 0) {
             job_info.deploy_step_size = job_info.replica_num;
         }
@@ -906,7 +907,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->agent_addr.c_str(),
                 it->cpu_left,
                 it->mem_left);
-        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr,job))) {
+        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
             last_found = true;
             current_min_load = it->load;
             addr = it->agent_addr;
@@ -923,7 +924,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         if (it_start->mem_left < job.mem_share) {
             continue;
         }
-        if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr,job)) {
+        if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
             continue;
         }
         //第一次赋值current_min_load;
@@ -942,13 +943,13 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         }
     }
     if(last_found){
-        LOG(INFO,"alloc resource for job %ld on host %s with load %f cpu left %f mem left %ld",
+        LOG(INFO, "alloc resource for job %ld on host %s with load %f cpu left %f mem left %ld",
                 job.id,addr.c_str(),
                 current_min_load,
                 cur_agent->cpu_left,
                 cur_agent->mem_left);
     }else{
-        LOG(WARNING,"no enough  resource to alloc for job %ld",job.id);
+        LOG(WARNING, "no enough  resource to alloc for job %ld", job.id);
     }
     return addr;
 }

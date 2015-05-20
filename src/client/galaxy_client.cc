@@ -76,7 +76,7 @@ int ProcessNewJob(){
     job.deploy_step_size = FLAGS_deploy_step_size;
     job.cpu_limit = FLAGS_cpu_limit;
     job.one_task_per_host = FLAGS_one_task_per_host;
-    fprintf(stdout,"%ld",galaxy->NewJob(job));
+    fprintf(stdout, "%ld", galaxy->NewJob(job));
     return 0;
 }
 
