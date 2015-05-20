@@ -42,6 +42,7 @@ message NewJobRequest {
     //单个步骤部署实例个数
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
+    optional bytes monitor_conf = 11;
 }
 
 message NewJobResponse {
@@ -78,6 +79,7 @@ message TaskInstance {
     optional int64 memory_usage = 8;
     optional string root_path = 9;
     optional int32 end_time = 10;
+    optional bytes monitor_conf = 11;
 }
 message ListTaskRequest {
     optional int64 job_id = 2;
@@ -100,6 +102,7 @@ message JobCheckPointCell {
     optional int32 deploy_step_size = 8;
     optional bool killed = 9;
     optional double cpu_limit = 10;
+    optional bytes monitor_conf = 11;
 }
 
 message JobInstance {

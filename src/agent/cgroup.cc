@@ -271,6 +271,38 @@ int ContainerTaskRunner::Start() {
             return -1;
         }   
     }
+    std::string::size_type replace_start =
+        m_task_info.monitor_conf().find("path => ");
+    replace_start = m_task_info.monitor_conf().find("\"", replace_start);
+    std::string::size_type replace_end =
+        m_task_info.monitor_conf().find("\"", replace_start);
+    
+    char cur_path[1024] = {0};
+    getcwd(cur_path, 1024);
+    std::string log_path = std::string(cur_path) + "/" 
+        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
+        + m_task_info.monitor_conf().substr(replace_start + 1, 
+                replace_end - replace_start - 1);
+
+    std::string new_conf = m_task_info.monitor_conf();
+    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
+    std::string monitor_conf = m_workspace->GetPath()
+            + "/galaxy_monitor/monitor.conf";
+    int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+    if (conf_fd == -1) {
+        LOG(WARNING, "open monitor_conf %s failed [%d:%s]",
+                monitor_conf.c_str(),
+                errno, strerror(errno));
+    } else {
+        int len = write(conf_fd, (void*)new_conf.c_str(),
+                new_conf.size());
+        if (len == -1) {
+            LOG(WARNING, "write monitor_conf %s failed [%d:%s]",
+                    monitor_conf.c_str(),
+                    errno, strerror(errno));
+        }
+        close(conf_fd);
+    }
 
     m_child_pid = fork();
     if (m_child_pid == 0) {
@@ -318,6 +350,25 @@ int ContainerTaskRunner::Start() {
         }
         m_group_pid = m_child_pid;
         SetStatus(RUNNING);
+        m_monitor_pid = fork();
+        if (0 == m_monitor_pid) {
+            pid_t my_pid = getpid();
+            int ret = setpgid(my_pid, my_pid);
+            if (0 != ret) {
+                assert(0);
+            }   
+            StartMonitorAfterFork();
+        } else {
+            if (m_monitor_pid == -1) {
+                LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
+                        m_task_info.task_id(),
+                        errno,
+                        strerror(errno));
+                SetStatus(ERROR);
+                return -1; 
+            }   
+            m_monitor_gid = m_monitor_pid;
+        }   
     }
     return 0;
 }
@@ -372,6 +423,12 @@ void ContainerTaskRunner::StopPost() {
     if (!file::Remove(meta_file)) {
         LOG(WARNING, "remove %s failed", meta_file.c_str()); 
     }
+    std::string monitor_conf = m_workspace->GetPath()
+        + "/galaxy_monitor/monitor_conf";
+    if (!file::Remove(monitor_conf)) {
+        LOG(WARNING, "rm monitor cfg failed rm %s",
+                monitor_conf.c_str());
+    }
     return;
 }
 
@@ -387,7 +444,6 @@ int ContainerTaskRunner::Stop(){
         status = _cg_ctrl->Destroy(m_task_info.task_id());
         LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
     }
-    StopPost();
     return status;
 }
 

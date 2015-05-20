@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <errno.h>
 #include <boost/algorithm/string/predicate.hpp>
 
 double FLAGS_cpu_limit = 0;
@@ -15,7 +16,7 @@ int64_t FLAGS_deploy_step_size = 0;
 
 void help() {
     fprintf(stderr, "./galaxy_client master_addr command(list/add/kill) args\n");
-    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size cpu_limit\n");
+    fprintf(stderr, "./galaxy_client master_addr add jod_name task_raw cmd_line replicate_count cpu_quota mem_quota size cpu_limit --monitor_conf=\n");
     fprintf(stderr, "./galaxy_client master_addr list task_id\n");
     fprintf(stderr, "./galaxy_client master_addr kill task_id\n");
     return;
@@ -122,9 +123,26 @@ int main(int argc, char* argv[]) {
                         temp_arg_buffer)) {
                 FLAGS_cpu_limit 
                     = atof(temp_arg_buffer); 
+            } else if (sscanf(argv[arg_ind],
+                        "--monitor_conf=%s",
+                        temp_arg_buffer)) {
+                FILE* fd = fopen(temp_arg_buffer, "r");
+                if (fd == NULL) {
+                    fprintf(stderr, "Open %s for read fail [%d:%s]\n", temp_arg_buffer, 
+                            errno, strerror(errno));
+                    return -2;
+                }
+                std::string monitor_conf;
+                char buf[1024];
+                int len = 0;
+                while ((len = fread(buf, 1, 1024, fd)) > 0) {
+                    monitor_conf.append(buf, len);
+                }
+                fclose(fd);
+                printf("monitor_conf len %lu\n", monitor_conf.size());
+                job.monitor_conf = monitor_conf;
             }
         }
-
         job.deploy_step_size = FLAGS_deploy_step_size;
         job.cpu_limit = FLAGS_cpu_limit;
         fprintf(stdout,"%ld",galaxy->NewJob(job));

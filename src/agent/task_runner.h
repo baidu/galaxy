@@ -76,11 +76,15 @@ protected:
             int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
+    void StartMonitorAfterFork();
+
 protected:
     TaskInfo m_task_info;
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
+    pid_t  m_monitor_pid;
+    pid_t  m_monitor_gid;
     DefaultWorkspace * m_workspace;
     int m_has_retry_times;
     int m_task_state;

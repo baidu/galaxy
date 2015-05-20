@@ -56,7 +56,7 @@ struct JobDescription{
     double cpu_share;
     int64_t mem_share;
     std::vector<ResourceDescription> resource_vector;
-
+    std::string monitor_conf;
     int32_t deploy_step_size;
     double cpu_limit;
 };

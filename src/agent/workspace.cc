@@ -22,6 +22,8 @@ DECLARE_string(task_acct);
 
 namespace galaxy {
 
+const std::string MONITOR_PATH = "/galaxy_monitor/";
+
 int DefaultWorkspace::Create() {
     const int MKDIR_MODE = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     LOG(INFO, "create workspace for task %d", m_task_info.task_id());
@@ -75,6 +77,16 @@ int DefaultWorkspace::Create() {
     if (0 != status) {
         LOG(WARNING, "create jail symlink failed err[%d: %s]", errno, strerror(errno));
         rmdir(m_task_root_path.c_str());
+        return status;
+    }
+
+    std::string monitor_path = m_task_root_path + "/" + MONITOR_PATH;
+    status = MakePath(monitor_path.c_str(), MKDIR_MODE);
+    if (status != 0) {
+        LOG(WARNING, "mkdir conf dir failed %s err[%d,%s]",
+                monitor_path.c_str(),
+                errno,
+                strerror(errno));
         return status;
     }
 

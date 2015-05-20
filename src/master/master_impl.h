@@ -93,8 +93,9 @@ struct JobInfo {
     bool killed;
     std::deque<TaskInstance> scheduled_tasks;
     int32_t deploy_step_size;
-    std::set<int64_t> deploying_tasks;
+    std::set<int64_t> deploying_tasks;\
     double cpu_limit;
+    std::string monitor_conf;
 };
 
 class RpcClient;
