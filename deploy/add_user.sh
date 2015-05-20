@@ -57,7 +57,7 @@ if [ $cpu_limit -lt $MIN_CPU_CFS_QUOTA ]; then
 fi
 
 useradd $user_name
-rule_str="$user_name ALL=(ALL) NOPASSWD: /etc/profile.d/galaxy_$user_name.sh"
+rule_str="${user_name} ALL=(ALL) NOPASSWD: /etc/profile.d/galaxy_${user_name}.sh"
 grep -F "$rule_str"  /etc/sudoers
 if [ $? -ne 0 ]; then
     echo  $rule_str >> /etc/sudoers
@@ -72,12 +72,16 @@ if [ "$directoy_list" != "" ]; then
     do
         if [ ! -z $dir_name ]; then
             mkdir -p $dir_name
-            chown -R $user_name:$user_name $dir_name
+            if [ $? -ne 0 ]; then
+                echo "faild to create dir: ${dir_name}"
+                exit 4
+            fi
+            chown -R ${user_name}:${user_name} ${dir_name}
         fi
     done
 fi
 
-cat <<EOF > /etc/profile.d/galaxy_$user_name.sh
+cat <<EOF > /etc/profile.d/galaxy_${user_name}.sh
 if [ \$# -gt 0 ]; then
     echo "Galaxy Limit Init ..."
     mkdir -p $CG_ROOT/cpu/${user_name}
@@ -94,24 +98,24 @@ if [ \$# -gt 0 ]; then
         exit 2
     fi
 
-    echo \$1 >> $CG_ROOT/cpu/${user_name}/tasks
-    echo \$1 >> $CG_ROOT/memory/${user_name}/tasks
+    echo \$1 >> ${CG_ROOT}/cpu/${user_name}/tasks
+    echo \$1 >> ${CG_ROOT}/memory/${user_name}/tasks
     exit 0
 else
     if [ "\$USER" == "$user_name" ]; then
         echo "== Welcome to Galaxy =="
-        sudo  /etc/profile.d/galaxy_$user_name.sh \$\$
+        sudo  /etc/profile.d/galaxy_${user_name}.sh \$\$
         if [ \$? -ne 0 ]; then
             echo "Galaxy Init fail, exit"
             exit 1
         fi
-        echo "----------------------------------"
-        echo "CPU Cores:    |  $cpu_cores       "
-        echo "Memory Limit: |  $memory_gbytes GB"
+        echo "------------------------------------"
+        echo "CPU Cores:    |  ${cpu_cores}       "
+        echo "Memory Limit: |  ${memory_gbytes} GB"
         if [ "$directoy_list" != "" ]; then
-        echo "Directories:  |  $directoy_list   "
+        echo "Directories:  |  ${directoy_list}   "
         fi
-        echo "----------------------------------"
+        echo "------------------------------------"
     fi
 fi
 EOF
@@ -121,7 +125,7 @@ if [ $? -ne 0 ]; then
     exit 4
 fi
 
-chmod 755 /etc/profile.d/galaxy_$user_name.sh
+chmod 755 /etc/profile.d/galaxy_${user_name}.sh
 
 
 echo "Done"
