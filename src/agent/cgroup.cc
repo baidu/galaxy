@@ -73,7 +73,8 @@ GetCgroupTasks(const std::string& task_path, std::vector<int>* pids) {
     }
     FILE* fin = fopen(task_path.c_str(), "r");
     if (fin == NULL) {
-        LOG(WARNING, "open %s failed", task_path.c_str()); 
+        LOG(WARNING, "open %s failed err[%d: %s]", 
+                task_path.c_str(), errno, strerror(errno)); 
         return -1;
     }
     ssize_t read;
@@ -111,7 +112,7 @@ int CGroupCtrl::Destroy(int64_t task_id) {
         // TODO maybe cgroup.proc ?
         std::string task_path = sub_cgroup_path + "/tasks";
         int clear_retry_times = 0;
-        for (; clear_retry_times < MAX_CLEAR_RETRY_TIMES; clear_retry_times ++) {
+        for (; clear_retry_times < MAX_CLEAR_RETRY_TIMES; ++clear_retry_times) {
             int status = rmdir(sub_cgroup_path.c_str());
             if (status == 0 || errno == ENOENT) {
                 break; 
