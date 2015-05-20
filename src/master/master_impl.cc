@@ -878,22 +878,12 @@ double MasterImpl::CalcLoad(const AgentInfo& agent){
 
 bool MasterImpl::JobTaskExistsOnAgent(const std::string& agent_addr,
                                       const JobInfo& job){
-    std::map<std::string, AgentInfo>::iterator agent_it = agents_.find(agent_addr);
-    if (agent_it == agents_.end()) {
-        LOG(WARNING,"can not find agent %s in agents",agent_addr.c_str());
+    agent_lock_.AssertHeld();
+    std::map<std::string, std::set<int64_t> >::const_iterator it = job.agent_tasks.find(agent_addr);
+    if(it == job.agent_tasks.end() || it->second.empty()){
         return false;
-
     }
-    std::set<int64_t>::iterator rt_it = agent_it->second.running_tasks.begin();
-    for (;rt_it != agent_it->second.running_tasks.end();++rt_it) {
-        std::map<int64_t, TaskInstance>::iterator t_it = tasks_.find(*rt_it);
-        if (t_it->second.job_id() == job.id) {
-            LOG(INFO,"job %ld has task on %s",job.id,agent_addr.c_str());
-            return true;
-        }
-    }
-    LOG(INFO,"job %ld has no task on %s",job.id,agent_addr.c_str());
-    return false;
+    return true;
 }
 
 std::string MasterImpl::AllocResource(const JobInfo& job){
