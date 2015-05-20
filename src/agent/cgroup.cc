@@ -125,7 +125,6 @@ int CGroupCtrl::Destroy(int64_t task_id) {
 
             // clear task in cgroup
             std::vector<int> pids;
-            clear_retry_times ++;
             if (GetCgroupTasks(task_path, &pids) != 0) {
                 LOG(WARNING, "fail to clear task file"); 
                 return -1;
