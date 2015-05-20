@@ -45,7 +45,7 @@ do
     esac
 done
 
-if [ $valid_arg -ne 3 ]; then
+if [ $valid_arg -ne 3 -o "$user_name" == "" -o "$cpu_cores" == "" -o "$memory_gbytes" == "" ]; then
     print_help
     exit 1
 fi
