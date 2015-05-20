@@ -123,26 +123,35 @@ int AbstractTaskRunner::Stop(){
         return -1;
     }
 
-    if (IsRunning() != 0) {
-        return 0;
+    // when stop success, but clear cgroup failed
+    if (m_group_pid == -1) {
+        return 0; 
     }
+
+    // TODO pid reuse will cause some trouble
     LOG(INFO,"start to kill process group %d",m_group_pid);
-    int ret = killpg(m_group_pid, 9);
-    if(ret != 0){
-        LOG(WARNING,"fail to kill process group %d",m_group_pid);
-    }
-    pid_t killed_pid = wait(&ret);
-    if (killed_pid == -1){
-        LOG(FATAL,"fail to kill process group %d",m_group_pid);
-        SetStatus(ERROR);
-        return -1;
-    }else{
-        StopPost();
-        LOG(INFO,"kill child process %d successfully",killed_pid);
-        m_child_pid = -1;
-        m_group_pid = -1;
-        return 0;
-    }
+    do {
+        int ret = killpg(m_group_pid, SIGKILL);
+        if(ret != 0){
+            LOG(WARNING,"fail to kill process group %d err[%d: %s]",
+                    m_group_pid, errno, strerror(errno));
+            if (errno == ESRCH) {
+                break; 
+            }
+        }
+        pid_t killed_pid = wait(&ret);
+        if (killed_pid == -1){
+            LOG(FATAL,"fail to kill process group %d err[%d: %s]",
+                    m_group_pid, errno, strerror(errno));
+            SetStatus(ERROR);
+            return -1;
+        } 
+    }while (0);
+    StopPost();
+    LOG(INFO,"kill child process %d successfully", m_group_pid);
+    m_child_pid = -1;
+    m_group_pid = -1;
+    return 0;
 }
 
 void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd){
@@ -220,11 +229,9 @@ int AbstractTaskRunner::ReStart(){
     }
 
     m_has_retry_times ++;
-    if (IsRunning() == 0) {
-        if (Stop() != 0) {
-            // stop failed need retry last heartbeat
-            return 0;
-        }
+    if (Stop() != 0) {
+        // stop failed need retry last heartbeat
+        return 0;
     }
 
     Start();
@@ -431,7 +438,7 @@ bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
     close(fin);
 
     LOG(DEBUG, "recove gpid %lu", value);
-    int ret = killpg((pid_t)value, 9);
+    int ret = killpg((pid_t)value, SIGKILL);
     if (ret != 0 && errno != ESRCH) {
         LOG(WARNING, "fail to kill process group %lu", value);
         return false;
