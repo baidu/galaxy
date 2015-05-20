@@ -143,8 +143,7 @@ int CGroupCtrl::Destroy(int64_t task_id) {
                 common::ThisThread::Sleep(100);
             }
         }
-        if (clear_retry_times >= MAX_CLEAR_RETRY_TIMES 
-                && ret == 0) {
+        if (clear_retry_times >= MAX_CLEAR_RETRY_TIMES) {
             ret = -1;
         }
     }
