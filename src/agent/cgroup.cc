@@ -26,6 +26,7 @@
 
 DECLARE_string(task_acct);
 DECLARE_string(cgroup_root); 
+DECLARE_int32(agent_cgroup_clear_retry_times);
 
 namespace galaxy {
 
@@ -102,7 +103,6 @@ int CGroupCtrl::Destroy(int64_t task_id) {
     }
 
     std::vector<std::string>::iterator it = _support_cg.begin();
-    const int MAX_CLEAR_RETRY_TIMES = 50;
     int ret = 0;
     for (; it != _support_cg.end(); ++it) {
         std::stringstream ss ;
@@ -111,7 +111,8 @@ int CGroupCtrl::Destroy(int64_t task_id) {
         // TODO maybe cgroup.proc ?
         std::string task_path = sub_cgroup_path + "/tasks";
         int clear_retry_times = 0;
-        for (; clear_retry_times < MAX_CLEAR_RETRY_TIMES; ++clear_retry_times) {
+        for (; clear_retry_times < FLAGS_agent_cgroup_clear_retry_times; 
+                ++clear_retry_times) {
             int status = rmdir(sub_cgroup_path.c_str());
             if (status == 0 || errno == ENOENT) {
                 break; 
@@ -142,7 +143,8 @@ int CGroupCtrl::Destroy(int64_t task_id) {
                 common::ThisThread::Sleep(100);
             }
         }
-        if (clear_retry_times >= MAX_CLEAR_RETRY_TIMES) {
+        if (clear_retry_times 
+                >= FLAGS_agent_cgroup_clear_retry_times) {
             ret = -1;
         }
     }
