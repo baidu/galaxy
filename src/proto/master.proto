@@ -143,6 +143,15 @@ message ListNodeResponse {
     repeated NodeInstance nodes = 2;
 }
 
+message TagAgentRequest{
+    optional string tag = 1;
+    repeated string agents = 2;
+}
+
+message TagAgentResponse{
+    optional status = 1;
+}
+
 service Master {
     rpc HeartBeat(HeartBeatRequest) returns(HeartBeatResponse);
 
@@ -153,5 +162,6 @@ service Master {
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);
     rpc ListNode(ListNodeRequest) returns(ListNodeResponse);
+    rpc TagAgent(TagAgentRequest) returns(TagAgentResponse);
 }
 

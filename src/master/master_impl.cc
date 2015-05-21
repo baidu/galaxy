@@ -27,6 +27,7 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_index;
 //agent load cpu left index
 typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
+std::string TAG_KEY_PREFIX = "TAG::";
 
 MasterImpl::MasterImpl()
     : next_agent_id_(1),
@@ -614,6 +615,28 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
+void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
+                          const ::galaxy::TagAgentRequest* request,
+                          ::galaxy::TagAgentResponse* response,
+                          ::google::protobuf::Closure* done){
+    MutexLock lock(&agent_lock_);
+    if (!request->has_tag() || request->tag().empty()) { 
+        response->set_status(kMasterResponseErrorInput);
+        done->Run();
+        return ;
+    }
+    if (!PersistenceTag(request)) {
+        response->set_status(kMasterResponseErrorInternal);
+        done->Run();
+        return;
+    }
+    UpdateTag(request);
+    response->set_status(kMasterResponseOK);
+    done->Run();
+}
+
+
+
 void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
                          ::galaxy::NewJobResponse* response,
@@ -992,6 +1015,39 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
+bool MasterImpl::PersistenceTag(const TagAgentRequest& request){
+    if (persistence_handler_ == NULL) {
+        LOG(WARNING, "persistence handler not inited yet");
+        return false;
+    }
+    std::string key = TAG_KEY_PREFIX + request.tag();
+    if (request->agents_size() <= 0 ) {
+        leveldb::Status delete_status = 
+            persistence_handler_->Delete(leveldb::WriteOptions(), key);
+        if (!delete_status.ok()) {
+            LOG(WARNING, "delete %s failed", key.c_str()); 
+            return false;
+        }
+        return true;
+    }
+    std::string tag_value;
+    if (!request.SerializeToString(&tag_value)) {
+        LOG(WARNING, "serialize tag agent request %s failed",
+                key.c_str()); 
+        return false;
+    }
+    leveldb::Status write_status = 
+        persistence_handler_->Put(
+            leveldb::WriteOptions(), key, tag_value);
+    if (!write_status.ok()) {
+        LOG(WARNING, "serialize tag agent request %s failed to write",
+                key.c_str());
+        return false;
+    }
+    return true;
+}
+
+
 bool MasterImpl::DeletePersistenceJobInfo(const JobInfo& job_info) {
     if (persistence_handler_ == NULL) {
         LOG(WARNING, "persistence handler not inited yet");
@@ -1036,7 +1092,7 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     }
 
     // contruct key
-    std::string key = boost::lexical_cast<std::string>(job_info.id);
+    std::string key =  boost::lexical_cast<std::string>(job_info.id);
     // serialize cell 
     std::string cell_value;
     if (!cell.SerializeToString(&cell_value)) {
@@ -1069,6 +1125,40 @@ bool MasterImpl::SafeModeCheck() {
     }
 
     return true;
+}
+
+void UpdateTag(const TagAgentRequest* request){
+    agent_lock_.AssertHeld();
+    //remove old agent with request->tag()
+    if (tags_.find(request->tag()) != tags_.end()) {
+        std::set<std::string>::iterator it = tags_[request->tag()].begin();
+        for (; it != tags_[request->tag()].end(); ++it) {
+            std::map<std::string, AgentInfo>::iterator inner_it
+                = agents_.find(*it);
+            if (inner_it == agents_.end()) {
+                continue;
+            }
+            inner_it->second.tags.erase(request->tag());
+        }
+    }
+    //delete tag
+    if (request->agents_size() <= 0) {
+        tags_.erase(request->tag());
+        return;
+    }
+    //更新master tags_
+    std::set<std::string> agent_set;
+    for (uint64_t index = 0; index < request->agents_size(); index++) {
+        //agent 始终插入，不校验agent是否活着
+        agent_set.insert(request->agents(index));
+        std::map<std::string, AgentInfo>::iterator it
+                = agents_.find(*it);
+        if (it == agents_.end()) {
+            continue;
+        }
+        it->second.tags.insert(request->tag());
+    }
+    tags_.insert(std::pair<std::string, std::set<std::string> >(request->tag(),agent_set));
 }
 
 
