@@ -53,4 +53,5 @@ DEFINE_int64(job_id, -1, "the identify of job");
 DEFINE_string(agent_addr, "", "the address of a agent shown by listnode");
 
 
+DEFINE_int32(agent_cgroup_clear_retry_times, 50, "how many times for retry destroy cgroup");
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

@@ -26,6 +26,7 @@
 
 DECLARE_string(task_acct);
 DECLARE_string(cgroup_root); 
+DECLARE_int32(agent_cgroup_clear_retry_times);
 
 namespace galaxy {
 
@@ -66,6 +67,33 @@ int CGroupCtrl::Create(int64_t task_id, std::map<std::string, std::string>& sub_
 }
 
 
+static int GetCgroupTasks(const std::string& task_path, std::vector<int>* pids) {
+    if (pids == NULL) {
+        return -1; 
+    }
+    FILE* fin = fopen(task_path.c_str(), "r");
+    if (fin == NULL) {
+        LOG(WARNING, "open %s failed err[%d: %s]", 
+                task_path.c_str(), errno, strerror(errno)); 
+        return -1;
+    }
+    ssize_t read;
+    char* line = NULL;
+    size_t len = 0;
+    while ((read = getline(&line, &len, fin)) != -1) {
+        int pid = atoi(line);
+        if (pid <= 0) {
+            continue; 
+        }
+        pids->push_back(pid);
+    }
+    if (line != NULL) {
+        free(line);
+    }
+    fclose(fin);
+    return 0;
+}
+
 //目前不支持递归删除
 //删除前应该清空tasks文件
 int CGroupCtrl::Destroy(int64_t task_id) {
@@ -75,22 +103,52 @@ int CGroupCtrl::Destroy(int64_t task_id) {
     }
 
     std::vector<std::string>::iterator it = _support_cg.begin();
-
+    int ret = 0;
     for (; it != _support_cg.end(); ++it) {
         std::stringstream ss ;
         ss << _cg_root << "/" << *it << "/" << task_id;
-        int status = rmdir(ss.str().c_str());
-        if(status != 0 && errno != ENOENT){
+        std::string sub_cgroup_path = ss.str().c_str();
+        // TODO maybe cgroup.proc ?
+        std::string task_path = sub_cgroup_path + "/tasks";
+        int clear_retry_times = 0;
+        for (; clear_retry_times < FLAGS_agent_cgroup_clear_retry_times; 
+                ++clear_retry_times) {
+            int status = rmdir(sub_cgroup_path.c_str());
+            if (status == 0 || errno == ENOENT) {
+                break; 
+            }
             LOG(FATAL,"fail to delete subsystem %s status %d err[%d: %s]",
-                    ss.str().c_str(),
+                    sub_cgroup_path.c_str(),
                     status, 
                     errno,
                     strerror(errno));
-            return status;
+
+            // clear task in cgroup
+            std::vector<int> pids;
+            if (GetCgroupTasks(task_path, &pids) != 0) {
+                LOG(WARNING, "fail to clear task file"); 
+                return -1;
+            }
+            LOG(WARNING, "get pids %ld from subsystem %s", 
+                    pids.size(), sub_cgroup_path.c_str());
+            if (pids.size() != 0) {
+                std::vector<int>::iterator it = pids.begin();
+                for (;it != pids.end(); ++it) {
+                    if (::kill(*it, SIGKILL) == -1)  {
+                        if (errno != ESRCH) {
+                            LOG(WARNING, "kill process %d failed", *it);     
+                        }     
+                    }
+                }
+                common::ThisThread::Sleep(100);
+            }
+        }
+        if (clear_retry_times 
+                >= FLAGS_agent_cgroup_clear_retry_times) {
+            ret = -1;
         }
     }
-
-    return 0;
+    return ret;
 }
 
 int AbstractCtrl::AttachTask(pid_t pid) {
@@ -382,10 +440,11 @@ int ContainerTaskRunner::Stop(){
         return status;
     }
     if (_cg_ctrl != NULL) {
-        //sleep 500 ms for cgroup clear tasks
-        common::ThisThread::Sleep(500);
         status = _cg_ctrl->Destroy(m_task_info.task_id());
         LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
+        if (status != 0) {
+            return status; 
+        }
     }
     StopPost();
     return status;
