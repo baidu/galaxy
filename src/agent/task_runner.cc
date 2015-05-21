@@ -132,15 +132,11 @@ int AbstractTaskRunner::Stop(){
 
     // TODO pid reuse will cause some trouble
     LOG(INFO,"start to kill process group %d",m_group_pid);
-    do {
-        int ret = killpg(m_group_pid, SIGKILL);
-        if (ret != 0) {
-            LOG(WARNING,"fail to kill process group %d err[%d: %s]",
-                    m_group_pid, errno, strerror(errno));
-            if (errno == ESRCH) {
-                break; 
-            }
-        }
+    int ret = killpg(m_group_pid, SIGKILL);
+    if (ret != 0 && errno == ESRCH) {
+        LOG(WARNING,"fail to kill process group %d err[%d: %s]",
+                m_group_pid, errno, strerror(errno));
+    } else {
         pid_t killed_pid = wait(&ret);
         if (killed_pid == -1) {
             LOG(FATAL,"fail to kill process group %d err[%d: %s]",
@@ -148,7 +144,7 @@ int AbstractTaskRunner::Stop(){
             SetStatus(ERROR);
             return -1;
         } 
-    } while (0);
+    }
     StopPost();
     LOG(INFO,"kill child process %d successfully", m_group_pid);
     m_child_pid = -1;
