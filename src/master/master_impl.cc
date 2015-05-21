@@ -27,6 +27,19 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_index;
 //agent load cpu left index
 typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
+struct KillPriorityCell {
+    int64_t priority;
+    int64_t task_id;
+    std::string agent_addr;
+};
+
+class KillPriorityComp {
+public:   
+    bool operator() (const KillPriorityCell& left, 
+            const KillPriorityCell& right) {
+        return left.priority > right.priority; 
+    }
+};
 
 MasterImpl::MasterImpl()
     : next_agent_id_(1),
@@ -800,12 +813,6 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
         // NOTE
         killed_num = job->running_num; 
     }
-    std::string agent_addr;
-    int64_t task_id = -1;
-    std::set<int64_t>::size_type high_load = 0;
-    // build a priority queue to kill
-    std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
-    
     if (job->running_num <= 0) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
                 job->job_name.c_str(),
@@ -813,35 +820,50 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
                 job->replica_num);
         return;
     }
+
+    // build a priority queue to kill
+    std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
+    typedef std::priority_queue<KillPriorityCell, 
+                        std::vector<KillPriorityCell>, 
+                        KillPriorityComp> killed_priority_queue;
+    killed_priority_queue killed_queue;
+    const int64_t KILL_TAG = 1L << 32; 
+
     for (; it != job->agent_tasks.end(); ++it) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
-        LOG(DEBUG, "[ScaleDown] %s[%s: %d] high_load %d",
-                job->job_name.c_str(),
-                it->first.c_str(),
-                ai.running_tasks.size(),
-                high_load);
-        task_id = *(it->second.begin());
-        if (tasks_[task_id].status() == KILLED) {
-            agent_addr = ai.addr;
-            break;
-        }
-        if (ai.running_tasks.size() > high_load) {
-            high_load = ai.running_tasks.size();
-            agent_addr = ai.addr;
+        int ind = 0;
+        for (std::set<int64_t>::iterator t_it = it->second.begin();
+                t_it != it->second.end(); ++t_it, ++ind) {
+            KillPriorityCell cell;
+            cell.agent_addr = it->first;
+            cell.task_id = *t_it; 
+            cell.priority = 0;
+            assert(tasks_[*t_it].job_id() == job->id);
+            if (tasks_[*t_it].status() == KILLED) {
+                cell.priority &= KILL_TAG;
+            }
+            cell.priority += ai.running_tasks.size() - ind; 
+            killed_queue.push(cell);
+            LOG(DEBUG, "[ScaleDown] job %ld task %ld kill priority %ld",
+                    job->id, cell.task_id, cell.priority);
         }
     }
-    assert(!agent_addr.empty() && task_id != -1);
-    LOG(INFO, "[ScaleDown] %s[%d/%d] on %s will be canceled",
-        job->job_name.c_str(), job->running_num, job->replica_num, agent_addr.c_str());
-    AgentInfo& agent = agents_[agent_addr];
-    std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(task_id);
-    if(intance_it != tasks_.end()){
-        intance_it->second.set_status(KILLED);
+
+    for (int kill_ind = 0; kill_ind < killed_num; ++kill_ind) {
+        KillPriorityCell cell = killed_queue.top();
+        killed_queue.pop();
+        LOG(INFO, "[ScaleDown] job %ld will kill task %ld on agent %s",
+                job->id, cell.task_id, cell.agent_addr.c_str());     
+        AgentInfo& agent = agents_[cell.agent_addr];
+        std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(cell.task_id);
+        if(intance_it != tasks_.end()){
+            intance_it->second.set_status(KILLED);
+        }
+        CancelTaskOnAgent(&agent, cell.task_id);
     }
-    CancelTaskOnAgent(&agent, task_id);
     return;
 }
 
@@ -872,8 +894,12 @@ void MasterImpl::Schedule() {
         uint32_t deploy_step_size = job.deploy_step_size;
         //just for log
         uint32_t old_deploying_tasks_size = job.deploying_tasks.size();
-        for ( ;job.deploying_tasks.size() < deploy_step_size
-             && job.running_num < job.replica_num ;) {
+        int64_t max_deploying_times = deploy_step_size - old_deploying_tasks_size;
+        for (int deploying_times = 0; 
+                job.deploying_tasks.size() < deploy_step_size
+                    && job.running_num < job.replica_num 
+                    && deploying_times < max_deploying_times; 
+                        ++ deploying_times) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
             std::string agent_addr = AllocResource(job);
@@ -893,7 +919,6 @@ void MasterImpl::Schedule() {
                 }   
             }   
             count_for_log++;
-
         }
         LOG(INFO,"schedule job %ld ,the deploying size is %d,deployed count %d", job.id,
                  old_deploying_tasks_size, count_for_log);
