@@ -134,6 +134,7 @@ void AgentImpl::RunTask(::google::protobuf::RpcController* /*controller*/,
     if (ret != 0 ){
         LOG(FATAL,"fail to prepare workspace ");
         response->set_status(-2);
+        resource_mgr_->Free(request->task_id());
         done->Run();
         return ;
     }
