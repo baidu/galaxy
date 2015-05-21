@@ -97,6 +97,7 @@ struct JobInfo {
     std::set<int64_t> deploying_tasks;
     double cpu_limit;
     bool one_task_per_host;
+    std::string restrict_tag;
 };
 
 class RpcClient;

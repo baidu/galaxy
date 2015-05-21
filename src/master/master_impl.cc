@@ -964,10 +964,11 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->agent_addr.c_str(),
                 it->cpu_left,
                 it->mem_left);
-        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
-            if (!job.restrict_tag.empty()) {
+        assert(agents_.find(it->agent_addr) != agents_.end());
+        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))
+            || !(!job.restrict_tag.empty() 
+         && agents_[it->agent_addr].tags.find(job.restrict_tag) != agents_[it->agent_addr].tags.end())) {
 
-            }
             last_found = true;
             current_min_load = it->load;
             addr = it->agent_addr;
@@ -985,6 +986,11 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             continue;
         }
         if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
+            continue;
+        }
+        assert(agents_.find(it->agent_addr) != agents_.end());
+        if (!job.restrict_tag.empty() 
+            && agents_[it->agent_addr].tags.find(job.restrict_tag) != agents_[it->agent_addr].tags.end()) {
             continue;
         }
         //第一次赋值current_min_load;
