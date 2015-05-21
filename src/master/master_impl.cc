@@ -501,7 +501,10 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         TaskInstance& instance = tasks_[task_id];
         running_tasks.insert(task_id);
         int task_status = request->task_status(i).status();
-        instance.set_status(task_status);
+        // master kill should not change
+        if (instance.status() != KILLED) {
+            instance.set_status(task_status);
+        }
         instance.set_job_id(request->task_status(i).job_id());
         LOG(DEBUG, "Task %d status: %s",
             task_id, TaskState_Name((TaskState)task_status).c_str());
@@ -716,6 +719,52 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     }
 }
 
+void MasterImpl::KilledTaskCallback(
+        int64_t job_id,
+        const KillTaskRequest* request, 
+        KillTaskResponse* response, 
+        bool failed, int err_code) {
+    if (failed || 
+            (response->has_status()
+                && response->status() != 0)) {
+        LOG(WARNING, "kill task %ld failed status %d, rpc err_code %d",
+                request->task_id(),
+                response->status(),
+                err_code);
+         
+    } else {
+        MutexLock lock(&agent_lock_);
+        std::string root_path;
+        if (response->has_gc_path()) {
+            root_path = response->gc_path(); 
+        }
+        std::map<int64_t, TaskInstance>::iterator it = tasks_.find(request->task_id());
+        if (it != tasks_.end()) {
+            it->second.set_root_path(root_path);
+        } else {
+            // maybe in job scheduled tasks
+            std::map<int64_t, JobInfo>::iterator job_it = jobs_.find(job_id);
+            if (job_it != jobs_.end()) {
+                JobInfo& job_info = jobs_[job_id];
+                std::deque<TaskInstance>::iterator sched_it 
+                    = job_info.scheduled_tasks.begin();
+                for (;sched_it != job_info.scheduled_tasks.end(); ++sched_it) {
+                    if (sched_it->info().task_id() == request->task_id()) {
+                        sched_it->set_root_path(root_path); 
+                    } 
+                }
+            }
+        }        
+    }
+    
+    if (request != NULL) {
+        delete request; 
+    }
+    if (response != NULL) {
+        delete response; 
+    }
+}
+
 bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     agent_lock_.AssertHeld();
     LOG(INFO,"cancel task %ld on agent %s",task_id,agent->addr.c_str());
@@ -723,35 +772,40 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
         assert(ret);
     }
-    KillTaskRequest kill_request;
-    kill_request.set_task_id(task_id);
-    KillTaskResponse kill_response;
-    bool ret = rpc_client_->SendRequest(agent->stub, &Agent_Stub::KillTask,
-                                        &kill_request, &kill_response, 5, 1);
-    if (!ret || (kill_response.has_status() 
-             && kill_response.status() != 0)) {
-        LOG(WARNING, "Kill task %ld agent= %s",
-            task_id, agent->addr.c_str());
-        return false;
-    } else {
-        std::map<int64_t, TaskInstance>::iterator it;         
-        it = tasks_.find(task_id);
-        if (it != tasks_.end()) {
-            it->second.set_agent_addr(agent->addr); 
-            if (kill_response.has_gc_path()) {
-                it->second.set_root_path(kill_response.gc_path());
-            }
-        }
-    }
+    KillTaskRequest* kill_request = new KillTaskRequest();
+    kill_request->set_task_id(task_id);
+    KillTaskResponse* kill_response = new KillTaskResponse();
+    boost::function<void(
+            const KillTaskRequest*, 
+            KillTaskResponse*, 
+            bool, int)> kill_callback = 
+        boost::bind(&MasterImpl::KilledTaskCallback, 
+                    this, tasks_[task_id].job_id(),
+                    _1, _2, _3, _4);
+    rpc_client_->AsyncRequest(agent->stub, 
+                              &Agent_Stub::KillTask, 
+                              kill_request, 
+                              kill_response, 
+                              kill_callback, 5, 1);
     return true;
 }
 
-void MasterImpl::ScaleDown(JobInfo* job) {
+void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
     agent_lock_.AssertHeld();
+    if (killed_num <= 0) {
+        LOG(DEBUG, "kill num is %d no need to kill", killed_num);
+        return; 
+    }
+    if (killed_num > job->running_num) {
+        // NOTE
+        killed_num = job->running_num; 
+    }
     std::string agent_addr;
     int64_t task_id = -1;
     std::set<int64_t>::size_type high_load = 0;
+    // build a priority queue to kill
     std::map<std::string, std::set<int64_t> >::iterator it = job->agent_tasks.begin();
+    
     if (job->running_num <= 0) {
         LOG(INFO, "[ScaleDown] %s[%d/%d] no need scale down",
                 job->job_name.c_str(),
@@ -769,27 +823,26 @@ void MasterImpl::ScaleDown(JobInfo* job) {
                 it->first.c_str(),
                 ai.running_tasks.size(),
                 high_load);
+        task_id = *(it->second.begin());
+        if (tasks_[task_id].status() == KILLED) {
+            agent_addr = ai.addr;
+            break;
+        }
         if (ai.running_tasks.size() > high_load) {
             high_load = ai.running_tasks.size();
             agent_addr = ai.addr;
-            task_id = *(it->second.begin());
         }
     }
     assert(!agent_addr.empty() && task_id != -1);
     LOG(INFO, "[ScaleDown] %s[%d/%d] on %s will be canceled",
         job->job_name.c_str(), job->running_num, job->replica_num, agent_addr.c_str());
     AgentInfo& agent = agents_[agent_addr];
-    bool success = CancelTaskOnAgent(&agent, task_id);
-    if(success){
-        LOG(INFO,"kill task %ld successfully",task_id);
-        std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(task_id);
-        if(intance_it != tasks_.end()){
-            intance_it->second.set_status(KILLED);
-            agent.version += 1;
-        }
-    }else{
-        LOG(INFO,"fail to kill task %ld",task_id);
+    std::map<int64_t,TaskInstance>::iterator intance_it = tasks_.find(task_id);
+    if(intance_it != tasks_.end()){
+        intance_it->second.set_status(KILLED);
     }
+    CancelTaskOnAgent(&agent, task_id);
+    return;
 }
 
 void MasterImpl::Schedule() {
@@ -810,7 +863,7 @@ void MasterImpl::Schedule() {
             continue;
         }
         if (job.running_num > job.replica_num && job.scale_down_time + 10 < now_time) {
-            ScaleDown(&job);
+            ScaleDown(&job, job.running_num - job.replica_num);
             // ±ÜÃâË²¼äËõ³É0ÁË
             job.scale_down_time = now_time;
         }

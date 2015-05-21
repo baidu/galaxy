@@ -386,6 +386,15 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
                 status->cpu_usage(), status->memory_usage());
     }
     status->set_job_id(m_task_info.job_id());
+    
+    if (m_task_state == KILLED) {
+        // be kill by master no need check running
+        status->set_status(KILLED);
+        LOG(WARNING, "task with id %ld state %s", 
+            m_task_info.task_id(), 
+            TaskState_Name(TaskState(m_task_state)).c_str());
+        return;
+    }
     // check if it is running
     int ret = IsRunning();
     if (ret == 0) {
@@ -437,6 +446,7 @@ int ContainerTaskRunner::Stop(){
     if(status != 0 ){
         return status;
     }
+    // NOTE !!! why cgroup destory in stop and create in start
     if (_cg_ctrl != NULL) {
         status = _cg_ctrl->Destroy(m_task_info.task_id());
         LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);

@@ -171,6 +171,7 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     if(NULL == runner){
         return 0;
     }
+    runner->Killed();
     int status = runner->Stop();
     if(status == 0){
         LOG(INFO,"stop task %d successfully", task_info_id);
