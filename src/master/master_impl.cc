@@ -73,6 +73,16 @@ bool MasterImpl::Recover() {
     while (it->Valid()) {
         std::string job_key = it->key().ToString();
         std::string job_cell = it->value().ToString();
+        if(job_key.find(TAG_KEY_PREFIX) == 0){
+            TagAgentRequest request;
+            if(!request.ParseFromString(job_cell)){
+                LOG(WARNING, "tag agent value invalid %s", job_key.c_str());
+                return false;
+            }
+            UpdateTag(&request);
+            it->Next();
+            continue;
+        }
         int64_t job_id = atol(job_key.c_str());
         if (job_id == 0) {
             LOG(WARNING, "job id invalid %s", job_key.c_str()); 
@@ -473,6 +483,16 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->stub = NULL;
         agent->version = 1;
         agent->alive_timestamp = now_time;
+        std::set<std::string> tags ;
+        std::map<std::string,std::set<std::string> >::iterator tag_it = tags_.begin();
+        for (;tag_it != tags_.end(); ++tag_it) {
+            if (tag_it->second.find(agent_addr) == tag_it->second.end()){
+                continue;
+            }
+            tags.insert(tag_it->first);
+        }
+        agent->tags = tags;
+
     } else {
         agent = &(it->second);
         int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
@@ -625,7 +645,7 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
         done->Run();
         return ;
     }
-    if (!PersistenceTag(request)) {
+    if (!UpdatePersistenceTag(request)) {
         response->set_status(kMasterResponseErrorInternal);
         done->Run();
         return;
@@ -672,7 +692,12 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     } else {
         job.deploy_step_size = job.replica_num;
     }
-    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d",
+    if (request->has_restrict_tag() && !request->restrict_tag().empty()) {
+        job.restrict_tag = request->restrict_tag();
+    }else{
+        job.restrict_tag = "";
+    }
+    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d ,restrict_tag %s",
             job.job_name.c_str(),
             job.replica_num,
             job.cmd_line.c_str(),
@@ -680,7 +705,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
             job.cpu_limit,
             job.mem_share,
             job.deploy_step_size,
-            job.one_task_per_host);
+            job.one_task_per_host,
+            job.restrict_tag.c_str());
 
     if (!PersistenceJobInfo(job)) {
         response->set_status(kMasterResponseErrorInternal); 
@@ -939,6 +965,9 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->cpu_left,
                 it->mem_left);
         if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+            if (!job.restrict_tag.empty()) {
+
+            }
             last_found = true;
             current_min_load = it->load;
             addr = it->agent_addr;
@@ -1015,12 +1044,12 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
-bool MasterImpl::PersistenceTag(const TagAgentRequest& request){
+bool MasterImpl::UpdatePersistenceTag(const TagAgentRequest* request){
     if (persistence_handler_ == NULL) {
         LOG(WARNING, "persistence handler not inited yet");
         return false;
     }
-    std::string key = TAG_KEY_PREFIX + request.tag();
+    std::string key = TAG_KEY_PREFIX + request->tag();
     if (request->agents_size() <= 0 ) {
         leveldb::Status delete_status = 
             persistence_handler_->Delete(leveldb::WriteOptions(), key);
@@ -1031,7 +1060,7 @@ bool MasterImpl::PersistenceTag(const TagAgentRequest& request){
         return true;
     }
     std::string tag_value;
-    if (!request.SerializeToString(&tag_value)) {
+    if (!request->SerializeToString(&tag_value)) {
         LOG(WARNING, "serialize tag agent request %s failed",
                 key.c_str()); 
         return false;
@@ -1127,7 +1156,7 @@ bool MasterImpl::SafeModeCheck() {
     return true;
 }
 
-void UpdateTag(const TagAgentRequest* request){
+void MasterImpl::UpdateTag(const TagAgentRequest* request){
     agent_lock_.AssertHeld();
     //remove old agent with request->tag()
     if (tags_.find(request->tag()) != tags_.end()) {
@@ -1148,11 +1177,11 @@ void UpdateTag(const TagAgentRequest* request){
     }
     //更新master tags_
     std::set<std::string> agent_set;
-    for (uint64_t index = 0; index < request->agents_size(); index++) {
+    for (int64_t index = 0; index < request->agents_size(); index++) {
         //agent 始终插入，不校验agent是否活着
         agent_set.insert(request->agents(index));
         std::map<std::string, AgentInfo>::iterator it
-                = agents_.find(*it);
+                = agents_.find(request->agents(index));
         if (it == agents_.end()) {
             continue;
         }

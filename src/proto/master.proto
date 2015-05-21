@@ -43,6 +43,8 @@ message NewJobRequest {
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
     optional bool one_task_per_host = 11;
+    //限制实例在含有特定的tag机器上面运行
+    optional string restrict_tag = 12;
 }
 
 message NewJobResponse {
@@ -149,7 +151,7 @@ message TagAgentRequest{
 }
 
 message TagAgentResponse{
-    optional status = 1;
+    optional int32 status = 1;
 }
 
 service Master {

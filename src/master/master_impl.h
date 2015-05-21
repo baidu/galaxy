@@ -147,7 +147,7 @@ public:
 private:
     bool PersistenceJobInfo(const JobInfo& job_info);
     bool DeletePersistenceJobInfo(const JobInfo& job_info);
-    bool UpdatePersistenceTag(const TagAgentRequest& request);
+    bool UpdatePersistenceTag(const TagAgentRequest* request);
     void DeadCheck();
     void Schedule();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
