@@ -37,7 +37,7 @@ class KillPriorityComp {
 public:   
     bool operator() (const KillPriorityCell& left, 
             const KillPriorityCell& right) {
-        return left.priority > right.priority; 
+        return left.priority < right.priority; 
     }
 };
 
