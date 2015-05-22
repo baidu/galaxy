@@ -9,6 +9,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <gflags/gflags.h>
 
 
@@ -26,6 +29,9 @@ DECLARE_bool(one_task_per_host);
 DECLARE_int64(task_id);
 DECLARE_int64(job_id);
 DECLARE_int64(mem_gbytes);
+DECLARE_string(restrict_tag);
+DECLARE_string(tag);
+DECLARE_string(agent_list);
 
 std::string USAGE = "./galaxy_client add --master_addr=localhost:9527 --job_name=1234 ....\n" 
                    "./galaxy_client list --task_id=1234 \n"
@@ -76,6 +82,7 @@ int ProcessNewJob(){
     job.deploy_step_size = FLAGS_deploy_step_size;
     job.cpu_limit = FLAGS_cpu_limit;
     job.one_task_per_host = FLAGS_one_task_per_host;
+    job.restrict_tag = FLAGS_restrict_tag;
     fprintf(stdout, "%ld", galaxy->NewJob(job));
     return 0;
 }
@@ -108,11 +115,12 @@ int ListNode(){
     fprintf(stdout, "================================\n");
     for(; it != nodes.end(); ++it){
         fprintf(stdout, "%ld\t%s\tTASK:%d\tCPU:%0.2f\t"
-                    "USED:%0.2f\tMEM:%ldGB\tUSED:%ldGB\n",
+                    "USED:%0.2f\tMEM:%ldGB\tUSED:%ldGB\tTAG:%s\n",
                     it->node_id, it->addr.c_str(),
                     it->task_num, it->cpu_share,
                     it->cpu_used, it->mem_share/(1024*1024*1024),
-                    it->mem_used/(1024*1024*1024));
+                    it->mem_used/(1024*1024*1024),
+                    boost::algorithm::join(it->tags, ",").c_str());
     }
     return 0;
 }
@@ -147,6 +155,29 @@ int UpdateJob(){
     return 0;
 }
 
+int TagAgent(){
+    galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(FLAGS_master_addr);
+    if (FLAGS_tag.empty()) {
+        fprintf(stderr, "--tag  which can not be empty is required ");
+        return -1;
+    }
+    if (FLAGS_agent_list.empty()) {
+        fprintf(stderr, "--tag  which can not be empty is required ");
+        return -1;
+    }
+    std::set<std::string> agents;
+    boost::split(agents, FLAGS_agent_list, boost::is_any_of(","));
+    if (agents.size() <= 0) {
+        fprintf(stderr, "--agent_list  is invalid ");
+        return -1;
+    }
+    bool ret = galaxy->TagAgent(FLAGS_tag, &agents);
+    if (!ret) {
+        fprintf(stderr, "fail to tag agent ");
+    }
+    return ret ? 0:-1;
+}
+
 int main(int argc, char* argv[]) {
 
     ::google::SetUsageMessage(USAGE);
@@ -175,7 +206,11 @@ int main(int argc, char* argv[]) {
         return ListTaskByAgent();
     } else if (strcmp(argv[1], "updatejob") == 0) {
         return UpdateJob();
-    } else {
+    
+    } else if (strcmp(argv[1], "tagagent") == 0) {
+        return TagAgent();
+    }
+    else {
         fprintf(stderr,"use ./galaxy_client --help for help");
         return -1;
     }

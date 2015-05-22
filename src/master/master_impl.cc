@@ -194,6 +194,10 @@ void MasterImpl::ListNode(::google::protobuf::RpcController* /*controller*/,
         node->set_mem_allocated(agent.mem_allocated);
         node->set_cpu_used(agent.cpu_used);
         node->set_mem_used(agent.mem_used);
+        std::set<std::string>::iterator inner_it = agent.tags.begin();
+        for (; inner_it != agent.tags.end(); ++inner_it) {
+            node->add_tags(*inner_it);
+        }
     }
     done->Run();
 }
@@ -640,6 +644,7 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
                           ::galaxy::TagAgentResponse* response,
                           ::google::protobuf::Closure* done){
     MutexLock lock(&agent_lock_);
+    LOG(INFO,"tag agents with tag %s", request->tag().c_str());
     if (!request->has_tag() || request->tag().empty()) { 
         response->set_status(kMasterResponseErrorInput);
         done->Run();
@@ -967,8 +972,8 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         assert(agents_.find(it->agent_addr) != agents_.end());
         if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))
             || !(!job.restrict_tag.empty() 
-         && agents_[it->agent_addr].tags.find(job.restrict_tag) != agents_[it->agent_addr].tags.end())) {
-
+         && agents_[it->agent_addr].tags.find(job.restrict_tag) == agents_[it->agent_addr].tags.end())) {
+            LOG(INFO,"CHOOSE %s",it->agent_addr.c_str());
             last_found = true;
             current_min_load = it->load;
             addr = it->agent_addr;
@@ -988,11 +993,12 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
             continue;
         }
-        assert(agents_.find(it->agent_addr) != agents_.end());
+        assert(agents_.find(it_start->agent_addr) != agents_.end());
         if (!job.restrict_tag.empty() 
-            && agents_[it->agent_addr].tags.find(job.restrict_tag) != agents_[it->agent_addr].tags.end()) {
+            && agents_[it_start->agent_addr].tags.find(job.restrict_tag) == agents_[it_start->agent_addr].tags.end()) {
             continue;
         }
+        LOG(INFO,"CHOOSE %s",it_start->agent_addr.c_str());
         //第一次赋值current_min_load;
         if(!last_found){
             current_min_load = it_start->load;
@@ -1192,6 +1198,7 @@ void MasterImpl::UpdateTag(const TagAgentRequest* request){
             continue;
         }
         it->second.tags.insert(request->tag());
+        LOG(INFO,"add tag %s to agent %s",request->tag().c_str(),request->agents(index).c_str());
     }
     tags_.insert(std::pair<std::string, std::set<std::string> >(request->tag(),agent_set));
 }

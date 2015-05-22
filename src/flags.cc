@@ -51,6 +51,8 @@ DEFINE_bool(one_task_per_host , false, "every node just run one task of job");
 DEFINE_int64(task_id, -1, "the identify of task");
 DEFINE_int64(job_id, -1, "the identify of job");
 DEFINE_string(agent_addr, "", "the address of a agent shown by listnode");
+DEFINE_string(restrict_tag,"","restrict the host with specifying tag to run task");
 
-
+DEFINE_string(tag,"","add a tag to agent ");
+DEFINE_string(agent_list,"","specify a agent list to tag,eg: host1:9745,host2:9876");
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

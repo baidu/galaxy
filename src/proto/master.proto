@@ -136,6 +136,7 @@ message NodeInstance {
 
     optional double cpu_allocated = 9;
     optional int64 mem_allocated = 10;
+    repeated string tags = 11;
 }
 
 message ListNodeRequest {
