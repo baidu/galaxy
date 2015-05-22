@@ -190,7 +190,7 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     }
     uid_t userid = getuid();
     if (0 == userid) {
-        chroot(m_workspace->GetPath().c_str());
+        //chroot(m_workspace->GetPath().c_str());
         if (pw->pw_uid != userid) {
             setuid(pw->pw_uid);
         }
