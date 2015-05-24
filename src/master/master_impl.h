@@ -20,6 +20,7 @@
 #include <boost/multi_index/member.hpp>
 
 #include "leveldb/db.h"
+#include "proto/agent.pb.h"
 #include "common/mutex.h"
 #include "common/thread_pool.h"
 
@@ -150,7 +151,7 @@ private:
                            const std::set<int64_t>& running_tasks,
                            bool clear_all = false);
     bool CancelTaskOnAgent(AgentInfo* agent, int64_t task_id);
-    void ScaleDown(JobInfo* job);
+    void ScaleDown(JobInfo* job, int killed_num);
 
     void DelayRemoveZombieTaskOnAgent(AgentInfo * agent,int64_t task_id);
     void ListTaskForAgent(const std::string& agent_addr,
@@ -166,6 +167,11 @@ private:
     bool SafeModeCheck();
     bool JobTaskExistsOnAgent(const std::string& agent,
                               const JobInfo& job);
+
+    void KilledTaskCallback(
+            int64_t job_id, 
+            const KillTaskRequest*, 
+            KillTaskResponse*, bool, int);
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;
