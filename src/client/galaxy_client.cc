@@ -11,6 +11,19 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <gflags/gflags.h>
 
+DEFINE_string(master_addr, "localhost:8102", "master rpc-server endpoint");
+DEFINE_string(job_name, "", "job name shown on galaxy");
+DEFINE_string(task_raw, "", "job package which could be a ftp address or a local file ");
+DEFINE_string(cmd_line, "", "the boot command of job");
+DEFINE_int32(replicate_num, 0, "the replication number of job");
+DEFINE_double(cpu_soft_limit, 0.0, "cpu soft limit which is lower than cpu limit");
+DEFINE_double(cpu_limit, 0.0, "cpu limit which a task can reach but not overtop");
+DEFINE_int32(deploy_step_size ,0, "how many tasks can be deployed in concurrent");
+DEFINE_bool(one_task_per_host , false, "every node just run one task of job");
+DEFINE_int64(task_id, -1, "the identify of task");
+DEFINE_int64(job_id, -1, "the identify of job");
+DEFINE_string(agent_addr, "", "the address of a agent shown by listnode");
+DEFINE_int64(mem_gbytes, 32, "mem in giga bytes that job needs");
 
 
 DECLARE_string(master_addr);
@@ -27,10 +40,10 @@ DECLARE_int64(task_id);
 DECLARE_int64(job_id);
 DECLARE_int64(mem_gbytes);
 
-std::string USAGE = "./galaxy_client add --master_addr=localhost:9527 --job_name=1234 ....\n" 
-                   "./galaxy_client list --task_id=1234 \n"
-                   "./galaxy_client list --job_id=9527\n"
-                    "./galaxy_client kill --job_id=9527";
+std::string USAGE = "\n./galaxy_client add --master_addr=localhost:8102 --job_name=1234 ...\n" 
+                   "./galaxy_client list --task_id=1234 --master_addr=localhost:8102 \n"
+                   "./galaxy_client list --job_id=9527 --master_addr=localhost:8102\n"
+                    "./galaxy_client kill --job_id=9527 --master_addr=localhost:8102";
 
 int ProcessNewJob(){
     if(FLAGS_job_name.empty()){
