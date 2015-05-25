@@ -46,13 +46,13 @@ def create_service(request):
     galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
     try:
         ret = helper.validate_init_service_group_req(request)
-        LOG.info(ret)
         status,output = galaxy.create_task(ret['name'],ret['pkg_src'],
                                            ret['start_cmd'],
                                            ret['replicate_count'],
                                            ret['memory_limit']*1024*1024*1024,
                                            ret['cpu_share'],
-                                           deploy_step_size = ret['deploy_step_size'])
+                                           deploy_step_size = ret['deploy_step_size'],
+                                           one_task_per_host = ret['one_task_per_host'])
         if not status:
             return builder.error('fail create task').build_json()
         return builder.ok().build_json()

@@ -63,7 +63,8 @@ class GalaxySDK(object):
                       replicate_num = 1,
                       mem_limit = 1024,
                       cpu_limit = 2, 
-                      deploy_step_size=-1):
+                      deploy_step_size = -1,
+                      one_task_per_host = False):
         """
         send a new job command to galaxy master
         return:
@@ -78,7 +79,8 @@ class GalaxySDK(object):
                                       replicate_num = replicate_num,
                                       mem_limit = mem_limit,
                                       cpu_limit = cpu_limit,
-                                      deploy_step_size = deploy_step_size)
+                                      deploy_step_size = deploy_step_size,
+                                      one_task_per_host = one_task_per_host)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -241,7 +243,8 @@ class GalaxySDK(object):
                                replicate_num = 1,
                                mem_limit= 1024,
                                cpu_limit= 2,
-                               deploy_step_size=-1):
+                               deploy_step_size=-1,
+                               one_task_per_host=False):
 
         req = master_pb2.NewJobRequest()
         if  deploy_step_size > 0:
@@ -252,5 +255,6 @@ class GalaxySDK(object):
         req.cpu_share = cpu_limit
         req.mem_share = mem_limit
         req.replica_num = replicate_num
+        req.one_task_per_host = one_task_per_host
         return req
 

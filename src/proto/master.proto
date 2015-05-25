@@ -42,6 +42,7 @@ message NewJobRequest {
     //单个步骤部署实例个数
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
+    optional bool one_task_per_host = 11;
 }
 
 message NewJobResponse {
@@ -100,6 +101,7 @@ message JobCheckPointCell {
     optional int32 deploy_step_size = 8;
     optional bool killed = 9;
     optional double cpu_limit = 10;
+    optional bool one_task_per_host = 11;
 }
 
 message JobInstance {

@@ -42,6 +42,7 @@ public:
    virtual void PersistenceAble(const std::string& persistence_path) = 0;
 
    virtual void Status(TaskStatus* status) = 0;
+   virtual void Killed() = 0;
    virtual ~TaskRunner(){}
 };
 
@@ -69,6 +70,10 @@ public:
 
     virtual void PersistenceAble(const std::string& persistence_path) = 0;
 
+    void Killed() {
+        // Mark kill 
+        SetStatus(KILLED); 
+    }
 protected:
     void SetStatus(int status);
     void StartAfterDownload(
