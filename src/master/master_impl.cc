@@ -107,6 +107,7 @@ bool MasterImpl::Recover() {
         job_info.cpu_share = cell.cpu_share();
         job_info.mem_share = cell.mem_share();
         job_info.deploy_step_size = cell.deploy_step_size();
+        job_info.one_task_per_host = false;
         job_info.cpu_limit = cell.cpu_share();
         if (cell.has_cpu_limit() 
                 && cell.cpu_limit() > job_info.cpu_share) {
@@ -114,6 +115,9 @@ bool MasterImpl::Recover() {
         }
         if (job_info.deploy_step_size == 0) {
             job_info.deploy_step_size = job_info.replica_num;
+        }
+        if(cell.has_one_task_per_host()){
+            job_info.one_task_per_host = cell.one_task_per_host();
         }
         job_info.killed = cell.killed();
         
@@ -642,7 +646,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     job.job_raw = request->job_raw();
     job.cmd_line = request->cmd_line();
     job.replica_num = request->replica_num();
-
+    job.one_task_per_host = false;
     job.running_num = 0;
     job.scale_down_time = 0;
     job.killed = false;
@@ -653,20 +657,23 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
             && request->cpu_limit() > job.cpu_share) {
         job.cpu_limit = request->cpu_limit();
     }  
-
+    if (request->has_one_task_per_host()) {
+        job.one_task_per_host = request->one_task_per_host();
+    }
     if (request->deploy_step_size() > 0) {
         job.deploy_step_size = request->deploy_step_size();
     } else {
         job.deploy_step_size = job.replica_num;
     }
-    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d",
+    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d",
             job.job_name.c_str(),
             job.replica_num,
             job.cmd_line.c_str(),
             job.cpu_share,
             job.cpu_limit,
             job.mem_share,
-            job.deploy_step_size);
+            job.deploy_step_size,
+            job.one_task_per_host);
 
     if (!PersistenceJobInfo(job)) {
         response->set_status(kMasterResponseErrorInternal); 
@@ -782,7 +789,7 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
     agent_lock_.AssertHeld();
     LOG(INFO,"cancel task %ld on agent %s",task_id,agent->addr.c_str());
     if (agent->stub == NULL) {
-    bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
+        bool ret = rpc_client_->GetStub(agent->addr, &agent->stub);
         assert(ret);
     }
     KillTaskRequest* kill_request = new KillTaskRequest();
@@ -956,6 +963,16 @@ double MasterImpl::CalcLoad(const AgentInfo& agent){
     return exp(cpu_factor) + exp(mem_factor) + exp(task_count_factor);
 }
 
+bool MasterImpl::JobTaskExistsOnAgent(const std::string& agent_addr,
+                                      const JobInfo& job){
+    agent_lock_.AssertHeld();
+    std::map<std::string, std::set<int64_t> >::const_iterator it = job.agent_tasks.find(agent_addr);
+    if (it == job.agent_tasks.end() || it->second.empty()) {
+        return false;
+    }
+    return true;
+}
+
 std::string MasterImpl::AllocResource(const JobInfo& job){
     LOG(INFO,"alloc resource for job %ld,mem_require %ld, cpu_require %f",
         job.id,job.mem_share,job.cpu_share);
@@ -976,10 +993,12 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->agent_addr.c_str(),
                 it->cpu_left,
                 it->mem_left);
-        last_found = true;
-        current_min_load = it->load;
-        addr = it->agent_addr;
-        cur_agent = it;
+        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+            last_found = true;
+            current_min_load = it->load;
+            addr = it->agent_addr;
+            cur_agent = it;
+        }
     }
     for(;it_start != it;++it_start){
         LOG(DEBUG, "alloc resource for job %ld list agent %s cpu left %lf mem left %ld",
@@ -988,7 +1007,10 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it_start->cpu_left,
                 it_start->mem_left);
         //判断内存是否满足需求
-        if(it_start->mem_left < job.mem_share){
+        if (it_start->mem_left < job.mem_share) {
+            continue;
+        }
+        if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
             continue;
         }
         //第一次赋值current_min_load;
@@ -1007,13 +1029,13 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         }
     }
     if(last_found){
-        LOG(INFO,"alloc resource for job %ld on host %s with load %f cpu left %f mem left %ld",
+        LOG(INFO, "alloc resource for job %ld on host %s with load %f cpu left %f mem left %ld",
                 job.id,addr.c_str(),
                 current_min_load,
                 cur_agent->cpu_left,
                 cur_agent->mem_left);
     }else{
-        LOG(WARNING,"no enough  resource to alloc for job %ld",job.id);
+        LOG(WARNING, "no enough  resource to alloc for job %ld", job.id);
     }
     return addr;
 }
@@ -1077,7 +1099,7 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     cell.set_deploy_step_size(job_info.deploy_step_size);
     cell.set_killed(job_info.killed);
     cell.set_cpu_limit(job_info.cpu_limit);
-
+    cell.set_one_task_per_host(job_info.one_task_per_host);
     LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
             cell.job_name().c_str(),
             cell.replica_num(),

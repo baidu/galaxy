@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
+test -e data && rm -rf data
 func_kill_by_name(){
    pid_list=`ps -ef | grep $1 | grep -v grep | awk '{print $2}'`
    if [ -n "$pid_list" ];then

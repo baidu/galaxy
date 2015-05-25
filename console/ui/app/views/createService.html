@@ -49,7 +49,11 @@
           <label for="startCmd">启动命令</label>
           <input type="text" ng-model="deployTpl.startCmd" class="form-control " id="startCmd">
         </div>
-
+        <div class="checkbox">
+            <label>
+             <input type="checkbox" ng-model="deployTpl.oneTaskPerHost">每个主机部署一个实例
+            </label>
+        </div>
 </form>
 </div>
 <div class="modal-footer">

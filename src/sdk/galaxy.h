@@ -59,6 +59,7 @@ struct JobDescription{
 
     int32_t deploy_step_size;
     double cpu_limit;
+    bool one_task_per_host;
 };
 
 struct NodeDescription {
