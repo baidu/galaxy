@@ -86,9 +86,9 @@ bool MasterImpl::Recover() {
     while (it->Valid()) {
         std::string job_key = it->key().ToString();
         std::string job_cell = it->value().ToString();
-        if(job_key.find(TAG_KEY_PREFIX) == 0){
+        if (job_key.find(TAG_KEY_PREFIX) == 0) {
             TagAgentRequest request;
-            if(!request.ParseFromString(job_cell)){
+            if (!request.ParseFromString(job_cell)) {
                 LOG(WARNING, "tag agent value invalid %s", job_key.c_str());
                 return false;
             }
@@ -1050,14 +1050,13 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))
             || !(!job.restrict_tag.empty() 
          && agents_[it->agent_addr].tags.find(job.restrict_tag) == agents_[it->agent_addr].tags.end())) {
-            LOG(INFO,"CHOOSE %s",it->agent_addr.c_str());
             last_found = true;
             current_min_load = it->load;
             addr = it->agent_addr;
             cur_agent = it;
         }
     }
-    for(;it_start != it;++it_start){
+    for (;it_start != it;++it_start) {
         LOG(DEBUG, "alloc resource for job %ld list agent %s cpu left %lf mem left %ld",
                 job.id,
                 it_start->agent_addr.c_str(),
@@ -1071,13 +1070,13 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             continue;
         }
         assert(agents_.find(it_start->agent_addr) != agents_.end());
+        //不满足tag要求时 continue
         if (!job.restrict_tag.empty() 
             && agents_[it_start->agent_addr].tags.find(job.restrict_tag) == agents_[it_start->agent_addr].tags.end()) {
             continue;
         }
-        LOG(INFO,"CHOOSE %s",it_start->agent_addr.c_str());
         //第一次赋值current_min_load;
-        if(!last_found){
+        if (!last_found) {
             current_min_load = it_start->load;
             addr = it_start->agent_addr;
             last_found = true;
@@ -1085,13 +1084,13 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             continue;
         }
         //找到负载更小的节点
-        if(current_min_load > it_start->load){
+        if (current_min_load > it_start->load) {
             addr = it_start->agent_addr;
             current_min_load = it_start->load;
             cur_agent = it;
         }
     }
-    if(last_found){
+    if (last_found) {
         LOG(INFO, "alloc resource for job %ld on host %s with load %f cpu left %f mem left %ld",
                 job.id,addr.c_str(),
                 current_min_load,
