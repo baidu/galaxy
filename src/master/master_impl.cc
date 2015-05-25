@@ -648,19 +648,18 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
     if (!request->has_tag() || request->tag().empty()) { 
         response->set_status(kMasterResponseErrorInput);
         done->Run();
-        return ;
+        return;
     }
     if (!UpdatePersistenceTag(request)) {
         response->set_status(kMasterResponseErrorInternal);
         done->Run();
+        LOG(FATAL, "fail to persistence tag  %s", request->tag().c_str());
         return;
     }
     UpdateTag(request);
     response->set_status(kMasterResponseOK);
     done->Run();
 }
-
-
 
 void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
@@ -1174,11 +1173,13 @@ void MasterImpl::UpdateTag(const TagAgentRequest* request){
     if (tags_.find(request->tag()) != tags_.end()) {
         std::set<std::string>::iterator it = tags_[request->tag()].begin();
         for (; it != tags_[request->tag()].end(); ++it) {
+            LOG(DEBUG, "tag %s with agent %s", request->tag().c_str(), (*it).c_str());
             std::map<std::string, AgentInfo>::iterator inner_it
                 = agents_.find(*it);
             if (inner_it == agents_.end()) {
                 continue;
             }
+            LOG(DEBUG, "remove tag %s on agent %s", request->tag().c_str(), inner_it->second.addr.c_str());
             inner_it->second.tags.erase(request->tag());
         }
     }
@@ -1200,7 +1201,7 @@ void MasterImpl::UpdateTag(const TagAgentRequest* request){
         it->second.tags.insert(request->tag());
         LOG(INFO,"add tag %s to agent %s",request->tag().c_str(),request->agents(index).c_str());
     }
-    tags_.insert(std::pair<std::string, std::set<std::string> >(request->tag(),agent_set));
+    tags_[request->tag()] = agent_set;
 }
 
 

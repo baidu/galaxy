@@ -161,16 +161,8 @@ int TagAgent(){
         fprintf(stderr, "--tag  which can not be empty is required ");
         return -1;
     }
-    if (FLAGS_agent_list.empty()) {
-        fprintf(stderr, "--tag  which can not be empty is required ");
-        return -1;
-    }
     std::set<std::string> agents;
     boost::split(agents, FLAGS_agent_list, boost::is_any_of(","));
-    if (agents.size() <= 0) {
-        fprintf(stderr, "--agent_list  is invalid ");
-        return -1;
-    }
     bool ret = galaxy->TagAgent(FLAGS_tag, &agents);
     if (!ret) {
         fprintf(stderr, "fail to tag agent ");
