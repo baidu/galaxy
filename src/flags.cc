@@ -42,4 +42,6 @@ DEFINE_int32(agent_cgroup_clear_retry_times, 20, "how many times for retry destr
 DEFINE_int32(agent_app_stop_wait_retry_times, 10, "how many times for stop wait");
 DEFINE_string(monitor_conf_path, "", "path of monitor conf");
 
+DEFINE_string(pam_pwd_dir, "/tmp/", "directory of galaxy-ssh password on agent node");
+
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
