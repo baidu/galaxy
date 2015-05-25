@@ -43,6 +43,8 @@ message NewJobRequest {
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
     optional bool one_task_per_host = 11;
+    //限制实例在含有特定的tag机器上面运行
+    optional string restrict_tag = 12;
 }
 
 message NewJobResponse {
@@ -134,6 +136,7 @@ message NodeInstance {
 
     optional double cpu_allocated = 9;
     optional int64 mem_allocated = 10;
+    repeated string tags = 11;
 }
 
 message ListNodeRequest {
@@ -141,6 +144,15 @@ message ListNodeRequest {
 
 message ListNodeResponse {
     repeated NodeInstance nodes = 2;
+}
+
+message TagAgentRequest{
+    optional string tag = 1;
+    repeated string agents = 2;
+}
+
+message TagAgentResponse{
+    optional int32 status = 1;
 }
 
 service Master {
@@ -153,5 +165,6 @@ service Master {
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);
     rpc ListNode(ListNodeRequest) returns(ListNodeResponse);
+    rpc TagAgent(TagAgentRequest) returns(TagAgentResponse);
 }
 
