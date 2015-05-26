@@ -41,7 +41,6 @@ public:
         return left.priority < right.priority; 
     }
 };
-std::string TAG_KEY_PREFIX = "TAG::";
 
 MasterImpl::MasterImpl()
     : next_agent_id_(1),
