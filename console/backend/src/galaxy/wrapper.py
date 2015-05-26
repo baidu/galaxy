@@ -79,3 +79,11 @@ class Galaxy(object):
         status,job_list = galaxy_sdk.list_all_job()
         return status ,job_list
 
+    def tag_agent(self, tag, agent_set):
+        galaxy_sdk = sdk.GalaxySDK(self.master_addr)
+        status = galaxy_sdk.tag_agent(tag, agent_set)
+        return status
+
+    def list_tag(self):
+        galaxy_sdk = sdk.GalaxySDK(self.master_addr)
+        return galaxy_sdk.list_tag()

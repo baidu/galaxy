@@ -146,6 +146,11 @@ public:
                   const ::galaxy::TagAgentRequest* request,
                   ::galaxy::TagAgentResponse* response,
                   ::google::protobuf::Closure* done);
+    void ListTag(::google::protobuf::RpcController* controller,
+                  const ::galaxy::ListTagRequest* request,
+                  ::galaxy::ListTagResponse* response,
+                  ::google::protobuf::Closure* done);
+
 private:
     bool PersistenceJobInfo(const JobInfo& job_info);
     bool DeletePersistenceJobInfo(const JobInfo& job_info);

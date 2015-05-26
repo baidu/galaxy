@@ -16,7 +16,6 @@ NavTree.prototype.update = function() {
     var pathArray = this._parsePath(this.$location.path());
     if (this.$location.path().indexOf("/cluster") == 0) {
           this.processRouter['cluster'](this, pathArray);
-          console.log(this.homeNavSetting);
           return;
     }
     if(pathArray.length <= 1){

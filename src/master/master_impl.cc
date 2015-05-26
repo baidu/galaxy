@@ -677,6 +677,24 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
+void MasterImpl::ListTag(::google::protobuf::RpcController* /*controller*/,
+                  const ::galaxy::ListTagRequest* /*request*/,
+                  ::galaxy::ListTagResponse* response,
+                  ::google::protobuf::Closure* done){
+    MutexLock lock(&agent_lock_);
+    std::map<std::string, std::set<std::string> >::iterator it = tags_.begin();
+    LOG(INFO, "list tag size %ld", tags_.size());
+    for (; it != tags_.end(); ++it) {
+        TagEntity* entity = response->add_tags(); 
+        entity->set_tag(it->first);
+        std::set<std::string>::iterator inner_it = it->second.begin();
+        for (; inner_it != it->second.end(); ++inner_it) {
+            entity->add_agents(*inner_it);
+        }
+    }
+    done->Run();
+}
+
 void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
                          const ::galaxy::NewJobRequest* request,
                          ::galaxy::NewJobResponse* response,

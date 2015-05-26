@@ -98,7 +98,7 @@ class GalaxySDK(object):
 
     def tag_agent(self, tag, agent_set):
         request = master_pb2.TagAgentRequest(tag = tag, 
-                                             agent_set = agent_set)
+                                             agents = agent_set)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -108,7 +108,26 @@ class GalaxySDK(object):
                 return True
             return False
         except:
+            LOG.exception("fail to tag agent")
             return False
+
+    def list_tag(self):
+        request = master_pb2.ListTagRequest()
+        master = master_pb2.Master_Stub(self.channel)
+        controller = client.Controller()
+        controller.SetTimeout(1.5)
+        try:
+            response = master.ListTag(controller, request)
+            ret = []
+            for tag in response.tags:
+                base = BaseEntity()
+                base.tag = tag.tag
+                base.agents = [agent for agent in tag.agents]
+                ret.append(base.__dict__)
+            return ret
+        except Exception as e:
+            LOG.exception("fail to list tag %s"%str(e))
+            return []
 
     def list_all_job(self):
 
