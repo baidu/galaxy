@@ -27,11 +27,9 @@ DEFINE_int64(task_id, -1, "the identify of task");
 DEFINE_int64(job_id, -1, "the identify of job");
 DEFINE_string(agent_addr, "", "the address of a agent shown by listnode");
 DEFINE_int64(mem_gbytes, 32, "mem in giga bytes that job needs");
-DEFINE_string(restrict_tag,"","restrict the host with specifying tag to run task");
-
-DEFINE_string(tag,"","add a tag to agent ");
-DEFINE_string(agent_list,"","specify a agent list to tag,eg: host1:9745,host2:9876");
-
+DEFINE_string(restrict_tag, "", "specify tag to run task");
+DEFINE_string(tag, "", "add tag to agent");
+DEFINE_string(agent_list, "", "specify agent list to add tag ,eg host:port,host2:port");
 
 DECLARE_string(master_addr);
 DECLARE_string(agent_addr);

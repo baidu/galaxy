@@ -184,6 +184,7 @@ private:
             int64_t job_id, 
             const KillTaskRequest*, 
             KillTaskResponse*, bool, int);
+    void UpdateTag(const TagAgentRequest* request);
 private:
     /// Global threadpool
     common::ThreadPool thread_pool_;
