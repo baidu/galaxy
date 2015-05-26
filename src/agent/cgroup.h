@@ -95,15 +95,15 @@ public:
                         collector_id_(-1),
                         persistence_path_dir_(), 
                         sequence_id_(0) {}
-    int Prepare();
-    int Start();
-    int Stop();
+    virtual int Prepare();
+    virtual int Start();
     void PersistenceAble(const std::string& persistence_path) {
         persistence_path_dir_ = persistence_path;
     }
     virtual void StopPost();
     virtual void Status(TaskStatus* status);
     ~ContainerTaskRunner();
+    virtual int Clean();
 private:
     void PutToCGroup();
 private:

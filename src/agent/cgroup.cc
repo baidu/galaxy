@@ -168,7 +168,9 @@ int MemoryCtrl::SetLimit(int64_t limit) {
     int ret = common::util::WriteIntToFile(limit_file, limit);
 
     if (ret < 0) {
-        //LOG(FATAL, "fail to set limt %lld for %s", limit, _my_cg_root.c_str());
+        LOG(FATAL, "fail to set limt %ld for %s", 
+                limit, 
+                _my_cg_root.c_str());
         return -1;
     }
 
@@ -192,7 +194,9 @@ int CpuCtrl::SetCpuShare(int64_t cpu_share) {
     std::string cpu_share_file = _my_cg_root + "/" + "cpu.shares";
     int ret = common::util::WriteIntToFile(cpu_share_file, cpu_share);
     if (ret < 0) {
-        //LOG(FATAL, "fail to set cpu share %lld for %s", cpu_share, _my_cg_root.c_str());
+        LOG(FATAL, "fail to set cpu share %ld for %s", 
+                cpu_share, 
+                _my_cg_root.c_str());
         return -1;
     }
 
@@ -208,19 +212,19 @@ int CpuCtrl::SetCpuPeriod(int64_t cpu_period) {
     }
 
     return 0;
-
 }
 
 int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
     std::string cpu_quota_file = _my_cg_root + "/" + "cpu.cfs_quota_us";
     int ret = common::util::WriteIntToFile(cpu_quota_file, cpu_quota);
     if (ret < 0) {
-        //LOG(FATAL, "fail to set cpu quota  %ld for %s", cpu_quota, _my_cg_root.c_str());
+        LOG(FATAL, "fail to set cpu quota  %ld for %s", 
+                cpu_quota, 
+                _my_cg_root.c_str());
         return -1;
     }
-    //LOG(INFO, "set cpu quota %ld for %s", cpu_quota, _my_cg_root.c_str());
-    return 0;
 
+    return 0;
 }
 
 ContainerTaskRunner::~ContainerTaskRunner() {
@@ -268,35 +272,49 @@ int ContainerTaskRunner::Prepare() {
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
     _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
-    return Start();
-}
 
-void ContainerTaskRunner::PutToCGroup(){
-    int64_t mem_size = m_task_info.required_mem();
-    double cpu_core = m_task_info.required_cpu();    // soft limit  cpu.share
-    double cpu_limit = cpu_core;                     // hard limit  cpu.cfs_quota_us
+    // setup cgroup 
+    int64_t mem_size = m_task_info.required_mem(); 
+    double cpu_core = m_task_info.required_cpu();
+    double cpu_limit = cpu_core;
+
     if (m_task_info.has_limited_cpu()) {
         cpu_limit = m_task_info.limited_cpu(); 
         if (cpu_limit < cpu_core) {
-            cpu_limit = cpu_core;     
+            cpu_limit = cpu_core;
         }
     }
-    assert(_mem_ctrl->SetLimit(mem_size) == 0);     
 
-    // set cpu hard limit first
+    if (_mem_ctrl->SetLimit(mem_size) != 0) {
+        LOG(FATAL, "fail to set memory limit for task %ld", 
+                m_task_info.task_id()); 
+        return -1;
+    }
+
     int64_t limit = static_cast<int64_t>(cpu_limit * CPU_CFS_PERIOD);
     if (limit < MIN_CPU_CFS_QUOTA) {
         limit = MIN_CPU_CFS_QUOTA;
     }
 
-    assert(_cpu_ctrl->SetCpuQuota(limit) == 0);
-    // set cpu qutoa 
+    if (_cpu_ctrl->SetCpuQuota(limit) != 0) {
+        LOG(FATAL, "fail to set cpu quota for task %ld", 
+                m_task_info.task_id()); 
+        return -1;
+    }
     int64_t quota = static_cast<int64_t>(cpu_core * CPU_SHARE_PER_CPU);
     if (quota < MIN_CPU_SHARE) {
         quota = MIN_CPU_SHARE; 
     }
-    assert(_cpu_ctrl->SetCpuShare(quota) == 0);
+    if (_cpu_ctrl->SetCpuShare(quota) != 0) {
+        LOG(FATAL, "fail to set cpu share for task %ld",
+                m_task_info.task_id()); 
+        return -1;
+    }
 
+    return Start();
+}
+
+void ContainerTaskRunner::PutToCGroup(){
     pid_t my_pid = getpid();
     assert(_mem_ctrl->AttachTask(my_pid) == 0);
     assert(_cpu_ctrl->AttachTask(my_pid) == 0);
@@ -440,24 +458,6 @@ void ContainerTaskRunner::StopPost() {
     return;
 }
 
-int ContainerTaskRunner::Stop(){
-    int status = AbstractTaskRunner::Stop();
-    LOG(INFO,"stop  task %ld  with status %d",m_task_info.task_id(),status);
-    if(status != 0 ){
-        return status;
-    }
-    // NOTE !!! why cgroup destory in stop and create in start
-    if (_cg_ctrl != NULL) {
-        status = _cg_ctrl->Destroy(m_task_info.task_id());
-        LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
-        if (status != 0) {
-            return status; 
-        }
-    }
-    StopPost();
-    return status;
-}
-
 bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     std::vector<std::string> files;
     if (!file::GetDirFilesByPrefix(
@@ -559,6 +559,16 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         return true; 
     }
     return false;
+}
+
+int ContainerTaskRunner::Clean() {
+    if (_cg_ctrl != NULL) {
+        int status = _cg_ctrl->Destroy(m_task_info.task_id());
+        LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
+        return status;
+    }
+    LOG(WARNING, "cgroup not inited for task %ld", m_task_info.task_id());
+    return 0;
 }
 
 }
