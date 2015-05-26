@@ -96,6 +96,20 @@ class GalaxySDK(object):
             LOG.exception("fail to create  job")
         return False,None
 
+    def tag_agent(self, tag, agent_set):
+        request = master_pb2.TagAgentRequest(tag = tag, 
+                                             agent_set = agent_set)
+        master = master_pb2.Master_Stub(self.channel)
+        controller = client.Controller()
+        controller.SetTimeout(1.5)
+        try:
+            response = master.TagAgent(controller, request)
+            if response.status == 0 :
+                return True
+            return False
+        except:
+            return False
+
     def list_all_job(self):
 
         request = master_pb2.ListJobRequest()

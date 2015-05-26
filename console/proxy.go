@@ -61,6 +61,7 @@ func ReadPattern(confpath string) map[string]string {
 		if len(parts) != 2 {
 			continue
 		}
+        fmt.Printf(parts[0])
 		pattern[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 	return pattern
@@ -75,7 +76,9 @@ func (m *MultiHostReversProxy) Routing(w http.ResponseWriter, r *http.Request) {
 
 func (m *MultiHostReversProxy) chooseRoute(r *http.Request) string {
 	for k, v := range m.Pattern {
+        fmt.Printf(r.RequestURI)
 		if strings.HasPrefix(r.RequestURI, k) {
+            fmt.Printf(v)
 			return v
 		}
 	}

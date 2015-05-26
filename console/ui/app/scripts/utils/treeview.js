@@ -6,16 +6,22 @@ var NavTree = function($scope,$location){
     this.serviceNavSetting = $scope.config.servicePageConfig;
     this.homeNavSetting = $scope.config.homeConfig;
     this.processRouter = {'service':this._processServicePage,
-                          'home':this._processHomePage};
+                          'home':this._processHomePage,
+                          'cluster':this._processClusterPage};
 
 }
 //更新树节点状态
 //hash改变时需要调用一下这个函数
 NavTree.prototype.update = function() {
     var pathArray = this._parsePath(this.$location.path());
+    if (this.$location.path().indexOf("/cluster") == 0) {
+          this.processRouter['cluster'](this, pathArray);
+          console.log(this.homeNavSetting);
+          return;
+    }
     if(pathArray.length <= 1){
           this.processRouter['home'](this,pathArray);
-     }else {
+    }else {
           var secondPage = pathArray[0];
           if(secondPage in this.processRouter){
               this.processRouter[secondPage](this,pathArray);
@@ -43,12 +49,15 @@ NavTree.prototype._processHomePage = function(self,pathArray){
       if(pathArray.length == 1 ){
         if(pathArray[0] =="cluster"){
           activeParentIndex = 1;
-        }else if(pathArray[0]== 'setup'){
-        
+        }else if(pathArray[0]== 'setup'){        
           activeParentIndex = 2;
         }
+
       }
-      self._cleanHomeSelected();
+      for (var index in self.homeNavSetting) {
+          self._cleanSelected(self, self.homeNavSetting[index]);
+      }
+
       self._markHomeActive(activeParentIndex);
       self.$scope.treeModel = self.homeNavSetting;
 }
@@ -62,6 +71,43 @@ NavTree.prototype._markHomeActive = function(index){
 
   this.homeNavSetting[index].nodestyle = [nodestyle,'selected'];
 }
+
+NavTree.prototype._processClusterPage = function(self, pathArray){
+    var activeChildIndex = 0;
+    if (pathArray.length == 2) {
+        var subpage = pathArray[1];
+        for (var index in self.homeNavSetting[1].children) {
+            if (self.homeNavSetting[1].children[index].subpage == subpage) {
+                activeChildIndex = index;
+            }
+        }
+    }
+    for (var index in self.homeNavSetting) {
+        self._cleanSelected(self, self.homeNavSetting[index]);
+    }
+    self._markSelected(self, 1, activeChildIndex);
+    self.$scope.treeModel = self.homeNavSetting;
+}
+
+NavTree.prototype._cleanSelected = function(self, node){
+    node.nodestyle = [node.nodestyle[0]];
+    if (node.children.length >0) {
+        for (var index in node.children) {
+            self._cleanSelected(self, node.children[index]);
+        }
+    }
+}
+
+NavTree.prototype._markSelected = function(self, activeParentIndex, activeChild) {
+    var parentNode = self.homeNavSetting[activeParentIndex];
+    if (parentNode.children.length <= 0  || activeChild < 0){
+        parentNode.nodestyle.push("selected");
+        return;
+    }
+    var childNode = parentNode.children[activeChild];
+    childNode.nodestyle.push("selected"); 
+}
+
 //处理service路径逻辑
 NavTree.prototype._processServicePage=function(self,pathArray){
       //没有默认展现页面
