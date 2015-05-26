@@ -70,7 +70,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags,
     if (!fh) {
         syslog(LOG_INFO, "faild to find pass word file :%s", file_name);
         closelog();
-        return PAM_AUTHINFO_UNAVAIL;
+        return PAM_CRED_INSUFFICIENT;
     }
     if (fscanf(fh, "%s", pwd_set) == 1) {
         if (strcmp(passwd, pwd_set) != 0) {
