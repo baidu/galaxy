@@ -97,6 +97,7 @@ agent_service_sources='src/flags.cc\
                src/agent/resource_collector_engine.cc \
                src/agent/utils.cc'
 agent_password_test_sources=agent_service_sources+' src/gssh/agent_password_test.cc'
+gssh_password_sources='src/proto/agent.proto common/logging.cc src/gssh/gssh_password.cc'
 
 #Application('galaxy',Sources(user_sources))
 Application('agent',Sources(agent_sources))
@@ -115,6 +116,7 @@ Application('agent_mock', Sources(agent_mock_sources));
 Application('master_mock', Sources(master_mock_sources));
 Application('monitor_agent', Sources(monitor_sources));
 Application('agent_password_test', Sources(agent_password_test_sources));
+Application('gssh_password', Sources(gssh_password_sources));
 #共享库
 SharedLibrary('pam_galaxy',Sources(gssh_sources),LinkDeps(False))
 #子目录
