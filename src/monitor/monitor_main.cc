@@ -1,0 +1,49 @@
+/***************************************************************************
+ * 
+ * Copyright (c) 2015 Baidu.com, Inc. All Rights Reserved
+ * $Id$ 
+ * 
+ **************************************************************************/
+ 
+ /**
+ * @file monitor_main.cc
+ * @author zhoushiyong(zhoushiyong@baidu.com)
+ * @date 2015/05/25 17:38:20
+ * @version $Revision$ 
+ * @brief 
+ *  
+ **/
+#include "monitor_impl.h"
+
+#include <sofa/pbrpc/pbrpc.h>
+
+#include <stdio.h>
+#include <signal.h>
+#include <gflags/gflags.h>
+
+DECLARE_string(monitor_conf);
+
+static volatile bool s_quit = false;
+static void SignalIntHandler(int /*sig*/) {
+        s_quit = true;
+}
+
+int main(int argc, char* argv[]) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+
+    galaxy::MonitorImpl* monitor_impl = new galaxy::MonitorImpl();
+
+    monitor_impl->ParseConfig(FLAGS_monitor_conf);
+    monitor_impl->Run();
+    
+    signal(SIGINT, SignalIntHandler);
+    signal(SIGTERM, SignalIntHandler);
+    while (!s_quit) {
+        sleep(1);
+    }
+    
+    delete monitor_impl;
+    return EXIT_SUCCESS;
+}
+
+/* vim: set ts=4 sw=4 sts=4 tw=100 */

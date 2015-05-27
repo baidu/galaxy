@@ -38,5 +38,5 @@ DEFINE_string(task_acct, "galaxy", "task user/role of system");
 DEFINE_string(master_checkpoint_path, "./data/", "directory of master checkpoint data");
 DEFINE_int32(master_max_len_sched_task_list, 30, "max length of scheduled tasks of a job");
 DEFINE_int32(master_safe_mode_last, 30, "how many seconds the safe-mode goes on");
-
+DEFINE_string(monitor_conf, "./monitor.conf", "monitor agent config file");
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
