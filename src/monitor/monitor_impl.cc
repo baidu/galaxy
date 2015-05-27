@@ -17,8 +17,12 @@
 #include <fstream>
 #include <sstream>
 #include <time.h>
+#include <vector>
+#include <sys/stat.h>
+#include <errno.h>
 #include "common/asm_atomic.h"
 #include "common/logging.h"
+#include "common/util.h"
 #include "monitor_impl.h"
 
 namespace galaxy {
@@ -109,7 +113,7 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
             Action* action_ptr = new Action();
             action_ptr->title.assign(args[2]);
             action_ptr->content.assign(args[3]);
-            action_ptr->timestamp = time(NULL);
+            action_ptr->timestamp = 0;
             delim.assign(":");
             Split(args[1], delim, &(action_ptr->to_list));
             action_map_[args[0]] = action_ptr;
@@ -134,17 +138,39 @@ void MonitorImpl::Run()
     std::string line;
     running_ = true;
     size_t seek;
+    struct stat* st_mark = new struct stat;
+    if (0 != stat(log_path.c_str(), st_mark)) {
+        LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
+                errno, strerror(errno));
+        return;
+    }
     while (running_) {
         if (fin.peek() == EOF) {  
-            fin.clear();  
-            fin.seekg(seek, std::ios::beg);  
-            sleep(3);  
-            continue;  
+            struct stat* st_tmp = new struct stat;
+            if (0 != stat(log_path.c_str(), st_tmp)) {
+                LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
+                     errno, strerror(errno));
+                assert(0);
+            } else if (st_tmp->st_ino != st_mark->st_ino) {
+                fin.close();
+                fin.clear();
+                fin.open(log_path.c_str());
+                delete st_mark;
+                st_mark = st_tmp;
+                continue;
+            } else {
+                delete st_tmp;
+                fin.clear();  
+                fin.seekg(seek, std::ios::beg);  
+                sleep(1);  
+                continue;  
+            }
         }
         getline(fin, line);
         seek = fin.tellg();
         ExecRule(std::string(line));
     }
+    delete st_mark;
     fin.close();
     return;
 }
@@ -189,6 +215,7 @@ bool MonitorImpl::Judging( int* cnt, Trigger* trigger)
     } else {
         LOG(WARNING, "unsupported relate %s", trigger->relate.c_str());       
     }
+
     if (time(NULL) - trigger->timestamp >= trigger->range) {
         common::atomic_swap(cnt, 0);
         trigger->timestamp = time(NULL);
@@ -199,14 +226,17 @@ bool MonitorImpl::Judging( int* cnt, Trigger* trigger)
 
 bool MonitorImpl::Treating(Action* act) {
     assert(act != NULL);
-    if ((time(NULL) - act->timestamp) < msg_forbit_time_) {
+    if (act->timestamp == 0) {
+        act->timestamp = time(NULL);
+    } else if ((time(NULL) - act->timestamp) < msg_forbit_time_) {
         return true;
     }
     for (std::vector<std::string>::iterator it = act->to_list.begin();
             it != act->to_list.end(); it++) { 
-        std::string cmd = std::string("/home/galaxy/agent/galaxy/tools/gsmsend ")
+        std::string cmd = std::string("/home/galaxy/tools/gsmsend ")
             + std::string("-s emp01.baidu.com:15001 -semp02.baidu.com:15001 ") 
-            + *it + "@" + act->title + ":" + act->content;
+            + *it + "@" + "\"from:" + common::util::GetLocalHostName() 
+            + "\n" + act->title + ":" + act->content + "\"";
         if (0 != system(cmd.c_str())) {
             LOG(WARNING, "gsmsend msg err %s", cmd.c_str());
         }
