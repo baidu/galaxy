@@ -31,23 +31,6 @@ DEFINE_string(restrict_tag, "", "specify tag to run task");
 DEFINE_string(tag, "", "add tag to agent");
 DEFINE_string(agent_list, "", "specify agent list to add tag ,eg host:port,host2:port");
 
-DECLARE_string(master_addr);
-DECLARE_string(agent_addr);
-DECLARE_string(job_name);
-DECLARE_string(task_raw);
-DECLARE_string(cmd_line);
-DECLARE_int32(replicate_num);
-DECLARE_double(cpu_soft_limit);
-DECLARE_double(cpu_limit);
-DECLARE_int32(deploy_step_size);
-DECLARE_bool(one_task_per_host);
-DECLARE_int64(task_id);
-DECLARE_int64(job_id);
-DECLARE_int64(mem_gbytes);
-DECLARE_string(restrict_tag);
-DECLARE_string(tag);
-DECLARE_string(agent_list);
-
 std::string USAGE = "\n./galaxy_client add --master_addr=localhost:8102 --job_name=1234 ...\n" 
                    "./galaxy_client list --task_id=1234 --master_addr=localhost:8102 \n"
                    "./galaxy_client list --job_id=9527 --master_addr=localhost:8102\n"

@@ -80,7 +80,8 @@ int64_t GalaxyImpl::NewJob(const JobDescription& job){
     request.set_replica_num(job.replicate_count);
     request.set_cpu_share(job.cpu_share);
     request.set_mem_share(job.mem_share);
-    request.set_restrict_tag(job.restrict_tag);
+    //目前只支持单个tag
+    request.add_restrict_tags(job.restrict_tag);
     if(job.deploy_step_size > 0){
         request.set_deploy_step_size(job.deploy_step_size);
     }
@@ -281,10 +282,11 @@ bool GalaxyImpl::ListTask(int64_t job_id,
 
 bool GalaxyImpl::TagAgent(const std::string& tag, std::set<std::string>* agents){
     TagAgentRequest request;
-    request.set_tag(tag);
+    TagEntity entity = request.tag_entity();
+    entity.set_tag(tag);
     std::set<std::string>::iterator it = agents->begin();
     for (; it != agents->end(); ++it) {
-        request.add_agents(*it);
+        entity.add_agents(*it);
     }
     TagAgentResponse response;
     rpc_client_->SendRequest(master_, &Master_Stub::TagAgent,

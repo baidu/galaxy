@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <queue>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/lexical_cast.hpp>
 #include "proto/agent.pb.h"
 #include "rpc/rpc_client.h"
@@ -27,7 +28,7 @@ typedef boost::multi_index::nth_index<AgentLoadIndex,0>::type agent_id_index;
 //agent load cpu left index
 typedef boost::multi_index::nth_index<AgentLoadIndex,1>::type cpu_left_index;
 
-std::string TAG_KEY_PREFIX = "TAG::";
+const std::string TAG_KEY_PREFIX = "TAG::";
 struct KillPriorityCell {
     int64_t priority;
     int64_t task_id;
@@ -87,12 +88,12 @@ bool MasterImpl::Recover() {
         std::string job_key = it->key().ToString();
         std::string job_cell = it->value().ToString();
         if (job_key.find(TAG_KEY_PREFIX) == 0) {
-            TagAgentRequest request;
-            if (!request.ParseFromString(job_cell)) {
+            PersistenceTagEntity entity;
+            if (!entity.ParseFromString(job_cell)) {
                 LOG(WARNING, "tag agent value invalid %s", job_key.c_str());
                 return false;
             }
-            UpdateTag(&request);
+            UpdateTag(entity);
             it->Next();
             continue;
         }
@@ -131,7 +132,9 @@ bool MasterImpl::Recover() {
             job_info.one_task_per_host = cell.one_task_per_host();
         }
         job_info.killed = cell.killed();
-        
+        for (int i = 0; i < cell.restrict_tags_size(); i++) {
+            job_info.restrict_tags.insert(cell.restrict_tags(i));
+        }
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
 
@@ -500,8 +503,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         agent->stub = NULL;
         agent->version = 1;
         agent->alive_timestamp = now_time;
-        std::set<std::string> tags ;
-        std::map<std::string,std::set<std::string> >::iterator tag_it = tags_.begin();
+        std::set<std::string> tags;
+        boost::unordered_map<std::string,std::set<std::string> >::iterator tag_it = tags_.begin();
         for (;tag_it != tags_.end(); ++tag_it) {
             if (tag_it->second.find(agent_addr) == tag_it->second.end()){
                 continue;
@@ -660,19 +663,26 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
                           ::galaxy::TagAgentResponse* response,
                           ::google::protobuf::Closure* done){
     MutexLock lock(&agent_lock_);
-    LOG(INFO,"tag agents with tag %s", request->tag().c_str());
-    if (!request->has_tag() || request->tag().empty()) { 
+    if (!request->has_tag_entity() || !request->tag_entity().has_tag()
+        || request->tag_entity().tag().empty()) { 
         response->set_status(kMasterResponseErrorInput);
         done->Run();
         return;
     }
-    if (!UpdatePersistenceTag(request)) {
+    LOG(INFO,"tag agents with tag %s", request->tag_entity().tag().c_str());
+    PersistenceTagEntity entity;
+    entity.set_tag(request->tag_entity().tag());
+    for (int i = 0;i < request->tag_entity().agents_size(); i++){
+        entity.add_agents(request->tag_entity().agents(i));
+    }
+
+    if (!UpdatePersistenceTag(entity)) {
         response->set_status(kMasterResponseErrorInternal);
         done->Run();
-        LOG(FATAL, "fail to persistence tag  %s", request->tag().c_str());
+        LOG(FATAL, "fail to persistence tag  %s", request->tag_entity().tag().c_str());
         return;
     }
-    UpdateTag(request);
+    UpdateTag(entity);
     response->set_status(kMasterResponseOK);
     done->Run();
 }
@@ -682,7 +692,7 @@ void MasterImpl::ListTag(::google::protobuf::RpcController* /*controller*/,
                   ::galaxy::ListTagResponse* response,
                   ::google::protobuf::Closure* done){
     MutexLock lock(&agent_lock_);
-    std::map<std::string, std::set<std::string> >::iterator it = tags_.begin();
+    boost::unordered_map<std::string, std::set<std::string> >::iterator it = tags_.begin();
     LOG(INFO, "list tag size %ld", tags_.size());
     for (; it != tags_.end(); ++it) {
         TagEntity* entity = response->add_tags(); 
@@ -730,10 +740,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     } else {
         job.deploy_step_size = job.replica_num;
     }
-    if (request->has_restrict_tag() && !request->restrict_tag().empty()) {
-        job.restrict_tag = request->restrict_tag();
-    }else{
-        job.restrict_tag = "";
+    for (int i=0; i < request->restrict_tags_size(); i++) {
+        job.restrict_tags.insert(request->restrict_tags(i));
     }
     LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d ,restrict_tag %s",
             job.job_name.c_str(),
@@ -744,7 +752,7 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
             job.mem_share,
             job.deploy_step_size,
             job.one_task_per_host,
-            job.restrict_tag.c_str());
+            boost::algorithm::join(job.restrict_tags, ",").c_str());
 
     if (!PersistenceJobInfo(job)) {
         response->set_status(kMasterResponseErrorInternal); 
@@ -1066,8 +1074,8 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->mem_left);
         assert(agents_.find(it->agent_addr) != agents_.end());
         if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))
-            || !(!job.restrict_tag.empty() 
-         && agents_[it->agent_addr].tags.find(job.restrict_tag) == agents_[it->agent_addr].tags.end())) {
+            || !(job.restrict_tags.size() > 0
+         && agents_[it->agent_addr].tags.find(*job.restrict_tags.begin()) == agents_[it->agent_addr].tags.end())) {
             last_found = true;
             current_min_load = it->load;
             addr = it->agent_addr;
@@ -1089,10 +1097,11 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         }
         assert(agents_.find(it_start->agent_addr) != agents_.end());
         //不满足tag要求时 continue
-        if (!job.restrict_tag.empty() 
-            && agents_[it_start->agent_addr].tags.find(job.restrict_tag) == agents_[it_start->agent_addr].tags.end()) {
+        if (job.restrict_tags.size() > 0
+            && agents_[it_start->agent_addr].tags.find(*job.restrict_tags.begin()) == agents_[it_start->agent_addr].tags.end()) {
             continue;
         }
+
         //第一次赋值current_min_load;
         if (!last_found) {
             current_min_load = it_start->load;
@@ -1150,13 +1159,13 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
-bool MasterImpl::UpdatePersistenceTag(const TagAgentRequest* request){
+bool MasterImpl::UpdatePersistenceTag(const PersistenceTagEntity& entity){
     if (persistence_handler_ == NULL) {
         LOG(WARNING, "persistence handler not inited yet");
         return false;
     }
-    std::string key = TAG_KEY_PREFIX + request->tag();
-    if (request->agents_size() <= 0 ) {
+    std::string key = TAG_KEY_PREFIX + entity.tag();
+    if (entity.agents_size() <= 0 ) {
         leveldb::Status delete_status = 
             persistence_handler_->Delete(leveldb::WriteOptions(), key);
         if (!delete_status.ok()) {
@@ -1166,7 +1175,7 @@ bool MasterImpl::UpdatePersistenceTag(const TagAgentRequest* request){
         return true;
     }
     std::string tag_value;
-    if (!request->SerializeToString(&tag_value)) {
+    if (!entity.SerializeToString(&tag_value)) {
         LOG(WARNING, "serialize tag agent request %s failed",
                 key.c_str()); 
         return false;
@@ -1175,7 +1184,7 @@ bool MasterImpl::UpdatePersistenceTag(const TagAgentRequest* request){
         persistence_handler_->Put(
             leveldb::WriteOptions(), key, tag_value);
     if (!write_status.ok()) {
-        LOG(WARNING, "serialize tag agent request %s failed to write",
+        LOG(WARNING, "serialize tag entity  %s failed to write",
                 key.c_str());
         return false;
     }
@@ -1213,13 +1222,19 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     cell.set_killed(job_info.killed);
     cell.set_cpu_limit(job_info.cpu_limit);
     cell.set_one_task_per_host(job_info.one_task_per_host);
-    LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d",
+    std::set<std::string>::iterator it = job_info.restrict_tags.begin();
+    for (; it != job_info.restrict_tags.end(); ++it) {
+        cell.add_restrict_tags(*it);
+    }
+    LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d tags:%s",
             cell.job_name().c_str(),
             cell.replica_num(),
             cell.cmd_line().c_str(),
             cell.cpu_share(),
             cell.mem_share(),
-            cell.deploy_step_size());
+            cell.deploy_step_size(),
+            boost::algorithm::join(cell.restrict_tags(), ",").c_str()
+        );
     // check persistence_handler init
     if (persistence_handler_ == NULL) {
         LOG(WARNING, "persistence handler not inited yet");
@@ -1227,7 +1242,7 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     }
 
     // contruct key
-    std::string key =  boost::lexical_cast<std::string>(job_info.id);
+    std::string key = boost::lexical_cast<std::string>(job_info.id);
     // serialize cell 
     std::string cell_value;
     if (!cell.SerializeToString(&cell_value)) {
@@ -1262,43 +1277,44 @@ bool MasterImpl::SafeModeCheck() {
     return true;
 }
 
-void MasterImpl::UpdateTag(const TagAgentRequest* request){
+void MasterImpl::UpdateTag(const PersistenceTagEntity& entity){
     agent_lock_.AssertHeld();
     //remove old agent with request->tag()
-    if (tags_.find(request->tag()) != tags_.end()) {
-        std::set<std::string>::iterator it = tags_[request->tag()].begin();
-        for (; it != tags_[request->tag()].end(); ++it) {
-            LOG(DEBUG, "tag %s with agent %s", request->tag().c_str(), (*it).c_str());
+    if (tags_.find(entity.tag()) != tags_.end()) {
+        std::set<std::string>::iterator it = tags_[entity.tag()].begin();
+        for (; it != tags_[entity.tag()].end(); ++it) {
+            LOG(DEBUG, "tag %s with agent %s", entity.tag().c_str(), (*it).c_str());
             std::map<std::string, AgentInfo>::iterator inner_it
                 = agents_.find(*it);
             if (inner_it == agents_.end()) {
                 continue;
             }
-            LOG(DEBUG, "remove tag %s on agent %s", request->tag().c_str(), inner_it->second.addr.c_str());
-            inner_it->second.tags.erase(request->tag());
+            LOG(DEBUG, "remove tag %s on agent %s", entity.tag().c_str(), inner_it->second.addr.c_str());
+            inner_it->second.tags.erase(entity.tag());
         }
     }
     //delete tag
-    if (request->agents_size() <= 0) {
-        tags_.erase(request->tag());
+    if (entity.agents_size() <= 0) {
+        tags_.erase(entity.tag());
         return;
     }
     //更新master tags_
     std::set<std::string> agent_set;
-    for (int64_t index = 0; index < request->agents_size(); index++) {
+    for (int64_t index = 0; index < entity.agents_size(); index++) {
         //agent 始终插入，不校验agent是否活着
-        agent_set.insert(request->agents(index));
+        agent_set.insert(entity.agents(index));
         std::map<std::string, AgentInfo>::iterator it
-                = agents_.find(request->agents(index));
+                = agents_.find(entity.agents(index));
         if (it == agents_.end()) {
             continue;
         }
-        it->second.tags.insert(request->tag());
-        LOG(INFO,"add tag %s to agent %s",request->tag().c_str(),request->agents(index).c_str());
+        it->second.tags.insert(entity.tag());
+        LOG(INFO,"add tag %s to agent %s",
+            entity.tag().c_str(),
+            entity.agents(index).c_str());
     }
-    tags_[request->tag()] = agent_set;
+    tags_[entity.tag()] = agent_set;
 }
-
 
 } // namespace galaxy
 

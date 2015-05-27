@@ -44,7 +44,7 @@ message NewJobRequest {
     optional double cpu_limit = 10;     // hard limit
     optional bool one_task_per_host = 11;
     //限制实例在含有特定的tag机器上面运行
-    optional string restrict_tag = 12;
+    repeated string restrict_tags = 12;
 }
 
 message NewJobResponse {
@@ -104,6 +104,7 @@ message JobCheckPointCell {
     optional bool killed = 9;
     optional double cpu_limit = 10;
     optional bool one_task_per_host = 11;
+    repeated string restrict_tags = 12;
 }
 
 message JobInstance {
@@ -146,9 +147,18 @@ message ListNodeResponse {
     repeated NodeInstance nodes = 2;
 }
 
-message TagAgentRequest{
+message PersistenceTagEntity{
     optional string tag = 1;
     repeated string agents = 2;
+}
+
+message TagEntity{
+    optional string tag = 1;
+    repeated string agents = 2;
+}
+
+message TagAgentRequest{
+    optional TagEntity tag_entity = 1;
 }
 
 message TagAgentResponse{
@@ -157,10 +167,6 @@ message TagAgentResponse{
 
 message ListTagRequest{}
 
-message TagEntity{
-    optional string tag = 1;
-    repeated string agents = 2;
-}
 
 message ListTagResponse{
     repeated TagEntity tags = 1;

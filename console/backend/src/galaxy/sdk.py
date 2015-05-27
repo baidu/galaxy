@@ -64,7 +64,8 @@ class GalaxySDK(object):
                       mem_limit = 1024,
                       cpu_limit = 2, 
                       deploy_step_size = -1,
-                      one_task_per_host = False):
+                      one_task_per_host = False,
+                      restrict_tags = []):
         """
         send a new job command to galaxy master
         return:
@@ -80,7 +81,8 @@ class GalaxySDK(object):
                                       mem_limit = mem_limit,
                                       cpu_limit = cpu_limit,
                                       deploy_step_size = deploy_step_size,
-                                      one_task_per_host = one_task_per_host)
+                                      one_task_per_host = one_task_per_host,
+                                      restrict_tags = restrict_tags)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -97,8 +99,9 @@ class GalaxySDK(object):
         return False,None
 
     def tag_agent(self, tag, agent_set):
-        request = master_pb2.TagAgentRequest(tag = tag, 
-                                             agents = agent_set)
+        entity = master_pb2.TagEntity(tag = tag,
+                                      agents = agent_set)
+        request = master_pb2.TagAgentRequest(tag_entity = entity)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -277,9 +280,10 @@ class GalaxySDK(object):
                                mem_limit= 1024,
                                cpu_limit= 2,
                                deploy_step_size=-1,
-                               one_task_per_host=False):
+                               one_task_per_host=False,
+                               restrict_tags = []):
 
-        req = master_pb2.NewJobRequest()
+        req = master_pb2.NewJobRequest(restrict_tags = set(restrict_tags))
         if  deploy_step_size > 0:
             req.deploy_step_size = deploy_step_size
         req.job_name = name
