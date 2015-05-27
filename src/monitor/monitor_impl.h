@@ -20,6 +20,7 @@
 #include <map>
 #include <string>
 #include <boost/regex.hpp>
+#include "common/thread_pool.h"
 
 namespace galaxy {
 
@@ -60,10 +61,12 @@ public:
 private:
     bool ExecRule(std::string src);
     bool Matching(std::string src, Watch* watch);
+    void Reporting();
     bool Judging(int *cnt, Trigger* trigger);
     bool Treating(Action* action);
     void Split(std::string& src, std::string& delim, std::vector<std::string>* ret);
 private:
+    common::ThreadPool thread_pool_;
     std::string log_path;
     std::map<std::string, Watch*> watch_map_;
     std::map<std::string, Trigger*> trigger_map_;

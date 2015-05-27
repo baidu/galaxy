@@ -20,6 +20,7 @@
 #include <vector>
 #include <sys/stat.h>
 #include <errno.h>
+#include <boost/bind.hpp>
 #include "common/asm_atomic.h"
 #include "common/logging.h"
 #include "common/util.h"
@@ -27,7 +28,8 @@
 
 namespace galaxy {
 MonitorImpl::MonitorImpl() {
-    msg_forbit_time_ = 60;       
+    msg_forbit_time_ = 60;
+    thread_pool_.AddTask(boost::bind(&MonitorImpl::Reporting, this));
 }
 MonitorImpl::~MonitorImpl() {
     std::map<std::string, Watch*>::iterator watch_it;
@@ -135,6 +137,7 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
 void MonitorImpl::Run()
 {
     std::ifstream fin(log_path.c_str());
+    fin.seekg(0, std::ios::end);
     std::string line;
     running_ = true;
     size_t seek;
@@ -174,18 +177,13 @@ void MonitorImpl::Run()
     fin.close();
     return;
 }
+
 bool MonitorImpl::ExecRule(std::string src)
 {
     for (std::vector<Rule*>::iterator it = rule_list_.begin();
             it != rule_list_.end(); it++) {
-        if (!Matching(src, (*it)->watch)) {
-            continue;
-        }
-        if (!Judging(&((*it)->watch->count), (*it)->trigger)) {
-            continue;
-        }
-        if (!Treating((*it)->action)) {
-            continue;
+        if (Matching(src, (*it)->watch)) {
+            LOG(INFO, "Matching hit %s", src.c_str());
         }
     }
     return true;
@@ -244,7 +242,20 @@ bool MonitorImpl::Treating(Action* act) {
     }
     return true;
 }
- 
+
+void MonitorImpl::Reporting() {
+    for (std::vector<Rule*>::iterator it = rule_list_.begin();
+            it != rule_list_.end(); it++) {
+        if (!Judging(&((*it)->watch->count), (*it)->trigger)) {
+            continue;
+        }
+        if (!Treating((*it)->action)) {
+            continue;
+        }
+    }
+    thread_pool_.DelayTask(3000, boost::bind(&MonitorImpl::Reporting, this));
+    return;
+}
 }
 
 
