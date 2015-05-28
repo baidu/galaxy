@@ -1076,11 +1076,15 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->mem_left);
         assert(agents_.find(it->agent_addr) != agents_.end());
         last_found = true;
+        //判断job one task per host属性是否满足
         if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
             last_found = false;
         }
+        //判断job 限制的tag是否满足
         if (last_found) {
             std::set<std::string>& tags = agents_[it->agent_addr].tags;
+            //目前支持单个tag调度
+            //TODO 支持job多个tag调度
             if (!(job.restrict_tags.size() >0 
                   && tags.find(*job.restrict_tags.begin()) == tags.end())) {
                 last_found = false;
@@ -1102,13 +1106,14 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         if (it_start->mem_left < job.mem_share) {
             continue;
         }
+        //判断agent 是否满足job  one task per host 条件
         if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
             continue;
         }
         assert(agents_.find(it_start->agent_addr) != agents_.end());
         std::set<std::string>& tags = agents_[it_start->agent_addr].tags;
         LOG(DEBUG, "require tag %s agent %s tag size %d",(*job.restrict_tags.begin()).c_str(), it_start->agent_addr.c_str(), tags.size());
-        //不满足tag要求时 continue
+        //判断job 限制的tag是否瞒住
         if (job.restrict_tags.size() > 0
             && tags.find(*job.restrict_tags.begin()) == tags.end()) {
             continue;
