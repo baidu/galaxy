@@ -260,9 +260,13 @@ body {
   display: block;
 }
 
-
-
-
+.tag-cloud{
+  margin-top: 15px;
+  width: 400px;
+}
+.tag-cloud .label{
+    margin-right:10px;
+}
 
 
 

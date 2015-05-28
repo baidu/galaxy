@@ -3,43 +3,29 @@
    <h4>任务列表</h4>
 </div>
 <div class="modal-body scrollable" style="height:400px;overflow-y:scroll">  
-<div class="ui statistics">
-     <div class="blue statistic">
-        <div class="value">{{runningNum}}</div>
-        <div class="label">运行总数</div>
-      </div>
-   
-    <div class="blue statistic">
-        <div class="value">{{deployingNum}}</div>
-        <div class="label">部署中总数</div>
-      </div>
-  
- <div class="red statistic">
-     <div class="value">{{errorNum}}</div>
-        <div class="label">错误数 </div>
- </div>
-</div>
-
-
     <table class="table table-striped service-table">
     <thead>
       <tr>
         <th>#id</th>
         <th>任务名称</th>
+        <th>结束时间</th>
         <th>任务状态</th>
         <th>资源状态(allocated/limit)</th>
         <th>agent</th>
+        <th>gc路径</th>
       </tr>
     </thead>
     <tbody>
       <tr ng-repeat="task in tasklist">
         <td>{{task.id}}</td>
-        <td><a href="{{task.path}}" target="__blank">{{task.name}}</a></td>
+        <td>{{task.name}}</td>
+        <td>{{task.end_time}}</td>
         <td>{{task.status}}</td>
         <td>CPU:{{task.cpu_used}}/{{task.cpu_limit}}</br>
             MEM:{{task.mem_used}}/{{task.mem_limit}}
         </td>
         <td>{{task.agent_addr}}</td>
+        <td><a href="{{task.path}}" target="__blank">{{task.gc_path}}</a></td>
       </tr>
     </tbody>
   </table>  

@@ -55,7 +55,7 @@ int AbstractTaskRunner::IsRunning(){
                 int exit_code = WEXITSTATUS(ret);
                 if(exit_code == 0 ){
                     //normal exit
-                    LOG(INFO,"process %d exits successfully",m_child_pid);
+                    LOG(INFO,"process %d exits successfully", m_child_pid);
                     return 1;
                 }
                 LOG(FATAL,"process %d exits with err code %d", m_child_pid, exit_code);

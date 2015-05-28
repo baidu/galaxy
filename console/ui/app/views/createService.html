@@ -38,18 +38,26 @@
             <div class="col-xs-10">
               <input type="text" class="form-control" ng-model="deployTpl.pkgSrc" id="pkgSrc" >
             </div>
-          </div>
-         
+          </div>   
       </div>
-<div class="form-group">
-          <label for="deployStepSize">并发部署个数</label>
-         <input type="number"  class="form-control" ng-model="deployTpl.deployStepSize" id="deployStepSize">
-        </div>
-        <div class="form-group">
+       <div class="form-group">
           <label for="startCmd">启动命令</label>
           <input type="text" ng-model="deployTpl.startCmd" class="form-control " id="startCmd">
         </div>
-        <div class="checkbox">
+
+      <div class="form-group" ng-show="showAdvanceOption">
+          <label for="deployStepSize">并发部署个数</label>
+         <input type="number"  class="form-control" ng-model="deployTpl.deployStepSize" id="deployStepSize">
+     </div>
+       <div class="form-group" ng-show="showAdvanceOption">
+          <label for="tag">限制任务在特定tag上</label>
+          <select type="text"  class="form-control" ng-model="deployTpl.tag" id="tag">
+              <option value=""></option>
+              <option ng-repeat="tag in tagList" ng-model="tag.tag">{{tag.tag}}</option>
+          </select>
+        </div>
+ 
+              <div class="checkbox" ng-show="showAdvanceOption">
             <label>
              <input type="checkbox" ng-model="deployTpl.oneTaskPerHost">每个主机部署一个实例
             </label>
@@ -59,4 +67,5 @@
 <div class="modal-footer">
     <button class="btn btn-primary" ng-disabled="disableBtn" ng-click="ok()">创建</button>
     <button class="btn btn-default" ng-disabled="disableBtn" ng-click="cancel()">取消</button>
+    <a ng-href ng-click="showAdvanceOption=!showAdvanceOption">高级选项</a>
 </div>
