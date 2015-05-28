@@ -171,9 +171,16 @@ int TaskManager::Remove(const int64_t& task_info_id) {
     if(NULL == runner){
         return 0;
     }
+    runner->Killed();
     int status = runner->Stop();
     if(status == 0){
         LOG(INFO,"stop task %d successfully", task_info_id);
+        status = runner->Clean();
+        if (status != 0) {
+            LOG(WARNING, "clean task %ld failed", task_info_id); 
+            return status;
+        }
+        LOG(INFO, "clean task %ld successfully", task_info_id);
         m_task_runner_map.erase(task_info_id);
 
         std::string persistence_path = FLAGS_agent_work_dir 

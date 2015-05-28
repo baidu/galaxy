@@ -58,7 +58,7 @@ int AbstractTaskRunner::IsRunning(){
                     LOG(INFO,"process %d exits successfully",m_child_pid);
                     return 1;
                 }
-                LOG(FATAL,"process %d exits with err code %d", exit_code);
+                LOG(FATAL,"process %d exits with err code %d", m_child_pid, exit_code);
             }
             return -1;
         }
@@ -186,7 +186,7 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     }
     uid_t userid = getuid();
     if (0 == userid) {
-        chroot(m_workspace->GetPath().c_str());
+        //chroot(m_workspace->GetPath().c_str());
         if (pw->pw_uid != userid) {
             setuid(pw->pw_uid);
         }

@@ -55,4 +55,9 @@ def validate_init_service_group_req(request):
         ret["deploy_step_size"] = -1
     else:
         ret["deploy_step_size"] = int(deploy_step_size_str)
+    one_task_per_host_str = request.POST.get("oneTaskPerHost","false")
+    if one_task_per_host_str == 'true':
+        ret['one_task_per_host'] = True
+    else:
+        ret['one_task_per_host'] = False
     return ret
