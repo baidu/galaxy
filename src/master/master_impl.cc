@@ -1137,7 +1137,6 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 cur_agent->mem_left);
     }else{
         LOG(WARNING, "no enough  resource to alloc for job %ld", job.id);
-
     }
     return addr;
 }
