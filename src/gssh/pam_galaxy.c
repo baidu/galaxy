@@ -74,7 +74,7 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags,
 
     if (user_group_id != DOOR_DOG_GID) {
         syslog(LOG_INFO, "%s login failed, because its group is not doordog", user);
-        return PAM_AUTHINFO_UNAVAIL;
+        return PAM_CRED_INSUFFICIENT;
     }
     syslog(LOG_INFO, "user try login to galaxy: %s", user);
     //fetch password
