@@ -1107,7 +1107,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         }
         assert(agents_.find(it_start->agent_addr) != agents_.end());
         std::set<std::string>& tags = agents_[it_start->agent_addr].tags;
-        LOG(INFO, "require tag %s agent %s tag size %d",(*job.restrict_tags.begin()).c_str(), it_start->agent_addr.c_str(), tags.size());
+        LOG(DEBUG, "require tag %s agent %s tag size %d",(*job.restrict_tags.begin()).c_str(), it_start->agent_addr.c_str(), tags.size());
         //不满足tag要求时 continue
         if (job.restrict_tags.size() > 0
             && tags.find(*job.restrict_tags.begin()) == tags.end()) {
