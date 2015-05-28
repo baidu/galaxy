@@ -44,6 +44,7 @@ public:
    virtual void Status(TaskStatus* status) = 0;
    virtual void Killed() = 0;
    virtual ~TaskRunner(){}
+   virtual int Clean() { return 0;}
 };
 
 class AbstractTaskRunner:public TaskRunner{
