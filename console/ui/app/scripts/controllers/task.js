@@ -81,9 +81,6 @@ $http.get("/console/taskgroup/history?id="+service.job_id+"&master="+config.mast
     
                 if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
-                  $scope.runningNum = data.data.statics.RUNNING;
-                  $scope.deployingNum = data.data.statics.DEPLOYING;
-                  $scope.errorNum = data.data.statics.ERROR;
                }
 
     })

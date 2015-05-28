@@ -5,10 +5,11 @@
 #
 # Author: wangtaize@baidu.com
 # Date: 2015-04-06
-
+import datetime
 import logging
 from sofa.pbrpc import client
 from galaxy import master_pb2
+
 STATE_MAP={0:'DEPLOYING',2:'RUNNING',3:'KILLED',4:'RESTART',5:'ERROR',6:'COMPLETE'}
 LOG = logging.getLogger('console')
 class BaseEntity(object):
@@ -257,6 +258,8 @@ class GalaxySDK(object):
                 base.mem_used = task.memory_usage
                 base.cpu_used = task.cpu_usage
                 base.start_time = task.start_time
+                base.gc_path = task.root_path
+                base.end_time =  datetime.datetime.fromtimestamp(task.end_time).strftime("%m-%d %H:%M:%S") 
                 ret.append(base)
             return True,ret
         except:

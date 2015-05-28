@@ -53,7 +53,7 @@
           <label for="tag">限制任务在特定tag上</label>
           <select type="text"  class="form-control" ng-model="deployTpl.tag" id="tag">
               <option value=""></option>
-              <option ng-repeat="tag in tagList" value="tag.tag">{{tag.tag}}</option>
+              <option ng-repeat="tag in tagList" ng-model="tag.tag">{{tag.tag}}</option>
           </select>
         </div>
  

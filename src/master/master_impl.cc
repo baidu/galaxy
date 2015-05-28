@@ -1047,8 +1047,10 @@ bool MasterImpl::JobTaskExistsOnAgent(const std::string& agent_addr,
     agent_lock_.AssertHeld();
     std::map<std::string, std::set<int64_t> >::const_iterator it = job.agent_tasks.find(agent_addr);
     if (it == job.agent_tasks.end() || it->second.empty()) {
+        LOG(DEBUG, "job %ld has no task run on %s", job.id, agent_addr.c_str());
         return false;
     }
+    LOG(DEBUG, "job %ld has task run on %s", job.id, agent_addr.c_str());
     return true;
 }
 
@@ -1073,10 +1075,18 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->cpu_left,
                 it->mem_left);
         assert(agents_.find(it->agent_addr) != agents_.end());
-        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))
-            || !(job.restrict_tags.size() > 0
-         && agents_[it->agent_addr].tags.find(*job.restrict_tags.begin()) == agents_[it->agent_addr].tags.end())) {
-            last_found = true;
+        last_found = true;
+        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+            last_found = false;
+        }
+        if (last_found) {
+            std::set<std::string>& tags = agents_[it->agent_addr].tags;
+            if (!(job.restrict_tags.size() >0 
+                  && tags.find(*job.restrict_tags.begin()) == tags.end())) {
+                last_found = false;
+            }
+        }
+        if (last_found) {
             current_min_load = it->load;
             addr = it->agent_addr;
             cur_agent = it;
@@ -1096,9 +1106,11 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             continue;
         }
         assert(agents_.find(it_start->agent_addr) != agents_.end());
+        std::set<std::string>& tags = agents_[it_start->agent_addr].tags;
+        LOG(INFO, "require tag %s agent %s tag size %d",(*job.restrict_tags.begin()).c_str(), it_start->agent_addr.c_str(), tags.size());
         //不满足tag要求时 continue
         if (job.restrict_tags.size() > 0
-            && agents_[it_start->agent_addr].tags.find(*job.restrict_tags.begin()) == agents_[it_start->agent_addr].tags.end()) {
+            && tags.find(*job.restrict_tags.begin()) == tags.end()) {
             continue;
         }
 
@@ -1107,14 +1119,14 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             current_min_load = it_start->load;
             addr = it_start->agent_addr;
             last_found = true;
-            cur_agent = it;
+            cur_agent = it_start;
             continue;
         }
         //找到负载更小的节点
         if (current_min_load > it_start->load) {
             addr = it_start->agent_addr;
             current_min_load = it_start->load;
-            cur_agent = it;
+            cur_agent = it_start;
         }
     }
     if (last_found) {
@@ -1125,6 +1137,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 cur_agent->mem_left);
     }else{
         LOG(WARNING, "no enough  resource to alloc for job %ld", job.id);
+
     }
     return addr;
 }
@@ -1159,13 +1172,13 @@ void MasterImpl::RemoveIndex(int64_t agent_id){
     }
 }
 
-bool MasterImpl::UpdatePersistenceTag(const PersistenceTagEntity& entity){
+bool MasterImpl::UpdatePersistenceTag(const PersistenceTagEntity& entity) {
     if (persistence_handler_ == NULL) {
         LOG(WARNING, "persistence handler not inited yet");
         return false;
     }
     std::string key = TAG_KEY_PREFIX + entity.tag();
-    if (entity.agents_size() <= 0 ) {
+    if (entity.agents_size() <= 0) {
         leveldb::Status delete_status = 
             persistence_handler_->Delete(leveldb::WriteOptions(), key);
         if (!delete_status.ok()) {
@@ -1277,7 +1290,7 @@ bool MasterImpl::SafeModeCheck() {
     return true;
 }
 
-void MasterImpl::UpdateTag(const PersistenceTagEntity& entity){
+void MasterImpl::UpdateTag(const PersistenceTagEntity& entity) {
     agent_lock_.AssertHeld();
     //remove old agent with request->tag()
     if (tags_.find(entity.tag()) != tags_.end()) {
