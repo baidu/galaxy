@@ -506,7 +506,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         std::set<std::string> tags;
         boost::unordered_map<std::string,std::set<std::string> >::iterator tag_it = tags_.begin();
         for (;tag_it != tags_.end(); ++tag_it) {
-            if (tag_it->second.find(agent_addr) == tag_it->second.end()){
+            if (tag_it->second.find(agent_addr) == tag_it->second.end()) {
                 continue;
             }
             tags.insert(tag_it->first);
@@ -661,7 +661,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
 void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
                           const ::galaxy::TagAgentRequest* request,
                           ::galaxy::TagAgentResponse* response,
-                          ::google::protobuf::Closure* done){
+                          ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
     if (!request->has_tag_entity() || !request->tag_entity().has_tag()
         || request->tag_entity().tag().empty()) { 
@@ -672,7 +672,7 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
     LOG(INFO,"tag agents with tag %s", request->tag_entity().tag().c_str());
     PersistenceTagEntity entity;
     entity.set_tag(request->tag_entity().tag());
-    for (int i = 0;i < request->tag_entity().agents_size(); i++){
+    for (int i = 0;i < request->tag_entity().agents_size(); i++) {
         entity.add_agents(request->tag_entity().agents(i));
     }
 
@@ -690,7 +690,7 @@ void MasterImpl::TagAgent(::google::protobuf::RpcController* /*controller*/,
 void MasterImpl::ListTag(::google::protobuf::RpcController* /*controller*/,
                   const ::galaxy::ListTagRequest* /*request*/,
                   ::galaxy::ListTagResponse* response,
-                  ::google::protobuf::Closure* done){
+                  ::google::protobuf::Closure* done) {
     MutexLock lock(&agent_lock_);
     boost::unordered_map<std::string, std::set<std::string> >::iterator it = tags_.begin();
     LOG(INFO, "list tag size %ld", tags_.size());
@@ -1292,7 +1292,7 @@ bool MasterImpl::SafeModeCheck() {
 
 void MasterImpl::UpdateTag(const PersistenceTagEntity& entity) {
     agent_lock_.AssertHeld();
-    //remove old agent with request->tag()
+    //remove old agent taged with entity.tag()
     if (tags_.find(entity.tag()) != tags_.end()) {
         std::set<std::string>::iterator it = tags_[entity.tag()].begin();
         for (; it != tags_[entity.tag()].end(); ++it) {

@@ -32,8 +32,6 @@ public:
     bool KillTask(int64_t task_id);
     bool ListTaskByAgent(const std::string& agent_addr,
                          std::vector<TaskDescription> * tasks) ;
-
-
     bool TagAgent(const std::string& tag, std::set<std::string>* agents);
 private:
     RpcClient* rpc_client_;
@@ -280,7 +278,7 @@ bool GalaxyImpl::ListTask(int64_t job_id,
     return true;
 }
 
-bool GalaxyImpl::TagAgent(const std::string& tag, std::set<std::string>* agents){
+bool GalaxyImpl::TagAgent(const std::string& tag, std::set<std::string>* agents) {
     TagAgentRequest request;
     TagEntity entity = request.tag_entity();
     entity.set_tag(tag);
@@ -291,7 +289,7 @@ bool GalaxyImpl::TagAgent(const std::string& tag, std::set<std::string>* agents)
     TagAgentResponse response;
     rpc_client_->SendRequest(master_, &Master_Stub::TagAgent,
                              &request, &response, 5, 1);
-    if(response.status() == 0 ){
+    if (response.status() == 0) {
         return true;
     }
     return false; 

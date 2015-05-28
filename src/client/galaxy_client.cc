@@ -153,7 +153,7 @@ int UpdateJob(){
     return 0;
 }
 
-int TagAgent(){
+int TagAgent() {
     galaxy::Galaxy* galaxy = galaxy::Galaxy::ConnectGalaxy(FLAGS_master_addr);
     if (FLAGS_tag.empty()) {
         fprintf(stderr, "--tag  which can not be empty is required ");
@@ -165,7 +165,7 @@ int TagAgent(){
     if (!ret) {
         fprintf(stderr, "fail to tag agent ");
     }
-    return ret ? 0:-1;
+    return ret ? 0: -1;
 }
 
 int main(int argc, char* argv[]) {

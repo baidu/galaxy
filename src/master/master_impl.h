@@ -208,7 +208,7 @@ private:
     bool is_safe_mode_;
     int64_t start_time_;
     leveldb::DB* persistence_handler_;
-    //tags confi
+    /// master tags configuration  
     boost::unordered_map<std::string, std::set<std::string> > tags_;
 };
 
