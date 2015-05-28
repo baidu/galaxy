@@ -83,7 +83,7 @@ int ProcessNewJob(){
     job.cpu_limit = FLAGS_cpu_limit;
     job.one_task_per_host = FLAGS_one_task_per_host;
     job.restrict_tag = FLAGS_restrict_tag;
-    job.monitor_conf = FlAGS_monitor_conf;
+    job.monitor_conf = FLAGS_monitor_conf;
     fprintf(stdout, "%ld", galaxy->NewJob(job));
     return 0;
 }

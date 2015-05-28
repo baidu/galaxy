@@ -21,7 +21,7 @@
 #include <signal.h>
 #include <gflags/gflags.h>
 
-DECLARE_string(monitor_conf);
+DECLARE_string(monitor_conf_path);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/) {
@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
 
     galaxy::MonitorImpl* monitor_impl = new galaxy::MonitorImpl();
 
-    monitor_impl->ParseConfig(FLAGS_monitor_conf);
+    monitor_impl->ParseConfig(FLAGS_monitor_conf_path);
     monitor_impl->Run();
     
     signal(SIGINT, SignalIntHandler);

@@ -274,16 +274,6 @@ int ContainerTaskRunner::Prepare() {
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
     _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
-<<<<<<< HEAD
-    int ret = Start();
-    if (0 != ret) {
-        return ret;
-    }
-    StartMonitor();
-    return ret;
-}
-=======
->>>>>>> upstream/master
 
     // setup cgroup 
     int64_t mem_size = m_task_info.required_mem(); 
@@ -322,8 +312,13 @@ int ContainerTaskRunner::Prepare() {
                 m_task_info.task_id()); 
         return -1;
     }
-
-    return Start();
+    
+    int ret = Start();
+    if (0 != ret) {
+        return ret;
+    }
+    StartMonitor();
+    return ret;
 }
 
 void ContainerTaskRunner::PutToCGroup(){
@@ -544,24 +539,6 @@ void ContainerTaskRunner::StopPost() {
     return;
 }
 
-<<<<<<< HEAD
-int ContainerTaskRunner::Stop(){
-    int status = AbstractTaskRunner::Stop();
-    LOG(INFO,"stop  task %ld  with status %d",m_task_info.task_id(),status);
-    if(status != 0 ){
-        return status;
-    }
-    if (_cg_ctrl != NULL) {
-        //sleep 500 ms for cgroup clear tasks
-        common::ThisThread::Sleep(500);
-        status = _cg_ctrl->Destroy(m_task_info.task_id());
-        LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
-    }
-    return status;
-}
-
-=======
->>>>>>> upstream/master
 bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     std::vector<std::string> files;
     if (!file::GetDirFilesByPrefix(

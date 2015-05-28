@@ -165,7 +165,7 @@ int AbstractTaskRunner::Stop(){
     }
     LOG(INFO,"start to kill monitor group %d",m_monitor_gid);
     do {
-        ret = killpg (m_monitor_gid, 9);
+        int ret = killpg(m_monitor_gid, 9);
         if(ret != 0){
             LOG(WARNING,"fail to kill monitor group %d err[%d: %s]",
                     m_monitor_gid, errno, strerror(errno));
@@ -173,13 +173,13 @@ int AbstractTaskRunner::Stop(){
                 break;
             }
         }
-        killed_pid = wait(&ret);
+        pid_t killed_pid = wait(&ret);
         if (killed_pid == -1) {
             LOG(FATAL,"fail to kill monitor group %d",m_monitor_gid);
             return -1;
         }
     }while(0);        
-    LOG(INFO,"kill monitor %d successfully",killed_pid);
+    LOG(INFO,"kill monitor %d successfully", m_monitor_pid);
     m_monitor_pid = -1;
     m_monitor_gid = -1;
 
