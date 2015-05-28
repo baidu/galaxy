@@ -5,10 +5,11 @@
 #
 # Author: wangtaize@baidu.com
 # Date: 2015-04-06
-
+import datetime
 import logging
 from sofa.pbrpc import client
 from galaxy import master_pb2
+
 STATE_MAP={0:'DEPLOYING',2:'RUNNING',3:'KILLED',4:'RESTART',5:'ERROR',6:'COMPLETE'}
 LOG = logging.getLogger('console')
 class BaseEntity(object):
@@ -63,7 +64,9 @@ class GalaxySDK(object):
                       replicate_num = 1,
                       mem_limit = 1024,
                       cpu_limit = 2, 
-                      deploy_step_size=-1):
+                      deploy_step_size = -1,
+                      one_task_per_host = False,
+                      restrict_tags = []):
         """
         send a new job command to galaxy master
         return:
@@ -78,7 +81,9 @@ class GalaxySDK(object):
                                       replicate_num = replicate_num,
                                       mem_limit = mem_limit,
                                       cpu_limit = cpu_limit,
-                                      deploy_step_size = deploy_step_size)
+                                      deploy_step_size = deploy_step_size,
+                                      one_task_per_host = one_task_per_host,
+                                      restrict_tags = restrict_tags)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -93,6 +98,40 @@ class GalaxySDK(object):
         except:
             LOG.exception("fail to create  job")
         return False,None
+
+    def tag_agent(self, tag, agent_set):
+        entity = master_pb2.TagEntity(tag = tag,
+                                      agents = agent_set)
+        request = master_pb2.TagAgentRequest(tag_entity = entity)
+        master = master_pb2.Master_Stub(self.channel)
+        controller = client.Controller()
+        controller.SetTimeout(1.5)
+        try:
+            response = master.TagAgent(controller, request)
+            if response.status == 0 :
+                return True
+            return False
+        except:
+            LOG.exception("fail to tag agent")
+            return False
+
+    def list_tag(self):
+        request = master_pb2.ListTagRequest()
+        master = master_pb2.Master_Stub(self.channel)
+        controller = client.Controller()
+        controller.SetTimeout(1.5)
+        try:
+            response = master.ListTag(controller, request)
+            ret = []
+            for tag in response.tags:
+                base = BaseEntity()
+                base.tag = tag.tag
+                base.agents = [agent for agent in tag.agents]
+                ret.append(base.__dict__)
+            return ret
+        except Exception as e:
+            LOG.exception("fail to list tag %s"%str(e))
+            return []
 
     def list_all_job(self):
 
@@ -219,6 +258,8 @@ class GalaxySDK(object):
                 base.mem_used = task.memory_usage
                 base.cpu_used = task.cpu_usage
                 base.start_time = task.start_time
+                base.gc_path = task.root_path
+                base.end_time =  datetime.datetime.fromtimestamp(task.end_time).strftime("%m-%d %H:%M:%S") 
                 ret.append(base)
             return True,ret
         except:
@@ -241,9 +282,11 @@ class GalaxySDK(object):
                                replicate_num = 1,
                                mem_limit= 1024,
                                cpu_limit= 2,
-                               deploy_step_size=-1):
+                               deploy_step_size=-1,
+                               one_task_per_host=False,
+                               restrict_tags = []):
 
-        req = master_pb2.NewJobRequest()
+        req = master_pb2.NewJobRequest(restrict_tags = set(restrict_tags))
         if  deploy_step_size > 0:
             req.deploy_step_size = deploy_step_size
         req.job_name = name
@@ -252,5 +295,6 @@ class GalaxySDK(object):
         req.cpu_share = cpu_limit
         req.mem_share = mem_limit
         req.replica_num = replicate_num
+        req.one_task_per_host = one_task_per_host
         return req
 

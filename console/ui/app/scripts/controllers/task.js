@@ -65,7 +65,7 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
              $log.error('fail to get service '+ $routeParams.serviceName+' status');
            });
     }
-   stop = $interval($scope.getTask,500);
+   stop = $interval($scope.getTask,4000);
    $scope.close =function(){
       if(stop != null){
           $interval.cancel(stop);
@@ -81,9 +81,6 @@ $http.get("/console/taskgroup/history?id="+service.job_id+"&master="+config.mast
     
                 if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
-                  $scope.runningNum = data.data.statics.RUNNING;
-                  $scope.deployingNum = data.data.statics.DEPLOYING;
-                  $scope.errorNum = data.data.statics.ERROR;
                }
 
     })

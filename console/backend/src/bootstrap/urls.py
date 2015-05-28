@@ -20,3 +20,6 @@ urlpatterns += urls.patterns('',
 urlpatterns += urls.patterns('',
      (r'^cluster/', urls.include('console.cluster.urls')),
 )
+urlpatterns += urls.patterns('',
+     (r'^tag/', urls.include('console.tag.urls')),
+)

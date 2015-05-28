@@ -39,10 +39,11 @@ message NewJobRequest {
     optional int32 replica_num = 5;
     optional double cpu_share = 6;      // soft limit
     optional int64 mem_share = 7;
-    //单个步骤部署实例个数
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
     optional bytes monitor_conf = 11;
+    optional bool one_task_per_host = 12;
+    repeated string restrict_tags = 13;
 }
 
 message NewJobResponse {
@@ -103,6 +104,8 @@ message JobCheckPointCell {
     optional bool killed = 9;
     optional double cpu_limit = 10;
     optional bytes monitor_conf = 11;
+    optional bool one_task_per_host = 12;
+    repeated string restrict_tags = 13;
 }
 
 message JobInstance {
@@ -135,6 +138,7 @@ message NodeInstance {
 
     optional double cpu_allocated = 9;
     optional int64 mem_allocated = 10;
+    repeated string tags = 11;
 }
 
 message ListNodeRequest {
@@ -142,6 +146,31 @@ message ListNodeRequest {
 
 message ListNodeResponse {
     repeated NodeInstance nodes = 2;
+}
+
+message PersistenceTagEntity{
+    optional string tag = 1;
+    repeated string agents = 2;
+}
+
+message TagEntity{
+    optional string tag = 1;
+    repeated string agents = 2;
+}
+
+message TagAgentRequest{
+    optional TagEntity tag_entity = 1;
+}
+
+message TagAgentResponse{
+    optional int32 status = 1;
+}
+
+message ListTagRequest{}
+
+
+message ListTagResponse{
+    repeated TagEntity tags = 1;
 }
 
 service Master {
@@ -154,5 +183,7 @@ service Master {
     rpc ListTask(ListTaskRequest) returns(ListTaskResponse);
     rpc ListJob(ListJobRequest) returns(ListJobResponse);
     rpc ListNode(ListNodeRequest) returns(ListNodeResponse);
+    rpc TagAgent(TagAgentRequest) returns(TagAgentResponse);
+    rpc ListTag(ListTagRequest) returns(ListTagResponse);
 }
 

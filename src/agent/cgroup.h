@@ -98,13 +98,13 @@ public:
     int Prepare();
     int Start();
     int StartMonitor();
-    int Stop();
     void PersistenceAble(const std::string& persistence_path) {
         persistence_path_dir_ = persistence_path;
     }
     virtual void StopPost();
     virtual void Status(TaskStatus* status);
     ~ContainerTaskRunner();
+    virtual int Clean();
 private:
     void PutToCGroup();
 private:
