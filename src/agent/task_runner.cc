@@ -23,7 +23,7 @@
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
 #include <gflags/gflags.h>
-
+ 
 DECLARE_int32(task_retry_times);
 DECLARE_string(task_acct);
 
@@ -32,23 +32,21 @@ namespace galaxy {
 static const std::string RUNNER_META_PREFIX = "task_runner_";
 static const std::string MONITOR_ROOT = "/root/moniter/logstash-1.4.2/";
 
-int AbstractTaskRunner::IsRunning(){
-    if ((int64_t)m_child_pid == -1) {
-        LOG(WARNING, "task with id %ld not running with pid %ld",
-                m_task_info.task_id(),
-                (int64_t)m_child_pid);
+int AbstractTaskRunner::IsProcessRunning(pid_t pid){
+    if ((int64_t)pid == -1) {
+        LOG(WARNING, "process %d is not running",(int64_t)pid);
         return -1;
     }
     // check process exist
-    int ret = ::kill(m_child_pid, 0);
+    int ret = ::kill(pid, 0);
     if(ret == 0 ){
         //check process status
-        pid_t pid = waitpid(m_child_pid, &ret, WNOHANG);
+        pid_t pid = waitpid(pid, &ret, WNOHANG);
         if(pid == 0 ){
-            LOG(INFO,"process %d is running",m_child_pid);
+            LOG(INFO,"process %d is running", pid);
             return 0;
         }else if(pid == -1){
-            LOG(WARNING,"fail to check process %d state",m_child_pid);
+            LOG(WARNING,"fail to check process %d state", pid);
             return -1;
         }
         else{
@@ -56,7 +54,7 @@ int AbstractTaskRunner::IsRunning(){
                 int exit_code = WEXITSTATUS(ret);
                 if(exit_code == 0 ){
                     //normal exit
-                    LOG(INFO,"process %d exits successfully",m_child_pid);
+                    LOG(INFO,"process %d exits successfully", pid);
                     return 1;
                 }
                 LOG(FATAL,"process %d exits with err code %d", exit_code);
@@ -65,12 +63,19 @@ int AbstractTaskRunner::IsRunning(){
         }
 
     }
-    LOG(INFO, "check task %d error[%d:%s]  pid %d",
-            m_task_info.task_id(),
-            ret,
-            strerror(errno),
-            m_child_pid);
+    LOG(INFO, "check pid %d error[%d:%s] ",
+            pid, ret, strerror(errno));
     return ret;
+}
+
+int AbstractTaskRunner::IsRunning() {
+    if (IsProcessRunning(m_child_pid) != 0) {
+        LOG(WARNING, "task with id %ld not running with pid %ld",
+                m_task_info.task_id(),
+                (int64_t)m_child_pid);
+        return -1;
+    }
+    return 0;
 }
 
 void AbstractTaskRunner::SetStatus(int status) {
@@ -145,6 +150,9 @@ int AbstractTaskRunner::Stop(){
         m_group_pid = -1;
     }
     //kill monitor
+    if (IsProcessRunning(m_monitor_pid) != 0) {
+        return 0;
+    }
     LOG(INFO,"start to kill monitor group %d",m_monitor_gid);
     ret = killpg (m_monitor_gid, 9);
     if(ret != 0){
@@ -225,17 +233,29 @@ void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdo
     _exit(127);
 }
 
-void AbstractTaskRunner::StartMonitorAfterFork()
-{
+void AbstractTaskRunner::StartMonitorAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd) {
+    // do in child process,
+    // all interface called in child process should be async-safe.
+    // NOTE if dup2 will return errno == EINTR?
+    while (dup2(stdout_fd, STDOUT_FILENO) == -1 && errno == EINTR) {}
+    while (dup2(stderr_fd, STDERR_FILENO) == -1 && errno == EINTR) {}
+    for (size_t i = 0; i < fd_vector.size(); i++) {
+        if (fd_vector[i] == STDOUT_FILENO
+                || fd_vector[i] == STDERR_FILENO
+                || fd_vector[i] == STDIN_FILENO) {
+            // do not deal with std input/output
+                continue;
+        }
+        close(fd_vector[i]);
+    }
     chdir(m_workspace->GetPath().c_str());
     char cur_path[1024] = {0};
     getcwd(cur_path, 1024);
     std::string conf_path = std::string(cur_path) + "/galaxy_monitor/";
     std::string conf_file = conf_path + "monitor.conf";
-    std::string log_file = conf_path + "logstash.log";
-    //chdir(conf_path.c_str();
-    std::string cmd_line = MONITOR_ROOT + "/bin/logstash_run.sh " 
-        + conf_file + " " + log_file;
+    chdir(conf_path.c_str());
+    std::string cmd_line = std::string("/home/galaxy/monitor/")
+        + std::string("monitor_agent --monitor_conf=") + conf_file;
     char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
         const_cast<char*>(cmd_line.c_str()), NULL};
     std::stringstream task_id_env;
@@ -268,6 +288,7 @@ int AbstractTaskRunner::ReStart(){
     }
 
     Start();
+    StartMonitor();
     return 0;
 }
 
@@ -301,7 +322,7 @@ void CommandTaskRunner::Status(TaskStatus* status) {
         LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());
     }
-
+    
     status->set_job_id(m_task_info.job_id());
     LOG(INFO, "task with id %ld state %d", 
             m_task_info.task_id(),
@@ -365,37 +386,6 @@ int CommandTaskRunner::Start() {
             return -1;
         }
     }
-    std::string::size_type replace_start =
-        m_task_info.monitor_conf().find("path => ");
-    replace_start = m_task_info.monitor_conf().find("\"", replace_start);
-    std::string::size_type replace_end =
-        m_task_info.monitor_conf().find("\"", replace_start);
-    char cur_path[1024] = {0};
-    getcwd(cur_path, 1024);
-    std::string log_path = std::string(cur_path) + "/" 
-        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
-        + m_task_info.monitor_conf().substr(replace_start + 1, 
-                replace_end - replace_start - 1);
-
-    std::string new_conf = m_task_info.monitor_conf();
-    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
-    std::string monitor_conf = m_workspace->GetPath()
-            + "/galaxy_monitor/monitor.conf";
-    int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
-    if (conf_fd == -1) {
-        LOG(WARNING, "open monitor_conf %s failed [%d:%s]",
-                monitor_conf.c_str(),
-                errno, strerror(errno));
-    } else {
-        int len = write(conf_fd, (void*)new_conf.c_str(),
-                new_conf.size());
-        if (len == -1) {
-            LOG(WARNING, "write monitor_conf %s failed [%d:%s]",
-                    monitor_conf.c_str(),
-                    errno, strerror(errno));
-        }
-        close(conf_fd);
-    }
 
     m_child_pid = fork();
     //child
@@ -405,7 +395,8 @@ int CommandTaskRunner::Start() {
         if (ret != 0) {
             assert(0);
         }
-        std::string meta_file = persistence_path_dir_ + "/" + RUNNER_META_PREFIX 
+        std::string meta_file = persistence_path_dir_
+            + "/" + RUNNER_META_PREFIX
             + boost::lexical_cast<std::string>(sequence_id_);
         int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
         if (meta_fd == -1) {
@@ -446,33 +437,85 @@ int CommandTaskRunner::Start() {
         else {
             collector_->ResetPid(m_child_pid);
         }
+    }
+    return 0;
+}
 
-        //monitor
-        m_monitor_pid = fork();
-        if (0 == m_monitor_pid) {
-            pid_t my_pid = getpid();
-            int ret = setpgid(my_pid, my_pid);
-            if (0 != ret) {
-                assert(0);
-            }
-            StartMonitorAfterFork();
-        } else {
-            if (m_monitor_pid == -1) {
-                LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
-                        m_task_info.task_id(),
-                        errno,
-                        strerror(errno));
-                //SetStatus(ERROR);
-                //return -1;
-            }
-            m_monitor_gid = m_monitor_pid;
+int CommandTaskRunner::StartMonitor() 
+{
+    LOG(INFO, "start a task with id %ld", m_task_info.task_id());
+    if (0 != m_task_info.monitor_conf().size()) {
+        return -1;
+    }
+    if (IsProcessRunning(m_monitor_pid) == 0) {
+        LOG(WARNING, "task with id %d has been monitoring", m_task_info.task_id());
+        return -1;
+    }
+    int stdout_fd, stderr_fd;
+    std::vector<int> fds;
+    PrepareStart(fds, &stdout_fd, &stderr_fd);
+
+    std::string::size_type replace_start =
+        m_task_info.monitor_conf().find("<intput>:");
+    std::string::size_type replace_end =
+        m_task_info.monitor_conf().find("\n", replace_start);
+
+    char cur_path[1024] = {0};
+    if (NULL == getcwd(cur_path, 1024)) {
+        LOG(WARNING, "get cur path err [%d:%s]", errno, strerror(errno));
+    }
+    std::string log_path = std::string(cur_path) + "/"
+        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
+        + m_task_info.monitor_conf().substr(replace_start + 1,
+                replace_end - replace_start - 1);
+
+    std::string new_conf = m_task_info.monitor_conf();
+
+    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
+    std::string monitor_conf = m_workspace->GetPath() + "/galaxy_monitor/monitor.conf";
+    int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+    if (conf_fd == -1) {
+        LOG(WARNING, "open monitor_conf %s failed [%d:%s]", 
+                monitor_conf.c_str(),errno, strerror(errno));
+    } else {
+        int len = write(conf_fd, (void*)new_conf.c_str(),
+                new_conf.size());
+        if (len == -1) {
+            LOG(WARNING, "write monitor_conf %s failed [%d:%s]",monitor_conf.c_str(),
+                    errno, strerror(errno));
         }
+        close(conf_fd);
+    }
+    m_monitor_pid = fork();
+    if (m_monitor_pid == 0) {
+        pid_t my_pid = getpid();
+        int ret = setpgid(my_pid, my_pid);
+        if (ret != 0) {
+            assert(0);
+        }
+        StartMonitorAfterFork(fds, stdout_fd, stderr_fd);
+    } else {
+        close(stdout_fd);
+        close(stderr_fd);
+        if (m_monitor_pid == -1) {
+            LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
+                    m_task_info.task_id(),
+                    errno,
+                    strerror(errno));
+            return -1;
+        }
+        m_monitor_gid = m_monitor_pid;
     }
     return 0;
 }
 
 int CommandTaskRunner::Prepare() {
-    return Start();
+    int ret = Start();
+    if (ret != 0) {
+        return ret;
+    }
+    StartMonitor();
+    return ret;
 }
 
 bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {

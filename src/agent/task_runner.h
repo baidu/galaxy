@@ -25,6 +25,8 @@ public:
     * */
    virtual int Start() = 0 ;
 
+   virtual int StartMonitor() = 0;
+
    /**
     * restart
     * */
@@ -53,13 +55,17 @@ public:
                        :m_task_info(task_info),
                        m_child_pid(-1),
                        m_group_pid(-1),
+                       m_monitor_pid(-1),
+                       m_monitor_gid(-1),
                        m_workspace(workspace),
                        m_has_retry_times(0),
                        m_task_state(DEPLOYING),
                        downloader_id_(-1) {}
     virtual int Prepare() = 0;
     virtual int Start() = 0;
+    virtual int StartMonitor() = 0;
     int IsRunning();
+    int IsProcessRunning(pid_t pid);
     int Stop();
     int ReStart();
     void AsyncDownload(boost::function<void()> callback);
@@ -76,7 +82,7 @@ protected:
             int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
-    void StartMonitorAfterFork();
+    void StartMonitorAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
 
 protected:
     TaskInfo m_task_info;
@@ -109,6 +115,7 @@ public:
     }
     virtual int Prepare();
     int Start();
+    int StartMonitor();
     virtual void Status(TaskStatus* status);
     virtual void StopPost();
 

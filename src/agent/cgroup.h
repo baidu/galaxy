@@ -97,6 +97,7 @@ public:
                         sequence_id_(0) {}
     int Prepare();
     int Start();
+    int StartMonitor();
     int Stop();
     void PersistenceAble(const std::string& persistence_path) {
         persistence_path_dir_ = persistence_path;

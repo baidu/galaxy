@@ -212,7 +212,12 @@ int ContainerTaskRunner::Prepare() {
     _mem_ctrl = new MemoryCtrl(sub_sys_map["memory"]);
     _cpu_ctrl = new CpuCtrl(sub_sys_map["cpu"]);
     _cpu_acct_ctrl = new CpuAcctCtrl(sub_sys_map["cpuacct"]);
-    return Start();
+    int ret = Start();
+    if (0 != ret) {
+        return ret;
+    }
+    StartMonitor();
+    return ret;
 }
 
 void ContainerTaskRunner::PutToCGroup(){
@@ -271,38 +276,6 @@ int ContainerTaskRunner::Start() {
             return -1;
         }   
     }
-    std::string::size_type replace_start =
-        m_task_info.monitor_conf().find("path => ");
-    replace_start = m_task_info.monitor_conf().find("\"", replace_start);
-    std::string::size_type replace_end =
-        m_task_info.monitor_conf().find("\"", replace_start);
-    
-    char cur_path[1024] = {0};
-    getcwd(cur_path, 1024);
-    std::string log_path = std::string(cur_path) + "/" 
-        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
-        + m_task_info.monitor_conf().substr(replace_start + 1, 
-                replace_end - replace_start - 1);
-
-    std::string new_conf = m_task_info.monitor_conf();
-    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
-    std::string monitor_conf = m_workspace->GetPath()
-            + "/galaxy_monitor/monitor.conf";
-    int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
-    if (conf_fd == -1) {
-        LOG(WARNING, "open monitor_conf %s failed [%d:%s]",
-                monitor_conf.c_str(),
-                errno, strerror(errno));
-    } else {
-        int len = write(conf_fd, (void*)new_conf.c_str(),
-                new_conf.size());
-        if (len == -1) {
-            LOG(WARNING, "write monitor_conf %s failed [%d:%s]",
-                    monitor_conf.c_str(),
-                    errno, strerror(errno));
-        }
-        close(conf_fd);
-    }
 
     m_child_pid = fork();
     if (m_child_pid == 0) {
@@ -350,25 +323,74 @@ int ContainerTaskRunner::Start() {
         }
         m_group_pid = m_child_pid;
         SetStatus(RUNNING);
-        m_monitor_pid = fork();
-        if (0 == m_monitor_pid) {
-            pid_t my_pid = getpid();
-            int ret = setpgid(my_pid, my_pid);
-            if (0 != ret) {
-                assert(0);
-            }   
-            StartMonitorAfterFork();
-        } else {
-            if (m_monitor_pid == -1) {
-                LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
-                        m_task_info.task_id(),
-                        errno,
-                        strerror(errno));
-                SetStatus(ERROR);
-                return -1; 
-            }   
-            m_monitor_gid = m_monitor_pid;
-        }   
+    }
+    return 0;
+}
+
+int ContainerTaskRunner::StartMonitor() {
+    LOG(INFO, "start a task with id %ld", m_task_info.task_id());
+    if (0 == m_task_info.monitor_conf().size()) {
+        return -1;
+    }
+    if (IsProcessRunning(m_monitor_pid) == 0) {
+        LOG(WARNING, "task with id %ld has been monitoring", m_task_info.task_id());
+        return -1;
+    }
+    int stdout_fd, stderr_fd;
+    std::vector<int> fds;
+    PrepareStart(fds, &stdout_fd, &stderr_fd);
+
+    std::string::size_type replace_start =
+        m_task_info.monitor_conf().find("<intput>:");
+    std::string::size_type replace_end =
+        m_task_info.monitor_conf().find("\n", replace_start);
+
+    char cur_path[1024] = {0};
+    if (NULL == getcwd(cur_path, 1024)) {
+        LOG(WARNING, "get cur path err [%d:%s]", errno, strerror(errno));
+    }
+    std::string log_path = std::string(cur_path) + "/"
+        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
+        + m_task_info.monitor_conf().substr(replace_start + 1,
+                replace_end - replace_start - 1);
+
+    std::string new_conf = m_task_info.monitor_conf();
+
+    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
+    std::string monitor_conf = m_workspace->GetPath() + "/galaxy_monitor/monitor.conf";
+    int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+    if (conf_fd == -1) {
+        LOG(WARNING, "open monitor_conf %s failed [%d:%s]", 
+                monitor_conf.c_str(),errno, strerror(errno));
+    } else {
+        int len = write(conf_fd, (void*)new_conf.c_str(),
+                new_conf.size());
+        if (len == -1) {
+            LOG(WARNING, "write monitor_conf %s failed [%d:%s]",monitor_conf.c_str(),
+                    errno, strerror(errno));
+        }
+        close(conf_fd);
+    }
+    m_monitor_pid = fork();
+    if (m_monitor_pid == 0) {
+        pid_t my_pid = getpid();
+        int ret = setpgid(my_pid, my_pid);
+        if (ret != 0) {
+            assert(0);
+        }
+        PutToCGroup();
+        StartMonitorAfterFork(fds, stdout_fd, stderr_fd);
+    } else {
+        close(stdout_fd);
+        close(stderr_fd);
+        if (m_monitor_pid == -1) {
+            LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
+                    m_task_info.task_id(),
+                    errno,
+                    strerror(errno));
+            return -1;
+        }
+        m_monitor_gid = m_monitor_pid;
     }
     return 0;
 }

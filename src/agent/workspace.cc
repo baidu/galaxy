@@ -114,6 +114,9 @@ std::string DefaultWorkspace::GetPath() {
     return m_task_root_path;
 }
 
+std::string DefaultWorkspace::GetRoot() {
+    return m_root_path;
+}
 int DefaultWorkspace::Clean() {
     LOG(INFO,"clean task %d workspace",m_task_info.task_id());
     if (!m_has_created) {
