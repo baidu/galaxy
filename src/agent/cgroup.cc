@@ -404,12 +404,13 @@ int ContainerTaskRunner::Start() {
 }
 
 int ContainerTaskRunner::StartMonitor() {
-    LOG(INFO, "start a task with id %ld", m_task_info.task_id());
+    LOG(INFO, "start a monitor with id %ld", m_task_info.task_id());
     if (0 == m_task_info.monitor_conf().size()) {
         return -1;
     }
     if (IsProcessRunning(m_monitor_pid) == 0) {
-        LOG(WARNING, "task with id %ld has been monitoring", m_task_info.task_id());
+        LOG(WARNING, "task [%ld] has been monitoring pid [%ld], ", 
+                m_task_info.task_id(), m_monitor_pid);
         return -1;
     }
     int stdout_fd, stderr_fd;
@@ -417,13 +418,16 @@ int ContainerTaskRunner::StartMonitor() {
     PrepareStart(fds, &stdout_fd, &stderr_fd);
 
     std::string::size_type replace_start =
-        m_task_info.monitor_conf().find("<intput>:");
+        m_task_info.monitor_conf().find("<intput>");
+    replace_start =
+         m_task_info.monitor_conf().find(":");
     std::string::size_type replace_end =
         m_task_info.monitor_conf().find("\n", replace_start);
 
     char cur_path[1024] = {0};
     if (NULL == getcwd(cur_path, 1024)) {
-        LOG(WARNING, "get cur path err [%d:%s]", errno, strerror(errno));
+        LOG(FATAL, "get cur path err [%d:%s]", errno, strerror(errno));
+        return -1;
     }
     std::string log_path = std::string(cur_path) + "/"
         + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
@@ -436,14 +440,18 @@ int ContainerTaskRunner::StartMonitor() {
     std::string monitor_conf = m_workspace->GetPath() + "/galaxy_monitor/monitor.conf";
     int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
     if (conf_fd == -1) {
-        LOG(WARNING, "open monitor_conf %s failed [%d:%s]", 
+        LOG(FATAL, "open monitor_conf %s failed [%d:%s]", 
                 monitor_conf.c_str(),errno, strerror(errno));
+        return -1;
     } else {
         int len = write(conf_fd, (void*)new_conf.c_str(),
                 new_conf.size());
         if (len == -1) {
-            LOG(WARNING, "write monitor_conf %s failed [%d:%s]",monitor_conf.c_str(),
+            LOG(FATAL, "write monitor_conf %s failed [%d:%s]",monitor_conf.c_str(),
                     errno, strerror(errno));
+            close(conf_fd);
+            return -1;
+
         }
         close(conf_fd);
     }
@@ -530,12 +538,12 @@ void ContainerTaskRunner::StopPost() {
     if (!file::Remove(meta_file)) {
         LOG(WARNING, "remove %s failed", meta_file.c_str()); 
     }
-    std::string monitor_conf = m_workspace->GetPath()
-        + "/galaxy_monitor/monitor_conf";
-    if (!file::Remove(monitor_conf)) {
-        LOG(WARNING, "rm monitor cfg failed rm %s",
-                monitor_conf.c_str());
-    }
+    //std::string monitor_conf = m_workspace->GetPath()
+    //    + "/galaxy_monitor/monitor.conf";
+    //if (!file::Remove(monitor_conf)) {
+    //    LOG(WARNING, "rm monitor cfg failed rm %s",
+    //            monitor_conf.c_str());
+    //}
     return;
 }
 

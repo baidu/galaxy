@@ -1258,7 +1258,7 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
             cell.mem_share(),
             cell.deploy_step_size(),
             boost::algorithm::join(cell.restrict_tags(), ",").c_str(),
-            cell.monitor_conf()
+            cell.monitor_conf().c_str()
         );
     // check persistence_handler init
     if (persistence_handler_ == NULL) {

@@ -1,18 +1,8 @@
-/***************************************************************************
- * 
- * Copyright (c) 2015 Baidu.com, Inc. All Rights Reserved
- * $Id$ 
- * 
- **************************************************************************/
- 
- /**
- * @file monitor_impl.cc
- * @author zhoushiyong(zhoushiyong@baidu.com)
- * @date 2015/05/25 21:17:32
- * @version $Revision$ 
- * @brief 
- *  
- **/
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: zhoushiyong@baidu.com
 
 #include <fstream>
 #include <sstream>
@@ -136,17 +126,19 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
 
 void MonitorImpl::Run()
 {
+    size_t seek;
+    struct stat* st_mark = new struct stat;
+    while (0 != stat(log_path.c_str(), st_mark)) {
+        LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
+                errno, strerror(errno));
+        sleep(1);
+        continue;
+    }
     std::ifstream fin(log_path.c_str());
     fin.seekg(0, std::ios::end);
     std::string line;
     running_ = true;
-    size_t seek;
-    struct stat* st_mark = new struct stat;
-    if (0 != stat(log_path.c_str(), st_mark)) {
-        LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
-                errno, strerror(errno));
-        return;
-    }
+
     while (running_) {
         if (fin.peek() == EOF) {  
             struct stat* st_tmp = new struct stat;

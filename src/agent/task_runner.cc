@@ -30,23 +30,23 @@ DECLARE_string(task_acct);
 namespace galaxy {
 
 static const std::string RUNNER_META_PREFIX = "task_runner_";
-static const std::string MONITOR_ROOT = "/root/moniter/logstash-1.4.2/";
 
-int AbstractTaskRunner::IsProcessRunning(pid_t pid){
-    if ((int64_t)pid == -1) {
-        LOG(WARNING, "process %d is not running",(int64_t)pid);
+int AbstractTaskRunner::IsProcessRunning(pid_t process){
+    if ((int64_t)process == -1) {
+        LOG(WARNING, "process %d is not running",(int64_t)process);
         return -1;
     }
     // check process exist
-    int ret = ::kill(pid, 0);
+    int ret = ::kill(process, 0);
     if(ret == 0 ){
         //check process status
-        pid_t pid = waitpid(pid, &ret, WNOHANG);
+        pid_t pid = waitpid(process, &ret, WNOHANG);
         if(pid == 0 ){
-            LOG(INFO,"process %d is running", pid);
+            LOG(INFO,"process %d is running", process);
             return 0;
         }else if(pid == -1){
-            LOG(WARNING,"fail to check process %d state", pid);
+            LOG(WARNING,"fail to check process %d state [%d,%s]",
+                    process, errno, strerror(errno));
             return -1;
         }
         else{
@@ -54,28 +54,30 @@ int AbstractTaskRunner::IsProcessRunning(pid_t pid){
                 int exit_code = WEXITSTATUS(ret);
                 if(exit_code == 0 ){
                     //normal exit
-                    LOG(INFO,"process %d exits successfully", pid);
+                    LOG(INFO,"process %d exits successfully", process);
                     return 1;
                 }
-                LOG(FATAL,"process %d exits with err code %d", m_child_pid, exit_code);
+                LOG(FATAL,"process %d exits with err code %d", process, exit_code);
             }
             return -1;
         }
 
     }
     LOG(INFO, "check pid %d error[%d:%s] ",
-            pid, ret, strerror(errno));
+            process, ret, strerror(errno));
     return ret;
 }
 
 int AbstractTaskRunner::IsRunning() {
-    if (IsProcessRunning(m_child_pid) != 0) {
+    
+    int ret = IsProcessRunning(m_child_pid);
+    if (ret != 0) {
         LOG(WARNING, "task with id %ld not running with pid %ld",
                 m_task_info.task_id(),
                 (int64_t)m_child_pid);
-        return -1;
+        return ret;
     }
-    return 0;
+    return ret;
 }
 
 void AbstractTaskRunner::SetStatus(int status) {
@@ -467,7 +469,9 @@ int CommandTaskRunner::StartMonitor()
     PrepareStart(fds, &stdout_fd, &stderr_fd);
 
     std::string::size_type replace_start =
-        m_task_info.monitor_conf().find("<intput>:");
+        m_task_info.monitor_conf().find("<intput>");
+    replace_start =
+        m_task_info.monitor_conf().find(":");
     std::string::size_type replace_end =
         m_task_info.monitor_conf().find("\n", replace_start);
 

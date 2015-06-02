@@ -41,9 +41,9 @@ message NewJobRequest {
     optional int64 mem_share = 7;
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
-    optional bytes monitor_conf = 11;
-    optional bool one_task_per_host = 12;
-    repeated string restrict_tags = 13;
+    optional bool one_task_per_host = 11;
+    repeated string restrict_tags = 12;
+    optional bytes monitor_conf = 13;
 }
 
 message NewJobResponse {
@@ -103,9 +103,9 @@ message JobCheckPointCell {
     optional int32 deploy_step_size = 8;
     optional bool killed = 9;
     optional double cpu_limit = 10;
-    optional bytes monitor_conf = 11;
-    optional bool one_task_per_host = 12;
-    repeated string restrict_tags = 13;
+    optional bool one_task_per_host = 11;
+    repeated string restrict_tags = 12;
+    optional bytes monitor_conf = 13;
 }
 
 message JobInstance {

@@ -1,18 +1,9 @@
-/***************************************************************************
- * 
- * Copyright (c) 2015 Baidu.com, Inc. All Rights Reserved
- * $Id$ 
- * 
- **************************************************************************/
- 
- /**
- * @file monitor_impl.h
- * @author zhoushiyong(zhoushiyong@baidu.com)
- * @date 2015/05/25 18:45:55
- * @version $Revision$ 
- * @brief 
- *  
- **/
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Author: zhoushiyong@baidu.com
+
 #ifndef PS_SPI_MONITOR_IMPL_H
 #define PS_SPI_MONITOR_IMPL_H
 
