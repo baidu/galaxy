@@ -32,6 +32,7 @@ namespace common {
 
 class HttpFileServer {
 public:
+    const static off_t TAIL_LIMIT = 8000; //bytes
     HttpFileServer(std::string root_path,int port) : root_path_(root_path),
                                                      port_(port),
                                                      pool_(NULL),
@@ -121,6 +122,23 @@ private:
             fclose(in_stream_);
         }
 
+        bool IsDir(const std::string& path, int *err) {
+            struct stat stat_buf;
+            int ret = lstat(path.c_str(), &stat_buf);
+            *err = ret;
+            if (ret == -1) {
+                LOG(WARNING, "stat path %s failed err[%d: %s]",
+                    path.c_str(),
+                    errno,
+                    strerror(errno));
+            }
+            if (S_ISDIR(stat_buf.st_mode)) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
         void ShowDir(int file_fd, const std::string& path, int root_len) {
             std::vector<std::string> children;
             std::string out;
@@ -128,11 +146,22 @@ private:
             out += "<ul>";
             std::string parent = path.substr(root_len);
             for (size_t i=0; i < children.size(); i++) {
+                std::string tail_button = "";
+                std::string href = "";
+                std::string anchor = children[i];
+                int stat_err = 0;
                 if (parent.size() > 0) {
-                    out += "<li><a href=\"/" + parent + "/" + children[i]+"\">" + children[i] + "</a></li>\n";
+                    href = parent + "/" + anchor;
                 } else {
-                    out += "<li><a href=\"/" + children[i] + "\">" + children[i] + "</a></li>\n";
+                    href = anchor ;
                 }
+                if (!IsDir(path + "/" + anchor, &stat_err) && stat_err == 0) {
+                    tail_button = "<a href=\"/" + href 
+                                  + "?tail\" style=\"margin-left:15px;\">[tail]</a>";
+                }
+                out += "<li><a href=\"/" + href + "\">" 
+                       + anchor + "</a>" 
+                       + tail_button + "</li>\n";
             }
             out += "</ul>";
             fprintf(out_stream_, "HTTP/1.1 200 OK\n");
@@ -143,15 +172,16 @@ private:
             fprintf(out_stream_, "%.*s", static_cast<int>(out.size()), out.data());
             close(file_fd);
         }
-        void SendFile(int file_fd, off_t file_size){
+
+        void SendFile(int file_fd, off_t file_size, off_t start_pos){
             off_t transfer_bytes = 0;
             int sock_fd = fileno(out_stream_);
-            off_t pos = 0;
+            off_t pos = start_pos;
             fprintf(out_stream_, "HTTP/1.1 200 OK\n");
-            fprintf(out_stream_, "Content-Length: %lu\n", file_size);
+            fprintf(out_stream_, "Content-Length: %lu\n", file_size - start_pos);
             fprintf(out_stream_, "Server: Galaxy\n");
             fprintf(out_stream_, "Connection: Close\n\n");
-            while (transfer_bytes < file_size) {
+            while (transfer_bytes < file_size - start_pos) {
                 ssize_t ret = ::sendfile(sock_fd, file_fd, &pos, file_size - transfer_bytes);
                 if (ret < 0) {
                     LOG(WARNING, "failed to sendfile");
@@ -205,6 +235,12 @@ private:
         if (sscanf(header, "%s %s %s", method, path, version) == 3){
             std::string real_path;
             std::string http_path(path);
+            bool tail_only = false;
+            std::size_t found = http_path.rfind("?tail");
+            if (found != std::string::npos) {
+                tail_only = true;
+                http_path.erase(found);
+            }
             real_path = root_path_ + http_path.substr(1);
             if (::access(real_path.c_str(), F_OK) == 0) {
                 int file_fd = ::open(real_path.c_str(), O_RDONLY);
@@ -215,7 +251,11 @@ private:
                     return ;
                 }
                 off_t file_size = stat_buf.st_size;
-                session.SendFile(file_fd, file_size);
+                off_t start_pos = 0;
+                if (tail_only && file_size > TAIL_LIMIT) {
+                    start_pos = (file_size - TAIL_LIMIT);
+                }
+                session.SendFile(file_fd, file_size, start_pos);
             } else {
                 LOG(WARNING, "%s can not be found", real_path.c_str());
                 session.Error("file not exists\n");
@@ -236,4 +276,3 @@ private:
 } //namespace common
 
 #endif  //COMMON_HTTPSERVER_H_
-
