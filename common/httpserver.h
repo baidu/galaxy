@@ -8,6 +8,7 @@
 
 #include <arpa/inet.h>
 #include <dirent.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdio.h>
