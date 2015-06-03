@@ -109,6 +109,11 @@ public:
     }
 
 private:
+    struct FileInfo {
+        std::string Size;
+        std::string LastModified;
+    };
+
     class Session {
     public:
         Session(FILE* in_stream, 
@@ -140,31 +145,80 @@ private:
             }
         }
 
+        std::string ReadableFileSize(double size) {
+            int i = 0;
+            char buf[1024] = {'\0'};
+            const char* units[] = {"B", "KB", "MB", "GB", "TB", 
+                                   "PB", "EB", "ZB", "YB"};
+            while (size > 1024) {
+                size /= 1024;
+                i++;
+            }
+            snprintf(buf, sizeof(buf), "%.*f%s", i, size, units[i]);
+            return buf;
+        }
+
+        bool GetFileInfo(const char* file_name, FileInfo& info) {
+            struct stat stat_buf;
+            struct tm tm_info;
+            char time_buf[1024] = {'\0'};
+            int ret = lstat(file_name, &stat_buf);
+            if (ret != 0) {
+                return false;
+            }
+            info.Size = ReadableFileSize(stat_buf.st_size);
+            time_t modified_time = stat_buf.st_mtime;
+            struct tm* l_time = localtime_r(&modified_time, &tm_info);
+            if (l_time) {
+                strftime(time_buf, sizeof(time_buf),
+                        "%Y%m%d %H:%M:%S", l_time);
+                info.LastModified = time_buf;
+            }
+            return true;
+        }
+
         void ShowDir(int file_fd, const std::string& path, int root_len) {
             std::vector<std::string> children;
             std::string out;
             ListDir(path, children);
-            out += "<ul>";
             std::string parent = path.substr(root_len);
+            out += "<h1>Index of " + parent +"</h1>\n";
+            out += "<table>\n";
+            out += "<tr><th>Name</th><th>Last Modified</th>\n"
+                   "<th>Size</th><th>Tail</th></tr>\n";
+            out += "<td colspan=\"4\"><hr/></td>\n";
             for (size_t i=0; i < children.size(); i++) {
                 std::string tail_button = "";
                 std::string href = "";
                 std::string anchor = children[i];
+                FileInfo info;
                 int stat_err = 0;
+                std::string full_path = path + "/" + anchor;
+                if (anchor == ".") {
+                    continue;
+                }
                 if (parent.size() > 0) {
                     href = parent + "/" + anchor;
                 } else {
                     href = anchor ;
                 }
-                if (!IsDir(path + "/" + anchor, &stat_err) && stat_err == 0) {
+                info.Size = "-";
+                info.LastModified = "-";
+                if (!IsDir(full_path, &stat_err) && stat_err == 0) {
                     tail_button = "<a href=\"/" + href 
-                                  + "?tail\" style=\"margin-left:15px;\">[tail]</a>";
+                                  + "?tail\"> ... </a>";
+                    GetFileInfo(full_path.c_str(), info);
                 }
-                out += "<li><a href=\"/" + href + "\">" 
-                       + anchor + "</a>" 
-                       + tail_button + "</li>\n";
+                out += "<tr>\n";
+                out += "<td><a href=\"/" + href + "\">" 
+                       + anchor + "</a></td>\n";
+                out += "<td>" + info.LastModified +"</td>\n";
+                out += "<td>" + info.Size + "</td>\n";
+                out += "<td>" + tail_button + "</td>\n";
+                out += "</tr>\n";
             }
-            out += "</ul>";
+            out += "<td colspan=\"4\"><hr/></td>\n";
+            out += "</table>\n";
             fprintf(out_stream_, "HTTP/1.1 200 OK\n");
             fprintf(out_stream_, "Content-Type: text/html\n");
             fprintf(out_stream_, "Content-Length: %lu\n", out.size());
