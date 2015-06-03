@@ -1,21 +1,40 @@
- <div class="service-list">
- 
-<div class="ui statistics">
-   
 
- <div class="red statistic">
-        <div class="value">{{total_mem_used}}/{{total_mem_allocated}}</div>
-        <div class="label">实际使用量/总内存分配量 </div>
-    </div>
+<div class="cluster-status-list">
+    <div class="card resource-status">
+        <span class="card-header"> 资源实时使用率 </span>
+        <div class="ez-chart"> 
+            <div class="percentage easyPieChart" style="width: 110px; height: 110px; line-height: 110px;" easypiechart options="chartOptions" percent="cpuPercent">
+                <span>{{cpuPercent}}%</span>
+            </div>
+            <div class="chart-label">CPU</div>
+        </div>
+
+        <div class="ez-chart">
+               <div style="width: 110px; height: 110px; line-height: 110px;" class="percentage easyPieChart" easypiechart options="chartOptions" percent="memPercent">
+                 <span>{{memPercent}}%</span>
+             </div>
+             <div class="chart-label">MEMORY</div>
+        </div>
 </div>
 
-<div class="ui statistics">
+  <div class="card resource-total">
+        <span class="card-header"> 集群资源统计 </span>
+        <div class="ez-chart"> 
+ <div class="ui statistics">
       <div class="red statistic">
-        <div class="value">{{total_cpu_used}}/{{total_cpu_allocated}} </div>
-        <div class="label">实际使用量/总CPU分配量 </div>
+        <div class="value">{{total_cpu_allocated}} </div>
+        <div class="label">总CPU分配量 </div>
+    </div>
+    <div class="red statistic">
+        <div class="value">{{total_mem_allocated}}</div>
+        <div class="label">总内存分配量 </div>
     </div>
 
   </div> 
+       
+</div>
+
+<div class="ez-chart">
 <div class="ui statistics">
       <div class="blue statistic">
         <div class="value">{{total_node_num}}</div>
@@ -34,7 +53,13 @@
         <div class="label">集群总任务</div>
       </div>
   </div>
-     
+
+        </div>
+    </div>
+
+</div>
+<div class="service-list"> 
+    
 <table class="table table-striped service-table">
     <thead>
       <tr>
@@ -54,5 +79,6 @@
         <td>{{machine.mem_allocated}}/{{machine.mem_share}}</td>
       </tr>
     </tbody>
-  </table>  
+</table> 
+ <pagination total-items="totalItems" ng-model="currentPage" max-size="pageSize" class="pagination-sm" boundary-links="true" rotate="false" ng-change="pageChanged()"  num-pages="numPages"></pagination>
 </div>

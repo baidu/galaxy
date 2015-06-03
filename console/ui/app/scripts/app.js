@@ -17,6 +17,7 @@ var galaxy = angular.module('galaxy.ui', [
     'ngResource',
     'ngRoute',
     'ngSanitize',
+    'easypiechart',
     'ui.bootstrap',
     'galaxy.ui.ctrl',
     'galaxy.ui.breadcrumb',
