@@ -171,7 +171,7 @@ private:
             struct tm* l_time = localtime_r(&modified_time, &tm_info);
             if (l_time) {
                 strftime(time_buf, sizeof(time_buf),
-                        "%Y%m%d %H:%M:%S", l_time);
+                        "%d-%b-%y %H:%M:%S", l_time);
                 info.LastModified = time_buf;
             }
             return true;
@@ -182,7 +182,7 @@ private:
             std::string out;
             ListDir(path, children);
             std::string parent = path.substr(root_len);
-            out += "<h1>Index of " + parent +"</h1>\n";
+            out += "<h1>Index of /" + parent +"</h1>\n";
             out += "<table>\n";
             out += "<tr><th>Name</th><th>Last Modified</th>\n"
                    "<th>Size</th><th>Tail</th></tr>\n";
@@ -202,19 +202,19 @@ private:
                 } else {
                     href = anchor ;
                 }
-                info.Size = "-";
-                info.LastModified = "-";
+                GetFileInfo(full_path.c_str(), info);
                 if (!IsDir(full_path, &stat_err) && stat_err == 0) {
                     tail_button = "<a href=\"/" + href 
                                   + "?tail\"> ... </a>";
-                    GetFileInfo(full_path.c_str(), info);
+                } else{
+                    info.Size = "-";
                 }
                 out += "<tr>\n";
                 out += "<td><a href=\"/" + href + "\">" 
                        + anchor + "</a></td>\n";
                 out += "<td>" + info.LastModified +"</td>\n";
-                out += "<td>" + info.Size + "</td>\n";
-                out += "<td>" + tail_button + "</td>\n";
+                out += "<td align=\"right\">" + info.Size + "</td>\n";
+                out += "<td align=\"right\">" + tail_button + "</td>\n";
                 out += "</tr>\n";
             }
             out += "<td colspan=\"4\"><hr/></td>\n";
