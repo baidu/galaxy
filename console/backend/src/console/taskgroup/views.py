@@ -77,5 +77,5 @@ def get_job_sched_history(request):
         task['mem_limit'] = str_pretty(task['mem_limit'])
         task['cpu_used'] ="%0.2f"%(task['cpu_limit'] * task['cpu_used'])
         if task['agent_addr']:
-            task['path'] = "http://"+task['agent_addr'].split(":")[0]+":8181/gc/"+ task['gc_path'].replace("./work_dir/gc//","")
+            task['path'] = "http://"+task['agent_addr'].split(":")[0]+":8181/gc/"+ task['gc_path'].replace("/home/galaxy/agent/work_dir/gc/","")
     return builder.ok(data={'needInit':False,'taskList':tasklist}).build_json()

@@ -268,6 +268,43 @@ body {
     margin-right:10px;
 }
 
+.cluster-status-list{
 
+}
 
+.card{
+  -webkit-transition: all cubic-bezier(0.4,0.0,0.2,1) 0.2s;
+  transition: all cubic-bezier(0.4,0.0,0.2,1) 0.2s;
+  display: block;
+  padding: 12px;
+  -webkit-box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  border: 1.1px solid #e7e7e7;
+  background: #fff;
+  float:left;
+  margin-right:20px;
+  margin-bottom:20px;
+}
+.card .card-header{
+ font-size:12px;
+ font-weight: bold;
+ display:block;
+ margin-bottom:10px;
+}
+.card .ez-chart{
+    display:inline-block;
+    margin-right:25px;
+}
+.card .ez-chart .chart-label{
+    font-size:12px;
+    font-weight:bold;
+}
+.resource-status{
+ width:300px;
+ height:180px;
+}
 
+.resource-total{
+    width:550px;
+    height:180px;
+}
