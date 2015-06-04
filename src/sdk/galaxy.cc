@@ -32,6 +32,7 @@ public:
     bool KillTask(int64_t task_id);
     bool ListTaskByAgent(const std::string& agent_addr,
                          std::vector<TaskDescription> * tasks) ;
+    bool TagAgent(const std::string& tag, std::set<std::string>* agents);
 private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
@@ -77,6 +78,10 @@ int64_t GalaxyImpl::NewJob(const JobDescription& job){
     request.set_replica_num(job.replicate_count);
     request.set_cpu_share(job.cpu_share);
     request.set_mem_share(job.mem_share);
+    //目前只支持单个tag
+    if (!job.restrict_tag.empty()) {
+        request.add_restrict_tags(job.restrict_tag);
+    }
     if(job.deploy_step_size > 0){
         request.set_deploy_step_size(job.deploy_step_size);
     }
@@ -136,6 +141,9 @@ bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
         node_desc.mem_share = node.mem_share();
         node_desc.cpu_used = node.cpu_used();
         node_desc.mem_used = node.mem_used();
+        for (int inner_index = 0; inner_index < node.tags_size(); inner_index++) {
+            node_desc.tags.insert(node.tags(inner_index));
+        }
         nodes->push_back(node_desc);
     }
     return true;
@@ -272,6 +280,22 @@ bool GalaxyImpl::ListTask(int64_t job_id,
     return true;
 }
 
+bool GalaxyImpl::TagAgent(const std::string& tag, std::set<std::string>* agents) {
+    TagAgentRequest request;
+    TagEntity entity = request.tag_entity();
+    entity.set_tag(tag);
+    std::set<std::string>::iterator it = agents->begin();
+    for (; it != agents->end(); ++it) {
+        entity.add_agents(*it);
+    }
+    TagAgentResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::TagAgent,
+                             &request, &response, 5, 1);
+    if (response.status() == 0) {
+        return true;
+    }
+    return false; 
+}
 
 
 Galaxy* Galaxy::ConnectGalaxy(const std::string& master_addr) {

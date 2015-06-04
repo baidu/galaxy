@@ -18,7 +18,7 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
-
+#include <boost/unordered_map.hpp>
 #include "leveldb/db.h"
 #include "proto/agent.pb.h"
 #include "common/mutex.h"
@@ -41,6 +41,7 @@ struct AgentInfo {
     int32_t alive_timestamp;
     std::set<int64_t> running_tasks;
     int64_t version;
+    std::set<std::string> tags;
 };
 
 struct AgentLoad {
@@ -96,7 +97,10 @@ struct JobInfo {
     int32_t deploy_step_size;
     std::set<int64_t> deploying_tasks;
     double cpu_limit;
+    //单host单实例
     bool one_task_per_host;
+    //限制job在标有特定tag机器上面运行
+    std::set<std::string> restrict_tags;
 };
 
 class RpcClient;
@@ -132,7 +136,6 @@ public:
                  const ::galaxy::ListJobRequest* request,
                  ::galaxy::ListJobResponse* response,
                  ::google::protobuf::Closure* done);
-
     void ListTask(::google::protobuf::RpcController* controller,
                  const ::galaxy::ListTaskRequest* request,
                  ::galaxy::ListTaskResponse* response,
@@ -141,9 +144,19 @@ public:
                   const ::galaxy::ListNodeRequest* request,
                   ::galaxy::ListNodeResponse* response,
                   ::google::protobuf::Closure* done);
+    void TagAgent(::google::protobuf::RpcController* controller,
+                  const ::galaxy::TagAgentRequest* request,
+                  ::galaxy::TagAgentResponse* response,
+                  ::google::protobuf::Closure* done);
+    void ListTag(::google::protobuf::RpcController* controller,
+                  const ::galaxy::ListTagRequest* request,
+                  ::galaxy::ListTagResponse* response,
+                  ::google::protobuf::Closure* done);
+
 private:
     bool PersistenceJobInfo(const JobInfo& job_info);
     bool DeletePersistenceJobInfo(const JobInfo& job_info);
+    bool UpdatePersistenceTag(const PersistenceTagEntity& entity);
     void DeadCheck();
     void Schedule();
     bool ScheduleTask(JobInfo* job, const std::string& agent_addr);
@@ -167,6 +180,7 @@ private:
     bool SafeModeCheck();
     bool JobTaskExistsOnAgent(const std::string& agent,
                               const JobInfo& job);
+    void UpdateTag(const PersistenceTagEntity& entity);
 
     void KilledTaskCallback(
             int64_t job_id, 
@@ -194,6 +208,8 @@ private:
     bool is_safe_mode_;
     int64_t start_time_;
     leveldb::DB* persistence_handler_;
+    /// master tags configuration  
+    boost::unordered_map<std::string, std::set<std::string> > tags_;
 };
 
 } // namespace galaxy

@@ -16,7 +16,7 @@ class Galaxy(object):
         self.shell_helper = shell.ShellHelper()
         self.bin_path = bin_path
     def create_task(self,name,url,cmd_line,replicate_count,mem_limit,cpu_quota,
-                    deploy_step_size=-1, one_task_per_host=False):
+                    deploy_step_size=-1, one_task_per_host=False, restrict_tags = []):
 
         galaxy_sdk = sdk.GalaxySDK(self.master_addr)
         status,job_id = galaxy_sdk.make_job(name,'ftp',url,cmd_line,
@@ -24,7 +24,8 @@ class Galaxy(object):
                                            mem_limit = mem_limit,
                                            cpu_limit = cpu_quota,
                                            deploy_step_size=deploy_step_size,
-                                           one_task_per_host=one_task_per_host)
+                                           one_task_per_host=one_task_per_host,
+                                           restrict_tags = restrict_tags)
         return status,job_id
 
     def list_task_by_job_id(self,job_id):
@@ -79,3 +80,11 @@ class Galaxy(object):
         status,job_list = galaxy_sdk.list_all_job()
         return status ,job_list
 
+    def tag_agent(self, tag, agent_set):
+        galaxy_sdk = sdk.GalaxySDK(self.master_addr)
+        status = galaxy_sdk.tag_agent(tag, agent_set)
+        return status
+
+    def list_tag(self):
+        galaxy_sdk = sdk.GalaxySDK(self.master_addr)
+        return galaxy_sdk.list_tag()

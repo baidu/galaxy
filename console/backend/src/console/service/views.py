@@ -52,7 +52,8 @@ def create_service(request):
                                            ret['memory_limit']*1024*1024*1024,
                                            ret['cpu_share'],
                                            deploy_step_size = ret['deploy_step_size'],
-                                           one_task_per_host = ret['one_task_per_host'])
+                                           one_task_per_host = ret['one_task_per_host'],
+                                           restrict_tags = ret['tag'])
         if not status:
             return builder.error('fail create task').build_json()
         return builder.ok().build_json()

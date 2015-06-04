@@ -67,7 +67,7 @@ $http.get("/console/service/list?user=9527&master="+config.masterAddr)
     }
     $scope.listTaskHistory = function(service){
         var modalInstance = $modal.open({
-        templateUrl: 'views/task.html',
+        templateUrl: 'views/history.html',
         controller: 'TaskHistoryCtrl',
         keyboard:false,
         size:'lg',
@@ -150,15 +150,28 @@ angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',func
 
 });
 angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl', 
-                                            function ($scope, $modalInstance,$http,$route,notify,config) {
+                                            function ($scope, $modalInstance,$http,$route,notify,config ,$cookies) {
 
   $scope.disableBtn=false;
   $scope.alerts = [];
   $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
-  $scope.deployTpl = {name:"",startCmd:"",pkgType:0,pkgSrc:"",replicate:0,memoryLimit:3,cpuShare:0.5,oneTaskPerHost:false};
+  $scope.deployTpl = {name:"",startCmd:"",tag:"",pkgType:0,pkgSrc:"",deployStepSize:5,replicate:0,memoryLimit:3,cpuShare:0.5,oneTaskPerHost:false};
+  if ($cookies.lastServiceForm != undefined && 
+      $cookies.lastServiceForm != null){
+      try{
+         $scope.deployTpl = JSON.parse($cookies.lastServiceForm);
+      }finally{
+      }
+  }
+  $http.get("/console/tag/list?master="+config.masterAddr)
+         .success(function(data){
+             $scope.tagList = data.data;
+  });
+  $scope.showAdvanceOption = false;
   $scope.ok = function () {
     $scope.alerts = [];
     $scope.disableBtn=true;
+    $cookies.lastServiceForm = JSON.stringify($scope.deployTpl);
     $http(
       {
         method:"POST",

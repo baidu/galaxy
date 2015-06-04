@@ -21,7 +21,7 @@
 	  cursor: pointer;
   	text-decoration: none;
   	width: 100%;
-  	line-height: 28px;
+  	line-height: 25px;
   	display: block;
   	color: #333;
 }
@@ -42,9 +42,8 @@
 }
 .treeview .level1{
 	padding-left: 20px;
-	margin-top: 10px;
-	font-size: 15px;
-    font-weight: normal;
+	font-size: 13px;
+    font-weight: bold;
 }
 .treeview .level2{
 	padding-left: 36px;
@@ -52,19 +51,19 @@
 	font-weight: normal;
 }
 .treeview li .expanded {
-  padding: 1px 10px;
+  padding: 1px 5px;
   background-image: url("http://cfile23.uf.tistory.com/image/205B973A50C13F4B19D9BD");
   background-repeat: no-repeat;
 }
 
 .treeview li .collapsed {
-  padding: 1px 10px;
+  padding: 1px 5px;
   background-image: url("http://cfile23.uf.tistory.com/image/1459193A50C13F4B1B05FB");
   background-repeat: no-repeat;
 }
 
 .treeview li .normal {
-  padding: 1px 10px;
+  padding: 1px 5px;
   background-image: url("http://cfile23.uf.tistory.com/image/165B663A50C13F4B196CCA");
   background-repeat: no-repeat;
 }

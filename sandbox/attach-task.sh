@@ -5,5 +5,5 @@
                            --cpu_limit=1 --mem_gbytes=1 \
                            --replicate_num=4 \
                            --task_raw=task.sh.tar.gz \
-                           --one_task_per_host \
-                           --cmd_line="sh task.sh"
+                           --cmd_line="sh task.sh" \
+                           --one_task_per_host
