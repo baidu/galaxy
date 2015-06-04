@@ -140,7 +140,7 @@ int CGroupCtrl::Destroy(int64_t task_id) {
                         }     
                     }
                 }
-                common::ThisThread::Sleep(100);
+                common::ThisThread::Sleep(50);
             }
         }
         if (clear_retry_times 

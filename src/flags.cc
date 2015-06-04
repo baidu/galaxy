@@ -39,7 +39,6 @@ DEFINE_string(master_checkpoint_path, "./data/", "directory of master checkpoint
 DEFINE_int32(master_max_len_sched_task_list, 30, "max length of scheduled tasks of a job");
 DEFINE_int32(master_safe_mode_last, 30, "how many seconds the safe-mode goes on");
 
-
-
-DEFINE_int32(agent_cgroup_clear_retry_times, 50, "how many times for retry destroy cgroup");
+DEFINE_int32(agent_cgroup_clear_retry_times, 20, "how many times for retry destroy cgroup");
+DEFINE_int32(agent_app_stop_wait_retry_times, 10, "how many times for stop wait");
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
