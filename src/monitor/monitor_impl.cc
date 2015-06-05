@@ -18,6 +18,7 @@
 
 namespace galaxy {
 MonitorImpl::MonitorImpl() {
+    running_ = false;
     msg_forbit_time_ = 60;
     thread_pool_.AddTask(boost::bind(&MonitorImpl::Reporting, this));
 }
@@ -47,8 +48,7 @@ MonitorImpl::~MonitorImpl() {
     return;
 }
 
-void MonitorImpl::Split(std::string& src, std::string& delim, std::vector<std::string>* ret)
-{
+void MonitorImpl::Split(std::string& src, std::string& delim, std::vector<std::string>* ret) {
     size_t last = 0;  
     size_t index=src.find_first_of(delim, last);  
     while (index!=std::string::npos) {  
@@ -61,8 +61,7 @@ void MonitorImpl::Split(std::string& src, std::string& delim, std::vector<std::s
     }
     return;
 }
-bool MonitorImpl::ParseConfig(const std::string conf_path)
-{
+bool MonitorImpl::ParseConfig(const std::string conf_path) {
     std::ifstream fin(conf_path.c_str());
     if (!fin) {
         LOG(WARNING, "open conf_path err %s", conf_path.c_str());
@@ -71,10 +70,12 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
     std::string line;
     char value[1024];
     while (getline(fin, line)) {
-        if (sscanf(line.c_str(), "<input>: %s", value)) {
-            log_path = std::string(value);
+        if (line.size() == 0) {
+            continue;
         }
-        if (sscanf(line.c_str(), "<watch>: %s", value)) {
+        if (sscanf(line.c_str(), "<input>:%s", value)) {
+            log_path.assign(value);
+        } else if (sscanf(line.c_str(), "<watch>:%s", value)) {
             std::vector<std::string> args;
             std::string input(value);
             std::string delim("|");
@@ -85,7 +86,7 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
             watch_ptr->reg.assign(args[2]);
             watch_ptr->count = 0;
             watch_map_[args[0]] = watch_ptr;
-        } else if (sscanf(line.c_str(), "<trigger>: %s", value)) {
+        } else if (sscanf(line.c_str(), "<trigger>:%s", value)) {
             std::vector<std::string> args;
             std::string input(value);
             std::string delim("|");
@@ -97,7 +98,7 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
             trigger_ptr->range = atoi(args[3].c_str());
             trigger_ptr->timestamp = time(NULL);
             trigger_map_[args[0]] = trigger_ptr;
-        } else if (sscanf(line.c_str(), "<action>: %s", value)) {
+        } else if (sscanf(line.c_str(), "<action>:%s", value)) {
             std::vector<std::string> args;
             std::string input(value);
             std::string delim("|");
@@ -109,7 +110,7 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
             delim.assign(":");
             Split(args[1], delim, &(action_ptr->to_list));
             action_map_[args[0]] = action_ptr;
-        } else if (sscanf(line.c_str(), "<rule>: %s", value)) {
+        } else if (sscanf(line.c_str(), "<rule>:%s", value)) {
             std::vector<std::string> args;
             std::string input(value);
             std::string delim("|");
@@ -124,9 +125,8 @@ bool MonitorImpl::ParseConfig(const std::string conf_path)
     return true;
 }
 
-void MonitorImpl::Run()
-{
-    size_t seek;
+void MonitorImpl::Run() {
+    size_t seek = 0;
     struct stat* st_mark = new struct stat;
     while (0 != stat(log_path.c_str(), st_mark)) {
         LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
@@ -145,7 +145,8 @@ void MonitorImpl::Run()
             if (0 != stat(log_path.c_str(), st_tmp)) {
                 LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
                      errno, strerror(errno));
-                assert(0);
+                sleep(1);
+                continue;
             } else if (st_tmp->st_ino != st_mark->st_ino) {
                 fin.close();
                 fin.clear();
@@ -153,12 +154,15 @@ void MonitorImpl::Run()
                 delete st_mark;
                 st_mark = st_tmp;
                 continue;
-            } else {
+            } else if (seek != 0) {
                 delete st_tmp;
                 fin.clear();  
                 fin.seekg(seek, std::ios::beg);  
                 sleep(1);  
                 continue;  
+            } else {
+                sleep(1);
+                continue;
             }
         }
         getline(fin, line);
@@ -170,8 +174,7 @@ void MonitorImpl::Run()
     return;
 }
 
-bool MonitorImpl::ExecRule(std::string src)
-{
+bool MonitorImpl::ExecRule(std::string src) {
     for (std::vector<Rule*>::iterator it = rule_list_.begin();
             it != rule_list_.end(); it++) {
         if (Matching(src, (*it)->watch)) {
@@ -181,8 +184,7 @@ bool MonitorImpl::ExecRule(std::string src)
     return true;
 }
 
-bool MonitorImpl::Matching(std::string src, Watch* watch) 
-{
+bool MonitorImpl::Matching(std::string src, Watch* watch) {
     assert(watch != NULL);
     boost::cmatch mat;
     if (boost::regex_search(src.c_str(), mat, watch->reg)) {
@@ -192,8 +194,7 @@ bool MonitorImpl::Matching(std::string src, Watch* watch)
     return false;
 }
 
-bool MonitorImpl::Judging( int* cnt, Trigger* trigger)
-{
+bool MonitorImpl::Judging( int* cnt, Trigger* trigger) {
     assert(trigger != NULL);
     bool ret = false;
     if (trigger->relate == "<") {

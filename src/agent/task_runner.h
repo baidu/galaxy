@@ -87,6 +87,7 @@ protected:
             boost::function<void()> callback, 
             int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
+    void PrepareStartMonitor(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
     void StartMonitorAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
 
@@ -126,6 +127,9 @@ public:
     virtual void StopPost();
 
     static bool RecoverRunner(
+            const std::string& persistence_path);
+
+    static bool RecoverMonitor(
             const std::string& persistence_path);
 protected:
 

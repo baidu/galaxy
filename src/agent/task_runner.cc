@@ -19,17 +19,20 @@
 #include <pwd.h>
 #include "common/logging.h"
 #include "common/util.h"
+#include "common/this_thread.h"
 #include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
 #include <gflags/gflags.h>
- 
+
 DECLARE_int32(task_retry_times);
+DECLARE_int32(agent_app_stop_wait_retry_times);
 DECLARE_string(task_acct);
 
 namespace galaxy {
 
 static const std::string RUNNER_META_PREFIX = "task_runner_";
+static const std::string MONITOR_META_PREFIX = "task_monitor_";
 
 int AbstractTaskRunner::IsProcessRunning(pid_t process){
     if ((int64_t)process == -1) {
@@ -140,24 +143,28 @@ int AbstractTaskRunner::Stop(){
 
     // TODO pid reuse will cause some trouble
     LOG(INFO,"start to kill process group %d",m_group_pid);
-    do {
-        int ret = killpg(m_group_pid, SIGKILL);
-        if (ret != 0) {
-            LOG(WARNING,"fail to kill process group %d err[%d: %s]",
-                    m_group_pid, errno, strerror(errno));
-            if (errno == ESRCH) {
-                break; 
+    int ret = killpg(m_group_pid, SIGKILL);
+    if (ret != 0 && errno == ESRCH) {
+        LOG(WARNING,"fail to kill process group %d err[%d: %s]",
+                m_group_pid, errno, strerror(errno));
+    } else {
+        int wait_time = 0;
+        for (; wait_time < FLAGS_agent_app_stop_wait_retry_times; 
+                ++wait_time) {
+            pid_t killed_pid = waitpid(m_group_pid, &ret, WNOHANG);
+            if (killed_pid == -1 
+                    || killed_pid == 0) {
+                common::ThisThread::Sleep(10); 
+                continue; 
             }
+            break;
         }
-        pid_t killed_pid = wait(&ret);
-        if (killed_pid == -1) {
-            LOG(FATAL,"fail to kill process group %d err[%d: %s]",
-                    m_group_pid, errno, strerror(errno));
-            SetStatus(ERROR);
-            return -1;
-        } 
-    } while (0);
-    StopPost();
+        if (wait_time >= FLAGS_agent_app_stop_wait_retry_times) {
+             LOG(WARNING, "kill child process %d wait failed", 
+                      m_group_pid);
+             return -1;
+        }
+    }
     LOG(INFO,"kill child process %d successfully", m_group_pid);
     m_child_pid = -1;
     m_group_pid = -1;
@@ -166,24 +173,32 @@ int AbstractTaskRunner::Stop(){
         return 0;
     }
     LOG(INFO,"start to kill monitor group %d",m_monitor_gid);
-    do {
-        int ret = killpg(m_monitor_gid, 9);
-        if(ret != 0){
-            LOG(WARNING,"fail to kill monitor group %d err[%d: %s]",
-                    m_monitor_gid, errno, strerror(errno));
-            if (errno == ESRCH) {
-                break;
+    ret = killpg(m_monitor_pid, SIGKILL);
+    if (ret != 0 && errno == ESRCH) {
+        LOG(WARNING, "fail to kill monitor process %d, err[%d:%s]",
+                m_monitor_pid, errno, strerror(errno));
+    } else {
+        int wait_time = 0;
+        for (; wait_time < FLAGS_agent_app_stop_wait_retry_times;
+                ++wait_time) {
+            pid_t killed_pid = waitpid(m_monitor_pid, &ret, WNOHANG);
+            if (killed_pid == -1 || killed_pid == 0) {
+                common::ThisThread::Sleep(10);
+                continue;
             }
+            break;
         }
-        pid_t killed_pid = wait(&ret);
-        if (killed_pid == -1) {
-            LOG(FATAL,"fail to kill monitor group %d",m_monitor_gid);
+        if (wait_time >= FLAGS_agent_app_stop_wait_retry_times) {
+            LOG(WARNING, "kill monitor %d wait failed.", 
+                    m_monitor_pid);
             return -1;
         }
-    }while(0);        
+    }
+
     LOG(INFO,"kill monitor %d successfully", m_monitor_pid);
     m_monitor_pid = -1;
     m_monitor_gid = -1;
+    StopPost();
 
     return 0;
 }
@@ -197,6 +212,19 @@ void AbstractTaskRunner::PrepareStart(std::vector<int>& fd_vector,int* stdout_fd
                       S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
                       S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+}
+
+void AbstractTaskRunner::PrepareStartMonitor(std::vector<int>& fd_vector,int* stdout_fd, int* stderr_fd) {
+    pid_t current_pid = getpid();
+    common::util::GetProcessFdList(current_pid, fd_vector);
+    std::string task_stdout = m_workspace->GetPath() 
+        + "/galaxy_monitor/" + "/./stdout";
+    std::string task_stderr = m_workspace->GetPath() 
+        + "/galaxy_monitor/" + "/./stderr";
+    *stdout_fd = open(task_stdout.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
+            S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    *stderr_fd = open(task_stderr.c_str(), O_CREAT | O_TRUNC | O_WRONLY,
+            S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 void AbstractTaskRunner::StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd){
@@ -270,7 +298,7 @@ void AbstractTaskRunner::StartMonitorAfterFork(std::vector<int>& fd_vector,int s
     std::string conf_file = conf_path + "monitor.conf";
     chdir(conf_path.c_str());
     std::string cmd_line = std::string("/home/galaxy/monitor/")
-        + std::string("monitor_agent --monitor_conf=") + conf_file;
+        + std::string("monitor_agent --monitor_conf_path=") + conf_file;
     char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
         const_cast<char*>(cmd_line.c_str()), NULL};
     std::stringstream task_id_env;
@@ -315,6 +343,13 @@ void CommandTaskRunner::StopPost() {
     if (!file::Remove(meta_file)) {
         LOG(WARNING, "rm meta failed rm %s", 
                 meta_file.c_str());
+    }
+    std::string monitor_meta = persistence_path_dir_ + "/"
+        + MONITOR_META_PREFIX
+        + boost::lexical_cast<std::string>(sequence_id_);
+    if (!file::Remove(monitor_meta)) {
+        LOG(WARNING, "rm monitor meta failed %s",
+                monitor_meta.c_str());
     }
 }
 
@@ -466,7 +501,7 @@ int CommandTaskRunner::StartMonitor()
     }
     int stdout_fd, stderr_fd;
     std::vector<int> fds;
-    PrepareStart(fds, &stdout_fd, &stderr_fd);
+    PrepareStartMonitor(fds, &stdout_fd, &stderr_fd);
 
     std::string::size_type replace_start =
         m_task_info.monitor_conf().find("<intput>");
@@ -508,6 +543,25 @@ int CommandTaskRunner::StartMonitor()
         if (ret != 0) {
             assert(0);
         }
+        std::string meta_file = persistence_path_dir_
+                + "/" + MONITOR_META_PREFIX
+                + boost::lexical_cast<std::string>(sequence_id_);
+        int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+        if (meta_fd == -1) {
+            assert(0);
+        }
+        int64_t value = my_pid;
+        int len = write(meta_fd, (void*)&value, sizeof(value));
+        if (len == -1) {
+            close(meta_fd);
+            assert(0);
+        }
+       
+        if (0 != fsync(meta_fd)) {
+            close(meta_fd);
+            assert(0);
+        }
+        close(meta_fd);
         StartMonitorAfterFork(fds, stdout_fd, stderr_fd);
     } else {
         close(stdout_fd);
@@ -592,11 +646,81 @@ bool CommandTaskRunner::RecoverRunner(const std::string& persistence_path) {
     }
     close(fin);
 
-    LOG(DEBUG, "recove gpid %lu", value);
+    LOG(DEBUG, "recover gpid %lu", value);
     int ret = killpg((pid_t)value, SIGKILL);
     if (ret != 0 && errno != ESRCH) {
         LOG(WARNING, "fail to kill process group %lu", value);
         return false;
+    }
+    return true;
+}
+
+bool CommandTaskRunner::RecoverMonitor(const std::string& persistence_path) {
+    std::vector<std::string> files;
+    if (!file::GetDirFilesByPrefix(
+                persistence_path,
+                MONITOR_META_PREFIX,
+                &files)) {
+        LOG(WARNING, "get meta files failed");
+        return false;
+    }
+    LOG(DEBUG, "get meta files size %lu", files.size());
+    if (files.size() == 0) {
+        return true;
+    }
+    int max_seq_id = -1;
+    std::string last_meta_file;
+    for (size_t i = 0; i < files.size(); i++) {
+        std::string file = files[i];
+        size_t pos = file.find(MONITOR_META_PREFIX);
+        if (pos == std::string::npos) {
+            continue;
+        }
+
+        if (pos + MONITOR_META_PREFIX.size() >= file.size()) {
+            LOG(WARNING, "meta file format err %s", file.c_str());
+            continue;
+        }
+
+        int cur_id = atoi(file.substr(pos + MONITOR_META_PREFIX.size()).c_str());
+        if (max_seq_id < cur_id) {
+            max_seq_id = cur_id;
+            last_meta_file = file;
+        }
+    }
+    if (max_seq_id < 0) {
+        return false;
+    }
+
+    std::string meta_file = last_meta_file;
+    LOG(DEBUG, "start to recover %s", meta_file.c_str());
+    int fin = open(meta_file.c_str(), O_RDONLY);
+    if (fin == -1) {
+        LOG(WARNING, "open meta file failed %s err[%d: %s]",
+                meta_file.c_str(),
+                errno,
+                strerror(errno));
+        return false;
+    }
+
+    size_t value;
+    int len = read(fin, (void*)&value, sizeof(value));
+    if (len == -1) {
+        LOG(WARNING, "read meta file failed err[%d: %s]",
+                errno,
+                strerror(errno));
+        close(fin);
+        return false;
+    }
+    close(fin);
+
+    LOG(DEBUG, "recover gpid %lu", value);
+    if (0 != value) {
+        int ret = killpg((pid_t)value, SIGKILL);
+        if (ret != 0 && errno != ESRCH) {
+            LOG(WARNING, "fail to kill process group %lu", value);
+            return false;
+        }
     }
     return true;
 }

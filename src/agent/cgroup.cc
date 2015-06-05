@@ -31,6 +31,7 @@ DECLARE_int32(agent_cgroup_clear_retry_times);
 namespace galaxy {
 
 static const std::string RUNNER_META_PREFIX = "task_runner_";
+static const std::string MONITOR_META_PREFIX = "task_monitor_";
 static int CPU_CFS_PERIOD = 100000;
 static int MIN_CPU_CFS_QUOTA = 1000;
 static int CPU_SHARE_PER_CPU = 1024;
@@ -415,7 +416,7 @@ int ContainerTaskRunner::StartMonitor() {
     }
     int stdout_fd, stderr_fd;
     std::vector<int> fds;
-    PrepareStart(fds, &stdout_fd, &stderr_fd);
+    PrepareStartMonitor(fds, &stdout_fd, &stderr_fd);
 
     std::string::size_type replace_start =
         m_task_info.monitor_conf().find("<intput>");
@@ -441,7 +442,7 @@ int ContainerTaskRunner::StartMonitor() {
     int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
     if (conf_fd == -1) {
         LOG(FATAL, "open monitor_conf %s failed [%d:%s]", 
-                monitor_conf.c_str(),errno, strerror(errno));
+                monitor_conf.c_str(), errno, strerror(errno));
         return -1;
     } else {
         int len = write(conf_fd, (void*)new_conf.c_str(),
@@ -462,6 +463,26 @@ int ContainerTaskRunner::StartMonitor() {
         if (ret != 0) {
             assert(0);
         }
+
+        std::string meta_file = persistence_path_dir_
+            + "/" + MONITOR_META_PREFIX
+            + boost::lexical_cast<std::string>(sequence_id_);
+        int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+        if (meta_fd == -1) {
+            assert(0);
+        }
+        int64_t value = my_pid;
+        int len = write(meta_fd, (void*)&value, sizeof(value));
+        if (len == -1) {
+            close(meta_fd);
+            assert(0);
+        }
+
+        if (0 != fsync(meta_fd)) {
+            close(meta_fd);
+            assert(0);
+        }
+        close(meta_fd);
         PutToCGroup();
         StartMonitorAfterFork(fds, stdout_fd, stderr_fd);
     } else {
@@ -538,12 +559,13 @@ void ContainerTaskRunner::StopPost() {
     if (!file::Remove(meta_file)) {
         LOG(WARNING, "remove %s failed", meta_file.c_str()); 
     }
-    //std::string monitor_conf = m_workspace->GetPath()
-    //    + "/galaxy_monitor/monitor.conf";
-    //if (!file::Remove(monitor_conf)) {
-    //    LOG(WARNING, "rm monitor cfg failed rm %s",
-    //            monitor_conf.c_str());
-    //}
+    std::string monitor_meta = persistence_path_dir_
+        + "/" + MONITOR_META_PREFIX
+        + boost::lexical_cast<std::string>(sequence_id_);
+    if (!file::Remove(monitor_meta)) {
+        LOG(WARNING, "rm monitor meta failed rm %s",
+                monitor_meta.c_str());
+    }
     return;
 }
 
@@ -607,12 +629,6 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         close(fin);
         return false;
     }
-    LOG(DEBUG, "recove gpid %lu", value);
-    int ret = killpg((pid_t)value, 9);
-    if (ret != 0 && errno != ESRCH) {
-        LOG(WARNING, "fail to kill process group %lu", value); 
-        return false;
-    }
 
     value = 0;
     len = read(fin, (void*)&value, sizeof(value));
@@ -623,6 +639,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         close(fin);
         return false;
     }
+
     close(fin);
 
     std::vector<std::string> support_cgroup;  
@@ -634,7 +651,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     LOG(DEBUG, "destroy cgroup %lu", value);
     CGroupCtrl ctl(FLAGS_cgroup_root, support_cgroup);
     int max_retry_times = 10;
-    ret = -1;
+    int ret = -1;
     while (max_retry_times-- > 0) {
         ret = ctl.Destroy(value);
         if (ret != 0) {
@@ -648,6 +665,78 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         return true; 
     }
     return false;
+}
+
+bool ContainerTaskRunner::RecoverMonitor(const std::string& persistence_path) {
+    std::vector<std::string> files;
+    if (!file::GetDirFilesByPrefix(
+                persistence_path,
+                MONITOR_META_PREFIX,
+                &files)) {
+        LOG(WARNING, "get meta files failed"); 
+        return false;
+    }
+
+    if (files.size() == 0) {
+        return true; 
+    }
+
+    int max_seq_id = -1;
+    std::string last_meta_file;
+    for (size_t i = 0; i < files.size(); i++) {
+        std::string file = files[i]; 
+        size_t pos = file.find(MONITOR_META_PREFIX);
+        if (pos == std::string::npos) {
+            continue; 
+        }
+
+        if (pos + MONITOR_META_PREFIX.size() >= file.size()) {
+            LOG(WARNING, "meta file format err %s", file.c_str()); 
+            continue;
+        }
+
+        int cur_id = atoi(file.substr(
+                    pos + MONITOR_META_PREFIX.size()).c_str());
+        if (max_seq_id < cur_id) {
+            max_seq_id = cur_id; 
+            last_meta_file = file;
+        }
+    }
+
+    if (max_seq_id < 0) {
+        return false; 
+    }
+
+    std::string meta_file = last_meta_file;
+    LOG(DEBUG, "start to recover %s", meta_file.c_str());
+    int fin = open(meta_file.c_str(), O_RDONLY);
+    if (fin == -1) {
+        LOG(WARNING, "open meta file failed %s err[%d: %s]", 
+                meta_file.c_str(),
+                errno,
+                strerror(errno)); 
+        return false;
+    }
+
+    size_t value;
+    int len = read(fin, (void*)&value, sizeof(value));
+    if (len == -1) {
+        LOG(WARNING, "read meta file failed err[%d: %s]",
+                errno,
+                strerror(errno)); 
+        close(fin);
+        return false;
+    }
+    LOG(DEBUG, "recove monitor gpid %lu", value);
+    if (0 != value) {
+        int ret = killpg((pid_t)value, 9);
+        if (ret != 0 && errno != ESRCH) {
+            LOG(WARNING, "fail to kill monitor group %lu", value); 
+            return false;
+        }
+    }
+    close(fin);
+    return true;
 }
 
 int ContainerTaskRunner::Clean() {
