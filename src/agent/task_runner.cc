@@ -14,17 +14,19 @@
 #include <errno.h>
 #include <sstream>
 #include <sys/types.h>
+#include <gflags/gflags.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <pwd.h>
 #include "common/logging.h"
 #include "common/util.h"
+#include "common/this_thread.h"
 #include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
-#include <gflags/gflags.h>
 
 DECLARE_int32(task_retry_times);
+DECLARE_int32(agent_app_stop_wait_retry_times);
 DECLARE_string(task_acct);
 
 namespace galaxy {
@@ -132,23 +134,29 @@ int AbstractTaskRunner::Stop(){
 
     // TODO pid reuse will cause some trouble
     LOG(INFO,"start to kill process group %d",m_group_pid);
-    do {
-        int ret = killpg(m_group_pid, SIGKILL);
-        if (ret != 0) {
-            LOG(WARNING,"fail to kill process group %d err[%d: %s]",
-                    m_group_pid, errno, strerror(errno));
-            if (errno == ESRCH) {
-                break; 
+    int ret = killpg(m_group_pid, SIGKILL);
+    if (ret != 0 && errno == ESRCH) {
+        LOG(WARNING,"fail to kill process group %d err[%d: %s]",
+                m_group_pid, errno, strerror(errno));
+    } else {
+        int wait_time = 0;
+        for (; wait_time < FLAGS_agent_app_stop_wait_retry_times; 
+                ++wait_time) {
+            pid_t killed_pid = waitpid(m_group_pid, &ret, WNOHANG);
+            if (killed_pid == -1 
+                    || killed_pid == 0) {
+                // TODO sleep in lock 
+                common::ThisThread::Sleep(10); 
+                continue; 
             }
+            break;
         }
-        pid_t killed_pid = wait(&ret);
-        if (killed_pid == -1) {
-            LOG(FATAL,"fail to kill process group %d err[%d: %s]",
-                    m_group_pid, errno, strerror(errno));
-            SetStatus(ERROR);
-            return -1;
-        } 
-    } while (0);
+        if (wait_time >= FLAGS_agent_app_stop_wait_retry_times) {
+            LOG(WARNING, "kill child process %d wait failed", 
+                    m_group_pid);
+            return -1; 
+        }
+    }
     StopPost();
     LOG(INFO,"kill child process %d successfully", m_group_pid);
     m_child_pid = -1;
