@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <sstream>
 #include <sys/types.h>
+#include <gflags/gflags.h>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <pwd.h>
@@ -23,7 +24,6 @@
 #include "downloader_manager.h"
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
-#include <gflags/gflags.h>
 
 DECLARE_int32(task_retry_times);
 DECLARE_int32(agent_app_stop_wait_retry_times);
@@ -154,17 +154,18 @@ int AbstractTaskRunner::Stop(){
             pid_t killed_pid = waitpid(m_group_pid, &ret, WNOHANG);
             if (killed_pid == -1 
                     || killed_pid == 0) {
+                // TODO sleep in lock 
                 common::ThisThread::Sleep(10); 
                 continue; 
             }
             break;
         }
         if (wait_time >= FLAGS_agent_app_stop_wait_retry_times) {
-             LOG(WARNING, "kill child process %d wait failed", 
-                      m_group_pid);
-             return -1;
+            LOG(WARNING, "kill child process %d wait failed", 
+                    m_group_pid);
+            return -1; 
         }
-    }
+    } 
     LOG(INFO,"kill child process %d successfully", m_group_pid);
     m_child_pid = -1;
     m_group_pid = -1;
