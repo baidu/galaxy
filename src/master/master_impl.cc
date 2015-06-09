@@ -137,6 +137,7 @@ bool MasterImpl::Recover() {
         }
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
+        job_info.monitor_conf = cell.monitor_conf();
 
         LOG(INFO, "recover job info %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
@@ -740,10 +741,11 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     } else {
         job.deploy_step_size = job.replica_num;
     }
+    job.monitor_conf = request->monitor_conf();
     for (int i=0; i < request->restrict_tags_size(); i++) {
         job.restrict_tags.insert(request->restrict_tags(i));
     }
-    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d ,restrict_tag %s",
+    LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d ,restrict_tag %s, monitor_conf: %s",
             job.job_name.c_str(),
             job.replica_num,
             job.cmd_line.c_str(),
@@ -752,7 +754,8 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
             job.mem_share,
             job.deploy_step_size,
             job.one_task_per_host,
-            boost::algorithm::join(job.restrict_tags, ",").c_str());
+            boost::algorithm::join(job.restrict_tags, ",").c_str(),
+            job.monitor_conf.c_str());
 
     if (!PersistenceJobInfo(job)) {
         response->set_status(kMasterResponseErrorInternal); 
@@ -790,8 +793,10 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_job_replicate_num(job->replica_num);
     rt_request.set_job_id(job->id);
     rt_request.set_cpu_limit(job->cpu_limit);
+    rt_request.set_monitor_conf(job->monitor_conf);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
+    LOG(DEBUG, "monitor conf %s", job->monitor_conf.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
                                         &rt_request, &rt_response, 5, 1);
     if (!ret || (rt_response.has_status() 
@@ -811,6 +816,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         instance.set_start_time(common::timer::now_time());
         instance.set_status(DEPLOYING);
         instance.set_offset(job->running_num);
+        instance.set_monitor_conf(job->monitor_conf);
         job->agent_tasks[agent_addr].insert(task_id);
         job->running_num ++;
         job->deploying_tasks.insert(task_id);
@@ -1250,19 +1256,21 @@ bool MasterImpl::PersistenceJobInfo(const JobInfo& job_info) {
     cell.set_deploy_step_size(job_info.deploy_step_size);
     cell.set_killed(job_info.killed);
     cell.set_cpu_limit(job_info.cpu_limit);
+    cell.set_monitor_conf(job_info.monitor_conf);
     cell.set_one_task_per_host(job_info.one_task_per_host);
     std::set<std::string>::iterator it = job_info.restrict_tags.begin();
     for (; it != job_info.restrict_tags.end(); ++it) {
         cell.add_restrict_tags(*it);
     }
-    LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d tags:%s",
+    LOG(DEBUG, "cell name: %s replica_num: %d cmd_line: %s cpu_share: %lf mem_share: %ld deloy_step_size: %d tags:%s monitor_conf:%s",
             cell.job_name().c_str(),
             cell.replica_num(),
             cell.cmd_line().c_str(),
             cell.cpu_share(),
             cell.mem_share(),
             cell.deploy_step_size(),
-            boost::algorithm::join(cell.restrict_tags(), ",").c_str()
+            boost::algorithm::join(cell.restrict_tags(), ",").c_str(),
+            cell.monitor_conf().c_str()
         );
     // check persistence_handler init
     if (persistence_handler_ == NULL) {

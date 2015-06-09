@@ -8,6 +8,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <errno.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -30,6 +31,7 @@ DEFINE_int64(mem_gbytes, 32, "mem in giga bytes that job needs");
 DEFINE_string(restrict_tag, "", "specify tag to run task");
 DEFINE_string(tag, "", "add tag to agent");
 DEFINE_string(agent_list, "", "specify agent list to add tag ,eg host:port,host2:port");
+DEFINE_string(monitor_conf, "", "specify monitor agent config file");
 
 std::string USAGE = "\n./galaxy_client add --master_addr=localhost:8102 --job_name=1234 ...\n" 
                    "./galaxy_client list --task_id=1234 --master_addr=localhost:8102 \n"
@@ -81,6 +83,20 @@ int ProcessNewJob(){
     job.cpu_limit = FLAGS_cpu_limit;
     job.one_task_per_host = FLAGS_one_task_per_host;
     job.restrict_tag = FLAGS_restrict_tag;
+    FILE* fd = fopen(FLAGS_monitor_conf.c_str(), "r");
+    if (fd == NULL) {
+        fprintf(stderr, "Open %s for read fail [%d:%s]\n", FLAGS_monitor_conf.c_str(),
+                errno, strerror(errno));
+        return -2;
+    }
+    std::string monitor_conf;
+    char buf[1024];
+    int len = 0;
+    while ((len = fread(buf, 1, 1024, fd)) > 0) {
+        monitor_conf.append(buf, len);
+    }
+    fclose(fd);
+    job.monitor_conf = monitor_conf;
     fprintf(stdout, "%ld", galaxy->NewJob(job));
     return 0;
 }

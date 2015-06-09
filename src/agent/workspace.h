@@ -58,6 +58,7 @@ public:
     int Clean();
     bool IsExpire();
     std::string GetPath();
+    std::string GetRoot();
     virtual int MoveTo(const std::string& new_dir);
     ~DefaultWorkspace(){
     }
