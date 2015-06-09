@@ -796,7 +796,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_monitor_conf(job->monitor_conf);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
-    agent_lock_.UnLock();
+    agent_lock_.Unlock();
     LOG(DEBUG, "monitor conf %s", job->monitor_conf.c_str());
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
                                         &rt_request, &rt_response, 5, 1);
