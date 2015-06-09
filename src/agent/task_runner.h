@@ -25,6 +25,8 @@ public:
     * */
    virtual int Start() = 0 ;
 
+   virtual int StartMonitor() = 0;
+
    /**
     * restart
     * */
@@ -55,13 +57,17 @@ public:
                        :m_task_info(task_info),
                        m_child_pid(-1),
                        m_group_pid(-1),
+                       m_monitor_pid(-1),
+                       m_monitor_gid(-1),
                        m_workspace(workspace),
                        m_has_retry_times(0),
                        m_task_state(DEPLOYING),
                        downloader_id_(-1) {}
     virtual int Prepare() = 0;
     virtual int Start() = 0;
+    virtual int StartMonitor() = 0;
     int IsRunning();
+    int IsProcessRunning(pid_t pid);
     int Stop();
     int ReStart();
     void AsyncDownload(boost::function<void()> callback);
@@ -81,12 +87,17 @@ protected:
             boost::function<void()> callback, 
             int ret);
     void PrepareStart(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
+    void PrepareStartMonitor(std::vector<int>& fd_vector,int* stdout_fd,int* stderr_fd);
     void StartTaskAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
+    void StartMonitorAfterFork(std::vector<int>& fd_vector,int stdout_fd,int stderr_fd);
+
 protected:
     TaskInfo m_task_info;
     //task parent pid
     pid_t  m_child_pid;
     pid_t  m_group_pid;
+    pid_t  m_monitor_pid;
+    pid_t  m_monitor_gid;
     DefaultWorkspace * m_workspace;
     int m_has_retry_times;
     int m_task_state;
@@ -111,10 +122,14 @@ public:
     }
     virtual int Prepare();
     int Start();
+    int StartMonitor();
     virtual void Status(TaskStatus* status);
     virtual void StopPost();
 
     static bool RecoverRunner(
+            const std::string& persistence_path);
+
+    static bool RecoverMonitor(
             const std::string& persistence_path);
 protected:
 

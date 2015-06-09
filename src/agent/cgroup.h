@@ -81,6 +81,9 @@ class ContainerTaskRunner:public AbstractTaskRunner{
 public:
     static bool RecoverRunner(
             const std::string& persistence_path);
+    
+    static bool RecoverMonitor(
+            const std::string& persistence_path);
 
     ContainerTaskRunner(TaskInfo task_info,
                         std::string cg_root,
@@ -97,6 +100,7 @@ public:
                         sequence_id_(0) {}
     virtual int Prepare();
     virtual int Start();
+    virtual int StartMonitor();
     void PersistenceAble(const std::string& persistence_path) {
         persistence_path_dir_ = persistence_path;
     }

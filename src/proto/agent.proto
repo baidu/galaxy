@@ -15,6 +15,7 @@ message RunTaskRequest {
     optional int32 task_offset = 8;
     optional int64 job_id = 9; // use to rebuild master
     optional double cpu_limit = 10;
+    optional string monitor_conf = 11;
 }
 
 message RunTaskResponse {
