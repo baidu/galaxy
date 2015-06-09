@@ -792,8 +792,10 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     rt_request.set_cpu_limit(job->cpu_limit);
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
+    agent_lock_.UnLock();
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
                                         &rt_request, &rt_response, 5, 1);
+    agent_lock_.Lock();
     if (!ret || (rt_response.has_status() 
               && rt_response.status() != 0)) {
         LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
