@@ -31,6 +31,7 @@ DECLARE_int32(agent_cgroup_clear_retry_times);
 namespace galaxy {
 
 static const std::string RUNNER_META_PREFIX = "task_runner_";
+static const std::string MONITOR_META_PREFIX = "task_monitor_";
 static int CPU_CFS_PERIOD = 100000;
 static int MIN_CPU_CFS_QUOTA = 1000;
 static int CPU_SHARE_PER_CPU = 1024;
@@ -140,7 +141,7 @@ int CGroupCtrl::Destroy(int64_t task_id) {
                         }     
                     }
                 }
-                common::ThisThread::Sleep(100);
+                common::ThisThread::Sleep(50);
             }
         }
         if (clear_retry_times 
@@ -312,8 +313,13 @@ int ContainerTaskRunner::Prepare() {
                 m_task_info.task_id()); 
         return -1;
     }
-
-    return Start();
+    
+    int ret = Start();
+    if (0 != ret) {
+        return ret;
+    }
+    StartMonitor();
+    return ret;
 }
 
 void ContainerTaskRunner::PutToCGroup(){
@@ -398,6 +404,102 @@ int ContainerTaskRunner::Start() {
     return 0;
 }
 
+int ContainerTaskRunner::StartMonitor() {
+    LOG(INFO, "start a monitor with id %ld", m_task_info.task_id());
+    if (0 == m_task_info.monitor_conf().size()) {
+        return -1;
+    }
+    if (IsProcessRunning(m_monitor_pid) == 0) {
+        LOG(WARNING, "task [%ld] has been monitoring pid [%ld], ", 
+                m_task_info.task_id(), m_monitor_pid);
+        return -1;
+    }
+    int stdout_fd, stderr_fd;
+    std::vector<int> fds;
+    PrepareStartMonitor(fds, &stdout_fd, &stderr_fd);
+
+    std::string::size_type replace_start =
+        m_task_info.monitor_conf().find("<intput>");
+    replace_start =
+         m_task_info.monitor_conf().find(":");
+    std::string::size_type replace_end =
+        m_task_info.monitor_conf().find("\n", replace_start);
+
+    char cur_path[1024] = {0};
+    if (NULL == getcwd(cur_path, 1024)) {
+        LOG(FATAL, "get cur path err [%d:%s]", errno, strerror(errno));
+        return -1;
+    }
+    std::string log_path = std::string(cur_path) + "/"
+        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
+        + m_task_info.monitor_conf().substr(replace_start + 1,
+                replace_end - replace_start - 1);
+
+    std::string new_conf = m_task_info.monitor_conf();
+
+    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
+    std::string monitor_conf = m_workspace->GetPath() + "/galaxy_monitor/monitor.conf";
+    int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+    if (conf_fd == -1) {
+        LOG(FATAL, "open monitor_conf %s failed [%d:%s]", 
+                monitor_conf.c_str(), errno, strerror(errno));
+        return -1;
+    } else {
+        int len = write(conf_fd, (void*)new_conf.c_str(),
+                new_conf.size());
+        if (len == -1) {
+            LOG(FATAL, "write monitor_conf %s failed [%d:%s]",monitor_conf.c_str(),
+                    errno, strerror(errno));
+            close(conf_fd);
+            return -1;
+
+        }
+        close(conf_fd);
+    }
+    m_monitor_pid = fork();
+    if (m_monitor_pid == 0) {
+        pid_t my_pid = getpid();
+        int ret = setpgid(my_pid, my_pid);
+        if (ret != 0) {
+            assert(0);
+        }
+
+        std::string meta_file = persistence_path_dir_
+            + "/" + MONITOR_META_PREFIX
+            + boost::lexical_cast<std::string>(sequence_id_);
+        int meta_fd = open(meta_file.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
+        if (meta_fd == -1) {
+            assert(0);
+        }
+        int64_t value = my_pid;
+        int len = write(meta_fd, (void*)&value, sizeof(value));
+        if (len == -1) {
+            close(meta_fd);
+            assert(0);
+        }
+
+        if (0 != fsync(meta_fd)) {
+            close(meta_fd);
+            assert(0);
+        }
+        close(meta_fd);
+        PutToCGroup();
+        StartMonitorAfterFork(fds, stdout_fd, stderr_fd);
+    } else {
+        close(stdout_fd);
+        close(stderr_fd);
+        if (m_monitor_pid == -1) {
+            LOG(WARNING, "monitor with id %ld fork failed err[%d: %s]",
+                    m_task_info.task_id(),
+                    errno,
+                    strerror(errno));
+            return -1;
+        }
+        m_monitor_gid = m_monitor_pid;
+    }
+    return 0;
+}
+
 void ContainerTaskRunner::Status(TaskStatus* status) {
     if (collector_ != NULL) {
         status->set_cpu_usage(collector_->GetCpuUsage());
@@ -456,6 +558,13 @@ void ContainerTaskRunner::StopPost() {
         + boost::lexical_cast<std::string>(sequence_id_);
     if (!file::Remove(meta_file)) {
         LOG(WARNING, "remove %s failed", meta_file.c_str()); 
+    }
+    std::string monitor_meta = persistence_path_dir_
+        + "/" + MONITOR_META_PREFIX
+        + boost::lexical_cast<std::string>(sequence_id_);
+    if (!file::Remove(monitor_meta)) {
+        LOG(WARNING, "rm monitor meta failed rm %s",
+                monitor_meta.c_str());
     }
     return;
 }
@@ -520,12 +629,6 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         close(fin);
         return false;
     }
-    LOG(DEBUG, "recove gpid %lu", value);
-    int ret = killpg((pid_t)value, 9);
-    if (ret != 0 && errno != ESRCH) {
-        LOG(WARNING, "fail to kill process group %lu", value); 
-        return false;
-    }
 
     value = 0;
     len = read(fin, (void*)&value, sizeof(value));
@@ -536,6 +639,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         close(fin);
         return false;
     }
+
     close(fin);
 
     std::vector<std::string> support_cgroup;  
@@ -547,7 +651,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     LOG(DEBUG, "destroy cgroup %lu", value);
     CGroupCtrl ctl(FLAGS_cgroup_root, support_cgroup);
     int max_retry_times = 10;
-    ret = -1;
+    int ret = -1;
     while (max_retry_times-- > 0) {
         ret = ctl.Destroy(value);
         if (ret != 0) {
@@ -561,6 +665,78 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
         return true; 
     }
     return false;
+}
+
+bool ContainerTaskRunner::RecoverMonitor(const std::string& persistence_path) {
+    std::vector<std::string> files;
+    if (!file::GetDirFilesByPrefix(
+                persistence_path,
+                MONITOR_META_PREFIX,
+                &files)) {
+        LOG(WARNING, "get meta files failed"); 
+        return false;
+    }
+
+    if (files.size() == 0) {
+        return true; 
+    }
+
+    int max_seq_id = -1;
+    std::string last_meta_file;
+    for (size_t i = 0; i < files.size(); i++) {
+        std::string file = files[i]; 
+        size_t pos = file.find(MONITOR_META_PREFIX);
+        if (pos == std::string::npos) {
+            continue; 
+        }
+
+        if (pos + MONITOR_META_PREFIX.size() >= file.size()) {
+            LOG(WARNING, "meta file format err %s", file.c_str()); 
+            continue;
+        }
+
+        int cur_id = atoi(file.substr(
+                    pos + MONITOR_META_PREFIX.size()).c_str());
+        if (max_seq_id < cur_id) {
+            max_seq_id = cur_id; 
+            last_meta_file = file;
+        }
+    }
+
+    if (max_seq_id < 0) {
+        return false; 
+    }
+
+    std::string meta_file = last_meta_file;
+    LOG(DEBUG, "start to recover %s", meta_file.c_str());
+    int fin = open(meta_file.c_str(), O_RDONLY);
+    if (fin == -1) {
+        LOG(WARNING, "open meta file failed %s err[%d: %s]", 
+                meta_file.c_str(),
+                errno,
+                strerror(errno)); 
+        return false;
+    }
+
+    size_t value;
+    int len = read(fin, (void*)&value, sizeof(value));
+    if (len == -1) {
+        LOG(WARNING, "read meta file failed err[%d: %s]",
+                errno,
+                strerror(errno)); 
+        close(fin);
+        return false;
+    }
+    LOG(DEBUG, "recove monitor gpid %lu", value);
+    if (0 != value) {
+        int ret = killpg((pid_t)value, 9);
+        if (ret != 0 && errno != ESRCH) {
+            LOG(WARNING, "fail to kill monitor group %lu", value); 
+            return false;
+        }
+    }
+    close(fin);
+    return true;
 }
 
 int ContainerTaskRunner::Clean() {

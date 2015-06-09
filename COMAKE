@@ -31,7 +31,7 @@ INCPATHS('. ./src ./output/include')
 #LIBS('./libgalaxy.a')
 
 #链接参数.
-LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap')
+LDFLAGS('-lpthread -lcrypto -lrt -lidn -lssl -lldap -lboost_regex')
 
 #依赖模块
 CONFIGS('public/sofa-pbrpc@trunk@comake')
@@ -80,6 +80,7 @@ agent_utils_sources='src/agent/utils.cc common/logging.cc test/agent_utils_test.
 agent_utils_remove_sources='src/agent/utils.cc common/logging.cc test/agent_utils_remove_test.cc'
 agent_mock_sources='src/proto/master.proto common/logging.cc src/proto/task.proto src/proto/agent.proto test/pb_file_parser.cc test/agent_test_mock.cc'
 master_mock_sources='src/proto/master.proto src/proto/task.proto test/pb_file_parser.cc test/master_test_mock.cc'
+monitor_sources='common/logging.cc common/util.cc src/flags.cc src/monitor/monitor_main.cc src/monitor/monitor_impl.cc'
 
 
 #Application('galaxy',Sources(user_sources))
@@ -97,6 +98,7 @@ Application('agent_utils_test', Sources(agent_utils_sources));
 Application('agent_utils_remove_test', Sources(agent_utils_remove_sources));
 Application('agent_mock', Sources(agent_mock_sources));
 Application('master_mock', Sources(master_mock_sources));
+Application('monitor_agent', Sources(monitor_sources));
 #共享库
 #SharedLibrary('galaxy',Sources(user_sources),HeaderFiles(user_headers))
 #子目录

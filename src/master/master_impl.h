@@ -97,6 +97,7 @@ struct JobInfo {
     int32_t deploy_step_size;
     std::set<int64_t> deploying_tasks;
     double cpu_limit;
+    std::string monitor_conf;
     //单host单实例
     bool one_task_per_host;
     //限制job在标有特定tag机器上面运行

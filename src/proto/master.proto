@@ -39,12 +39,11 @@ message NewJobRequest {
     optional int32 replica_num = 5;
     optional double cpu_share = 6;      // soft limit
     optional int64 mem_share = 7;
-    //单个步骤部署实例个数
     optional int32 deploy_step_size = 9;
     optional double cpu_limit = 10;     // hard limit
     optional bool one_task_per_host = 11;
-    //限制实例在含有特定的tag机器上面运行
     repeated string restrict_tags = 12;
+    optional bytes monitor_conf = 13;
 }
 
 message NewJobResponse {
@@ -81,6 +80,7 @@ message TaskInstance {
     optional int64 memory_usage = 8;
     optional string root_path = 9;
     optional int32 end_time = 10;
+    optional bytes monitor_conf = 11;
 }
 message ListTaskRequest {
     optional int64 job_id = 2;
@@ -105,6 +105,7 @@ message JobCheckPointCell {
     optional double cpu_limit = 10;
     optional bool one_task_per_host = 11;
     repeated string restrict_tags = 12;
+    optional bytes monitor_conf = 13;
 }
 
 message JobInstance {

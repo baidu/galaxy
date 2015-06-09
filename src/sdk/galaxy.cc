@@ -78,6 +78,7 @@ int64_t GalaxyImpl::NewJob(const JobDescription& job){
     request.set_replica_num(job.replicate_count);
     request.set_cpu_share(job.cpu_share);
     request.set_mem_share(job.mem_share);
+    request.set_monitor_conf(job.monitor_conf);
     //目前只支持单个tag
     if (!job.restrict_tag.empty()) {
         request.add_restrict_tags(job.restrict_tag);
