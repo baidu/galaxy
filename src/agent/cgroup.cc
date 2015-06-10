@@ -169,7 +169,7 @@ int AbstractCtrl::AttachTask(pid_t pid) {
 int MemoryCtrl::SetKillMode(int mode) {
 #ifndef _BD_KERNEL_
     // memory.kill_mode is only support in internal kernel
-    LOG(WARNING, "kill mode set only support in BD internal kernel")
+    LOG(WARNING, "kill mode set only support in BD internal kernel");
     return 0;
 #endif
     std::string kill_mode = _my_cg_root + "/" + "memory.kill_mode";
