@@ -777,7 +777,6 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
         bool ret = rpc_client_->GetStub(agent_addr, &agent.stub);
         assert(ret);
     }
-
     int64_t task_id = next_task_id_++;
     while(tasks_.find(task_id) != tasks_.end()){
         task_id = next_task_id_++;
@@ -797,8 +796,10 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     RunTaskResponse rt_response;
     LOG(INFO, "ScheduleTask on %s", agent_addr.c_str());
     LOG(DEBUG, "monitor conf %s", job->monitor_conf.c_str());
+    agent_lock_.Unlock();
     bool ret = rpc_client_->SendRequest(agent.stub, &Agent_Stub::RunTask,
                                         &rt_request, &rt_response, 5, 1);
+    agent_lock_.Lock();
     if (!ret || (rt_response.has_status() 
               && rt_response.status() != 0)) {
         LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
