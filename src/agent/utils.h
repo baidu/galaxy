@@ -19,6 +19,7 @@ namespace galaxy {
 // %Y%m%d%H%M%S
 void GetStrFTime(std::string* time_str);
 
+
 namespace file {
 
 typedef boost::function<bool(const char* path)> OptFunc; 

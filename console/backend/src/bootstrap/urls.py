@@ -1,8 +1,12 @@
 # -*- coding:utf-8 -*-
 from django.conf import urls
-
+from django.contrib import admin
 urlpatterns = urls.patterns('bootstrap.views',
      (r'^$', 'index'),
+     (r'^login', 'login'),
+)
+urlpatterns += urls.patterns('',
+     (r'^admin/', urls.include(admin.site.urls)),
 )
 
 urlpatterns += urls.patterns('',

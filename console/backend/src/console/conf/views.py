@@ -1,5 +1,8 @@
 # -*- coding:utf-8 -*-
 from common import http
+from common import decorator
+
+@decorator.api_auth_required
 def get_conf(request):
     builder = http.ResponseBuilder()
     home = [{"nodeName":"服务列表","href":"#service","nodestyle":["level1"],"children":[]},

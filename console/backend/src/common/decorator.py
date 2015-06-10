@@ -19,3 +19,11 @@ def post_required(func):
     return post_wrapper
 
 
+def api_auth_required(func):
+
+    def api_auth_wrapper(request, *args, **kwds):
+        res = http.ResponseBuilder()
+        if request.user.is_authenticated():
+            return func(request, *args, **kwds)
+        return res.error("auth required").build_json()
+    return api_auth_wrapper

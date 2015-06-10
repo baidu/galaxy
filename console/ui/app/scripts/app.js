@@ -76,9 +76,20 @@ var galaxy = angular.module('galaxy.ui', [
     if(masterAddr ==null && $cookies.masterAddr != undefined ){
         masterAddr = $cookies.masterAddr;
     }
-    return $http.get("console/conf/get").then(function(response) {
-            galaxy.constant("config", {config:response.data.data.config,masterAddr:masterAddr,home:response.data.data.home,service:response.data.data.service});
-        }, function(errorResponse) {
+    var rootPrefixPath = "/";
+    return $http.get(rootPrefixPath+"conf/get").then(function(response) {
+            if (response.data.status != 0 && response.data.msg== "auth required") {
+                   window.location="/login";
+            }else{
+                 galaxy.constant("config", {config:response.data.data.config,
+                                       masterAddr:masterAddr,
+                                       home:response.data.data.home,
+                                       service:response.data.data.service,
+                                       rootPrefixPath:rootPrefixPath});
+
+
+            }
+         }, function(errorResponse) {
 
      });
   }

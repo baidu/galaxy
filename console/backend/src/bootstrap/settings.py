@@ -63,6 +63,9 @@ DATABASES = {
     }
 }
 
+TEMPLATE_DIRS = (
+    os.path.join(BASE_DIR,'templates'),
+)
 # Internationalization
 # https://docs.djangoproject.com/en/1.7/topics/i18n/
 
@@ -79,7 +82,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.7/howto/static-files/
-STATIC_URL = '/static/'
+STATIC_URL = '/statics/'
 
 LOGGING = {
     'version': 1,
@@ -96,5 +99,9 @@ LOGGING = {
         },
     },
 }
+STATICFILES_DIRS = (
+   os.path.join(BASE_DIR, "statics"),
+)
 GALAXY_MASTER='localhost:8102'
 GALAXY_CLIENT_BIN='/home/users/wangtaize/workspace/ps/se/galaxybk/galaxy_client'
+UUAP_CAS_SERVER='http://itebeta.baidu.com:8100/login'

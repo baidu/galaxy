@@ -46,7 +46,7 @@ angular.module('galaxy.ui.ctrl')
           $scope.totalItems = 0;
           $scope.currentPage = 1;
           var get_status = function(){
-               $http.get("/console/cluster/status?master="+config.masterAddr)
+               $http.get(config.rootPrefixPath + "cluster/status?master="+config.masterAddr)
                   .success(function(data){
                       if(data.status == 0){
                           $scope.allMachineList = data.data.machinelist;
