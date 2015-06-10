@@ -827,6 +827,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
 
 void MasterImpl::KilledTaskCallback(
         int64_t job_id,
+        std::string agent_addr,
         const KillTaskRequest* request, 
         KillTaskResponse* response, 
         bool failed, int err_code) {
@@ -837,7 +838,17 @@ void MasterImpl::KilledTaskCallback(
                 request->task_id(),
                 response->status(),
                 err_code);
-         
+        MutexLock lock(&agent_lock_);
+        if (agents_.find(agent_addr) != agents_.end()) {
+            AgentInfo& agent = agents_[agent_addr];
+            thread_pool_.DelayTask(100, 
+                    boost::bind(
+                        &MasterImpl::DelayRemoveZombieTaskOnAgent, 
+                        this, &agent, request->task_id()));
+        } else {
+            LOG(WARNING, "task with id %ld no need to kill, agent info is missing", 
+                    request->task_id()); 
+        }
     } else {
         MutexLock lock(&agent_lock_);
         std::string root_path;
@@ -886,7 +897,8 @@ bool MasterImpl::CancelTaskOnAgent(AgentInfo* agent, int64_t task_id) {
             KillTaskResponse*, 
             bool, int)> kill_callback = 
         boost::bind(&MasterImpl::KilledTaskCallback, 
-                    this, tasks_[task_id].job_id(),
+                    this, tasks_[task_id].job_id(), 
+                    agent->addr,
                     _1, _2, _3, _4);
     rpc_client_->AsyncRequest(agent->stub, 
                               &Agent_Stub::KillTask, 
