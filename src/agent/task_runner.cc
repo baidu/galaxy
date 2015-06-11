@@ -297,7 +297,7 @@ void AbstractTaskRunner::StartMonitorAfterFork(std::vector<int>& fd_vector,int s
     getcwd(cur_path, 1024);
     std::string conf_path = std::string(cur_path) + "/galaxy_monitor/";
     std::string conf_file = conf_path + "monitor.conf";
-    chdir(conf_path.c_str());
+    //chdir(conf_path.c_str());
     std::string cmd_line = std::string("/home/galaxy/monitor/")
         + std::string("monitor_agent --monitor_conf_path=") + conf_file;
     char *argv[] = {const_cast<char*>("sh"), const_cast<char*>("-c"),
@@ -503,34 +503,14 @@ int CommandTaskRunner::StartMonitor()
     int stdout_fd, stderr_fd;
     std::vector<int> fds;
     PrepareStartMonitor(fds, &stdout_fd, &stderr_fd);
-
-    std::string::size_type replace_start =
-        m_task_info.monitor_conf().find("<intput>");
-    replace_start =
-        m_task_info.monitor_conf().find(":");
-    std::string::size_type replace_end =
-        m_task_info.monitor_conf().find("\n", replace_start);
-
-    char cur_path[1024] = {0};
-    if (NULL == getcwd(cur_path, 1024)) {
-        LOG(WARNING, "get cur path err [%d:%s]", errno, strerror(errno));
-    }
-    std::string log_path = std::string(cur_path) + "/"
-        + m_workspace->GetPath().substr(1, m_workspace->GetPath().size() - 1)
-        + m_task_info.monitor_conf().substr(replace_start + 1,
-                replace_end - replace_start - 1);
-
-    std::string new_conf = m_task_info.monitor_conf();
-
-    new_conf.replace(replace_start + 1, replace_end - replace_start - 1, log_path);
     std::string monitor_conf = m_workspace->GetPath() + "/galaxy_monitor/monitor.conf";
     int conf_fd = open(monitor_conf.c_str(), O_WRONLY | O_CREAT, S_IRWXU);
     if (conf_fd == -1) {
         LOG(WARNING, "open monitor_conf %s failed [%d:%s]", 
                 monitor_conf.c_str(),errno, strerror(errno));
     } else {
-        int len = write(conf_fd, (void*)new_conf.c_str(),
-                new_conf.size());
+        int len = write(conf_fd, (void*)m_task_info.monitor_conf().c_str(),
+                m_task_info.monitor_conf().size());
         if (len == -1) {
             LOG(WARNING, "write monitor_conf %s failed [%d:%s]",monitor_conf.c_str(),
                     errno, strerror(errno));
