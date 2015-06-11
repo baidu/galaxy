@@ -9,12 +9,15 @@ import logging
 from django.views.decorators.csrf import csrf_exempt
 from console.service import decorator as service_decorator
 from common import http
-from common import decorator as com_decorator
+from common import decorator as D
 from console.service import helper
 from bootstrap import settings
+from bootstrap import models
 from galaxy import wrapper
 from console.taskgroup import helper
 LOG = logging.getLogger("console")
+
+@D.api_auth_required
 def list_service(request):
     """
     get current user's service list
@@ -23,7 +26,19 @@ def list_service(request):
     master_addr = request.GET.get('master',None)
     if not master_addr:
         return builder.error('master is required').build_json()
-
+    groupmember_list = models.GroupMember.objects.filter(galaxy_master = master_addr,
+                                                         user_name = request.user.username)
+    group_id_list = []
+    for group_m in groupmember_list:
+        group_id_list.append(group_m.group.id)
+    if not group_id_list:
+        return builder.ok(data=[]).build_json()
+    LOG.info(group_id_list)
+    db_jobs = models.GalaxyJob.objects.filter(group__id__in = group_id_list)
+    LOG.info(db_jobs)
+    jobs_dict = {}
+    for db_job in db_jobs:
+        jobs_dict[db_job.job_id] = db_job
     client = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
     status,jobs = client.list_jobs()
     LOG.info(status)
@@ -31,9 +46,12 @@ def list_service(request):
         return builder.error('fail to list jobs').build_json()
     ret = []
     for job in jobs:
+        if job.job_id not in jobs_dict:
+            continue
         ret.append(job.__dict__)
     return builder.ok(data=ret).build_json()
 
+@D.api_auth_required
 @csrf_exempt
 def create_service(request):
     """
@@ -60,6 +78,7 @@ def create_service(request):
     except Exception as e:
         return builder.error(str(e)).build_json()
 
+@D.api_auth_required
 def kill_service(request):
     builder = http.ResponseBuilder()
     id = request.GET.get('id',None)
@@ -73,6 +92,7 @@ def kill_service(request):
     galaxy.kill_job(int(id))
     return builder.ok().build_json()
 
+@D.api_auth_required
 def update_service(request):
     builder = http.ResponseBuilder()
     id = request.GET.get('id',None)

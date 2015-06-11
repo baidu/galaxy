@@ -27,3 +27,7 @@ urlpatterns += urls.patterns('',
 urlpatterns += urls.patterns('',
      (r'^tag/', urls.include('console.tag.urls')),
 )
+
+urlpatterns += urls.patterns('',
+     (r'^quota/', urls.include('console.quota.urls')),
+)

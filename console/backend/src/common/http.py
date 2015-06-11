@@ -61,8 +61,8 @@ class ResponseBuilder(object):
             .add_context_attr('data', data)
         return self
 
-    def error(self, msg):
-        self.add_context_attr("status", -1)\
+    def error(self, msg, status = -1):
+        self.add_context_attr("status", status)\
             .add_context_attr('msg', msg)
         return self
 

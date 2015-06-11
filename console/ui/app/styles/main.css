@@ -52,14 +52,14 @@ body {
   display: inline-block;
 }
 .header #galaxy{
-  font-size: 25px;
+  font-size: 20px;
   color: #777;
   padding-left: 20px;
   padding-top: 5px;
   font-weight: 400;
 }
 .header #console{
-  font-size: 20px;
+  font-size: 16px;
   padding-top: 5px;
   color: #333;
   padding-left: 10px;
@@ -93,7 +93,7 @@ body {
 
 .layout-nav{
   display: block;
-  top: 56px;
+  top: 45px;
   left: 0;
   bottom: 32px;
   padding: 24px 0 0 0;
@@ -147,7 +147,7 @@ body {
   -webkit-user-select: none;
   margin: 0;
   padding: 0;
-  height: 56px;
+  height: 45px;
   background-color: #fff;
   position: fixed;
   top: 0;
@@ -160,7 +160,7 @@ body {
 }
 .loading-mask , .content-viewport{
   position: absolute;
-  top: 56px;
+  top: 45px;
   left: 216px;
   bottom: 0;
   right: 0;
@@ -307,4 +307,10 @@ body {
 .resource-total{
     width:550px;
     height:180px;
+}
+
+#user{
+  float: right;
+  margin-top: 14px;
+  margin-right: 20px;
 }

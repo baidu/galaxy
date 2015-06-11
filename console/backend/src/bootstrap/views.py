@@ -1,7 +1,10 @@
 
 from common import http
+from common import cas
 from django.contrib import auth
 from django import shortcuts
+
+@cas.auto_login_required
 def index(request):
     response_builder = http.ResponseBuilder()
     return response_builder.add_params({})\
