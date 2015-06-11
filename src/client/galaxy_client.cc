@@ -87,7 +87,7 @@ int ProcessNewJob(){
         FILE* fd = fopen(FLAGS_monitor_conf.c_str(), "r");
         if (fd == NULL) {
                 fprintf(stderr, "Open %s for read fail [%d:%s]\n", 
-                        FLAGS_monitor_conf.c_str(),errno, strerror(errno));
+                        FLAGS_monitor_conf.c_str(), errno, strerror(errno));
                 return -2;
             }
             std::string monitor_conf;
