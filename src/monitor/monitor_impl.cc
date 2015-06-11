@@ -136,6 +136,8 @@ void MonitorImpl::Run() {
     }
     std::ifstream fin(log_path.c_str());
     fin.seekg(0, std::ios::end);
+    seek = fin.tellg();
+    fin.seekg(seek, std::ios::beg);
     std::string line;
     running_ = true;
 
@@ -145,6 +147,7 @@ void MonitorImpl::Run() {
             if (0 != stat(log_path.c_str(), st_tmp)) {
                 LOG(WARNING, "stat log file err %s [%d:%s]", log_path.c_str(),
                      errno, strerror(errno));
+                delete st_tmp;
                 sleep(1);
                 continue;
             } else if (st_tmp->st_ino != st_mark->st_ino) {
@@ -161,6 +164,7 @@ void MonitorImpl::Run() {
                 sleep(1);  
                 continue;  
             } else {
+                delete st_tmp;
                 sleep(1);
                 continue;
             }

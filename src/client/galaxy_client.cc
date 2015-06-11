@@ -83,20 +83,22 @@ int ProcessNewJob(){
     job.cpu_limit = FLAGS_cpu_limit;
     job.one_task_per_host = FLAGS_one_task_per_host;
     job.restrict_tag = FLAGS_restrict_tag;
-    FILE* fd = fopen(FLAGS_monitor_conf.c_str(), "r");
-    if (fd == NULL) {
-        fprintf(stderr, "Open %s for read fail [%d:%s]\n", FLAGS_monitor_conf.c_str(),
-                errno, strerror(errno));
-        return -2;
+    if (!FLAGS_monitor_conf.empty()) {
+        FILE* fd = fopen(FLAGS_monitor_conf.c_str(), "r");
+        if (fd == NULL) {
+                fprintf(stderr, "Open %s for read fail [%d:%s]\n", 
+                        FLAGS_monitor_conf.c_str(), errno, strerror(errno));
+                return -2;
+            }
+            std::string monitor_conf;
+            char buf[1024];
+            int len = 0;
+            while ((len = fread(buf, 1, 1024, fd)) > 0) {
+                monitor_conf.append(buf, len);
+            }
+            fclose(fd);
+            job.monitor_conf = monitor_conf;
     }
-    std::string monitor_conf;
-    char buf[1024];
-    int len = 0;
-    while ((len = fread(buf, 1, 1024, fd)) > 0) {
-        monitor_conf.append(buf, len);
-    }
-    fclose(fd);
-    job.monitor_conf = monitor_conf;
     fprintf(stdout, "%ld", galaxy->NewJob(job));
     return 0;
 }

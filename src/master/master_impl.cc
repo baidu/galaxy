@@ -345,7 +345,7 @@ void MasterImpl::DeadCheck() {
             std::set<int64_t> running_tasks;
             UpdateJobsOnAgent(&agent, running_tasks, true);
             RemoveIndex(agent.id);
-            agents_.erase(*node);
+            //agents_.erase(*node);
             it->second.erase(node);
             node = it->second.begin();
         }
@@ -516,11 +516,14 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
 
     } else {
         agent = &(it->second);
-        int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
-        if (alives_[agent->alive_timestamp].empty()) {
-            alives_.erase(agent->alive_timestamp);
+        if (alives_[agent->alive_timestamp].find(agent_addr) != 
+                alives_[agent->alive_timestamp].end()) {
+            int32_t es = alives_[agent->alive_timestamp].erase(agent_addr);
+            if (alives_[agent->alive_timestamp].empty()) {
+                alives_.erase(agent->alive_timestamp);
+            }
+            assert(es);
         }
-        assert(es);
         alives_[now_time].insert(agent_addr);
         agent->alive_timestamp = now_time;
         if(request->version() < agent->version){
@@ -530,6 +533,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             done->Run();
             return;
         }
+        agent->cpu_share = request->cpu_share();
+        agent->mem_share = request->mem_share();
         agent->cpu_allocated = request->used_cpu_share();
         agent->mem_allocated = request->used_mem_share();
         LOG(DEBUG, "cpu_allocated:%lf, mem_allocated:%ld", 
