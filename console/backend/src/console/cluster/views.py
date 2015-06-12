@@ -8,6 +8,7 @@
 
 from bootstrap import settings
 from common import http
+from common import decorator as D
 from galaxy import wrapper
 SHOW_G_BYTES_LIMIT = 1024 * 1024 * 1024
 SHOW_T_BYTES_LIMIT = 1024 * 1024 * 1024 * 1024
@@ -20,7 +21,7 @@ def str_pretty(total_bytes):
     else:
         return "%sT"%(total_bytes/(SHOW_T_BYTES_LIMIT))
 
-
+@D.api_auth_required
 def get_status(req):
     builder = http.ResponseBuilder()
     master_addr = req.GET.get('master',None)
