@@ -13,6 +13,7 @@ from common import decorator as D
 from console.service import helper
 from bootstrap import settings
 from bootstrap import models
+from console.quota import views
 from galaxy import wrapper
 from console.taskgroup import helper
 LOG = logging.getLogger("console")
@@ -51,19 +52,36 @@ def list_service(request):
         ret.append(job.__dict__)
     return builder.ok(data=ret).build_json()
 
-@D.api_auth_required
+
 @csrf_exempt
+@D.api_auth_required
 def create_service(request):
     """
     create a service
     """
     builder = http.ResponseBuilder()
-    master_addr = request.GET.get('master',None)
-    if not master_addr:
-        return builder.error('master is required').build_json()
-    galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
+    group_id = request.POST.get('groupId',None)
+    if not group_id:
+        return builder.error('groupId is required').build_json()
     try:
+        #判断是否有组权限
+        group_member_iterator =  models.GroupMemeber.objects.filter(user_name=request.user.username, group__id=int(group_id))
+        group_member = None
+        for gm in group_member_iterator:
+            group_member = gm
+        if not group_member:
+            return builder.error('group with %s does not exist'%group_id).build_json()
         ret = helper.validate_init_service_group_req(request)
+        status,stat = views.get_group_quota_stat(group_member.group, {});
+        cpu_total_require = ret['replicate_count'] * ret['cpu_share']
+        mem_total_require = ret['memory_limit'] * 1024 * 1024 * 1024 * ret['replicate_count']
+        if cpu_total_require > stat['total_cpu_left']:
+            return builder.error('cpu %s exceeds the left cpu quota %s'%(cpu_total_require, stat['total_cpu_left'])).build_json()
+        if mem_total_require > stat['total_mem_left']:
+            return builder.error('mem %s exceeds the left mem %s'%(mem_total_require, stat['total_mem_left'])).build_json()
+
+        galaxy = wrapper.Galaxy(gm.group.galaxy_master, 
+                                settings.GALAXY_CLIENT_BIN)
         status,output = galaxy.create_task(ret['name'],ret['pkg_src'],
                                            ret['start_cmd'],
                                            ret['replicate_count'],
@@ -74,6 +92,8 @@ def create_service(request):
                                            restrict_tags = ret['tag'])
         if not status:
             return builder.error('fail create task').build_json()
+        galaxy_job = models.GalaxyJob(group = group_member.group , job_id=int(output))
+        galaxy_job.save()
         return builder.ok().build_json()
     except Exception as e:
         return builder.error(str(e)).build_json()
@@ -87,10 +107,11 @@ def kill_service(request):
     master_addr = request.GET.get('master',None)
     if not master_addr:
         return builder.error('master is required').build_json()
-
-    galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
-    galaxy.kill_job(int(id))
-    return builder.ok().build_json()
+    try:
+        galaxy.kill_job(int(id))
+        return builder.ok().build_json()
+    except:
+        return builder.error('fail to kill job %s'%id).build_json()
 
 @D.api_auth_required
 def update_service(request):
@@ -111,5 +132,4 @@ def update_service(request):
         return builder.ok().build_json()
     else:
         return builder.error('fail to kill job').build_json()
-
 

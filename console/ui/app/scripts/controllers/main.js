@@ -155,7 +155,7 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   $scope.disableBtn=false;
   $scope.alerts = [];
   $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
-  $scope.deployTpl = {name:"",startCmd:"",tag:"",pkgType:0,pkgSrc:"",deployStepSize:5,replicate:0,memoryLimit:3,cpuShare:0.5,oneTaskPerHost:false};
+  $scope.deployTpl = {groupId:"",name:"",startCmd:"",tag:"",pkgType:0,pkgSrc:"",deployStepSize:5,replicate:0,memoryLimit:3,cpuShare:0.5,oneTaskPerHost:false};
   if ($cookies.lastServiceForm != undefined && 
       $cookies.lastServiceForm != null){
       try{
@@ -167,11 +167,40 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
          .success(function(data){
              $scope.tagList = data.data;
   });
+  $http.get(config.rootPrefixPath + "quota/mygroups")
+         .success(function(data){
+             $scope.groupList = data.data;
+  });
+  $scope.selectGroup = null;
+  $scope.groupUpdate = function(){
+      if ($scope.selectGroup != null){
+          $http.get(config.rootPrefixPath + "quota/groupstat?id="+ $scope.selectGroup.id)
+               .success(function(data){
+                $scope.groupStat = data.data.stat;
+                $scope.deployTpl.groupId = $scope.selectGroup.id;
+            });
+      }
+  }
   $scope.showAdvanceOption = false;
   $scope.ok = function () {
     $scope.alerts = [];
     $scope.disableBtn=true;
     $cookies.lastServiceForm = JSON.stringify($scope.deployTpl);
+    if ($scope.groupStat == null ){
+        $scope.alerts.push({msg: '请选择quota组'});
+        return ;
+    }
+    var totalCpuRequire = $scope.deployTpl.replicate * $scope.deployTpl.cpuShare;
+    var totalMemRequire = $scope.deployTpl.replicate * $scope.deployTpl.memoryLimit * 1024 * 1024 * 1024;
+
+    if(totalCpuRequire > $scope.groupStat.total_cpu_left){
+        $scope.alerts.push({msg: 'cpu超出总配额'});
+        return;
+    }
+    if(totalMemRequire > $scope.groupStat.total_mem_left){ 
+        $scope.alerts.push({msg: '内存超出总配额'});
+        return;
+    }
     $http(
       {
         method:"POST",

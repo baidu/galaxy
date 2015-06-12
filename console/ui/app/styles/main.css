@@ -292,7 +292,8 @@ body {
  margin-bottom:10px;
 }
 .card .ez-chart{
-    display:inline-block;
+    display:block;
+    float:left;
     margin-right:25px;
 }
 .card .ez-chart .chart-label{
@@ -302,6 +303,11 @@ body {
 .resource-status{
  width:300px;
  height:180px;
+}
+
+.group-resource-status{
+ width:100%;
+ height:190px;
 }
 
 .resource-total{

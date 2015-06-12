@@ -80,8 +80,8 @@ NavTree.prototype._processClusterPage = function(self, pathArray){
     var activeChildIndex = 0;
     if (pathArray.length == 2) {
         var subpage = pathArray[1];
-        for (var index in self.homeNavSetting[1].children) {
-            if (self.homeNavSetting[1].children[index].subpage == subpage) {
+        for (var index in self.homeNavSetting[2].children) {
+            if (self.homeNavSetting[2].children[index].subpage == subpage) {
                 activeChildIndex = index;
             }
         }
