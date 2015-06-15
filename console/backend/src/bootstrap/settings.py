@@ -113,3 +113,6 @@ GALAXY_CLIENT_BIN='/home/users/wangtaize/workspace/ps/se/galaxybk/galaxy_client'
 UUAP_CAS_SERVER='http://itebeta.baidu.com:8100/login'
 MY_HOST='http://cq01-rdqa-pool056.cq01.baidu.com:8989/'
 UUAP_VALIDATE_URL='http://itebeta.baidu.com:8100/serviceValidate'
+UIC_SERVICE="http://uuap.baidu.com:8086/ws/UserRemoteService?wsdl"
+UIC_KEY="uuapclient-18-4x4g9aNftempiJaHnelz"
+

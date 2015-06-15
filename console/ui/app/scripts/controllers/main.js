@@ -184,7 +184,6 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   $scope.showAdvanceOption = false;
   $scope.ok = function () {
     $scope.alerts = [];
-    $scope.disableBtn=true;
     $cookies.lastServiceForm = JSON.stringify($scope.deployTpl);
     if ($scope.groupStat == null ){
         $scope.alerts.push({msg: '请选择quota组'});
@@ -201,6 +200,8 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
         $scope.alerts.push({msg: '内存超出总配额'});
         return;
     }
+
+    $scope.disableBtn=true;
     $http(
       {
         method:"POST",
