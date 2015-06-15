@@ -4,6 +4,11 @@ package galaxy;
 option cc_generic_services = true;
 option py_generic_services = true;
 
+enum AgentResourceScheduleMode {
+    kAgentResourceScheduleStatic = 0;
+    kAgentResourceScheduleDynamic = 1;
+}
+
 message RunTaskRequest {
     optional int64 task_id = 1;
     optional string task_name = 2;
@@ -15,6 +20,7 @@ message RunTaskRequest {
     optional int32 task_offset = 8;
     optional int64 job_id = 9; // use to rebuild master
     optional double cpu_limit = 10;
+    optional AgentResourceScheduleMode schedule_mode = 11;
 }
 
 message RunTaskResponse {

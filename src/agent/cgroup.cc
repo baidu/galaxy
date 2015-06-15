@@ -23,6 +23,7 @@
 #include "agent/resource_collector_engine.h"
 #include "agent/utils.h"
 #include <gflags/gflags.h>
+#include "agent/dynamic_resource_scheduler.h"
 
 DECLARE_string(task_acct);
 DECLARE_string(cgroup_root); 
@@ -313,6 +314,15 @@ int ContainerTaskRunner::Prepare() {
         return -1;
     }
 
+    // do dynamic scheduler regist
+    DynamicResourceScheduler* scheduler = 
+        GetDynamicResourceScheduler();
+    std::string cgroup_name = 
+        boost::lexical_cast<std::string>(m_task_info.task_id());
+    scheduler->RegistCgroupPath(cgroup_name, cpu_core, cpu_limit);
+    //scheduler->SetFrozen(cgroup_name, 12 * 1000);
+    scheduler->UnFrozen(cgroup_name);
+
     return Start();
 }
 
@@ -564,6 +574,11 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
 }
 
 int ContainerTaskRunner::Clean() {
+    // dynamic scheduler unregist
+    DynamicResourceScheduler* scheduler = GetDynamicResourceScheduler();
+    std::string cgroup_name = boost::lexical_cast<std::string>(m_task_info.task_id());
+    scheduler->UnRegistCgroupPath(cgroup_name);
+
     if (_cg_ctrl != NULL) {
         int status = _cg_ctrl->Destroy(m_task_info.task_id());
         LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
