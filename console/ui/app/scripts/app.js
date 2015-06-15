@@ -17,6 +17,7 @@ var galaxy = angular.module('galaxy.ui', [
     'ngResource',
     'ngRoute',
     'ngSanitize',
+    'easypiechart',
     'ui.bootstrap',
     'galaxy.ui.ctrl',
     'galaxy.ui.breadcrumb',
@@ -40,6 +41,14 @@ var galaxy = angular.module('galaxy.ui', [
         templateUrl: 'views/cluster.html',
         controller: 'ClusterCtrl'
       })
+      .when('/cluster/status', {
+        templateUrl: 'views/cluster.html',
+        controller: 'ClusterCtrl'
+      })
+      .when('/cluster/tag',{
+        templateUrl: 'views/tag.html',
+        controller: 'TagPageCtrl'
+       })
       .when('/setup', {
         templateUrl: 'views/setup.html',
         controller: 'SetupCtrl'

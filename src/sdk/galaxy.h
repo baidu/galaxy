@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 #include <stdint.h>
 
 namespace galaxy {
@@ -56,10 +57,11 @@ struct JobDescription{
     double cpu_share;
     int64_t mem_share;
     std::vector<ResourceDescription> resource_vector;
-
+    std::string monitor_conf;
     int32_t deploy_step_size;
     double cpu_limit;
     bool one_task_per_host;
+    std::string restrict_tag;
 };
 
 struct NodeDescription {
@@ -70,6 +72,7 @@ struct NodeDescription {
     int64_t mem_share;
     double cpu_used;
     int64_t mem_used;
+    std::set<std::string> tags;
 };
 
 struct JobInstanceDescription : JobDescription{
@@ -98,6 +101,8 @@ public:
 
     virtual bool ListTaskByAgent(const std::string& agent_addr,
                                  std::vector<TaskDescription> * tasks) = 0 ;
+
+    virtual bool TagAgent(const std::string& tag, std::set<std::string>* agents) = 0;
 };
 
 } // namespace galaxy

@@ -37,11 +37,26 @@ angular.module('galaxy.ui.ctrl')
           $scope.cpuUsage = 0;
           $scope.memUsage = 0;
           $scope.machineList = [];
+          $scope.chartOptions = {
+                 animate:1000
+          }; 
+          $scope.cpuPercent = 0;
+          $scope.memPercent = 0;
+          $scope.pageSize = 10;
+          $scope.totalItems = 0;
+          $scope.currentPage = 1;
           var get_status = function(){
                $http.get("/console/cluster/status?master="+config.masterAddr)
                   .success(function(data){
                       if(data.status == 0){
-                          $scope.machineList = data.data.machinelist;
+                          $scope.allMachineList = data.data.machinelist;
+                          $scope.totalItems = $scope.allMachineList.length;
+                          var startIndex = ($scope.currentPage - 1) * $scope.pageSize;
+                          var endIndex = startIndex + $scope.pageSize;
+                          if(endIndex > $scope.totalItems){
+                             endIndex = $scope.totalItems;
+                          }
+                          $scope.machineList = $scope.allMachineList.slice(startIndex, endIndex);
                           $scope.total_node_num = data.data.total_node_num;
                           $scope.total_cpu_num = data.data.total_cpu_num;
                           $scope.total_cpu_allocated = data.data.total_cpu_allocated;
@@ -50,8 +65,8 @@ angular.module('galaxy.ui.ctrl')
                           $scope.total_task_num = data.data.total_task_num;
                           $scope.total_mem_used = data.data.total_mem_used;
                           $scope.total_cpu_used = data.data.total_cpu_used;
-                          $scope.cpuUsage = data.data.cpu_usage_p;
-                          $scope.memUsage = data.data.mem_usage_p;
+                          $scope.cpuPercent = data.data.cpu_usage_p;
+                          $scope.memPercent = data.data.mem_usage_p;
                       }else{
                       
                       }
@@ -59,9 +74,23 @@ angular.module('galaxy.ui.ctrl')
              .error(function(){})
            }
            get_status();
-           $interval(get_status,5000);
-    
+           $interval(get_status,10000);
+            $scope.pageChanged = function() {
+                  $scope.totalItems = $scope.allMachineList.length;
+                  var startIndex = ($scope.currentPage - 1) * $scope.pageSize;
+                          var endIndex = startIndex + $scope.pageSize;
+                          if(endIndex > $scope.totalItems){
+                             endIndex = $scope.totalItems;
+                          }
+                          $scope.machineList = $scope.allMachineList.slice(startIndex, endIndex);
+
+            };
+            $scope.setPage = function (pageNo) {
+                $scope.currentPage = pageNo;
+            };
+
 }
-)
+);
+
  
 }(angular));

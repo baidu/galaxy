@@ -71,10 +71,12 @@ bool TaskManager::Init() {
         std::string meta_dir_name =  meta_files[i];
         bool ret = false;
         if (FLAGS_container.compare("cgroup") == 0) {
-            ret = ContainerTaskRunner::RecoverRunner(meta_dir_name);     
+            ret = ContainerTaskRunner::RecoverMonitor(meta_dir_name);
+            ret &= ContainerTaskRunner::RecoverRunner(meta_dir_name);     
         }
         else {
-            ret = CommandTaskRunner::RecoverRunner(meta_dir_name);            
+            ret = ContainerTaskRunner::RecoverMonitor(meta_dir_name);
+            ret &= CommandTaskRunner::RecoverRunner(meta_dir_name);            
         }
         if (!ret) {
             return false;

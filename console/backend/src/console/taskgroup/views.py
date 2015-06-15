@@ -57,6 +57,8 @@ def get_task_status(request):
         task['cpu_used'] ="%0.2f"%(task['cpu_limit'] * task['cpu_used'])
         if task['status'] in statics:
             statics[task['status']] += 1
+        if task['agent_addr']:
+            task['path'] = "http://"+task['agent_addr'].split(":")[0]+":8181/data/galaxy/"+str(task['id'])
     return builder.ok(data={'needInit':False,'taskList':tasklist,'statics':statics}).build_json()
 
 def get_job_sched_history(request):
@@ -74,5 +76,6 @@ def get_job_sched_history(request):
         task['mem_used'] = str_pretty(task['mem_used'])
         task['mem_limit'] = str_pretty(task['mem_limit'])
         task['cpu_used'] ="%0.2f"%(task['cpu_limit'] * task['cpu_used'])
-    
+        if task['agent_addr']:
+            task['path'] = "http://"+task['agent_addr'].split(":")[0]+":8181/gc/"+ task['gc_path'].replace("/home/galaxy/agent/work_dir/gc/","")
     return builder.ok(data={'needInit':False,'taskList':tasklist}).build_json()

@@ -10,11 +10,15 @@ from bootstrap import settings
 from common import http
 from galaxy import wrapper
 SHOW_G_BYTES_LIMIT = 1024 * 1024 * 1024
+SHOW_T_BYTES_LIMIT = 1024 * 1024 * 1024 * 1024
 
 def str_pretty(total_bytes):
     if total_bytes < SHOW_G_BYTES_LIMIT:
         return "%sM"%(total_bytes/(1024*1024))
-    return "%sG"%(total_bytes/(1024*1024*1024))
+    elif total_bytes < SHOW_T_BYTES_LIMIT:
+        return "%sG"%(total_bytes/(SHOW_G_BYTES_LIMIT))
+    else:
+        return "%sT"%(total_bytes/(SHOW_T_BYTES_LIMIT))
 
 
 def get_status(req):
@@ -45,7 +49,7 @@ def get_status(req):
         total_cpu_used += machine.cpu_used 
         machine.mem_share = str_pretty(machine.mem_share)
         machine.mem_allocated = str_pretty(machine.mem_allocated)
-        machine.cpu_used = '%0.2f'%machine.cpu_allocated
+        machine.cpu_used = '%0.0f'%machine.cpu_allocated
         ret.append(machine.__dict__)
     mem_usage_p = 0
     cpu_usage_p = 0
@@ -56,12 +60,12 @@ def get_status(req):
     return builder.ok(data={'machinelist':ret,
                                 'total_node_num':total_node_num,
                                 'total_mem_allocated':str_pretty(total_mem_allocated),
-                                'total_cpu_allocated':"%0.2f"%total_cpu_allocated,
+                                'total_cpu_allocated':"%0.0f"%total_cpu_allocated,
                                 'total_cpu_num':total_cpu_num,
                                 'total_mem_num':str_pretty(total_mem_num),
                                 'total_task_num':total_task_num,
                                 'total_mem_used':str_pretty(total_mem_used),
-                                'total_cpu_used':"%0.2f"%total_cpu_used,
+                                'total_cpu_used':"%0.0f"%total_cpu_used,
                                 'mem_usage_p':mem_usage_p,
                                 'cpu_usage_p':cpu_usage_p}).build_json()
 

@@ -32,9 +32,11 @@ message TaskInfo{
 
     optional double limited_cpu = 11; // required_cpu == quota ; limit_cpu == limit
 
-    optional int32 frozen_time = 12;
-    optional int32 dynamic_schedule_high_threshold = 13;
-    optional int32 dynamic_schedule_low_threshold = 14;
+    optional bytes monitor_conf = 12;
+
+    optional int32 frozen_time = 13;
+    optional int32 dynamic_schedule_high_threshold = 14;
+    optional int32 dynamic_schedule_low_threshold = 15;
 }
 
 

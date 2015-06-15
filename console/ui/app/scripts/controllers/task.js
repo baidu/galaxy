@@ -17,14 +17,26 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
                                                                 service,
                                                                 config){
     var stop = null;
+    $scope.pageSize = 10;
+    $scope.totalItems = 0;
+    $scope.currentPage = 1;
+
    $scope.getTask = function(){
       $http.get("/console/taskgroup/status?id="+service.job_id+"&master="+config.masterAddr)
            .success(function(data){
                if(data.status == 0 ){
-                  $scope.tasklist = data.data.taskList;
                   $scope.runningNum = data.data.statics.RUNNING;
                   $scope.deployingNum = data.data.statics.DEPLOYING;
                   $scope.errorNum = data.data.statics.ERROR;
+                  $scope.allTaskList = data.data.taskList;
+                  $scope.totalItems = $scope.allTaskList.length;
+                  var startIndex = ($scope.currentPage - 1) * $scope.pageSize;
+                  var endIndex = startIndex + $scope.pageSize;
+                  if(endIndex > $scope.totalItems){
+                        endIndex = $scope.totalItems;
+                   }
+                  $scope.tasklist = $scope.allTaskList.slice(startIndex, endIndex);
+ 
                }
           })
            .error(function(err){
@@ -32,7 +44,7 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
            });
     }
 
-   stop = $interval($scope.getTask,500);
+   stop = $interval($scope.getTask,1000);
    $scope.close =function(){
       if(stop != null){
           $interval.cancel(stop);
@@ -40,6 +52,17 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
 
        $modalInstance.dismiss('cancel'); 
    }
+            $scope.pageChanged = function() {
+                  $scope.totalItems = $scope.allTaskList.length;
+                  var startIndex = ($scope.currentPage - 1) * $scope.pageSize;
+                          var endIndex = startIndex + $scope.pageSize;
+                          if(endIndex > $scope.totalItems){
+                             endIndex = $scope.totalItems;
+                          }
+                  $scope.tasklist = $scope.allTaskList.slice(startIndex, endIndex);
+
+            };
+ 
    
 });
 
@@ -65,7 +88,7 @@ angular.module('galaxy.ui.ctrl').controller('TaskForAgentCtrl',function($scope,
              $log.error('fail to get service '+ $routeParams.serviceName+' status');
            });
     }
-   stop = $interval($scope.getTask,500);
+   stop = $interval($scope.getTask,4000);
    $scope.close =function(){
       if(stop != null){
           $interval.cancel(stop);
@@ -81,9 +104,6 @@ $http.get("/console/taskgroup/history?id="+service.job_id+"&master="+config.mast
     
                 if(data.status == 0 ){
                   $scope.tasklist = data.data.taskList;
-                  $scope.runningNum = data.data.statics.RUNNING;
-                  $scope.deployingNum = data.data.statics.DEPLOYING;
-                  $scope.errorNum = data.data.statics.ERROR;
                }
 
     })

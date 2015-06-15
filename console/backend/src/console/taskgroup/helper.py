@@ -60,4 +60,9 @@ def validate_init_service_group_req(request):
         ret['one_task_per_host'] = True
     else:
         ret['one_task_per_host'] = False
+    tag_str = request.POST.get("tag",None)
+    if not tag_str:
+        ret['tag'] = []
+    else:
+        ret['tag'] = [tag_str.strip()]
     return ret
