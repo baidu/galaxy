@@ -223,6 +223,7 @@ int CpuCtrl::SetCpuShare(int64_t cpu_share) {
     return 0;
 
 }
+
 int CpuCtrl::SetCpuPeriod(int64_t cpu_period) {
     std::string cpu_period_file = _my_cg_root + "/" + "cpu.cfs_period_us";
     int ret = common::util::WriteIntToFile(cpu_period_file, cpu_period);
@@ -514,7 +515,7 @@ int ContainerTaskRunner::StartMonitor() {
 
 void ContainerTaskRunner::Status(TaskStatus* status) {
     if (collector_ != NULL) {
-        status->set_cpu_usage(collector_->GetCpuUsage());
+        status->set_cpu_usage(collector_->GetCpuCoresUsage());
         status->set_memory_usage(collector_->GetMemoryUsage());
         LOG(WARNING, "cpu usage %f memory usage %ld",
                 status->cpu_usage(), status->memory_usage());

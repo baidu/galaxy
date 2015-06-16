@@ -16,12 +16,14 @@
 
 DECLARE_string(cgroup_root);
 DECLARE_int32(dynamic_resource_scheduler_interval);
+DECLARE_int32(max_cpu_usage_history_len);
+
+DECLARE_int32(max_cpu_deinc_delta);
 
 namespace galaxy {
 
 static int CPU_CFS_PERIOD = 100000;
 static int MIN_CPU_CFS_QUOTA = 1000;
-static unsigned MAX_CPU_USAGE_HISTORY_LEN = 10;
 
 static DynamicResourceScheduler* g_dynamic_scheduler = NULL;
 static pthread_once_t  g_once = PTHREAD_ONCE_INIT;
@@ -53,7 +55,7 @@ DynamicResourceScheduler::DynamicResourceScheduler(
       cpu_cores_left_(0),
       dynamic_quota_left_(0),
       left_threshold_in_quota_(60),
-      right_threshold_in_quota_(90),
+      right_threshold_in_quota_(100),
       left_threshold_out_of_quota_(60),
       right_threshold_out_of_quota_(100),
       extra_queue_() {
@@ -407,6 +409,7 @@ bool DynamicResourceScheduler::ReCalcCpuNeed(
                 LOG(DEBUG, "[DYNAMIC_SCHEDULE] extra right need[%ld] can't meet by cores left[%ld] %s",
                         extra_right[i]->cpu_extra_need, cpu_cores_may_left,
                         extra_right[i]->cgroup_name.c_str());
+                // TODO cpu extra > 0 schedule
                 extra_right[i]->cpu_extra_need = 0;     
                 continue;
             }
@@ -559,8 +562,8 @@ void DynamicResourceScheduler::CalcCpuNeed(
 
         cell.cpu_usage = cell.collector->GetCpuUsage();
         cell.cpu_usages.push_back(cell.cpu_usage);
-        if (cell.cpu_usages.size() 
-                <= MAX_CPU_USAGE_HISTORY_LEN) {
+        if ((int)cell.cpu_usages.size() 
+                <= FLAGS_max_cpu_usage_history_len) {
             LOG(DEBUG, "[DYNAMIC_SCHEDULE] %s cpu "
                     "usages check point len %lu usage %lf",
                     cell.cgroup_name.c_str(), cell.cpu_usages.size(),
@@ -588,14 +591,13 @@ void DynamicResourceScheduler::CalcCpuNeed(
         long avg_idle_cores = long(avg_idle_usage * 
                 (cell.cpu_limit + cell.cpu_extra));
         cell.cpu_extra_need = 0;
-        LOG(DEBUG, "[DYNAMIC_SCHEDULE] avg_idle_cores %ld avg_usage %lf cgroup %s", 
-                avg_idle_cores, avg_usage, cell.cgroup_name.c_str());
+        LOG(DEBUG, "[DYNAMIC_SCHEDULE] avg_idle_cores %ld avg_usage %lf(%ld) cgroup %s", 
+                avg_idle_cores, avg_usage, cell.cpu_extra + cell.cpu_limit, cell.cgroup_name.c_str());
 
         // TODO need update for need calc
         if (cell.cpu_extra < 0) {
             if (avg_idle_cores > right_threshold_in_quota_) {
-                cell.cpu_extra_need -= 
-                    (avg_idle_cores - right_threshold_in_quota_); 
+                cell.cpu_extra_need -= FLAGS_max_cpu_deinc_delta;
             } else if (avg_idle_cores < left_threshold_in_quota_) {
                 cell.cpu_extra_need += labs(cell.cpu_extra);
             }
