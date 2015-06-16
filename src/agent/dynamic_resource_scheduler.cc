@@ -112,7 +112,7 @@ void DynamicResourceScheduler::UnFrozen(const std::string& cgroup_name) {
     }
 }
 
-void DynamicResourceScheduler::KeepQuota(const std::string& cgroup_name) {
+void DynamicResourceScheduler::KeepQuota(const std::string& /*cgroup_name*/) {
     // TODO
 }
 

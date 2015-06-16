@@ -27,7 +27,9 @@ DEFINE_int32(agent_curl_recv_buffer_size, 1024 * 10, "agent downloader recv buff
 DEFINE_double(cpu_num, 4, "cpu number");
 
 DEFINE_int32(resource_collector_engine_interval, 100, "rc collect engine interval");
-DEFINE_int32(dynamic_resource_scheduler_interval, 200, "dynamic scheduler interval for agent");
+DEFINE_int32(dynamic_resource_scheduler_interval, 100, "dynamic scheduler interval for agent");
+DEFINE_int32(max_cpu_usage_history_len, 10, "dynamic scheduelr cpu usage history len");
+DEFINE_int32(max_cpu_deinc_delta, 50, "dynamic scheduler cpu cores max update delta");
 
 DEFINE_int64(mem_gbytes, 32, "mem in giga bytes");
 DEFINE_int64(mem_bytes, FLAGS_mem_gbytes * 1024 * 1024 * 1024, "mem in bytes");
