@@ -28,6 +28,8 @@ DEFINE_double(cpu_num, 4, "cpu number");
 
 DEFINE_int32(resource_collector_engine_interval, 100, "rc collect engine interval");
 DEFINE_int32(dynamic_resource_scheduler_interval, 100, "dynamic scheduler interval for agent");
+DEFINE_bool(agent_dynamic_scheduler_switch, true, "dynamic scheduler switch");
+
 DEFINE_int32(max_cpu_usage_history_len, 10, "dynamic scheduelr cpu usage history len");
 DEFINE_int32(max_cpu_deinc_delta, 50, "dynamic scheduler cpu cores max update delta");
 

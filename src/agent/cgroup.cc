@@ -28,6 +28,7 @@
 DECLARE_string(task_acct);
 DECLARE_string(cgroup_root); 
 DECLARE_int32(agent_cgroup_clear_retry_times);
+DECLARE_bool(agent_dynamic_scheduler_switch);
 
 namespace galaxy {
 
@@ -344,9 +345,11 @@ int ContainerTaskRunner::Prepare() {
         GetDynamicResourceScheduler();
     std::string cgroup_name = 
         boost::lexical_cast<std::string>(m_task_info.task_id());
-    scheduler->RegistCgroupPath(cgroup_name, cpu_core, cpu_limit);
-    //scheduler->SetFrozen(cgroup_name, 12 * 1000);
-    scheduler->UnFrozen(cgroup_name);
+    if (FLAGS_agent_dynamic_scheduler_switch) {
+        scheduler->RegistCgroupPath(cgroup_name, cpu_core, cpu_limit);
+        //scheduler->SetFrozen(cgroup_name, 12 * 1000);
+        scheduler->UnFrozen(cgroup_name);
+    }
 
     std::string cpu_limit_file = FLAGS_cgroup_root +"/cpu/" + cgroup_name + "/cpu.cfs_quota_us";
     envs_.insert(std::pair<std::string, std::string>("CPU_LIMIT_FILE", cpu_limit_file));
@@ -757,9 +760,13 @@ bool ContainerTaskRunner::RecoverMonitor(const std::string& persistence_path) {
 
 int ContainerTaskRunner::Clean() {
     // dynamic scheduler unregist
-    DynamicResourceScheduler* scheduler = GetDynamicResourceScheduler();
-    std::string cgroup_name = boost::lexical_cast<std::string>(m_task_info.task_id());
-    scheduler->UnRegistCgroupPath(cgroup_name);
+    if (!FLAGS_agent_dynamic_scheduler_switch) {
+        DynamicResourceScheduler* scheduler = 
+            GetDynamicResourceScheduler();
+        std::string cgroup_name = 
+            boost::lexical_cast<std::string>(m_task_info.task_id());
+        scheduler->UnRegistCgroupPath(cgroup_name);
+    }
 
     if (_cg_ctrl != NULL) {
         int status = _cg_ctrl->Destroy(m_task_info.task_id());
