@@ -340,12 +340,12 @@ int ContainerTaskRunner::Prepare() {
         return -1;
     }
 
-    // do dynamic scheduler regist
-    DynamicResourceScheduler* scheduler = 
-        GetDynamicResourceScheduler();
     std::string cgroup_name = 
         boost::lexical_cast<std::string>(m_task_info.task_id());
+    // do dynamic scheduler regist
     if (FLAGS_agent_dynamic_scheduler_switch) {
+        DynamicResourceScheduler* scheduler = 
+            GetDynamicResourceScheduler();
         scheduler->RegistCgroupPath(cgroup_name, cpu_core, cpu_limit);
         //scheduler->SetFrozen(cgroup_name, 12 * 1000);
         scheduler->UnFrozen(cgroup_name);
@@ -760,7 +760,7 @@ bool ContainerTaskRunner::RecoverMonitor(const std::string& persistence_path) {
 
 int ContainerTaskRunner::Clean() {
     // dynamic scheduler unregist
-    if (!FLAGS_agent_dynamic_scheduler_switch) {
+    if (FLAGS_agent_dynamic_scheduler_switch) {
         DynamicResourceScheduler* scheduler = 
             GetDynamicResourceScheduler();
         std::string cgroup_name = 
