@@ -348,6 +348,9 @@ int ContainerTaskRunner::Prepare() {
     //scheduler->SetFrozen(cgroup_name, 12 * 1000);
     scheduler->UnFrozen(cgroup_name);
 
+    std::string cpu_limit_file = FLAGS_cgroup_root +"/cpu/" + cgroup_name + "/cpu.cfs_quota_us";
+    envs_.insert(std::pair<std::string, std::string>("CPU_LIMIT_FILE", cpu_limit_file));
+
     int ret = Start();
     if (0 != ret) {
         return ret;
