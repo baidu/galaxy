@@ -601,13 +601,19 @@ void DynamicResourceScheduler::CalcCpuNeed(
             } else if (avg_idle_cores < left_threshold_in_quota_) {
                 cell.cpu_extra_need += labs(cell.cpu_extra);
             }
-        } else if (cell.cpu_extra >= 0) {
+        } else if (cell.cpu_extra > 0) {
             if (avg_idle_cores > right_threshold_in_quota_) {
                 cell.cpu_extra_need -= 
                     (avg_idle_cores - right_threshold_in_quota_);
             } else if (avg_idle_cores < left_threshold_in_quota_) {
                 cell.cpu_extra_need += right_threshold_in_quota_; 
             } 
+        } else {
+            if (avg_idle_cores > right_threshold_in_quota_) {
+                cell.cpu_extra_need -= FLAGS_max_cpu_deinc_delta;
+            } else if (avg_idle_cores < left_threshold_in_quota_) {
+                cell.cpu_extra_need += right_threshold_in_quota_; 
+            }
         }
         LOG(DEBUG, "[DYNAMIC_SCHEDULE] cpu_extra_need %ld cgroup %s", 
                 cell.cpu_extra_need, cell.cgroup_name.c_str());
