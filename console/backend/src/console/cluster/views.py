@@ -50,7 +50,8 @@ def get_status(req):
         total_cpu_used += machine.cpu_used 
         machine.mem_share = str_pretty(machine.mem_share)
         machine.mem_allocated = str_pretty(machine.mem_allocated)
-        machine.cpu_used = '%0.0f'%machine.cpu_allocated
+        machine.cpu_used = '%0.1f'%machine.cpu_allocated
+        machine.allocated = '%0.1f'%machine.cpu_allocated
         ret.append(machine.__dict__)
     mem_usage_p = 0
     cpu_usage_p = 0

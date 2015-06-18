@@ -156,6 +156,9 @@ def update_service(request):
             return builder.error('cpu %s exceeds the left cpu quota %s'%(cpu_total_require, stat['total_cpu_left'])).build_json()
         if mem_total_require > stat['total_mem_left']:
             return builder.error('mem %s exceeds the left mem %s'%(mem_total_require, stat['total_mem_left'])).build_json()
+    old_job_meta['replicate_count'] = replicate_num
+    request.job.meta = json.dumps(old_job_meta)
+    request.job.save()
     galaxy = wrapper.Galaxy(master_addr,settings.GALAXY_CLIENT_BIN)
     status = galaxy.update_job(id,replicate)
     if status:
