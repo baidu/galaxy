@@ -56,7 +56,8 @@ agent_sources='src/flags.cc\
                src/agent/resource_collector.cc \
                src/agent/resource_manager.cc \
                src/agent/resource_collector_engine.cc \
-               src/agent/utils.cc '
+               src/agent/utils.cc \
+               src/agent/dynamic_resource_scheduler.cc'
 
 
 master_sources='src/flags.cc src/proto/task.proto src/proto/agent.proto src/proto/master.proto\

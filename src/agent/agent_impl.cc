@@ -14,6 +14,7 @@
 #include "proto/task.pb.h"
 #include "common/httpserver.h"
 #include <gflags/gflags.h>
+#include "agent/dynamic_resource_scheduler.h"
 
 DECLARE_string(master_addr);
 DECLARE_string(agent_port);
@@ -45,6 +46,14 @@ AgentImpl::AgentImpl() {
     resource.the_left_cpu = resource.total_cpu;
     resource.the_left_mem = resource.total_mem;
     resource_mgr_ = new ResourceManager(resource);
+
+    // give all idle cpu to scheduler 
+    DynamicResourceScheduler* dy_scheduler 
+        = GetDynamicResourceScheduler();
+    TaskResourceRequirement require;
+    require.cpu_limit = resource.total_cpu;
+    dy_scheduler->Release(require);
+
     if (!rpc_client_->GetStub(FLAGS_master_addr, &master_)) {
         assert(0);
     }
