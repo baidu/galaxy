@@ -111,6 +111,22 @@ angular.module('galaxy.ui.ctrl')
 
                $scope.machineList = filteredMachineList.slice(startIndex, endIndex);
            }
+        $scope.showSetPasswordModal = function(addr){
+         var modalInstace = $modal.open({
+                templateUrl:'views/setPassword.html',
+                controller:'SetPasswordModelCtrl',
+                keyboard:false,
+                backdrop:'static',
+                size:'bg',
+                resolve:{
+                agent:function(){
+                    return addr;
+                  }
+                }
+
+        });
+    }
+
 
 }
 );

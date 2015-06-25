@@ -113,7 +113,6 @@ $http.get(config.rootPrefixPath + "taskgroup/history?id="+service.job_id+"&maste
    }
 
   $scope.showSetPasswordModal = function(history){
-         console.log(history.agent_addr);
          var modalInstace = $modal.open({
                 templateUrl:'views/setPassword.html',
                 controller:'SetPasswordModelCtrl',
