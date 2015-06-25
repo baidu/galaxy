@@ -1,0 +1,91 @@
+
+<div class="cluster-status-list">
+    <span ng-if="statList.length <= 0"> 没有数据</span>
+    <div ng-repeat="stat in statList " class="card group-resource-status">
+        <span class="card-header"> {{stat.group.name}}资源实际使用率</span>
+        <div class="ez-chart"> 
+            <div class="percentage easyPieChart" style="width: 110px; height: 110px; line-height: 110px;" easypiechart options="chartOptions" percent="stat.stat.cpu_used_percent">
+                <span>{{stat.stat.cpu_used_percent}}%</span>
+            </div>
+            <div class="chart-label">CPU</div>
+        </div>
+
+        <div class="ez-chart">
+               <div style="width: 110px; height: 110px; line-height: 110px;" class="percentage easyPieChart" easypiechart options="chartOptions" percent="stat.stat.mem_used_percent">
+                 <span>{{stat.stat.mem_used_percent}}%</span>
+             </div>
+             <div class="chart-label">MEMORY</div>
+         </div>
+         <div class="ez-chart">
+
+           <div class="ui statistics">
+               <div class="blue statistic">
+                  <div class="value">{{stat.stat.total_cpu_quota}} </div>
+                  <div class="label">总cpu核数 </div>
+              </div>
+              <div class="red statistic">
+                  <div class="value">{{stat.stat.total_cpu_allocated}} </div>
+                  <div class="label">已分配cpu核数 </div>
+              </div>
+              <div class="blue statistic">
+                  <div class="value">{{stat.stat.pretty_total_mem_quota}}</div>
+                  <div class="label">总内存 </div>
+             </div>
+             <div class="red statistic">
+                  <div class="value">{{stat.stat.pretty_total_mem_allocated}}</div>
+                  <div class="label">已分配内存</div>
+              </div>
+          </div>
+ <div class="ui statistics">
+     <div class="blue statistic">
+        <div class="value">{{stat.stat.task_count}} </div>
+        <div class="label">任务总数 </div>
+    </div> 
+    <div>
+
+
+        </div>
+  </div>
+
+<!--<div class="card resource-total">
+        <span class="card-header"> 集群资源统计 </span>
+        <div class="ez-chart"> 
+ <div class="ui statistics">
+      <div class="red statistic">
+        <div class="value">{{total_cpu_allocated}} </div>
+        <div class="label">总CPU分配量 </div>
+    </div>
+    <div class="red statistic">
+        <div class="value">{{total_mem_allocated}}</div>
+        <div class="label">总内存分配量 </div>
+    </div>
+
+  </div> 
+       
+</div>
+
+<div class="ez-chart">
+<div class="ui statistics">
+      <div class="blue statistic">
+        <div class="value">{{total_node_num}}</div>
+        <div class="label">机器总数 </div>
+      </div>
+      <div class="blue statistic">
+        <div class="value">{{total_cpu_num}} </div>
+        <div class="label">集群总核数 </div>
+      </div>
+      <div class="blue statistic">
+        <div class="value">{{total_mem_num}}</div>
+        <div class="label">集群总内存</div>
+    </div>
+    <div class="blue statistic">
+        <div class="value">{{total_task_num}}</div>
+        <div class="label">集群总任务</div>
+      </div>
+  </div>
+
+        </div>
+    </div>-->
+
+</div>
+

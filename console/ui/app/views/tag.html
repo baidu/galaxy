@@ -1,0 +1,23 @@
+<div class="service-list">
+    <button type="button" ng-click="showAddTagModal()" class="btn btn-primary">添加标签</button>
+    <h5>标签列表</h5>
+  <div class="tag-cloud">
+      <span ng-repeat="tag in tagList" class="label label-primary" ng-click="selectTag(tag)" style="cursor: pointer">
+          <span class="glyphicon glyphicon-tag" aria-hidden="true"></span> {{tag.tag}}
+          <span class="badge">{{tag.agents.length}}</span>
+      </span>
+  </div>
+  <div class="agent-list">
+      <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>机器列表</th>
+        </tr>
+      </thead>
+        <tr ng-repeat="agent in selectedAgent">
+          <td>{{agent}}</td>
+        </tr>
+      </table>
+  </div>
+</div>
+
