@@ -1,0 +1,23 @@
+<div class="modal-header">
+<button type="button" class="close" ng-click="cancel()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+<h4>添加标签</h4>
+</div>
+<div class="modal-body"> 
+        <div class="form-group">
+          <label for="name">标签名称</label>
+          <input type="text" ng-model="tagform.tag" class="form-control " id="name" >
+          <p class="help-block">如果是已经存在的tag名称则会覆盖</p>
+        </div>
+ 
+  <div class="form-group">
+      <label for="agentList">机器列表</label>
+      <textarea class="form-control" id="agentList" rows="5" ng-model="tagform.agentList"></textarea>
+      <p class="help-block">一行一个机器，比如 host:port</p>
+      </div>
+ 
+</div>
+<div class="modal-footer">
+    <button class="btn btn-primary" ng-disabled="disableBtn" ng-click="ok()">创建</button>
+    <button class="btn btn-default" ng-disabled="disableBtn" ng-click="cancel()">取消</button>
+</div>
+

@@ -75,7 +75,7 @@
     <tbody>
       <tr ng-repeat="machine in machineList">
         <td>{{machine.id}}</td>
-        <td>{{machine.addr}}</td>
+        <td>{{machine.addr}} <a href="" ng-click="showSetPasswordModal(machine.addr)">设置登陆密码</a></td>
         <td><a href ng-click="listTaskByAgent(machine)">{{machine.task_num}}</a></td>
         <td>{{machine.cpu_allocated}}/{{machine.cpu_share}}</td>
         <td>{{machine.mem_allocated}}/{{machine.mem_share}}</td>

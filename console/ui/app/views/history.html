@@ -18,7 +18,7 @@
     <tbody>
       <tr ng-repeat="task in tasklist">
         <td>{{task.id}}</td>
-        <td>{{task.name}}</td>
+        <td>{{task.name}} <a href="" ng-click="showSetPasswordModal(task)">设置访问密码</a></td>
         <td>{{task.end_time}}</td>
         <td>{{task.status}}</td>
         <td>CPU:{{task.cpu_used}}/{{task.cpu_limit}}</br>

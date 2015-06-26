@@ -4,11 +4,11 @@
 # found in the LICENSE file.
 #
 # Author: wangtaize@baidu.com
-# Date: 2015-04-01
+# Date: 2015-05-25
+
 from django.conf import urls
 
-
-urlpatterns = urls.patterns("console.cluster.views",
-        (r'^status','get_status'),
-        (r'^setPassword','set_password'),
+urlpatterns = urls.patterns("console.tag.views",
+        (r'^list', 'list_tag'),
+        (r'^add', 'add_tag'),
 )
