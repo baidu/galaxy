@@ -447,7 +447,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
             if (instance.status() == RUNNING) {
                 int32_t now_time = common::timer::now_time();
-                std::map<std::string, int64_t>::iterator sched_it 
+                std::map<std::string, int32_t>::iterator sched_it 
                     = job.sched_agent.find(agent_addr);
                 if (sched_it != job.sched_agent.end()) {
                     if (now_time - sched_it->second
@@ -1173,13 +1173,13 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         load_queue.push(*it_start);
     }
 
-    int64_t now_time = common::timer::now_time();
+    int32_t now_time = common::timer::now_time();
     bool hit_delay_schedule = false;
     LOG(DEBUG, "match require size %ld", load_queue.size());
     while (load_queue.size() > 0) {
         AgentLoad agent_load = load_queue.top(); 
         int32_t last_schedule_time = 0;
-        std::map<std::string, int64_t>::const_iterator it 
+        std::map<std::string, int32_t>::const_iterator it 
             = job.sched_agent.find(agent_load.agent_addr);
         if (it != job.sched_agent.end()) {
             last_schedule_time = it->second; 
