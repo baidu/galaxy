@@ -21,6 +21,7 @@ DECLARE_int32(agent_keepalive_timeout);
 DECLARE_string(master_checkpoint_path);
 DECLARE_int32(master_max_len_sched_task_list);
 DECLARE_int32(master_safe_mode_last);
+DECLARE_int32(master_reschedule_error_delay_time);
 
 namespace galaxy {
 //agent load id index
@@ -40,6 +41,14 @@ public:
     bool operator() (const KillPriorityCell& left, 
             const KillPriorityCell& right) {
         return left.priority < right.priority; 
+    }
+};
+
+class ScheduleLoadComp {
+public:
+    bool operator() (const AgentLoad& left,
+            const AgentLoad& right) {
+        return left.load > right.load; 
     }
 };
 
@@ -409,6 +418,11 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
 
             job.scheduled_tasks.push_back(tasks_[task_id]);  
+            if (instance.status() == ERROR) {
+                LOG(DEBUG, "job %ld schedule on agent %s failed", 
+                        job_id, agent_addr.c_str());
+                job.sched_agent[agent_addr] = common::timer::now_time();
+            }
             LOG(DEBUG, "job %ld has schedule tasks %u : id %ld state %d ", 
                     job_id,
                     job.scheduled_tasks.size(),
@@ -431,8 +445,22 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                     job.deploying_tasks.erase(deploying_tasks_it);
                 }
             }
+            if (instance.status() == RUNNING) {
+                int64_t now_time = common::timer::now_time();
+                std::map<std::string, int64_t>::iterator sched_it 
+                    = job.sched_agent.find(agent_addr);
+                if (sched_it != job.sched_agent.end()) {
+                    if (now_time - sched_it->second
+                            > FLAGS_master_reschedule_error_delay_time) {
+                        LOG(DEBUG, "job %ld schedule on agent %s success",
+                                job_id, agent_addr.c_str());
+                        job.sched_agent.erase(agent_addr); 
+                    }          
+                }
+            }
             if (instance.status() != ERROR
                && instance.status() != COMPLETE) {
+                
                 continue;
             }
             //释放资源
@@ -1089,7 +1117,8 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
     cpu_left_index::iterator it_start = cidx.begin();
     cpu_left_index::iterator cur_agent;
     bool last_found = false;
-    double current_min_load = 0;
+    std::priority_queue<AgentLoad, 
+        std::vector<AgentLoad>, ScheduleLoadComp> load_queue;
     if(it != cidx.end() 
             && it->mem_left >= job.mem_share
             && it->cpu_left >= job.cpu_share){
@@ -1115,9 +1144,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             }
         }
         if (last_found) {
-            current_min_load = it->load;
-            addr = it->agent_addr;
-            cur_agent = it;
+            load_queue.push(*it);
         }
     }
     for (;it_start != it;++it_start) {
@@ -1143,30 +1170,44 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
             continue;
         }
 
-        //第一次赋值current_min_load;
-        if (!last_found) {
-            current_min_load = it_start->load;
-            addr = it_start->agent_addr;
-            last_found = true;
-            cur_agent = it_start;
-            continue;
-        }
-        //找到负载更小的节点
-        if (current_min_load > it_start->load) {
-            addr = it_start->agent_addr;
-            current_min_load = it_start->load;
-            cur_agent = it_start;
-        }
+        load_queue.push(*it_start);
     }
-    if (last_found) {
-        LOG(INFO, "alloc resource for job %ld on host %s with load %f cpu left %f mem left %ld",
-                job.id,addr.c_str(),
-                current_min_load,
-                cur_agent->cpu_left,
-                cur_agent->mem_left);
-    }else{
-        LOG(WARNING, "no enough  resource to alloc for job %ld", job.id);
+
+    int64_t now_time = common::timer::now_time();
+    bool hit_delay_schedule = false;
+    LOG(DEBUG, "match require size %ld", load_queue.size());
+    while (load_queue.size() > 0) {
+        AgentLoad agent_load = load_queue.top(); 
+        int64_t last_schedule_time = 0;
+        std::map<std::string, int64_t>::const_iterator it 
+            = job.sched_agent.find(agent_load.agent_addr);
+        if (it != job.sched_agent.end()) {
+            last_schedule_time = it->second; 
+        }
+        LOG(DEBUG, "agent %s for job %s in delay time %ld:%ld", 
+                agent_load.agent_addr.c_str(), 
+                job.job_name.c_str(),
+                now_time,
+                last_schedule_time);
+
+        if (now_time - last_schedule_time 
+                > FLAGS_master_reschedule_error_delay_time) {
+            break;
+        }
+        hit_delay_schedule = true;
+        load_queue.pop();
     }
+
+    if (load_queue.size() > 0) {
+        addr = load_queue.top().agent_addr;    
+    } else if (hit_delay_schedule) {
+        LOG(WARNING, "no enough healthy agent for job %s", 
+                job.job_name.c_str());
+    } else {
+        LOG(WARNING, "no enough resource for job %s",
+                job.job_name.c_str()); 
+    }
+
     return addr;
 }
 
