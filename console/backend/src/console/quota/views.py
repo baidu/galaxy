@@ -72,6 +72,7 @@ def get_group_quota_stat(group, master_job_cache):
     stat['cpu_used_percent'] = 0
     if stat['total_cpu_allocated']:
         stat['cpu_used_percent'] = "%0.1f"%(100 * stat['total_cpu_real_used'] / stat['total_cpu_allocated'])
+    stat['total_cpu_allocated'] ='%01.f'%stat['total_cpu_allocated']
     return True,stat
 
 @D.api_auth_required
@@ -89,7 +90,7 @@ def my_quota(req):
 @D.api_auth_required
 def my_group(req):
     builder = http.ResponseBuilder()
-    groupmember_list = models.GroupMember.objects.all()
+    groupmember_list = models.GroupMember.objects.filter(user_name = req.user.username)
     result = []
     for gm in groupmember_list:
         result.append({'name':gm.group.name,'id':gm.group.id})

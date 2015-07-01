@@ -13,6 +13,6 @@ def get_conf(request):
         ]},
     {"nodeName":"配置集群","href":"#setup","nodestyle":["level1"],"children":[]}]
     service = [{ "nodeName" : "Tera", "nodestyle":["level1"], "children" : [ { "nodestyle":["level2"],"subpage":"status","nodeName" : "服务状态", "children" : []}] }]
-    return builder.ok(data = {'home':home,'service':service,'user':{'username':request.user.username,'id':request.user.id}}).build_json()
+    return builder.ok(data = {'home':home,'service':service,'user':{'is_super':request.user.is_superuser,'username':request.user.username,'id':request.user.id}}).build_json()
 
 

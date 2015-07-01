@@ -26,7 +26,6 @@ def validate_init_service_group_req(request):
     if not pkg_src:
         raise ValidateException("pkgSrc is required")
     ret['pkg_src'] = pkg_src
-
     ret['start_cmd'] = request.POST.get("startCmd",None)
     if not ret['start_cmd']:
         raise ValidateException("startCmd is required")
@@ -36,7 +35,11 @@ def validate_init_service_group_req(request):
         raise ValidateException("cpu_share is required")
     cpu_share =float(cpu_share_str)
     ret['cpu_share'] = cpu_share
-
+    cpu_limit_str = request.POST.get('cpuLimit',None)
+    if cpu_limit_str:
+        ret['cpu_limit'] = float(cpu_limit_str)
+    else:
+        ret['cpu_limit'] = ret['cpu_share']
     #memory validate logic
     memory_limit_str = request.POST.get("memoryLimit",None)
     if not memory_limit_str:

@@ -63,7 +63,8 @@ class GalaxySDK(object):
                       pkg_src,boot_cmd,
                       replicate_num = 1,
                       mem_limit = 1024,
-                      cpu_limit = 2, 
+                      cpu_limit = 2,
+                      cpu_share = -1,
                       deploy_step_size = -1,
                       one_task_per_host = False,
                       restrict_tags = []):
@@ -76,11 +77,14 @@ class GalaxySDK(object):
         assert pkg_type
         assert pkg_src
         assert boot_cmd
+        if cpu_share == -1:
+            cpu_share = cpu_limit
         req = self._build_new_job_req(name,pkg_type,str(pkg_src),
                                       boot_cmd,
                                       replicate_num = replicate_num,
                                       mem_limit = mem_limit,
                                       cpu_limit = cpu_limit,
+                                      cpu_share = cpu_share,
                                       deploy_step_size = deploy_step_size,
                                       one_task_per_host = one_task_per_host,
                                       restrict_tags = restrict_tags)
@@ -259,7 +263,7 @@ class GalaxySDK(object):
                 base.cpu_used = task.cpu_usage
                 base.start_time = task.start_time
                 base.gc_path = task.root_path
-                base.end_time =  datetime.datetime.fromtimestamp(task.end_time).strftime("%m-%d %H:%M:%S") 
+                base.end_time =  datetime.datetime.fromtimestamp(task.end_time).strftime("%m-%d %H:%M:%S")
                 ret.append(base)
             return True,ret
         except:
@@ -281,7 +285,8 @@ class GalaxySDK(object):
                                pkg_src,boot_cmd,
                                replicate_num = 1,
                                mem_limit= 1024,
-                               cpu_limit= 2,
+                               cpu_limit = 2,
+                               cpu_share = 2,
                                deploy_step_size=-1,
                                one_task_per_host=False,
                                restrict_tags = []):
@@ -292,9 +297,9 @@ class GalaxySDK(object):
         req.job_name = name
         req.job_raw = pkg_src
         req.cmd_line = boot_cmd
-        req.cpu_share = cpu_limit
+        req.cpu_share = cpu_share
         req.mem_share = mem_limit
+        req.cpu_limit = cpu_limit
         req.replica_num = replicate_num
         req.one_task_per_host = one_task_per_host
         return req
-
