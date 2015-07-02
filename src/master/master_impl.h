@@ -102,6 +102,7 @@ struct JobInfo {
     bool one_task_per_host;
     //限制job在标有特定tag机器上面运行
     std::set<std::string> restrict_tags;
+    std::map<std::string, int32_t> sched_agent;
 };
 
 class RpcClient;
