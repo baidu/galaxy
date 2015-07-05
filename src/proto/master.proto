@@ -8,13 +8,13 @@ option py_generic_services = true;
 
 enum MasterRespState {
     kMasterResponseOK = 0;
-    kMasterResponseErrorInput = -1;   
+    kMasterResponseErrorInput = -1;
     kMasterResponseErrorInternal = -2;
     kMasterResponseErrorSafeMode = -4;
 }
 
 message HeartBeatRequest {
-    optional int64 seq_id = 1;      // id for communicate
+    optional int64 seq_id = 1;   // id for communicate
     optional int64 agent_id = 2 [default = -1];
     optional string agent_addr = 3;
     repeated TaskStatus task_status = 4;
@@ -117,7 +117,7 @@ message JobInstance {
 message ListJobRequest {
 }
 message ListJobResponse {
-    repeated JobInstance jobs = 2; 
+    repeated JobInstance jobs = 2;
 }
 
 message KillJobRequest {
@@ -186,4 +186,3 @@ service Master {
     rpc TagAgent(TagAgentRequest) returns(TagAgentResponse);
     rpc ListTag(ListTagRequest) returns(ListTagResponse);
 }
-

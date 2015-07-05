@@ -1,6 +1,120 @@
 'use strict';
 (function(angular){
 
+var JobFormBuilder = function($scope){
+    this.$scope = $scope;
+    this.$scope.jobForm = {
+        resource:{},
+        jobMeta:{},
+        monitorRule:{
+            watchMsgList:[],
+            triggerMsgList:[],
+            actionMsgList:[],
+            ruleMsgList:[]
+        }
+    };
+
+};
+
+JobFormBuilder.prototype.setJobMeta = function (jobName,
+                                                instanceCount,
+                                                oneTaskPerHost,
+                                                groupId,
+                                                bootCmd,
+                                                deployStepSize) {
+    this.$scope.jobForm.jobMeta = {
+        jobName:jobName,
+        instanceCount:instanceCount,
+        oneTaskPerHost:oneTaskPerHost,
+        groupId:groupId,
+        bootCmd:bootCmd,
+        deployStepSize:deployStepSize
+    };
+};
+
+
+// 配置job resource 需求
+JobFormBuilder.prototype.setResource = function (cpuLimit,
+                                                 cpuShare,
+                                                 memoryLimi) {
+    this.$scope.jobForm.resource = {
+        cpuLimit:cpuLimit,
+        cpuShare:cpuShare,
+        memoryLimit:memoryLimit
+    };
+};
+
+
+// TODO validate regex
+JobFormBuilder.prototype.addWatchMsg = function (name, regex) {
+    this.$scope.jobForm.monitorRule.watchMsgList.push({
+        name:name,
+        regex:regex
+    });
+};
+
+JobFormBuilder.prototype.addTriggerMsg = function (name,
+                                                   threshold,
+                                                   relate,
+                                                   range) {
+    this.$scope.jobForm.monitorRule.triggerMsgList.push({
+        name:name,
+        threshold:threshold,
+        relate:relate,
+        range:range
+    })
+
+};
+
+JobFormBuilder.prototype.addActionMsg = function (sendList, title, content) {
+    this.$scope.jobForm.monitorRule.actionMsgList.push({
+        sendList:sendList,
+        title:title,
+        content:content
+    });
+};
+
+JobFormBuilder.prototype.addRuleMsg = function (watchName, triggerName, actionName) {
+    this.$scope.jobForm.monitorRule.ruleMsgList.push({
+        watchName:watchName,
+        triggerName:triggerName,
+        actionName:actionName
+    });
+
+};
+JobFormBuilder.prototype.deleteMsg = function (type ,index) {
+    // return a new array
+    var deleteItem = function(array, index) {
+        var newArray = new Array;
+        for (var i = 0; i < array.length; i ++){
+            if (i == index) {
+                continue;
+            }
+            newArray.push(array[i]);
+        }
+        return newArray;
+    }
+    var oldList = null;
+    switch (type) {
+        case 'watch':
+            oldList = this.$scope.jobForm.monitorRule.watchMsgList;
+            this.$scope.jobForm.monitorRule.watchMsgList = deleteItem(oldList, index);
+            break;
+        case 'trigger':
+            oldList = this.$scope.jobForm.monitorRule.triggerMsgList;
+            this.$scope.jobForm.monitorRule.triggerMsgList = deleteItem(oldList, index);
+            break;
+        case 'action':
+            oldList = this.$scope.jobForm.monitorRule.actionMsgList;
+            this.$scope.jobForm.monitorRule.actionMsgList = deleteItem(oldList, index);
+            break;
+        case 'rule':
+            oldList = this.$scope.jobForm.monitorRule.ruleMsgList;
+            this.$scope.jobForm.monitorRule.ruleMsgList = deleteItem(oldList, index);
+        default:
+            break;
+    }
+};
 
 /**
  * @ngdoc function
@@ -18,10 +132,9 @@ angular.module('galaxy.ui.ctrl',[])
      $scope.open = function (size) {
       var modalInstance = $modal.open({
         templateUrl: 'views/createService.html',
-        controller: 'CreateServiceModalInstanceCtrl',
+        controller: 'NewJobModalCtrl',
         keyboard:false,
-        backdrop:'static',
-        size: size
+        backdrop:'static'
       });
     };
      $scope.updateService = function (service) {
@@ -147,6 +260,129 @@ angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',func
         $scope.cancel = function () {
             $modalInstance.dismiss('cancel');
         };
+
+});
+
+// 创建job controller
+angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
+                                                                      $modalInstance,
+                                                                      $http,
+                                                                      $route,
+                                                                      notify,
+                                                                      config,
+                                                                      $cookies){
+    $scope.watchList = [];
+    $scope.triggerList = [];
+    $scope.actionList = [];
+    $scope.ruleList = [];
+
+    $scope.disableSubmit=false;
+    $scope.alerts = [];
+    // 获取集群可用tag列表
+    $http.get(config.rootPrefixPath + "tag/list?master="+config.masterAddr)
+           .success(function(data){
+               $scope.tagList = data.data;
+    });
+    // 获取可用组
+    $http.get(config.rootPrefixPath + "quota/mygroups")
+           .success(function(data){
+               $scope.groupList = data.data;
+    });
+    $scope.resetEditor = function() {
+        $scope.showWatch = $scope.showAction = $scope.showTrigger = false ;
+        $scope.showRule = false;
+    }
+    $scope.resetEditor();
+    $scope.showEditor = function(type) {
+        $scope.resetEditor();
+        switch (type) {
+            case 'watch':
+                $scope.showWatch = true;
+                $scope.watchTpl = {name:"",regex:""};
+                break;
+            case 'action':
+                $scope.showAction = true;
+                $scope.triggerTpl = {name:"",threshold:0,rangeFrom:0,rangeTo:0};
+                break;
+            case 'trigger':
+                $scope.showTrigger = true;
+                break;
+            case 'rule':
+                $scope.showRule = true;
+                break;
+            default:
+                break;
+        }
+    }
+
+    $scope.deleteRule = function(type, index) {
+        var deleteItem = function(array, index) {
+            var newArray = new Array;
+            for (var i = 0; i < array.length; i ++){
+                if (i == index) {
+                    continue;
+                }
+                newArray.push(array[i]);
+            }
+            return newArray;
+        }
+        switch (type) {
+            case 'watch':
+                $scope.watchList = deleteItem($scope.watchList, index);
+                break;
+            case 'trigger':
+                $scope.triggerList = deleteItem($scope.triggerList, index);
+                break;
+            case 'action':
+                $scope.actionList = deleteItem($scope.actionList, index);
+                break;
+            case 'rule':
+                $scope.ruleList = deleteItem($scope.ruleList, index);
+                break;
+            default:
+                break;
+        }
+    }
+    $scope.watchTpl = {name:"",regex:""};
+    $scope.addWatchMsg = function(){
+        $scope.watchList.push({
+            "name":$scope.watchTpl.name,
+            "regex":$scope.watchTpl.regex
+        });
+        $scope.resetEditor();
+    }
+    $scope.triggerTpl = {name:"",threshold:0,rangeFrom:0,rangeTo:0};
+    $scope.addTriggerMsg = function(){
+        $scope.triggerList.push({
+            name:$scope.triggerTpl.name,
+            threshold:$scope.triggerTpl.threshold,
+            rangeFrom:$scope.triggerTpl.rangeFrom,
+            rangeTo:$scope.triggerTpl.rangeTo
+        });
+        $scope.resetEditor();
+    }
+    $scope.actionTpl = {sendList:"", title:"", content:""};
+    $scope.addAction = function(){
+        $scope.actionList.push({
+            sendList:$scope.actionTpl.sendList,
+            title:$scope.actionTpl.title,
+            content:$scope.actionTpl.content
+        });
+        $scope.resetEditor();
+    }
+    $scope.ruleTpl = {
+        watch:{},
+        trigger:{},
+        action:{}
+    };
+    $scope.addRule = function() {
+        $scope.ruleList.push({
+            watch:$scope.ruleTpl.watch,
+            trigger:$scope.ruleTpl.trigger,
+            action:$scope.ruleTpl.action
+        });
+        $scope.resetEditor();
+    }
 
 });
 angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',

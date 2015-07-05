@@ -207,8 +207,8 @@ body {
   display: block;
   min-height: 100px;
   max-height: 200px;
-  overflow-y:scroll; 
-  
+  overflow-y:scroll;
+
 }
 .single-instance{
   padding: 5px ;
@@ -257,7 +257,7 @@ body {
 .instance-window{
   width: 320px;
   margin-right: auto;
-  margin-left: auto; 
+  margin-left: auto;
 }
 
 .resource-list{
@@ -327,4 +327,35 @@ body {
   float: right;
   margin-top: 14px;
   margin-right: 20px;
+}
+.modal-content {
+    background-color: #fff;
+    border: 1px solid #d1d1d1;
+    -webkit-box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    -moz-box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    box-shadow: 0 0 4px rgba(0,0,0,0.1);
+}
+.form-inline-header{
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 10px;
+    max-width: 100%;
+    font-weight: bold;
+}
+
+.job-modal-body {
+    padding: 10px 0 10px 0;
+}
+.job-modal-body .form-group {
+    margin: 8px 15px 8px 15px;
+}
+
+.watch-editor, .trigger-editor,.action-editor,.rule-editor{
+    padding: 10px 10px 10px 10px;
+    background-color: #fbfbfb;
+
+}
+.monitor-header {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
 }

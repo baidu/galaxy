@@ -14,6 +14,7 @@
 #include "common/asm_atomic.h"
 #include "common/logging.h"
 #include "common/util.h"
+#include "proto/monitor.pb.h"
 #include "monitor_impl.h"
 
 namespace galaxy {
@@ -67,62 +68,50 @@ bool MonitorImpl::ParseConfig(const std::string conf_path) {
         LOG(WARNING, "open conf_path err %s", conf_path.c_str());
         return false;
     }
-    std::string line;
-    char value[1024];
-    while (getline(fin, line)) {
-        if (line.size() == 0) {
-            continue;
+    std::stringstream ss;
+    {
+        char * buffer = new char[1024];
+        while (!fin.eof()) {
+            fin.read(buffer, 1024);
+            ss.write(buffer, fin.gcount());
         }
-        if (sscanf(line.c_str(), "<input>:%s", value)) {
-            log_path.assign(value);
-        } else if (sscanf(line.c_str(), "<watch>:%s", value)) {
-            std::vector<std::string> args;
-            std::string input(value);
-            std::string delim("|");
-            Split(input, delim, &args);
-            Watch *watch_ptr = new Watch();
-            watch_ptr->item_name.assign(args[1]);
-            watch_ptr->regex.assign(args[2]);
-            watch_ptr->reg.assign(args[2]);
+        delete buffer;
+    }
+    MonitorConfigMsg monitor_config;
+    if (!monitor_config.ParseFromString(ss.str())) {
+        for (int rule_index = 0; rule_index < monitor_config.rules_size(); rule_index++) {
+            const RuleMsg rule = monitor_config.rules(rule_index);
+            // config watch
+            Watch* watch_ptr = new Watch();
+            watch_ptr->item_name.assign(rule.watch().name());
+            watch_ptr->regex.assign(rule.watch().regex());
             watch_ptr->count = 0;
-            watch_map_[args[0]] = watch_ptr;
-        } else if (sscanf(line.c_str(), "<trigger>:%s", value)) {
-            std::vector<std::string> args;
-            std::string input(value);
-            std::string delim("|");
-            Split(input, delim, &args);
+            watch_map_[watch_ptr->item_name] = watch_ptr;
+            // config trigger
             Trigger* trigger_ptr = new Trigger();
-            trigger_ptr->item_name.assign(args[0]);
-            trigger_ptr->threadhold = atoi(args[2].c_str());
-            trigger_ptr->relate.assign(args[1]);
-            trigger_ptr->range = atoi(args[3].c_str());
+            trigger_ptr->item_name = rule.trigger().name();
+            trigger_ptr->threadhold = rule.trigger().threshold();
+            trigger_ptr->range = rule.trigger().range();
             trigger_ptr->timestamp = time(NULL);
-            trigger_map_[args[0]] = trigger_ptr;
-        } else if (sscanf(line.c_str(), "<action>:%s", value)) {
-            std::vector<std::string> args;
-            std::string input(value);
-            std::string delim("|");
-            Split(input, delim, &args);
+            trigger_map_[rule.trigger().name()] = trigger_ptr;
+            // config action
             Action* action_ptr = new Action();
-            action_ptr->title.assign(args[2]);
-            action_ptr->content.assign(args[3]);
-            action_ptr->timestamp = 0;
-            delim.assign(":");
-            Split(args[1], delim, &(action_ptr->to_list));
-            action_map_[args[0]] = action_ptr;
-        } else if (sscanf(line.c_str(), "<rule>:%s", value)) {
-            std::vector<std::string> args;
-            std::string input(value);
-            std::string delim("|");
-            Split(input, delim, &args);
+            action_ptr->title.assign(rule.action().title());
+            action_ptr->content.assign(rule.action().content());
+            for (int recv_index = 0; recv_index < rule.action().send_list_size(); recv_index++) {
+                action_ptr->to_list.push_back(rule.action().send_list(recv_index));
+            }
+            action_map_[rule.action().title()] = action_ptr;
+            // config rule
             Rule* rule_ptr = new Rule();
-            rule_ptr->watch = watch_map_.find(args[0])->second;
-            rule_ptr->trigger = trigger_map_.find(args[1])->second;
-            rule_ptr->action = action_map_.find(args[2])->second;
+            rule_ptr->watch = watch_ptr;
+            rule_ptr->trigger = trigger_ptr;
+            rule_ptr->action = action_ptr;
             rule_list_.push_back(rule_ptr);
         }
+        return true;
     }
-    return true;
+    return false;
 }
 
 void MonitorImpl::Run() {
