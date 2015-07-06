@@ -5,13 +5,33 @@
 // Author: yuanyi03@baidu.com
 
 #include "agent/resource_collector_engine.h"
-
-#include <stdio.h>
+#include "agent/resource_collector.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include "common/logging.h"
+#include "common/timer.h"
 
-int FLAGS_resource_collector_engine_interval = 4;
+class TestResourceCollector : public galaxy::ResourceCollector {
+public:
+    TestResourceCollector() {
+        cur_collect_time_ = common::timer::get_micros() / 1000;
+        prev_collect_time_ = cur_collect_time_;
+    }
+    int GetCollectTime() {
+        printf("cur[%d] prev[%d]\n", cur_collect_time_, prev_collect_time_);
+        return cur_collect_time_ - prev_collect_time_;
+    }
+private:
+    virtual bool CollectStatistics() {
+        prev_collect_time_ = cur_collect_time_;
+        cur_collect_time_ = common::timer::get_micros() / 1000; 
+        return true;
+    }
+    int cur_collect_time_;
+    int prev_collect_time_;
+};
+
+int FLAGS_resource_collector_engine_interval = 100;
 std::string FLAGS_cgroup_root = "/cgroups/";
 
 int main(int argc, char* argv[]) {
@@ -25,11 +45,18 @@ int main(int argc, char* argv[]) {
     galaxy::ResourceCollectorEngine engine(1000);
     engine.Start();
     engine.AddCollector(collector);
+    TestResourceCollector* default_interval_collector = new TestResourceCollector();
+    engine.AddCollector(default_interval_collector);
+
+    TestResourceCollector* different_interval_collector = new TestResourceCollector();
+    engine.AddCollector(different_interval_collector, 5000);
 
     while (1) {
-        sleep(2);
-        printf("cpu usage %f\n", collector->GetCpuUsage());
-        printf("memory usage %ld\n", collector->GetMemoryUsage());
+        sleep(1);
+        //printf("cpu usage %f\n", collector->GetCpuUsage());
+        //printf("memory usage %ld\n", collector->GetMemoryUsage());
+        printf("default collect interval %d\n", default_interval_collector->GetCollectTime());
+        printf("different collect interval %d\n", different_interval_collector->GetCollectTime());
     }
     return EXIT_SUCCESS;
 }
