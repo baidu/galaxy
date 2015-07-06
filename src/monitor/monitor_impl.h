@@ -41,7 +41,6 @@ struct Rule {
     Watch* watch;
     Trigger* trigger;
     Action* action;
-    std::string sec_table_name;
 };
 
 class MonitorImpl {
