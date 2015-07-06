@@ -68,28 +68,26 @@ def create_service(request):
         if not group_member:
             return builder.error('group with %s does not exist'%group_id).build_json()
         ret = helper.validate_init_service_group_req(request)
-        if not request.user.is_superuser:
-            status,stat = views.get_group_quota_stat(group_member.group, {})
-            cpu_total_require = ret['replicate_count'] * ret['cpu_share']
-            mem_total_require = ret['memory_limit'] * 1024 * 1024 * 1024 * ret['replicate_count']
-            if cpu_total_require > stat['total_cpu_left']:
-                return builder.error('cpu %s exceeds the left cpu quota %s'%(cpu_total_require, stat['total_cpu_left'])).build_json()
-            if mem_total_require > stat['total_mem_left']:
-                return builder.error('mem %s exceeds the left mem %s'%(mem_total_require, stat['total_mem_left'])).build_json()
-        galaxy = wrapper.Galaxy(gm.group.galaxy_master,
+        status,stat = views.get_group_quota_stat(group_member.group, {})
+        cpu_total_require = ret['replicate_count'] * ret['cpu_share']
+        mem_total_require = ret['memory_limit'] * 1024 * 1024 * 1024 * ret['replicate_count']
+        if cpu_total_require > stat['total_cpu_left']:
+            return builder.error('cpu %s exceeds the left cpu quota %s'%(cpu_total_require, stat['total_cpu_left'])).build_json()
+        if mem_total_require > stat['total_mem_left']:
+            return builder.error('mem %s exceeds the left mem %s'%(mem_total_require, stat['total_mem_left'])).build_json()
+        galaxy = wrapper.Galaxy(gm.group.galaxy_master, 
                                 settings.GALAXY_CLIENT_BIN)
         status,output = galaxy.create_task(ret['name'],ret['pkg_src'],
                                            ret['start_cmd'],
                                            ret['replicate_count'],
                                            ret['memory_limit']*1024*1024*1024,
-                                           cpu_share = ret['cpu_share'],
-                                           cpu_limit = ret['cpu_limit'],
+                                           ret['cpu_share'],
                                            deploy_step_size = ret['deploy_step_size'],
                                            one_task_per_host = ret['one_task_per_host'],
                                            restrict_tags = ret['tag'])
         if not status:
             return builder.error('fail create task').build_json()
-        galaxy_job = models.GalaxyJob(group = group_member.group ,
+        galaxy_job = models.GalaxyJob(group = group_member.group , 
                                      job_id = int(output),
                                      meta = json.dumps(ret))
         galaxy_job.save()
@@ -167,3 +165,4 @@ def update_service(request):
         return builder.ok().build_json()
     else:
         return builder.error('fail to kill job').build_json()
+

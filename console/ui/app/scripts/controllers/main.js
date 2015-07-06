@@ -154,7 +154,7 @@ angular.module('galaxy.ui.ctrl',[])
 $http.get(config.rootPrefixPath + "service/list?user=9527&master="+config.masterAddr)
          .success(function(data){
           if(data.status == 0 ){
-               $scope.serviceList = data.data;
+               $scope.serviceList = data.data;  
           }else{
             notify({ message:'获取服务列表失败',classes:"alert-danger"} );
             $log.error(data.msg);
@@ -227,12 +227,12 @@ $http.get(config.rootPrefixPath + "service/list?user=9527&master="+config.master
                .success(function(data){
                   if(data.status == 0){
                     notify({ message:'kill服务成功'} );
-                    $route.reload();
+                    $route.reload();  
                   }else{
                     notify({ message:'kill服务失败',classes:"alert-danger"} );
                     $log.error(data.msg);
                   }
-
+          
                 })
                .error(function(data){
                      notify({ message:'kill服务失败',classes:"alert-danger"} );
@@ -241,17 +241,17 @@ $http.get(config.rootPrefixPath + "service/list?user=9527&master="+config.master
         }
       },function(){});
     }
-
+      
   });
 angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',function($scope,$modalInstance,$http,$route,config,service,notify){
         $scope.service = service;
         $scope.update = function(){
              $http.get(config.rootPrefixPath + 'service/update?id='+$scope.service.job_id+"&replicate="+$scope.service.replica_num+"&master="+config.masterAddr)
                   .success(function(data){
-                        if(data.status == 0){
+                        if(data.status == 0){ 
                           notify({ message:'更新服务成功'} );
                          $modalInstance.dismiss('cancel');
-                        }else{
+                        }else{ 
                           notify({ message:'更新服务失败',classes:"alert-danger"} );
                         }
                       })
@@ -262,6 +262,7 @@ angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',func
         };
 
 });
+<<<<<<< HEAD
 
 // 创建job controller
 angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
@@ -386,14 +387,16 @@ angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
 
 });
 angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
+=======
+angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl', 
+>>>>>>> parent of 1488ca4... support softlimit
                                             function ($scope, $modalInstance,$http,$route,notify,config ,$cookies) {
 
   $scope.disableBtn=false;
   $scope.alerts = [];
   $scope.defaultPkgType = [{name:'FTP',id:0},{name:'HTTP',id:1},{name:'P2P',id:2},{name:'BINARY',id:3}];
-  $scope.deployTpl = {groupId:"",name:"",startCmd:"",tag:"",pkgType:0,pkgSrc:"",deployStepSize:5,replicate:0,memoryLimit:3,cpuLimit:0.5,cpuShare:0.5,oneTaskPerHost:false};
-  $scope.super_user = config.user.is_super;
-  if ($cookies.lastServiceForm != undefined &&
+  $scope.deployTpl = {groupId:"",name:"",startCmd:"",tag:"",pkgType:0,pkgSrc:"",deployStepSize:5,replicate:0,memoryLimit:3,cpuShare:0.5,oneTaskPerHost:false};
+  if ($cookies.lastServiceForm != undefined && 
       $cookies.lastServiceForm != null){
       try{
          $scope.deployTpl = JSON.parse($cookies.lastServiceForm);
@@ -426,24 +429,23 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
         $scope.alerts.push({msg: '请选择quota组'});
         return ;
     }
+    var totalCpuRequire = $scope.deployTpl.replicate * $scope.deployTpl.cpuShare;
+    var totalMemRequire = $scope.deployTpl.replicate * $scope.deployTpl.memoryLimit * 1024 * 1024 * 1024;
 
-    if (!config.user.is_super) {
-        var totalCpuRequire = $scope.deployTpl.replicate * $scope.deployTpl.cpuShare;
-        var totalMemRequire = $scope.deployTpl.replicate * $scope.deployTpl.memoryLimit * 1024 * 1024 * 1024;
-        if(totalCpuRequire > $scope.groupStat.total_cpu_left){
-            $scope.alerts.push({msg: 'cpu超出总配额'});
-            return;
-        }
-        if(totalMemRequire > $scope.groupStat.total_mem_left){
-            $scope.alerts.push({msg: '内存超出总配额'});
-            return;
-        }
+    if(totalCpuRequire > $scope.groupStat.total_cpu_left){
+        $scope.alerts.push({msg: 'cpu超出总配额'});
+        return;
     }
+    if(totalMemRequire > $scope.groupStat.total_mem_left){ 
+        $scope.alerts.push({msg: '内存超出总配额'});
+        return;
+    }
+
     $scope.disableBtn=true;
     $http(
       {
         method:"POST",
-        url:config.rootPrefixPath + 'service/create?master='+config.masterAddr,
+        url:config.rootPrefixPath + 'service/create?master='+config.masterAddr, 
         data:$scope.deployTpl,
         headers:{'Content-Type': 'application/x-www-form-urlencoded'},
         transformRequest: function(obj) {
@@ -474,8 +476,8 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   $scope.closeAlert = function(index) {
     $scope.alerts.splice(index, 1);
   };
-
-
+  
+  
 });
 
 }(angular));
