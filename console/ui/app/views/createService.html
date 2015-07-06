@@ -2,16 +2,10 @@
 <button type="button" class="close" ng-click="cancel()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
    <h4>创建服务</h4>
 </div>
-<<<<<<< HEAD
 <div class="modal-body">
 <tabset>
 <tab heading="配置job信息">
-=======
-<div class="modal-body">  
-
-    <form >
->>>>>>> parent of 1488ca4... support softlimit
- <div class="ui statistics" ng-show="groupStat != null ">
+<div class="ui statistics" ng-show="groupStat != null ">
       <div class="red statistic">
         <div class="value">{{groupStat.total_cpu_left}} </div>
         <div class="label">剩余CPU核数 </div>
@@ -35,33 +29,13 @@
           <label for="name">服务名称</label>
 
           <input type="text" ng-model="deployTpl.name" class="form-control " id="name" >
-<<<<<<< HEAD
  </div>
 
-=======
-        </div>
- 
->>>>>>> parent of 1488ca4... support softlimit
   <div class="form-group">
           <label for="replicate">实例数</label>
           <input type="number" ng-model="deployTpl.replicate" class="form-control " id="replicate" >
         </div>
-<<<<<<< HEAD
-
-=======
-        <div class="form-group" >
-          <label for="memoryLimit">内存限制</label>
-           <div class="input-group">
-            <input type="number" ng-model="deployTpl.memoryLimit" class="form-control " id="memoryLimit" >
-            <span class="input-group-addon">G</span> 
-           </div>
-        </div>
-        <div class="form-group" >
-          <label for="cpuShare">CPU核数</label>
-          <input type="number" ng-model="deployTpl.cpuShare" class="form-control " id="cpuShare">
-        </div>
->>>>>>> parent of 1488ca4... support softlimit
-        <div class="form-group">
+       <div class="form-group">
           <label for="pkgSrc">部署包</label>
           <div class="row">
             <div class="col-xs-2">

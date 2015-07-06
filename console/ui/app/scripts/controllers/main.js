@@ -262,7 +262,6 @@ angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',func
         };
 
 });
-<<<<<<< HEAD
 
 // 创建job controller
 angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
@@ -387,9 +386,6 @@ angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
 
 });
 angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
-=======
-angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl', 
->>>>>>> parent of 1488ca4... support softlimit
                                             function ($scope, $modalInstance,$http,$route,notify,config ,$cookies) {
 
   $scope.disableBtn=false;
