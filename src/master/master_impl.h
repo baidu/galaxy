@@ -98,9 +98,9 @@ struct JobInfo {
     std::set<int64_t> deploying_tasks;
     double cpu_limit;
     std::string monitor_conf;
-    // 单host单实例
+    //单host单实例
     bool one_task_per_host;
-    // 限制job在标有特定tag机器上面运行
+    //限制job在标有特定tag机器上面运行
     std::set<std::string> restrict_tags;
     std::map<std::string, int32_t> sched_agent;
 };
@@ -185,9 +185,9 @@ private:
     void UpdateTag(const PersistenceTagEntity& entity);
 
     void KilledTaskCallback(
-            int64_t job_id,
+            int64_t job_id, 
             std::string agent_addr,
-            const KillTaskRequest*,
+            const KillTaskRequest*, 
             KillTaskResponse*, bool, int);
 private:
     /// Global threadpool
@@ -211,7 +211,7 @@ private:
     bool is_safe_mode_;
     int64_t start_time_;
     leveldb::DB* persistence_handler_;
-    /// master tags configuration
+    /// master tags configuration  
     boost::unordered_map<std::string, std::set<std::string> > tags_;
 };
 
