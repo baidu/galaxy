@@ -38,14 +38,25 @@ ResourceCollectorEngine* GetResourceCollectorEngine() {
     return g_collector_engine;
 }
 
-long ResourceCollectorEngine::AddCollector(ResourceCollector* collector) {
-    if (collector == NULL) {
+long ResourceCollectorEngine::AddCollector(ResourceCollector* collector, int collect_interval) {
+    int32_t now_time = common::timer::get_micros() / 1000; 
+    if (collector == NULL 
+            || collect_interval < 0) {
         return -1; 
     }
     common::MutexLock lock(&collector_set_lock_);
-    long collector_id = next_collector_id_ ++;
-    collector_set_[collector_id] = collector;
-    return collector_id;
+    CollectCell cell;
+    cell.collector_id = next_collector_id_ ++;
+    if (collect_interval == 0) {
+        collect_interval = collect_interval_;
+    }
+    cell.collect_interval = collect_interval;
+    cell.next_collect_time = now_time + collect_interval;
+    cell.collector_handler = collector;
+    collector_set_[cell.collector_id] = cell;
+    LOG(DEBUG, "add collector %ld next collect time[%d] interval[%d] now_time[%d]",
+            cell.collector_id, cell.next_collect_time, cell.collect_interval, now_time);
+    return cell.collector_id;
 }
 
 void ResourceCollectorEngine::DelCollector(long id) {
@@ -54,7 +65,7 @@ void ResourceCollectorEngine::DelCollector(long id) {
     }
 
     common::MutexLock lock(&collector_set_lock_);
-    std::map<long, ResourceCollector*>::iterator it; 
+    std::map<long, CollectCell>::iterator it; 
     it = collector_set_.find(id);
     if (it == collector_set_.end()) {
         return; 
@@ -73,18 +84,31 @@ void ResourceCollectorEngine::OnTimeout() {
     // TODO lock scope may be a little bigger
     // But ResourceCollector* may be release by user
     LOG(DEBUG, "start to do collect");
+    int32_t now_time = common::timer::get_micros() / 1000;
     common::MutexLock lock(&collector_set_lock_);    
-    std::map<long, ResourceCollector*>::iterator it;
+    std::map<long, CollectCell>::iterator it;
     for (it = collector_set_.begin(); 
             it != collector_set_.end(); ++it) {
-        ResourceCollector* collector = it->second;
+        if (it->second.next_collect_time > now_time) {
+            LOG(DEBUG, "collector %ld not meet next collect time. collect_time[%ld] now[%ld]",
+                    it->first, it->second.next_collect_time, now_time);
+            continue; 
+        }
+        LOG(DEBUG, "collector %ld meet next collect time. collect_time[%ld] now[%ld]",
+                it->first, it->second.next_collect_time, now_time);
+        it->second.next_collect_time += 
+            it->second.collect_interval;
+        ResourceCollector* collector = 
+            it->second.collector_handler;
         if (!collector->CollectStatistics()) {
-            LOG(WARNING, "collector %ld collect failed", it->first); 
+            LOG(WARNING, "collector %ld collect failed", 
+                    it->first); 
         }
     }
 
     collector_thread_->DelayTask(collect_interval_, 
-            boost::bind(&ResourceCollectorEngine::OnTimeout, this));
+            boost::bind(&ResourceCollectorEngine::OnTimeout, 
+                this));
     return;
 }
 
