@@ -32,16 +32,29 @@ public:
         delete collector_thread_; 
     }
 
-    long AddCollector(ResourceCollector* collector);
+    long AddCollector(ResourceCollector* collector, int collect_interval = 0);
     void DelCollector(long collector_id);
 
     void Start();
 protected:
     void OnTimeout();
 
+    struct CollectCell {
+        ResourceCollector* collector_handler;  
+        long next_collect_time;
+        long collector_id;
+        int collect_interval;
+        CollectCell() : collector_handler(NULL),
+            next_collect_time(0),
+            collector_id(0),
+            collect_interval(0) {
+        }
+    };
+
     common::ThreadPool* collector_thread_;
     int collect_interval_;
-    std::map<long, ResourceCollector*> collector_set_;
+    std::map<long, CollectCell> collector_set_;
+    //std::map<long, ResourceCollector*> collector_set_;
     // TODO change id generator
     long next_collector_id_;
     common::Mutex collector_set_lock_;
