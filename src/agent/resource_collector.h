@@ -8,6 +8,7 @@
 #define _RESOURCE_COLLECTOR_H
 
 #include "proto/task.pb.h"
+
 namespace galaxy {
 
 class ResourceCollector {
@@ -48,27 +49,6 @@ protected:
     virtual bool CollectStatistics();
 private:
     ProcResourceCollectorImpl* impl_;
-};
-
-// machine stat
-struct AgentStat {
-    // linux load
-    double one_min_load;
-    double five_min_load;
-    double ten_min_load; 
-    int32_t timestamp;
-};
-
-class AgentStatCollectorImpl;
-class AgentStatCollector : public ResourceCollector {
-public:
-      explicit AgentStatCollector();
-      virtual ~AgentStatCollector();
-      void Stat(AgentStat * stat);
-protected:
-      bool CollectStatistics();
-private:
-      AgentStatCollectorImpl* impl_; 
 };
 
 }   // ending namespace galaxy

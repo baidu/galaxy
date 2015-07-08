@@ -9,7 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <time.h>
-#include <stdlib.h>
+
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
@@ -366,7 +366,8 @@ void CGroupResourceCollectorImpl::CalcCpuUsage() {
         rs * cgroup_statistics_cur_.cpu_cores_limit;
     LOG(DEBUG, "p prev :%ld p post:%ld g pre:%ld g post:%ld radir:%f cpu_cur_usage:%lf cpu_cores_cur_usage:%lf", 
             cgroup_cpu_before, 
-            cgroup_cpu_after,            global_cpu_before,
+            cgroup_cpu_after,
+            global_cpu_before,
             global_cpu_after,
             radio,
             cpu_cur_usage_,
@@ -449,60 +450,6 @@ void CGroupResourceCollector::Clear() {
     impl_->Clear();
 }
 
-
-
-class AgentStatCollectorImpl {
-
-public:
-     explicit AgentStatCollectorImpl() : stat_(){}
-     virtual ~AgentStatCollectorImpl(){        
-     }
-     void Stat(AgentStat* stat);
-     bool CollectStatistics();
-private:
-     common::Mutex mutex_;
-     AgentStat stat_;
-};
-
-// agent stat colloector
-bool AgentStatCollectorImpl::CollectStatistics() {
-    common::MutexLock mutex(&mutex_);
-    double load[3] = {0};
-    int ret = getloadavg(load, 3);
-    if (ret == -1) {
-        LOG(FATAL, "fail to get loadavg ret is %d errmsg %s", ret, strerror(errno));
-        return false;
-    }
-    stat_.one_min_load = load[0];   
-    stat_.five_min_load = load[1];
-    stat_.ten_min_load = load[2];
-    stat_.timestamp = common::timer::now_time();
-    return true;     
-}
-
-void AgentStatCollectorImpl::Stat(AgentStat* stat) {
-    common::MutexLock mutex(&mutex_);
-    stat->one_min_load = stat_.one_min_load;
-    stat->five_min_load = stat_.ten_min_load;
-    stat->ten_min_load = stat_.ten_min_load;
-}
-
-
-AgentStatCollector::AgentStatCollector() {
-    impl_ = new AgentStatCollectorImpl();
-}
-
-AgentStatCollector::~AgentStatCollector() {
-    delete impl_;
-}
-
-void AgentStatCollector::Stat(AgentStat* stat) {
-    impl_->Stat(stat);
-}
-
-bool AgentStatCollector::CollectStatistics() {
-    return impl_->CollectStatistics();
-}
 // -----------  resource collector utils -------------
 
 bool GetCgroupCpuUsage(
