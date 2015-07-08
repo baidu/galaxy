@@ -463,7 +463,7 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 
                 continue;
             }
-            //ÊÍ·Å×ÊÔ´
+            //é‡Šæ”¾èµ„æº
             LOG(INFO,"delay cancel task %d on agent %s",task_id,agent_addr.c_str());
             thread_pool_.DelayTask(100, boost::bind(&MasterImpl::DelayRemoveZombieTaskOnAgent,this, agent, task_id));
         }
@@ -970,7 +970,7 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
     for (; it != job->agent_tasks.end(); ++it) {
         assert(agents_.find(it->first) != agents_.end());
         assert(!it->second.empty());
-        // Ö»¿¼ÂÇÁËagentµÄ¸ºÔØ£¬Ã»ÓĞ¿¼ÂÇjobÔÚagentÉÏ·Ö²¼µÄ¶àÉÙ£¬ĞèÒªÒ»¸ö¸ü¸´ÔÓµÄËã·¨Ã´?
+        // åªè€ƒè™‘äº†agentçš„è´Ÿè½½ï¼Œæ²¡æœ‰è€ƒè™‘jobåœ¨agentä¸Šåˆ†å¸ƒçš„å¤šå°‘ï¼Œéœ€è¦ä¸€ä¸ªæ›´å¤æ‚çš„ç®—æ³•ä¹ˆ?
         AgentInfo& ai = agents_[it->first];
         int ind = 0;
         for (std::set<int64_t>::iterator t_it = it->second.begin();
@@ -1024,7 +1024,7 @@ void MasterImpl::Schedule() {
         }
         if (job.running_num > job.replica_num && job.scale_down_time + 10 < now_time) {
             ScaleDown(&job, job.running_num - job.replica_num);
-            // ±ÜÃâË²¼äËõ³É0ÁË
+            // é¿å…ç¬é—´ç¼©æˆ0äº†
             job.scale_down_time = now_time;
         }
         int count_for_log = 0;
@@ -1073,15 +1073,15 @@ void MasterImpl::Schedule() {
     thread_pool_.DelayTask(1000, boost::bind(&MasterImpl::Schedule, this));
 }
 
-//¸ºÔØ¼ÆËã
-//Ä¿Ç°Ê¹ÓÃ3¸öÒòÊı
-//1¡¢µ±Ç°»úÆ÷memÊ¹ÓÃÁ¿£¬¸ºÔØÓëÄÚ´æÊ¹ÓÃÁ¿³ÉÕı±È£¬ÓëÄÚ´æ×ÜÁ¿³É·´±È
-//2¡¢µ±Ç°»úÆ÷µÄcpuÊ¹ÓÃÁ¿£¬¸ºÔØÓëcpuÊ¹ÓÃÁ¿³ÉÕı±È£¬Óëcpu×ÜÁ¿³É·´±È
-//3¡¢µ±Ç°»úÆ÷ÉÏµÄÈÎÎñÊı£¬¸ºÔØÓëÈÎÎñÊı³ÉÕı±È
-// ÓÉÓÚ¸÷¸öÎ¬¶ÈµÄ¶ÈÁ¿µ¥Î»²»Í¬£¬ËùÒÔÍ¨¹ı×ÊÔ´µÄ¡°Õ¼ÓÃ±È¡±À´ºâÁ¿£»
-// ¸÷Î¬¶È×ÊÔ´µÄ×ÛºÏÆÀ¹ÀÍ¨¹ıÖ¸ÊıÏà¼ÓµÄ·½Ê½£¬ÕâÖÖ·½Ê½±ÈÖ±½ÓÇóºÍ»òÇó³Ë»ı¸ü¼ÓÆ½»¬£¬
-// ÇÒÄÜ±ÜÃâÑ¡³ö¸÷Î¬¶È×ÊÔ´ÏûºÄ²»Æ½ºâµÄ»úÆ÷¡£
-// ²Î¿¼×ÊÁÏ£ºhttp://www.columbia.edu/~cs2035/courses/ieor4405.S13/datacenter_scheduling.ppt
+//è´Ÿè½½è®¡ç®—
+//ç›®å‰ä½¿ç”¨3ä¸ªå› æ•°
+//1ã€å½“å‰æœºå™¨memä½¿ç”¨é‡ï¼Œè´Ÿè½½ä¸å†…å­˜ä½¿ç”¨é‡æˆæ­£æ¯”ï¼Œä¸å†…å­˜æ€»é‡æˆåæ¯”
+//2ã€å½“å‰æœºå™¨çš„cpuä½¿ç”¨é‡ï¼Œè´Ÿè½½ä¸cpuä½¿ç”¨é‡æˆæ­£æ¯”ï¼Œä¸cpuæ€»é‡æˆåæ¯”
+//3ã€å½“å‰æœºå™¨ä¸Šçš„ä»»åŠ¡æ•°ï¼Œè´Ÿè½½ä¸ä»»åŠ¡æ•°æˆæ­£æ¯”
+// ç”±äºå„ä¸ªç»´åº¦çš„åº¦é‡å•ä½ä¸åŒï¼Œæ‰€ä»¥é€šè¿‡èµ„æºçš„â€œå ç”¨æ¯”â€æ¥è¡¡é‡ï¼›
+// å„ç»´åº¦èµ„æºçš„ç»¼åˆè¯„ä¼°é€šè¿‡æŒ‡æ•°ç›¸åŠ çš„æ–¹å¼ï¼Œè¿™ç§æ–¹å¼æ¯”ç›´æ¥æ±‚å’Œæˆ–æ±‚ä¹˜ç§¯æ›´åŠ å¹³æ»‘ï¼Œ
+// ä¸”èƒ½é¿å…é€‰å‡ºå„ç»´åº¦èµ„æºæ¶ˆè€—ä¸å¹³è¡¡çš„æœºå™¨ã€‚
+// å‚è€ƒèµ„æ–™ï¼šhttp://www.columbia.edu/~cs2035/courses/ieor4405.S13/datacenter_scheduling.ppt
 double MasterImpl::CalcLoad(const AgentInfo& agent){
     if(agent.mem_share <= 0 || agent.cpu_share <= 0.0 ){
         LOG(FATAL,"invalid agent input ,mem_share %ld,cpu_share %f",agent.mem_share,agent.cpu_share);
@@ -1129,15 +1129,15 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->mem_left);
         assert(agents_.find(it->agent_addr) != agents_.end());
         last_found = true;
-        //ÅĞ¶Ïjob one task per hostÊôĞÔÊÇ·ñÂú×ã
+        //åˆ¤æ–­job one task per hostå±æ€§æ˜¯å¦æ»¡è¶³
         if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
             last_found = false;
         }
-        //ÅĞ¶Ïjob ÏŞÖÆµÄtagÊÇ·ñÂú×ã
+        //åˆ¤æ–­job é™åˆ¶çš„tagæ˜¯å¦æ»¡è¶³
         if (last_found) {
             std::set<std::string>& tags = agents_[it->agent_addr].tags;
-            //Ä¿Ç°Ö§³Öµ¥¸ötagµ÷¶È
-            //TODO Ö§³Öjob¶à¸ötagµ÷¶È
+            //ç›®å‰æ”¯æŒå•ä¸ªtagè°ƒåº¦
+            //TODO æ”¯æŒjobå¤šä¸ªtagè°ƒåº¦
             if (!(job.restrict_tags.size() >0 
                   && tags.find(*job.restrict_tags.begin()) == tags.end())) {
                 last_found = false;
@@ -1153,18 +1153,18 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it_start->agent_addr.c_str(),
                 it_start->cpu_left,
                 it_start->mem_left);
-        //ÅĞ¶ÏÄÚ´æÊÇ·ñÂú×ãĞèÇó
+        //åˆ¤æ–­å†…å­˜æ˜¯å¦æ»¡è¶³éœ€æ±‚
         if (it_start->mem_left < job.mem_share) {
             continue;
         }
-        //ÅĞ¶Ïagent ÊÇ·ñÂú×ãjob  one task per host Ìõ¼ş
+        //åˆ¤æ–­agent æ˜¯å¦æ»¡è¶³job  one task per host æ¡ä»¶
         if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
             continue;
         }
         assert(agents_.find(it_start->agent_addr) != agents_.end());
         std::set<std::string>& tags = agents_[it_start->agent_addr].tags;
         LOG(DEBUG, "require tag %s agent %s tag size %d",(*job.restrict_tags.begin()).c_str(), it_start->agent_addr.c_str(), tags.size());
-        //ÅĞ¶Ïjob ÏŞÖÆµÄtagÊÇ·ñÂ÷×¡
+        //åˆ¤æ–­job é™åˆ¶çš„tagæ˜¯å¦ç’ä½
         if (job.restrict_tags.size() > 0
             && tags.find(*job.restrict_tags.begin()) == tags.end()) {
             continue;
@@ -1382,10 +1382,10 @@ void MasterImpl::UpdateTag(const PersistenceTagEntity& entity) {
         tags_.erase(entity.tag());
         return;
     }
-    //¸üĞÂmaster tags_
+    //æ›´æ–°master tags_
     std::set<std::string> agent_set;
     for (int64_t index = 0; index < entity.agents_size(); index++) {
-        //agent Ê¼ÖÕ²åÈë£¬²»Ğ£ÑéagentÊÇ·ñ»î×Å
+        //agent å§‹ç»ˆæ’å…¥ï¼Œä¸æ ¡éªŒagentæ˜¯å¦æ´»ç€
         agent_set.insert(entity.agents(index));
         std::map<std::string, AgentInfo>::iterator it
                 = agents_.find(entity.agents(index));
@@ -1403,3 +1403,4 @@ void MasterImpl::UpdateTag(const PersistenceTagEntity& entity) {
 } // namespace galaxy
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
+
