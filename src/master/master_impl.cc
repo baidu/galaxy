@@ -148,6 +148,15 @@ bool MasterImpl::Recover() {
         job_info.scale_down_time = 0;
         job_info.monitor_conf = cell.monitor_conf();
 
+        //trace init
+        job_info.trace.killed_count = 0;
+        job_info.trace.start_count = 0;
+        job_info.trace.deploy_failed_count = 0;
+        job_info.trace.reschedule_count = 0;
+        job_info.trace.has_been_stable = false;
+        job_info.trace.deploy_start_time = common::timer::now_time();
+        job_info.trace.deploy_end_time = 0;
+        job_info.trace.state = kScheduling;
         LOG(INFO, "recover job info %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
                 job_info.cpu_share,
@@ -332,6 +341,20 @@ void MasterImpl::ListJob(::google::protobuf::RpcController* /*controller*/,
         job_inst->set_job_name(job.job_name);
         job_inst->set_running_task_num(job.running_num);
         job_inst->set_replica_num(job.replica_num);
+        JobInstanceTrace* trace = job_inst->mutable_trace();
+        trace->set_killed_count(job.trace.killed_count);
+        trace->set_overflow_killed_count(
+                    job.trace.overflow_killed_count);
+        trace->set_start_count(job.trace.start_count);
+        trace->set_deploy_failed_count(
+          job.trace.deploy_failed_count);
+        trace->set_reschedule_count(
+          job.trace.reschedule_count);
+        trace->set_deploy_start_time(
+          job.trace.deploy_start_time);
+        trace->set_deploy_end_time(
+          job.trace.deploy_end_time);
+        trace->set_state(job.trace.state);
     }
     done->Run();
 }
@@ -778,6 +801,16 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     for (int i=0; i < request->restrict_tags_size(); i++) {
         job.restrict_tags.insert(request->restrict_tags(i));
     }
+
+    //trace init
+    job.trace.killed_count = 0;
+    job.trace.start_count = 0;
+    job.trace.deploy_failed_count = 0;
+    job.trace.reschedule_count = 0;
+    job.trace.has_been_stable = false;
+    job.trace.deploy_start_time = common::timer::now_time();
+    job.trace.deploy_end_time = 0;
+    job.trace.state = kScheduling;
     LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d ,restrict_tag %s, monitor_conf: %s",
             job.job_name.c_str(),
             job.replica_num,
@@ -836,6 +869,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     if (!ret || (rt_response.has_status() 
               && rt_response.status() != 0)) {
         LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
+        job->trace.deploy_failed_count ++;
         return false;
     } else {
         agent.running_tasks.insert(task_id);
@@ -1001,6 +1035,12 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
             intance_it->second.set_status(KILLED);
         }
         CancelTaskOnAgent(&agent, cell.task_id);
+        // trace begin
+        job->trace.killed_count ++;
+        if (!job->killed) {
+            job->trace.overflow_killed_count ++;
+        }
+
     }
     return;
 }
@@ -1027,6 +1067,12 @@ void MasterImpl::Schedule() {
             // 避免瞬间缩成0了
             job.scale_down_time = now_time;
         }
+        // 第一次达到稳定状态
+        if (job.running_num == job.replica_num 
+            && !job.trace.has_been_stable) {
+            job.trace.has_been_stable = true;
+            job.trace.deploy_end_time = common::timer::now_time();
+        }
         int count_for_log = 0;
         //fix warning
         uint32_t deploy_step_size = job.deploy_step_size;
@@ -1043,8 +1089,10 @@ void MasterImpl::Schedule() {
             std::string agent_addr = AllocResource(job);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
+                job.trace.state = kNoResource;
                 break;
             }
+            
             bool ret = ScheduleTask(&job, agent_addr);
             if (ret) {
                 //update index
@@ -1057,6 +1105,13 @@ void MasterImpl::Schedule() {
                 }   
             }   
             count_for_log++;
+
+            // trace begin
+            job.trace.start_count ++;
+            if (job.trace.has_been_stable) {
+                job.trace.reschedule_count ++;
+            }
+
         }
         LOG(INFO,"schedule job %ld ,the deploying size is %d,deployed count %d", job.id,
                  old_deploying_tasks_size, count_for_log);

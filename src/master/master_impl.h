@@ -79,6 +79,26 @@ typedef boost::multi_index::multi_index_container<
     >
 > AgentLoadIndex;
 
+// job trace 用于记录job启动到结束
+// 的汇总数据
+struct JobTrace {
+    // 实例被kill次数
+    uint32_t killed_count;
+    // 因实例超出副本数被kill
+    uint32_t overflow_killed_count;
+    // 实例启动次数
+    uint32_t start_count;
+    // 部署失败次数
+    uint32_t deploy_failed_count;
+    // 重新调度次数
+    uint32_t reschedule_count;
+    // 第一次运行数量与实例数相等
+    bool has_been_stable;
+    // 调度到稳定耗时 (ms)
+    int32_t deploy_start_time;
+    int32_t deploy_end_time;
+    ScheduleState state;
+};
 
 struct JobInfo {
     int64_t id;
@@ -103,6 +123,7 @@ struct JobInfo {
     //限制job在标有特定tag机器上面运行
     std::set<std::string> restrict_tags;
     std::map<std::string, int32_t> sched_agent;
+    JobTrace trace;
 };
 
 class RpcClient;
