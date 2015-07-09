@@ -159,7 +159,7 @@ class GalaxySDK(object):
                 trace.reschedule_count = job.trace.reschedule_count
                 trace.deploy_start_time = job.trace.deploy_start_time
                 trace.deploy_end_time = job.trace.deploy_end_time
-                trace.state = SCHEDULE_STATE_MAP[job.trace]
+                trace.state = SCHEDULE_STATE_MAP[job.trace.state]
                 base.trace = trace
                 ret.append(base)
             return True,ret
