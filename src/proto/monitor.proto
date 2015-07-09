@@ -1,0 +1,49 @@
+package galaxy;
+
+option cc_generic_services = true;
+option py_generic_services = true;
+
+// 当match后支持对日志行处理
+message CalcStrategyMsg {
+    // column family name
+    optional string name = 1;
+    optional string input = 2;
+    optional string regex = 3;
+    repeated string key_names = 4;
+    optional string table_name = 5;
+}
+
+message WatchMsg {
+    optional string name = 1;
+    optional string regex = 2; 
+}
+
+message TriggerMsg {
+    optional string name = 1;
+    optional int32 threshold = 2;
+    optional string relate = 3;
+    optional int32 range = 4;
+}
+
+message ActionMsg {
+    repeated string send_list = 1;
+    optional string title = 2;
+    optional string content = 3;
+}
+
+message RuleMsg {
+    // 多个RuleMsg可以是同样的input
+    optional string input = 1;
+    optional string sec_table_name = 2;
+    optional string min_table_name = 3;
+    optional string hour_table_name = 4;
+    optional WatchMsg watch = 5;
+    optional TriggerMsg trigger = 6;
+    optional ActionMsg action = 7;
+}
+
+message MonitorConfigMsg {
+    repeated RuleMsg rules = 1;
+    repeated CalcStrategyMsg strategies = 2;
+}
+
