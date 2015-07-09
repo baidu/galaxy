@@ -465,7 +465,7 @@ angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
 
 
 });
-angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
+/*angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
                                             function ($scope, $modalInstance,$http,$route,notify,config ,$cookies) {
 
   $scope.disableBtn=false;
@@ -554,6 +554,6 @@ angular.module('galaxy.ui.ctrl').controller('CreateServiceModalInstanceCtrl',
   };
   
   
-});
+});*/
 
 }(angular));
