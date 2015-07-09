@@ -11,6 +11,7 @@ from sofa.pbrpc import client
 from galaxy import master_pb2
 
 STATE_MAP={0:'DEPLOYING',2:'RUNNING',3:'KILLED',4:'RESTART',5:'ERROR',6:'COMPLETE'}
+SCHEDULE_STATE_MAP={0:'Scheduling',1:'NoResource'}
 LOG = logging.getLogger('console')
 class BaseEntity(object):
     def __setattr__(self,name,value):
@@ -150,6 +151,16 @@ class GalaxySDK(object):
                 base.job_name = job.job_name
                 base.running_task_num = job.running_task_num
                 base.replica_num = job.replica_num
+                trace = BaseEntity()
+                trace.killed_count = job.trace.killed_count
+                trace.overflow_killed_count = job.trace.overflow_killed_count
+                trace.start_count = job.trace.start_count
+                trace.deploy_failed_count = job.trace.deploy_failed_count
+                trace.reschedule_count = job.trace.reschedule_count
+                trace.deploy_start_time = job.trace.deploy_start_time
+                trace.deploy_end_time = job.trace.deploy_end_time
+                trace.state = SCHEDULE_STATE_MAP[job.trace]
+                base.trace = trace
                 ret.append(base)
             return True,ret
         except:
