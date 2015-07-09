@@ -154,6 +154,9 @@ angular.module('galaxy.ui.ctrl',[])
 $http.get(config.rootPrefixPath + "service/list?user=9527&master="+config.masterAddr)
          .success(function(data){
           if(data.status == 0 ){
+               for (var i in data.data) {
+                    data.data[i].tpl = data.data[i].job_name + data.data[i].job_id + ".html";
+               }
                $scope.serviceList = data.data;  
           }else{
             notify({ message:'获取服务列表失败',classes:"alert-danger"} );
@@ -241,6 +244,7 @@ $http.get(config.rootPrefixPath + "service/list?user=9527&master="+config.master
         }
       },function(){});
     }
+    $scope.popoverTmpl = "jobstate.html";
       
   });
 angular.module('galaxy.ui.ctrl').controller('UpdateServiceModalIntanceCtrl',function($scope,$modalInstance,$http,$route,config,service,notify){
