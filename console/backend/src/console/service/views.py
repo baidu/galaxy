@@ -82,7 +82,7 @@ def create_service(request):
             return builder.error('mem %s exceeds the left mem %s'%(mem_total_require, stat['total_mem_left'])).build_json()
         conf = None
         if data['setMonitor'] :
-            conf = build_monitor_conf(data)
+            conf = helper.build_monitor_conf(data)
         galaxy = wrapper.Galaxy(gm.group.galaxy_master, 
                                 settings.GALAXY_CLIENT_BIN)
         tags = []
