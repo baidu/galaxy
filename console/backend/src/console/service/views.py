@@ -73,6 +73,8 @@ def create_service(request):
             group_member = gm
         if not group_member:
             return builder.error('group with %s does not exist'%group_id).build_json()
+        if group_member.group.max_cpu_limit and data['cpuLimit'] > group_member.group.max_cpu_limit:
+            return builder.error('cpu limit exceeds the max cpu limit %d'%group_member.group.max_cpu_limit).build_json()
         status,stat = views.get_group_quota_stat(group_member.group, {})
         cpu_total_require = data['replicate'] * data['cpuShare']
         mem_total_require = data['memoryLimit'] * 1024 * 1024 * 1024 * data['replicate']

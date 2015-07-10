@@ -43,7 +43,7 @@ class Group(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
     description = models.TextField()
-   
+    max_cpu_limit = models.FloatField()
     def __str__(self):
         return "group_%s_%d"%(self.name, self.id)
 
@@ -54,7 +54,8 @@ class GroupAdmin(admin.ModelAdmin):
                     'quota' ,
                     'description', 
                     'created', 
-                    'modified')
+                    'modified',
+                    'max_cpu_limit')
 
     search_fields = ('id','quota__id')
     class Meta:
