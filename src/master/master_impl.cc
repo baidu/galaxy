@@ -1067,6 +1067,7 @@ void MasterImpl::Schedule() {
             // 避免瞬间缩成0了
             job.scale_down_time = now_time;
         }
+        job.trace.state = kScheduling;
         // 第一次达到稳定状态
         if (job.running_num == job.replica_num 
             && !job.trace.has_been_stable) {
@@ -1086,13 +1087,18 @@ void MasterImpl::Schedule() {
                         ++ deploying_times) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
-            std::string agent_addr = AllocResource(job);
+            int alloc_status = 0;
+            std::string agent_addr = AllocResource(job, &alloc_status);
+            if (alloc_status == 2) {
+                job.trace.state = kNoResource;
+            } else if (alloc_status == 1) {
+                job.trace.state = kNoFitAgent;
+            }
+
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
-                job.trace.state = kNoResource;
                 break;
             }
-            
             bool ret = ScheduleTask(&job, agent_addr);
             if (ret) {
                 //update index
@@ -1161,7 +1167,7 @@ bool MasterImpl::JobTaskExistsOnAgent(const std::string& agent_addr,
     return true;
 }
 
-std::string MasterImpl::AllocResource(const JobInfo& job){
+std::string MasterImpl::AllocResource(const JobInfo& job, int* status){
     LOG(INFO,"alloc resource for job %ld,mem_require %ld, cpu_require %f",
         job.id,job.mem_share,job.cpu_share);
     agent_lock_.AssertHeld();
@@ -1254,13 +1260,16 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
     }
 
     if (load_queue.size() > 0) {
-        addr = load_queue.top().agent_addr;    
+        addr = load_queue.top().agent_addr;   
+        *status = 0;
     } else if (hit_delay_schedule) {
         LOG(WARNING, "no enough healthy agent for job %s", 
                 job.job_name.c_str());
+        *status = 1;
     } else {
         LOG(WARNING, "no enough resource for job %s",
-                job.job_name.c_str()); 
+                job.job_name.c_str());
+        *status = 2;
     }
 
     return addr;

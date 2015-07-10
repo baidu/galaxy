@@ -6,6 +6,7 @@
       <tr>
         <th>#id</th>
         <th>服务名称</th>
+        <th>状态</th>
         <th>调度历史</th>
         <th>运行任务</th>
         <th>总任务</th>
@@ -14,8 +15,14 @@
     </thead>
     <tbody>
       <tr ng-repeat="service in serviceList">
-        <td>{{service.job_id}}</td>
-        <td>{{service.job_name}}</td>
+          <td>{{service.job_id}}</td>
+
+          <td>{{service.job_name}}</td>
+               <td>
+                   <span ng-if="service.trace.state == 'Scheduling'" title="job状态信息"  class="label label-primary">Scheduling</span>
+                   <span ng-if="service.trace.state == 'NoResource'" class="label label-danger">NoResource</span>
+                   <span ng-if="service.trace.state == 'NoFitAgent'" class="label label-default">NoFitAgent</span>
+          </td>
         <td><a href ng-click="listTaskHistory(service)">调度历史</a></td>
     <td><a href ng-click="listTaskByService(service)">{{service.running_task_num}}</a> </td>
         <td>{{service.replica_num}}</td>
@@ -23,6 +30,7 @@
       </tr>
     </tbody>
 </table>
-   <span ng-if="serviceList.length <= 0 "> 无数据</span>
+<span ng-if="serviceList.length <= 0 "> 无数据</span>
 </div>
+
 <!--service list end -->

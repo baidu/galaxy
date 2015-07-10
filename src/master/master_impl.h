@@ -199,7 +199,7 @@ private:
     void SaveIndex(const AgentInfo& agent);
     void RemoveIndex(int64_t agent_id);
     double CalcLoad(const AgentInfo& agent);
-    std::string AllocResource(const JobInfo& job);
+    std::string AllocResource(const JobInfo& job, int* status);
     bool SafeModeCheck();
     bool JobTaskExistsOnAgent(const std::string& agent,
                               const JobInfo& job);

@@ -20,7 +20,7 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
     $scope.pageSize = 10;
     $scope.totalItems = 0;
     $scope.currentPage = 1;
-
+    $scope.service = service;
    $scope.getTask = function(){
       $http.get(config.rootPrefixPath + "taskgroup/status?id="+service.job_id+"&master="+config.masterAddr)
            .success(function(data){
@@ -44,7 +44,8 @@ angular.module('galaxy.ui.ctrl').controller('TaskCtrl',function($scope,
            });
     }
 
-   stop = $interval($scope.getTask,1000);
+//   stop = $interval($scope.getTask,1000);
+   $scope.getTask();
    $scope.close =function(){
       if(stop != null){
           $interval.cancel(stop);

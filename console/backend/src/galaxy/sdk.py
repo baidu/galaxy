@@ -11,7 +11,7 @@ from sofa.pbrpc import client
 from galaxy import master_pb2
 
 STATE_MAP={0:'DEPLOYING',2:'RUNNING',3:'KILLED',4:'RESTART',5:'ERROR',6:'COMPLETE'}
-SCHEDULE_STATE_MAP={0:'Scheduling',1:'NoResource'}
+SCHEDULE_STATE_MAP={0:'Scheduling',1:'NoResource',2:'NoFitAgent'}
 LOG = logging.getLogger('console')
 class BaseEntity(object):
     def __setattr__(self,name,value):
@@ -64,10 +64,12 @@ class GalaxySDK(object):
                       pkg_src,boot_cmd,
                       replicate_num = 1,
                       mem_limit = 1024,
-                      cpu_limit = 2, 
+                      cpu_limit = 2,
+                      cpu_soft_limit = 2,
                       deploy_step_size = -1,
                       one_task_per_host = False,
-                      restrict_tags = []):
+                      restrict_tags = [],
+                      conf = None):
         """
         send a new job command to galaxy master
         return:
@@ -82,9 +84,11 @@ class GalaxySDK(object):
                                       replicate_num = replicate_num,
                                       mem_limit = mem_limit,
                                       cpu_limit = cpu_limit,
+                                      cpu_soft_limit = cpu_soft_limit,
                                       deploy_step_size = deploy_step_size,
                                       one_task_per_host = one_task_per_host,
-                                      restrict_tags = restrict_tags)
+                                      restrict_tags = restrict_tags,
+                                      conf = conf)
         master = master_pb2.Master_Stub(self.channel)
         controller = client.Controller()
         controller.SetTimeout(1.5)
@@ -293,9 +297,11 @@ class GalaxySDK(object):
                                replicate_num = 1,
                                mem_limit= 1024,
                                cpu_limit= 2,
+                               cpu_soft_limit = 2,
                                deploy_step_size=-1,
                                one_task_per_host=False,
-                               restrict_tags = []):
+                               restrict_tags = [],
+                               conf = None):
 
         req = master_pb2.NewJobRequest(restrict_tags = set(restrict_tags))
         if  deploy_step_size > 0:
@@ -303,9 +309,12 @@ class GalaxySDK(object):
         req.job_name = name
         req.job_raw = pkg_src
         req.cmd_line = boot_cmd
-        req.cpu_share = cpu_limit
+        req.cpu_share = cpu_soft_limit
         req.mem_share = mem_limit
         req.replica_num = replicate_num
+        req.cpu_limit = cpu_limit
         req.one_task_per_host = one_task_per_host
+        if conf:
+            req.monitor_conf = conf.SerializeToString()
         return req
 

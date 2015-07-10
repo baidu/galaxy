@@ -3,7 +3,7 @@
    <h4>任务列表</h4>
 </div>
 <div class="modal-body scrollable" style="height:400px;overflow-y:scroll">  
-<div class="ui statistics">
+<div class="ui mini statistics">
      <div class="blue statistic">
         <div class="value">{{runningNum}}</div>
         <div class="label">运行总数</div>
@@ -12,13 +12,45 @@
     <div class="blue statistic">
         <div class="value">{{deployingNum}}</div>
         <div class="label">部署中总数</div>
-      </div>
+    </div>
   
- <div class="red statistic">
-     <div class="value">{{errorNum}}</div>
-        <div class="label">错误数 </div>
- </div>
+  <div class="red statistic">
+      <div class="value">{{errorNum}}</div>
+      <div class="label">错误数 </div>
+  </div>
 </div>
+<div class="ui mini statistics">
+     <div class="blue statistic">
+        <div class="value">{{service.trace.killed_count}}</div>
+        <div class="label">总kill次数</div>
+      </div>   
+     <div class="blue statistic">
+        <div class="value">{{service.trace.overflow_killed_count}}</div>
+        <div class="label">超实例kill次数</div>
+     </div>
+  
+   <div class="blue statistic">
+       <div class="value">{{service.trace.start_count}}</div>
+       <div class="label">启动次数</div>
+   </div>
+<!--  <div class="blue statistic">
+       <div class="value">{{service.trace.deploy_failed_count}}</div>
+       <div class="label">部署失败次数</div>
+   </div> -->
+  <div class="blue statistic">
+       <div class="value">{{service.trace.reschedule_count}}</div>
+       <div class="label">重新调度次数</div>
+   </div>
+  <div class="blue statistic" ng-if="service.trace.deploy_end_time != 0">
+       <div class="value">{{service.trace.deploy_end_time - service.trace.deploy_start_time}}</div>
+       <div class="label">部署完成耗时(ms)</div>
+   </div>
+
+
+
+
+</div>
+
 
 
     <table class="table table-striped service-table">

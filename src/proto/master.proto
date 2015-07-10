@@ -18,6 +18,8 @@ enum ScheduleState {
     kScheduling = 0;
     // 没有资源
     kNoResource = 1;
+    // 没有适合的agent
+    kNoFitAgent = 2;
 }
 message HeartBeatRequest {
     optional int64 seq_id = 1;      // id for communicate

@@ -291,9 +291,18 @@ angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
         replicate:0,
         memoryLimit:3,
         cpuShare:0.5,
+        cpuLimit:0.5,
         oneTaskPerHost:false,
-        logInput:null
+        logInput:"",
+        setMonitor:false
     };
+    if ($cookies.lastServiceForm != undefined && 
+         $cookies.lastServiceForm != null){
+         try{
+             $scope.deployTpl = JSON.parse($cookies.lastServiceForm);
+         }finally{
+         }
+    }
 
     $scope.disableSubmit=false;
     $scope.alerts = [];
@@ -403,18 +412,18 @@ angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
         $scope.resetEditor();
     };
     $scope.selectGroup = null;
-    $scope.groupUpdate = function(){
-      if ($scope.selectGroup != null){
-          $http.get(config.rootPrefixPath + "quota/groupstat?id="+ $scope.selectGroup.id)
+    $scope.groupUpdate = function(selectGroup){
+      if (selectGroup != null){
+          $http.get(config.rootPrefixPath + "quota/groupstat?id="+ selectGroup.id)
                .success(function(data){
                 $scope.groupStat = data.data.stat;
-                $scope.deployTpl.groupId = $scope.selectGroup.id;
+                $scope.deployTpl.groupId = selectGroup.id;
             });
       }
     }
     $scope.ok = function () {
         $scope.alerts = [];
-        $scope.deployTpl.rules = $scope.ruleTpl;
+        $scope.deployTpl.rules = $scope.ruleList;
         $cookies.lastServiceForm = JSON.stringify($scope.deployTpl);
         if ($scope.groupStat == null ){
             $scope.alerts.push({msg: '请选择quota组'});
@@ -431,11 +440,16 @@ angular.module('galaxy.ui.ctrl').controller('NewJobModalCtrl',function($scope,
             $scope.alerts.push({msg: '内存超出总配额'});
             return;
         }
+        if ($scope.deployTpl.name == "") {
+            $scope.alerts.push({msg: '请填写名称'});
+            return;
+        }
+
         $scope.disableBtn=true;
         $http({
             method:"POST",
             url:config.rootPrefixPath + 'service/create?master='+config.masterAddr, 
-            data:$scope.deployTpl,
+            data:{data:$cookies.lastServiceForm},
             headers:{'Content-Type': 'application/x-www-form-urlencoded'},
             transformRequest: function(obj) {
                 var str = [];

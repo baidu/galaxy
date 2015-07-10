@@ -50,6 +50,7 @@ def get_group_quota_stat(group, master_job_cache):
     for job in all_jobs:
         if job.job_id not in db_job_dict:
             continue
+        job.trace = job.trace.__dict__
         stat['job_list'].append(job.__dict__)
         status,tasklist = client.list_task_by_job_id(job.job_id)
         if not status:

@@ -3,9 +3,9 @@
    <h4>创建服务</h4>
 </div>
 <div class="modal-body">
-<tabset>
-<tab heading="配置job信息">
-<div class="ui statistics" ng-show="groupStat != null ">
+
+    <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
+<div class="ui mini statistics" ng-show="groupStat != null ">
       <div class="red statistic">
         <div class="value">{{groupStat.total_cpu_left}} </div>
         <div class="label">剩余CPU核数 </div>
@@ -16,12 +16,14 @@
     </div>
 
   </div> 
+<tabset>
+<tab heading="配置job信息">
+
  
-  <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
   <div class="form-group">
           <label for="name">选择quota组</label>
           <select class="form-control" ng-options="group as group.name for group in groupList" 
-              ng-model="selectGroup" ng-change="groupUpdate()">
+              ng-model="selectGroup" ng-change="groupUpdate(selectGroup)">
           </select>
  </div>
 
@@ -64,10 +66,14 @@
               <option ng-repeat="tag in tagList" ng-model="tag.tag">{{tag.tag}}</option>
           </select>
         </div>
- 
-              <div class="checkbox" ng-show="showAdvanceOption">
+          <div class="checkbox">
             <label>
              <input type="checkbox" ng-model="deployTpl.oneTaskPerHost">每个主机部署一个实例
+            </label>
+        </div>
+        <div class="checkbox">
+            <label>
+             <input type="checkbox" ng-model="deployTpl.setMonitor">添加监控
             </label>
         </div>
 
@@ -89,11 +95,11 @@
               <input type="number" ng-model="deployTpl.cpuShare" class="form-control " id="cpuShare">
             </div>
         </tab>
-        <tab heading="配置监控">
+        <tab heading="配置监控" ng-show="deployTpl.setMonitor">
 
               <div class="form-group">
                   <label for="logPath">日志路径</label>
-                  <input type="text"  class="form-control " id="deployTpl.logInput" >
+                  <input type="text"  class="form-control" name="logPath" ng-model="deployTpl.logInput" >
             </div>
             <div class="watch-list">
                 <span class="monitor-header">监控项<span ng-click="showEditor('watch')" class="glyphicon glyphicon-plus" aria-hidden="true" style="cursor:pointer;font-weight:normal"></span></span>
