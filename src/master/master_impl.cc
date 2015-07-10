@@ -147,16 +147,15 @@ bool MasterImpl::Recover() {
         job_info.running_num = 0;
         job_info.scale_down_time = 0;
         job_info.monitor_conf = cell.monitor_conf();
-
         //trace init
-        job_info.trace.killed_count = 0;
-        job_info.trace.start_count = 0;
-        job_info.trace.deploy_failed_count = 0;
-        job_info.trace.reschedule_count = 0;
-        job_info.trace.has_been_stable = false;
-        job_info.trace.deploy_start_time = common::timer::now_time();
-        job_info.trace.deploy_end_time = 0;
-        job_info.trace.state = kScheduling;
+        job_info.trace.set_killed_count(0);
+        job_info.trace.set_start_count(0);
+        job_info.trace.set_deploy_failed_count(0);
+        job_info.trace.set_reschedule_count(0);
+        job_info.trace.set_has_been_stable(false);
+        job_info.trace.set_deploy_start_time(common::timer::now_time());
+        job_info.trace.set_deploy_end_time(0);
+        job_info.trace.set_state(kScheduling);
         LOG(INFO, "recover job info %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deploy_step_size: %d", 
                 job_info.job_name.c_str(),
                 job_info.cpu_share,
@@ -342,19 +341,7 @@ void MasterImpl::ListJob(::google::protobuf::RpcController* /*controller*/,
         job_inst->set_running_task_num(job.running_num);
         job_inst->set_replica_num(job.replica_num);
         JobInstanceTrace* trace = job_inst->mutable_trace();
-        trace->set_killed_count(job.trace.killed_count);
-        trace->set_overflow_killed_count(
-                    job.trace.overflow_killed_count);
-        trace->set_start_count(job.trace.start_count);
-        trace->set_deploy_failed_count(
-          job.trace.deploy_failed_count);
-        trace->set_reschedule_count(
-          job.trace.reschedule_count);
-        trace->set_deploy_start_time(
-          job.trace.deploy_start_time);
-        trace->set_deploy_end_time(
-          job.trace.deploy_end_time);
-        trace->set_state(job.trace.state);
+        trace->CopyFrom(job.trace);
     }
     done->Run();
 }
@@ -803,14 +790,14 @@ void MasterImpl::NewJob(::google::protobuf::RpcController* /*controller*/,
     }
 
     //trace init
-    job.trace.killed_count = 0;
-    job.trace.start_count = 0;
-    job.trace.deploy_failed_count = 0;
-    job.trace.reschedule_count = 0;
-    job.trace.has_been_stable = false;
-    job.trace.deploy_start_time = common::timer::now_time();
-    job.trace.deploy_end_time = 0;
-    job.trace.state = kScheduling;
+    job.trace.set_killed_count(0);
+    job.trace.set_start_count(0);
+    job.trace.set_deploy_failed_count(0);
+    job.trace.set_reschedule_count(0);
+    job.trace.set_has_been_stable(false);
+    job.trace.set_deploy_start_time(common::timer::now_time());
+    job.trace.set_deploy_end_time(0);
+    job.trace.set_state(kScheduling);
     LOG(DEBUG, "new job %s replica_num: %d cmd_line: %s cpu_share: %lf cpu_limit: %lf mem_share: %ld deloy_step_size: %d, one_task_per_host %d ,restrict_tag %s, monitor_conf: %s",
             job.job_name.c_str(),
             job.replica_num,
@@ -869,7 +856,7 @@ bool MasterImpl::ScheduleTask(JobInfo* job, const std::string& agent_addr) {
     if (!ret || (rt_response.has_status() 
               && rt_response.status() != 0)) {
         LOG(WARNING, "RunTask faild agent= %s", agent_addr.c_str());
-        job->trace.deploy_failed_count ++;
+        job->trace.set_deploy_failed_count(job->trace.deploy_failed_count() + 1);
         return false;
     } else {
         agent.running_tasks.insert(task_id);
@@ -1036,9 +1023,9 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
         }
         CancelTaskOnAgent(&agent, cell.task_id);
         // trace begin
-        job->trace.killed_count ++;
+        job->trace.set_killed_count(job->trace.killed_count()+1);
         if (!job->killed) {
-            job->trace.overflow_killed_count ++;
+            job->trace.set_overflow_killed_count(job->trace.killed_count()+1);
         }
 
     }
@@ -1067,12 +1054,12 @@ void MasterImpl::Schedule() {
             // 避免瞬间缩成0了
             job.scale_down_time = now_time;
         }
-        job.trace.state = kScheduling;
+        job.trace.set_state(kScheduling);
         // 第一次达到稳定状态
         if (job.running_num == job.replica_num 
-            && !job.trace.has_been_stable) {
-            job.trace.has_been_stable = true;
-            job.trace.deploy_end_time = common::timer::now_time();
+            && !job.trace.has_been_stable()) {
+            job.trace.set_has_been_stable(true);
+            job.trace.set_deploy_end_time(common::timer::now_time());
         }
         int count_for_log = 0;
         //fix warning
@@ -1090,9 +1077,9 @@ void MasterImpl::Schedule() {
             int alloc_status = 0;
             std::string agent_addr = AllocResource(job, &alloc_status);
             if (alloc_status == 2) {
-                job.trace.state = kNoResource;
+                job.trace.set_state(kNoResource);
             } else if (alloc_status == 1) {
-                job.trace.state = kNoFitAgent;
+                job.trace.set_state(kNoFitAgent);
             }
 
             if (agent_addr.empty()) {
@@ -1113,9 +1100,9 @@ void MasterImpl::Schedule() {
             count_for_log++;
 
             // trace begin
-            job.trace.start_count ++;
-            if (job.trace.has_been_stable) {
-                job.trace.reschedule_count ++;
+            job.trace.set_start_count(job.trace.start_count() + 1);
+            if (job.trace.has_been_stable()) {
+                job.trace.set_reschedule_count(job.trace.reschedule_count() + 1);
             }
 
         }
@@ -1260,16 +1247,22 @@ std::string MasterImpl::AllocResource(const JobInfo& job, int* status){
     }
 
     if (load_queue.size() > 0) {
-        addr = load_queue.top().agent_addr;   
-        *status = 0;
+        addr = load_queue.top().agent_addr;
+        if (NULL != status) {
+            *status = 0;
+        }
     } else if (hit_delay_schedule) {
         LOG(WARNING, "no enough healthy agent for job %s", 
                 job.job_name.c_str());
-        *status = 1;
+        if (NULL != status) {
+            *status = 1;
+        }
     } else {
         LOG(WARNING, "no enough resource for job %s",
                 job.job_name.c_str());
-        *status = 2;
+        if (NULL != status) {
+            *status = 2;
+        }
     }
 
     return addr;

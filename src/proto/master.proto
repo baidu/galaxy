@@ -125,6 +125,7 @@ message JobInstanceTrace {
     optional int32 deploy_start_time = 6;
     optional int32 deploy_end_time = 7;
     optional ScheduleState state = 8;
+    optional bool has_been_stable = 9;
 }
 
 message JobInstance {
