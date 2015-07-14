@@ -592,11 +592,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
         TaskInstance& instance = tasks_[task_id];
         running_tasks.insert(task_id);
         int task_status = request->task_status(i).status();
-        // master kill should not change
-        if (instance.has_status() && 
-                instance.status() != KILLED) {
-            instance.set_status(task_status);
-        }
         if (instance.has_job_id() 
                 && instance.job_id() 
                     != request->task_status(i).job_id()) {
@@ -620,6 +615,13 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             return;
         }
         instance.set_agent_addr(agent_addr);
+        // master kill should not change
+        if (instance.has_status() && 
+                instance.status() != KILLED) {
+            instance.set_status(task_status);
+        } else {
+            instance.set_status(task_status);
+        }
         LOG(DEBUG, "%s run task %d %d", agent_addr.c_str(),
             task_id, request->task_status(i).status());
         if (request->task_status(i).has_cpu_usage()) {
