@@ -1023,9 +1023,9 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
         }
         CancelTaskOnAgent(&agent, cell.task_id);
         // trace begin
-        job->trace.set_killed_count(job->trace.killed_count()+1);
+        job->trace.set_killed_count(job->trace.killed_count() + 1);
         if (!job->killed) {
-            job->trace.set_overflow_killed_count(job->trace.killed_count()+1);
+            job->trace.set_overflow_killed_count(job->trace.killed_count() + 1);
         }
 
     }
@@ -1074,14 +1074,9 @@ void MasterImpl::Schedule() {
                         ++ deploying_times) {
             LOG(INFO, "[Schedule] Job[%s] running %d tasks, replica_num %d",
                 job.job_name.c_str(), job.running_num, job.replica_num);
-            int alloc_status = 0;
-            std::string agent_addr = AllocResource(job, &alloc_status);
-            if (alloc_status == 2) {
-                job.trace.set_state(kNoResource);
-            } else if (alloc_status == 1) {
-                job.trace.set_state(kNoFitAgent);
-            }
-
+            ScheduleState state;
+            std::string agent_addr = AllocResource(job, &state);
+            job.trace.set_state(state);
             if (agent_addr.empty()) {
                 LOG(WARNING, "Allocate resource fail, delay schedule job %s",job.job_name.c_str());
                 break;
@@ -1154,7 +1149,7 @@ bool MasterImpl::JobTaskExistsOnAgent(const std::string& agent_addr,
     return true;
 }
 
-std::string MasterImpl::AllocResource(const JobInfo& job, int* status){
+std::string MasterImpl::AllocResource(const JobInfo& job, ScheduleState* state){
     LOG(INFO,"alloc resource for job %ld,mem_require %ld, cpu_require %f",
         job.id,job.mem_share,job.cpu_share);
     agent_lock_.AssertHeld();
@@ -1248,21 +1243,21 @@ std::string MasterImpl::AllocResource(const JobInfo& job, int* status){
 
     if (load_queue.size() > 0) {
         addr = load_queue.top().agent_addr;
-        if (NULL != status) {
-            *status = 0;
+        if (NULL != state) {
+            *state = kScheduling;
         }
     } else if (hit_delay_schedule) {
         LOG(WARNING, "no enough healthy agent for job %s", 
                 job.job_name.c_str());
-        if (NULL != status) {
-            *status = 1;
+        if (NULL != state) {
+            *state = kNoFitAgent;
         }
     } else {
         LOG(WARNING, "no enough resource for job %s",
                 job.job_name.c_str());
-        if (NULL != status) {
-            *status = 2;
-        }
+        if (NULL != state) {
+            *state = kNoResource;
+        } 
     }
 
     return addr;
