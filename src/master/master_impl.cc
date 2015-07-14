@@ -349,7 +349,7 @@ void MasterImpl::DeadCheck() {
             it->second.erase(node);
             node = it->second.begin();
         }
-        //assert(it->second.empty());
+        assert(it->second.empty());
         alives_.erase(it);
         it = alives_.begin();
     }
@@ -973,13 +973,13 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
 
     for (; it != job->agent_tasks.end(); ++it) {
         if (agents_.find(it->first) == agents_.end()) {
-            LOG(WARNING, "[ScaleDown] job %ld agent %s not exists",
+            LOG(WARNING, "[ASSERT] job %ld agent %s not exists",
                     job->id, it->first.c_str());
             continue;
         }
 
         if (it->second.empty()) {
-            LOG(WARNING, "[ScaleDown] job %ld agent %s has no tasks",
+            LOG(WARNING, "[ASSERT] job %ld agent %s has no tasks",
                     job->id, it->first.c_str());
             continue;
         }
@@ -997,13 +997,13 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
             std::map<int64_t, TaskInstance>::iterator task_it
                 = tasks_.find(*t_it);
             if (task_it == tasks_.end()) {
-                LOG(WARNING, "[ScaleDown] job %ld task %ld not in master memory",
+                LOG(WARNING, "[ASSERT] job %ld task %ld not in master memory",
                         job->id, *t_it); 
                 continue;
             }
             TaskInstance& killed_task = task_it->second;
             if (killed_task.job_id() != job->id) {
-                LOG(WARNING, "[ScaleDown] job %ld task %ld not match",
+                LOG(WARNING, "[ASSERT] job %ld task %ld not match",
                         job->id, *t_it); 
                 //assert(tasks_[*t_it].job_id() == job->id);
                 continue;
@@ -1156,11 +1156,17 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->agent_addr.c_str(),
                 it->cpu_left,
                 it->mem_left);
-        assert(agents_.find(it->agent_addr) != agents_.end());
-        last_found = true;
-        //ÅÐ¶Ïjob one task per hostÊôÐÔÊÇ·ñÂú×ã
-        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+        //assert(agents_.find(it->agent_addr) != agents_.end());
+        if (agents_.find(it->agent_addr) == agents_.end()) {
+            LOG(WARNING, "[ASSERT] agent %s not int agents set",
+                    it->agent_addr.c_str()); 
             last_found = false;
+        } else {
+            last_found = true;
+            //ÅÐ¶Ïjob one task per hostÊôÐÔÊÇ·ñÂú×ã
+            if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+                last_found = false;
+            }
         }
         //ÅÐ¶Ïjob ÏÞÖÆµÄtagÊÇ·ñÂú×ã
         if (last_found) {
@@ -1194,7 +1200,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         }
         //assert(agents_.find(it_start->agent_addr) != agents_.end());
         if (agents_.find(it_start->agent_addr) == agents_.end()) {
-            LOG(WARNING, "sched agent not exists in master %s", 
+            LOG(WARNING, "[ASSERT] sched agent not exists in master %s", 
                     it_start->agent_addr.c_str());
             continue;
         }
