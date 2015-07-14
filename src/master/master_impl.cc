@@ -396,8 +396,14 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
                 LOG(INFO, "Wait for deploy timeout %ld", task_id);
                 continue;
             }
+            // problem tasks, should not be del
+            if (jobs_.find(job_id) == jobs_.end()) {
+                LOG(WARNING, "[ASSERT] task %ld 's job %ld not in master on agent %s",
+                        task_id, job_id, agent_addr.c_str());             
+                continue;
+            }
             del_tasks.push_back(task_id);
-            assert(jobs_.find(job_id) != jobs_.end());
+            //assert(jobs_.find(job_id) != jobs_.end());
             JobInfo& job = jobs_[job_id]; 
             job.agent_tasks[agent_addr].erase(task_id);
             if (job.agent_tasks[agent_addr].empty()) {
@@ -437,7 +443,13 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
 
             int64_t job_id = instance.job_id();
             std::map<int64_t,JobInfo>::iterator job_it = jobs_.find(job_id);
-            assert(job_it != jobs_.end());
+            // problem job should not be update
+            if (job_it == jobs_.end()) {
+                LOG(WARNING, "[ASSERT] task %ld 's job %ld not in master on agent %s",
+                        task_id, job_id, agent_addr.c_str());     
+                continue;
+            }
+            //assert(job_it != jobs_.end());
             JobInfo& job = job_it->second;
             if (instance.status() != DEPLOYING) {
                 std::set<int64_t>::iterator deploying_tasks_it = job.deploying_tasks.find(task_id);
@@ -574,20 +586,42 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
+    bool report_err = false;
     for (int i = 0; i < task_num; i++) {
         assert(request->task_status(i).has_task_id());
         int64_t task_id = request->task_status(i).task_id();
         TaskInstance& instance = tasks_[task_id];
         running_tasks.insert(task_id);
         int task_status = request->task_status(i).status();
-        // master kill should not change
-        if (instance.status() != KILLED) {
-            instance.set_status(task_status);
+        if (instance.has_job_id() 
+                && instance.job_id() 
+                    != request->task_status(i).job_id()) {
+            LOG(WARNING, "[ASSERT] task %ld report from %s not equal job_id[%ld: %ld]",
+                    task_id, agent_addr.c_str(), instance.job_id(), request->task_status(i).job_id());
+            report_err = true;
+            continue;
+            //response->set_agent_id(agent->id);
+            //response->set_version(agent->version);
+            //done->Run();
         }
         instance.set_job_id(request->task_status(i).job_id());
         LOG(DEBUG, "Task %d status: %s",
             task_id, TaskState_Name((TaskState)task_status).c_str());
+        if (instance.has_agent_addr()
+                && instance.agent_addr() != agent_addr) {
+            LOG(WARNING, "[ASSERT] task %ld report from %s not equal agent_addr[%s: %s]",
+                    task_id, agent_addr.c_str(), instance.agent_addr().c_str(), agent_addr.c_str()); 
+            report_err = true;
+            continue;
+        }
         instance.set_agent_addr(agent_addr);
+        // master kill should not change
+        if (instance.has_status() && 
+                instance.status() != KILLED) {
+            instance.set_status(task_status);
+        } else {
+            instance.set_status(task_status);
+        }
         LOG(DEBUG, "%s run task %d %d", agent_addr.c_str(),
             task_id, request->task_status(i).status());
         if (request->task_status(i).has_cpu_usage()) {
@@ -601,6 +635,15 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             LOG(DEBUG, "%d use memory %ld", task_id, instance.memory_usage());
         }
     }
+
+    // if report err only update task state not update job
+    if (report_err) {
+        response->set_agent_id(agent->id);
+        response->set_version(agent->version);
+        done->Run();
+        return;
+    }
+
     UpdateJobsOnAgent(agent, running_tasks);
     std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
     agent->mem_used = 0 ;
@@ -968,8 +1011,19 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
     const int64_t KILL_TAG = 1L << 32; 
 
     for (; it != job->agent_tasks.end(); ++it) {
-        assert(agents_.find(it->first) != agents_.end());
-        assert(!it->second.empty());
+        if (agents_.find(it->first) == agents_.end()) {
+            LOG(WARNING, "[ASSERT] job %ld agent %s not exists",
+                    job->id, it->first.c_str());
+            continue;
+        }
+
+        if (it->second.empty()) {
+            LOG(WARNING, "[ASSERT] job %ld agent %s has no tasks",
+                    job->id, it->first.c_str());
+            continue;
+        }
+        //assert(agents_.find(it->first) != agents_.end());
+        //assert(!it->second.empty());
         // 只考虑了agent的负载，没有考虑job在agent上分布的多少，需要一个更复杂的算法么?
         AgentInfo& ai = agents_[it->first];
         int ind = 0;
@@ -979,7 +1033,21 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
             cell.agent_addr = it->first;
             cell.task_id = *t_it; 
             cell.priority = 0;
-            assert(tasks_[*t_it].job_id() == job->id);
+            std::map<int64_t, TaskInstance>::iterator task_it
+                = tasks_.find(*t_it);
+            if (task_it == tasks_.end()) {
+                LOG(WARNING, "[ASSERT] job %ld task %ld not in master memory",
+                        job->id, *t_it); 
+                continue;
+            }
+            TaskInstance& killed_task = task_it->second;
+            if (killed_task.job_id() != job->id) {
+                LOG(WARNING, "[ASSERT] job %ld task %ld not match",
+                        job->id, *t_it); 
+                //assert(tasks_[*t_it].job_id() == job->id);
+                continue;
+            }
+
             if (tasks_[*t_it].status() == KILLED) {
                 cell.priority &= KILL_TAG;
             }
@@ -990,7 +1058,7 @@ void MasterImpl::ScaleDown(JobInfo* job, int killed_num) {
         }
     }
 
-    for (int kill_ind = 0; kill_ind < killed_num; ++kill_ind) {
+    for (int kill_ind = 0; kill_ind < killed_num && !killed_queue.empty(); ++kill_ind) {
         KillPriorityCell cell = killed_queue.top();
         killed_queue.pop();
         LOG(INFO, "[ScaleDown] job %ld will kill task %ld on agent %s",
@@ -1117,6 +1185,7 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
     cpu_left_index::iterator it_start = cidx.begin();
     cpu_left_index::iterator cur_agent;
     bool last_found = false;
+
     std::priority_queue<AgentLoad, 
         std::vector<AgentLoad>, ScheduleLoadComp> load_queue;
     if(it != cidx.end() 
@@ -1127,11 +1196,17 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
                 it->agent_addr.c_str(),
                 it->cpu_left,
                 it->mem_left);
-        assert(agents_.find(it->agent_addr) != agents_.end());
-        last_found = true;
-        //判断job one task per host属性是否满足
-        if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+        //assert(agents_.find(it->agent_addr) != agents_.end());
+        if (agents_.find(it->agent_addr) == agents_.end()) {
+            LOG(WARNING, "[ASSERT] agent %s not int agents set",
+                    it->agent_addr.c_str()); 
             last_found = false;
+        } else {
+            last_found = true;
+            //判断job one task per host属性是否满足
+            if (!(job.one_task_per_host && JobTaskExistsOnAgent(it->agent_addr, job))) {
+                last_found = false;
+            }
         }
         //判断job 限制的tag是否满足
         if (last_found) {
@@ -1161,7 +1236,12 @@ std::string MasterImpl::AllocResource(const JobInfo& job){
         if (job.one_task_per_host && JobTaskExistsOnAgent(it_start->agent_addr, job)) {
             continue;
         }
-        assert(agents_.find(it_start->agent_addr) != agents_.end());
+        //assert(agents_.find(it_start->agent_addr) != agents_.end());
+        if (agents_.find(it_start->agent_addr) == agents_.end()) {
+            LOG(WARNING, "[ASSERT] sched agent not exists in master %s", 
+                    it_start->agent_addr.c_str());
+            continue;
+        }
         std::set<std::string>& tags = agents_[it_start->agent_addr].tags;
         LOG(DEBUG, "require tag %s agent %s tag size %d",(*job.restrict_tags.begin()).c_str(), it_start->agent_addr.c_str(), tags.size());
         //判断job 限制的tag是否瞒住
