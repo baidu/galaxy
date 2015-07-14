@@ -4,11 +4,14 @@
 # found in the LICENSE file.
 #
 # Author: wangtaize@baidu.com
-# Date: 2015-04-01
+# Date: 2015-03-30
 from django.conf import urls
 
+#views
+urlpatterns = urls.patterns("console.quota.views",
+        (r'^info','my_quota'),
+        (r'^mygroups','my_group'),
+        (r'^groupstat','group_stat'),
 
-urlpatterns = urls.patterns("console.cluster.views",
-        (r'^status','get_status'),
-        (r'^setPassword','set_password'),
 )
+

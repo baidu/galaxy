@@ -8,8 +8,10 @@
 
 from bootstrap import settings
 from common import http
+from django.views.decorators.csrf import csrf_exempt
 from common import decorator as D
 from galaxy import wrapper
+from galaxy import agent
 SHOW_G_BYTES_LIMIT = 1024 * 1024 * 1024
 SHOW_T_BYTES_LIMIT = 1024 * 1024 * 1024 * 1024
 
@@ -71,4 +73,20 @@ def get_status(req):
                                 'mem_usage_p':mem_usage_p,
                                 'cpu_usage_p':cpu_usage_p}).build_json()
 
+@csrf_exempt
+@D.api_auth_required
+def set_password(req):
+    builder = http.ResponseBuilder()
+    username = req.user.username
+    agent_addr = req.POST.get('agent', None)
+    if not agent_addr:
+        return builder.error("agent is required").build_json()
+    password = req.POST.get('password',None)
+    if not password:
+        return builder.error('password is required').build_json()
+    g_agent = agent.Agent(agent_addr) 
+    ret = g_agent.set_password(username, password)
+    if ret != 0 :
+        return builder.error("fail to set password for %s"%agent_addr).build_json()
+    return builder.ok(data={}).build_json()
 
