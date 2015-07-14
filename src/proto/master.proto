@@ -13,6 +13,14 @@ enum MasterRespState {
     kMasterResponseErrorSafeMode = -4;
 }
 
+enum ScheduleState {
+    // 正常调度
+    kScheduling = 0;
+    // 没有资源
+    kNoResource = 1;
+    // 没有适合的agent
+    kNoFitAgent = 2;
+}
 message HeartBeatRequest {
     optional int64 seq_id = 1;      // id for communicate
     optional int64 agent_id = 2 [default = -1];
@@ -108,11 +116,24 @@ message JobCheckPointCell {
     optional bytes monitor_conf = 13;
 }
 
+message JobInstanceTrace {
+    optional uint32 killed_count = 1;
+    optional uint32 overflow_killed_count = 2;
+    optional uint32 start_count = 3;
+    optional uint32 deploy_failed_count = 4;
+    optional uint32 reschedule_count = 5;
+    optional int32 deploy_start_time = 6;
+    optional int32 deploy_end_time = 7;
+    optional ScheduleState state = 8;
+    optional bool has_been_stable = 9;
+}
+
 message JobInstance {
     optional int64 job_id = 2;
     optional string job_name = 3;
     optional int32 running_task_num = 4;
     optional int32 replica_num = 5;
+    optional JobInstanceTrace trace = 6;
 }
 message ListJobRequest {
 }

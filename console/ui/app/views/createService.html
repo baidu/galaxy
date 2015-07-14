@@ -2,10 +2,10 @@
 <button type="button" class="close" ng-click="cancel()" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
    <h4>创建服务</h4>
 </div>
-<div class="modal-body">  
+<div class="modal-body">
 
-    <form >
- <div class="ui statistics" ng-show="groupStat != null ">
+    <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
+<div class="ui mini statistics" ng-show="groupStat != null ">
       <div class="red statistic">
         <div class="value">{{groupStat.total_cpu_left}} </div>
         <div class="label">剩余CPU核数 </div>
@@ -16,12 +16,14 @@
     </div>
 
   </div> 
+<tabset>
+<tab heading="配置job信息">
+
  
-  <alert ng-repeat="alert in alerts" type="{{alert.type}}" close="closeAlert($index)">{{alert.msg}}</alert>
   <div class="form-group">
           <label for="name">选择quota组</label>
           <select class="form-control" ng-options="group as group.name for group in groupList" 
-              ng-model="selectGroup" ng-change="groupUpdate()">
+              ng-model="selectGroup" ng-change="groupUpdate(selectGroup)">
           </select>
  </div>
 
@@ -29,24 +31,13 @@
           <label for="name">服务名称</label>
 
           <input type="text" ng-model="deployTpl.name" class="form-control " id="name" >
-        </div>
- 
+ </div>
+
   <div class="form-group">
           <label for="replicate">实例数</label>
           <input type="number" ng-model="deployTpl.replicate" class="form-control " id="replicate" >
         </div>
-        <div class="form-group" >
-          <label for="memoryLimit">内存限制</label>
-           <div class="input-group">
-            <input type="number" ng-model="deployTpl.memoryLimit" class="form-control " id="memoryLimit" >
-            <span class="input-group-addon">G</span> 
-           </div>
-        </div>
-        <div class="form-group" >
-          <label for="cpuShare">CPU核数</label>
-          <input type="number" ng-model="deployTpl.cpuShare" class="form-control " id="cpuShare">
-        </div>
-        <div class="form-group">
+       <div class="form-group">
           <label for="pkgSrc">部署包</label>
           <div class="row">
             <div class="col-xs-2">
@@ -64,27 +55,236 @@
           <input type="text" ng-model="deployTpl.startCmd" class="form-control " id="startCmd">
         </div>
 
-      <div class="form-group" ng-show="showAdvanceOption">
+      <div class="form-group" >
           <label for="deployStepSize">并发部署个数</label>
          <input type="number"  class="form-control" ng-model="deployTpl.deployStepSize" id="deployStepSize">
      </div>
-       <div class="form-group" ng-show="showAdvanceOption">
+       <div class="form-group" >
           <label for="tag">限制任务在特定tag上</label>
           <select type="text"  class="form-control" ng-model="deployTpl.tag" id="tag">
               <option value=""></option>
               <option ng-repeat="tag in tagList" ng-model="tag.tag">{{tag.tag}}</option>
           </select>
         </div>
- 
-              <div class="checkbox" ng-show="showAdvanceOption">
+          <div class="checkbox">
             <label>
              <input type="checkbox" ng-model="deployTpl.oneTaskPerHost">每个主机部署一个实例
             </label>
         </div>
-</form>
+        <div class="checkbox">
+            <label>
+             <input type="checkbox" ng-model="deployTpl.setMonitor">添加监控
+            </label>
+        </div>
+
+        </tab>
+        <tab heading="资源配置">
+            <div class="form-group" >
+              <label for="memoryLimit">内存限制</label>
+               <div class="input-group">
+                <input type="number" ng-model="deployTpl.memoryLimit" class="form-control " id="memoryLimit" >
+                <span class="input-group-addon">G</span>
+               </div>
+            </div>
+            <div class="form-group" >
+                <label for="cpuLimit">CPU硬限</label>
+                <input type="number" ng-model="deployTpl.cpuLimit" class="form-control " id="cpuLimit">
+            </div>
+            <div class="form-group" >
+              <label for="cpuShare">CPU软限</label>
+              <input type="number" ng-model="deployTpl.cpuShare" class="form-control " id="cpuShare">
+            </div>
+        </tab>
+        <tab heading="配置监控" ng-show="deployTpl.setMonitor">
+
+              <div class="form-group">
+                  <label for="logPath">日志路径</label>
+                  <input type="text"  class="form-control" name="logPath" ng-model="deployTpl.logInput" >
+            </div>
+            <div class="watch-list">
+                <span class="monitor-header">监控项<span ng-click="showEditor('watch')" class="glyphicon glyphicon-plus" aria-hidden="true" style="cursor:pointer;font-weight:normal"></span></span>
+                <div class="table-responsive" ng-if="watchList.length > 0">
+                      <table class="table table-bordered">
+                          <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>名称</th>
+                                <th>规则</th>
+                                <th>操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                              <tr ng-repeat="watch in watchList">
+                                  <th scope="row">{{$index}}</th>
+                                  <td>{{watch.name}}</td>
+                                  <td>{{watch.regex}}</td>
+                                  <td><span ng-click="deleteRule('watch',$index)" style="color:#dd4b39;cursor:pointer"class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                </div>
+
+
+               <div class="watch-editor" ng-show="showWatch">
+                   <div class="form-group">
+                           <label for="watchTplName">监控项名称</label>
+                           <input type="text"  class="form-control"  ng-model="watchTpl.name" id="watchTplName">
+                  </div>
+                  <div class="form-group">
+                          <label for="watchTplRegex">匹配规则</label>
+                         <input type="text"  class="form-control" ng-model="watchTpl.regex" id="watchTplRegex">
+                 </div>
+                 <div class="form-group">
+                         <label for="log">测试日志</label>
+                         <textarea class="form-control" rows="3"></textarea>
+                </div>
+                <button class="btn btn-primary btn-xs" ng-disabled="disableBtn" ng-click="addWatchMsg()">添加</button>
+                <button class="btn btn-default btn-xs" ng-disabled="disableBtn" ng-click="resetEditor()">取消</button>
+               </div>
+            </div>
+            <div class="trigger-list">
+                <span class="monitor-header">触发报警规则<span ng-click="showEditor('trigger')"  class="glyphicon glyphicon-plus" style="cursor:pointer" aria-hidden="true"></span></span>
+                <div class="table-responsive" ng-if="triggerList.length > 0">
+                      <table class="table table-bordered">
+                          <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>名称</th>
+                                <th>临界值</th>
+                                <th>范围</th>
+                                <th>操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                              <tr ng-repeat="trigger in triggerList">
+                                  <th scope="row">{{$index}}</th>
+                                  <td>{{trigger.name}}</td>
+                                  <td>{{trigger.threshold}}</td>
+                                  <td>{{trigger.rangeFrom}}~{{trigger.rangeTo}}</td>
+                                  <td><span ng-click="deleteRule('trigger',$index)" style="color:#dd4b39;cursor:pointer"class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                </div>
+               <div class="trigger-editor" ng-show="showTrigger">
+                   <div class="form-group">
+                           <label for="triggerTplName">触发名称</label>
+                           <input type="text"  class="form-control" ng-model="triggerTpl.name" id="triggerTplName">
+                  </div>
+                  <div class="form-group">
+                          <label for="triggerTplThreshold">临界值</label>
+                         <input type="number"  class="form-control"  ng-model="triggerTpl.threshold" id="triggerTplThreshold">
+                 </div>
+                 <div class="form-group">
+                        <label for="name">范围</label>
+                        <div class="row">
+                          <div class="col-xs-6">
+                            <input type="text" class="form-control" ng-model="triggerTpl.rangeFrom" placeholder="from">
+                          </div>
+                          <div class="col-xs-6">
+                            <input type="text" class="form-control"  ng-model="triggerTpl.rangeTo" placeholder="to">
+                          </div>
+                        </div>
+                </div>
+                <button class="btn btn-primary btn-xs"  ng-click="addTriggerMsg()">添加</button>
+                <button class="btn btn-default btn-xs"  ng-click="resetEditor()">取消</button>
+               </div>
+            </div>
+
+            <div class="action-list">
+                <span class="monitor-header">报警配置<span ng-click="showEditor('action')" class="glyphicon glyphicon-plus" aria-hidden="true"></span></span>
+                <div class="table-responsive" ng-if="actionList.length > 0">
+                      <table class="table table-bordered">
+                          <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>电话列表</th>
+                                <th>标题</th>
+                                <th>短信内容</th>
+                                <th>操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                              <tr ng-repeat="action in actionList">
+                                  <th scope="row">{{$index}}</th>
+                                  <td>{{action.sendList}}</td>
+                                  <td>{{action.title}}</td>
+                                  <td>{{action.content}}</td>
+                                  <td><span ng-click="deleteRule('action',$index)" style="color:#dd4b39;cursor:pointer"class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                </div>
+
+               <div class="action-editor" ng-show="showAction">
+                   <div class="form-group">
+                           <label for="name">报警标题</label>
+                           <input type="text"  class="form-control" ng-model="actionTpl.title"  id="deployStepSize">
+                  </div>
+                  <div class="form-group">
+                         <label for="name">报警内容</label>
+                         <textarea class="form-control" ng-model="actionTpl.content" rows="3"></textarea>
+                 </div>
+                 <div class="form-group">
+                        <label for="name">接收人</label>
+                        <input type="text"  class="form-control" ng-model="actionTpl.sendList"  id="deployStepSize">
+                </div>
+
+                <button class="btn btn-primary btn-xs" ng-disabled="disableBtn" ng-click="addAction()">添加</button>
+                <button class="btn btn-default btn-xs" ng-disabled="disableBtn" ng-click="resetEditor()">取消</button>
+               </div>
+            </div>
+            <div class="rule-list">
+                <span class="monitor-header">监控规则<span ng-click="showEditor('rule')" class="glyphicon glyphicon-plus" aria-hidden="true"></span></span>
+                <div class="table-responsive" ng-if="ruleList.length > 0">
+                      <table class="table table-bordered">
+                          <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>监控项</th>
+                                <th>触发规则</th>
+                                <th>报警内容</th>
+                                <th>操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                              <tr ng-repeat="rule in ruleList">
+                                  <th scope="row">{{$index}}</th>
+                                  <td>{{rule.watch.name}}</td>
+                                  <td>{{rule.trigger.name}}</td>
+                                  <td>{{rule.action.title}}</td>
+                                  <td><span ng-click="deleteRule('rule',$index)" style="color:#dd4b39;cursor:pointer"class="glyphicon glyphicon-remove-circle" aria-hidden="true"></span></td>
+                              </tr>
+                          </tbody>
+                      </table>
+                </div>
+               <div class="rule-editor" ng-show="showRule">
+                   <div class="form-group">
+                           <label for="name">监控项</label>
+                           <select class="form-control" ng-options="watch as watch.name for watch in watchList" ng-model="ruleTpl.watch" >
+                           </select>
+
+                  </div>
+                  <div class="form-group">
+                         <label for="name">触发规则</label>
+                         <select class="form-control" ng-options="trigger as trigger.name for trigger in triggerList" ng-model="ruleTpl.trigger" >
+                         </select>
+                 </div>
+                 <div class="form-group">
+                        <label for="name">报警内容</label>
+                        <select class="form-control" ng-options="action as action.title for action in actionList" ng-model="ruleTpl.action">
+                        </select>
+                </div>
+
+                <button class="btn btn-primary btn-xs" ng-disabled="disableBtn" ng-click="addRule()">添加</button>
+                <button class="btn btn-default btn-xs" ng-disabled="disableBtn" ng-click="resetEditor()">取消</button>
+               </div>
+            </div>
+
+        </tab>
+   </tabset>
 </div>
 <div class="modal-footer">
     <button class="btn btn-primary" ng-disabled="disableBtn" ng-click="ok()">创建</button>
     <button class="btn btn-default" ng-disabled="disableBtn" ng-click="cancel()">取消</button>
-    <a ng-href ng-click="showAdvanceOption=!showAdvanceOption">高级选项</a>
 </div>

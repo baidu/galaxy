@@ -45,6 +45,7 @@ def list_service(request):
     for job in jobs:
         if job.job_id not in jobs_dict and not request.user.is_superuser:
             continue
+        job.trace = job.trace.__dict__
         ret.append(job.__dict__)
     return builder.ok(data=ret).build_json()
 
@@ -56,7 +57,12 @@ def create_service(request):
     create a service
     """
     builder = http.ResponseBuilder()
-    group_id = request.POST.get('groupId',None)
+    data_str = request.POST.get("data",None);
+    if not data_str:
+        return builder.error('data is required').build_json()
+    data = json.loads(data_str)
+    LOG.info(data)
+    group_id = data.get('groupId',None)
     if not group_id:
         return builder.error('groupId is required').build_json()
     try:
@@ -67,29 +73,38 @@ def create_service(request):
             group_member = gm
         if not group_member:
             return builder.error('group with %s does not exist'%group_id).build_json()
-        ret = helper.validate_init_service_group_req(request)
+        if group_member.group.max_cpu_limit and data['cpuLimit'] > group_member.group.max_cpu_limit:
+            return builder.error('cpu limit exceeds the max cpu limit %d'%group_member.group.max_cpu_limit).build_json()
         status,stat = views.get_group_quota_stat(group_member.group, {})
-        cpu_total_require = ret['replicate_count'] * ret['cpu_share']
-        mem_total_require = ret['memory_limit'] * 1024 * 1024 * 1024 * ret['replicate_count']
+        cpu_total_require = data['replicate'] * data['cpuShare']
+        mem_total_require = data['memoryLimit'] * 1024 * 1024 * 1024 * data['replicate']
         if cpu_total_require > stat['total_cpu_left']:
             return builder.error('cpu %s exceeds the left cpu quota %s'%(cpu_total_require, stat['total_cpu_left'])).build_json()
         if mem_total_require > stat['total_mem_left']:
             return builder.error('mem %s exceeds the left mem %s'%(mem_total_require, stat['total_mem_left'])).build_json()
+        conf = None
+        if data['setMonitor'] :
+            conf = helper.build_monitor_conf(data)
         galaxy = wrapper.Galaxy(gm.group.galaxy_master, 
                                 settings.GALAXY_CLIENT_BIN)
-        status,output = galaxy.create_task(ret['name'],ret['pkg_src'],
-                                           ret['start_cmd'],
-                                           ret['replicate_count'],
-                                           ret['memory_limit']*1024*1024*1024,
-                                           ret['cpu_share'],
-                                           deploy_step_size = ret['deploy_step_size'],
-                                           one_task_per_host = ret['one_task_per_host'],
-                                           restrict_tags = ret['tag'])
+        tags = []
+        if 'tag' in data and data['tag'].strip():
+            tags.append(data['tag'].strip());
+        status,output = galaxy.create_task(data['name'],data['pkgSrc'],
+                                           data['startCmd'],
+                                           data['replicate'],
+                                           data['memoryLimit']*1024*1024*1024,
+                                           cpu_soft_limit = data['cpuShare'],
+                                           cpu_limit = data['cpuLimit'],
+                                           deploy_step_size = data['deployStepSize'],
+                                           one_task_per_host = data['oneTaskPerHost'],
+                                           restrict_tags =tags,
+                                           conf = conf)
         if not status:
             return builder.error('fail create task').build_json()
         galaxy_job = models.GalaxyJob(group = group_member.group , 
                                      job_id = int(output),
-                                     meta = json.dumps(ret))
+                                     meta = json.dumps(data))
         galaxy_job.save()
         return builder.ok().build_json()
     except Exception as e:
