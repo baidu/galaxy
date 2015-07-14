@@ -398,8 +398,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             }
             // problem tasks, should not be del
             if (jobs_.find(job_id) == jobs_.end()) {
-                LOG(WARNING, "[ASSERT] task %ld 's job %ld not in master",
-                        task_id, job_id);             
+                LOG(WARNING, "[ASSERT] task %ld 's job %ld not in master on agent %s",
+                        task_id, job_id, agent_addr.c_str());             
                 continue;
             }
             del_tasks.push_back(task_id);
@@ -445,8 +445,8 @@ void MasterImpl::UpdateJobsOnAgent(AgentInfo* agent,
             std::map<int64_t,JobInfo>::iterator job_it = jobs_.find(job_id);
             // problem job should not be update
             if (job_it == jobs_.end()) {
-                LOG(WARNING, "[ASSERT] task %ld 's job %ld not in master",
-                        task_id, job_id);     
+                LOG(WARNING, "[ASSERT] task %ld 's job %ld not in master on agent %s",
+                        task_id, job_id, agent_addr.c_str());     
                 continue;
             }
             //assert(job_it != jobs_.end());
@@ -586,6 +586,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     //@TODO maybe copy out of lock
     int task_num = request->task_status_size();
     std::set<int64_t> running_tasks;
+    bool report_err = false;
     for (int i = 0; i < task_num; i++) {
         assert(request->task_status(i).has_task_id());
         int64_t task_id = request->task_status(i).task_id();
@@ -597,10 +598,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                     != request->task_status(i).job_id()) {
             LOG(WARNING, "[ASSERT] task %ld report from %s not equal job_id[%ld: %ld]",
                     task_id, agent_addr.c_str(), instance.job_id(), request->task_status(i).job_id());
-            response->set_agent_id(agent->id);
-            response->set_version(agent->version);
-            done->Run();
-            return;
+            report_err = true;
+            continue;
+            //response->set_agent_id(agent->id);
+            //response->set_version(agent->version);
+            //done->Run();
         }
         instance.set_job_id(request->task_status(i).job_id());
         LOG(DEBUG, "Task %d status: %s",
@@ -609,10 +611,8 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                 && instance.agent_addr() != agent_addr) {
             LOG(WARNING, "[ASSERT] task %ld report from %s not equal agent_addr[%s: %s]",
                     task_id, agent_addr.c_str(), instance.agent_addr().c_str(), agent_addr.c_str()); 
-            response->set_agent_id(agent->id);
-            response->set_version(agent->version);
-            done->Run();
-            return;
+            report_err = true;
+            continue;
         }
         instance.set_agent_addr(agent_addr);
         // master kill should not change
@@ -635,6 +635,15 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
             LOG(DEBUG, "%d use memory %ld", task_id, instance.memory_usage());
         }
     }
+
+    // if report err only update task state not update job
+    if (report_err) {
+        response->set_agent_id(agent->id);
+        response->set_version(agent->version);
+        done->Run();
+        return;
+    }
+
     UpdateJobsOnAgent(agent, running_tasks);
     std::set<int64_t>::iterator rt_it = agent->running_tasks.begin();
     agent->mem_used = 0 ;
