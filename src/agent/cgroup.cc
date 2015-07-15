@@ -258,7 +258,7 @@ int CpuCtrl::GetCpuQuota(int64_t * cpu_quota) {
     std::string cpu_quota_file = _my_cg_root + "/" + "cpu.cfs_quota_us";
     std::ifstream quota(cpu_quota_file.c_str());
     if (quota.is_open()) {
-        std::string line ;
+        std::string line;
         if (getline(quota, line)) {
             int64_t icpu_quota = boost::lexical_cast<int64_t>(line);
             *cpu_quota = icpu_quota;
@@ -720,7 +720,7 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     LOG(DEBUG, "destroy cgroup %lu", value);
     CGroupCtrl ctl(FLAGS_cgroup_root, support_cgroup);
     std::stringstream cpu_quota_group;
-    cpu_quota_group << FLAGS_cgroup_root <<"/cpu/" << value;
+    cpu_quota_group << FLAGS_cgroup_root << "/cpu/" << value;
     CpuCtrl cpu_ctrl(cpu_quota_group.str());
     int max_retry_times = 10;
     int ret = -1;
