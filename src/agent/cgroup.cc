@@ -6,6 +6,8 @@
 
 #include "agent/cgroup.h"
 
+#include <iostream>
+#include <fstream>
 #include <sstream>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -246,6 +248,40 @@ int CpuCtrl::SetCpuQuota(int64_t cpu_quota) {
         return -1;
     }
 
+    return 0;
+}
+
+int CpuCtrl::GetCpuQuota(int64_t * cpu_quota) {
+    if (NULL == cpu_quota) {
+        return -2;
+    }
+    std::string cpu_quota_file = _my_cg_root + "/" + "cpu.cfs_quota_us";
+    std::ifstream quota(cpu_quota_file.c_str());
+    if (quota.is_open()) {
+        std::string line;
+        if (getline(quota, line)) {
+            int64_t icpu_quota = boost::lexical_cast<int64_t>(line);
+            *cpu_quota = icpu_quota;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int CpuCtrl::AdjustCpuQuota() {
+    int64_t old_cpu_quota = 0;
+    int ret = GetCpuQuota(&old_cpu_quota);
+    if (ret != 0) {
+        LOG(FATAL,"fail to get %s quota", _my_cg_root.c_str());
+        return ret;
+    }
+    // add 0.5 cpu core
+    int64_t new_cpu_quota = boost::lexical_cast<int64_t>(old_cpu_quota +  CPU_CFS_PERIOD * 0.5);
+    ret = SetCpuQuota(new_cpu_quota);
+    if (ret != 0) {
+        LOG(FATAL, "fail to set %s quota %ld", _my_cg_root.c_str(), new_cpu_quota);
+        return ret;
+    }
     return 0;
 }
 
@@ -568,6 +604,20 @@ void ContainerTaskRunner::Status(TaskStatus* status) {
     return;
 }
 
+
+int ContainerTaskRunner::Stop() {
+    int ret = AbstractTaskRunner::Stop();
+    if (ret == 0) {
+        return ret;
+    }else {
+        ret = _cpu_ctrl->AdjustCpuQuota();
+        if (ret == 0) { 
+            return AbstractTaskRunner::Stop();
+        }
+        return ret;
+    }
+}
+
 void ContainerTaskRunner::StopPost() {
     if (collector_ != NULL) {
         collector_->Clear();
@@ -669,11 +719,15 @@ bool ContainerTaskRunner::RecoverRunner(const std::string& persistence_path) {
     
     LOG(DEBUG, "destroy cgroup %lu", value);
     CGroupCtrl ctl(FLAGS_cgroup_root, support_cgroup);
+    std::stringstream cpu_quota_group;
+    cpu_quota_group << FLAGS_cgroup_root << "/cpu/" << value;
+    CpuCtrl cpu_ctrl(cpu_quota_group.str());
     int max_retry_times = 10;
     int ret = -1;
     while (max_retry_times-- > 0) {
         ret = ctl.Destroy(value);
         if (ret != 0) {
+            cpu_ctrl.AdjustCpuQuota();
             common::ThisThread::Sleep(100);
             continue;
         }    
@@ -771,6 +825,12 @@ int ContainerTaskRunner::Clean() {
     if (_cg_ctrl != NULL) {
         int status = _cg_ctrl->Destroy(m_task_info.task_id());
         LOG(INFO,"destroy cgroup for task %ld with status %d",m_task_info.task_id(),status);
+        if (status != 0) {
+            status = _cpu_ctrl->AdjustCpuQuota();
+            if (status == 0) {
+                status = _cg_ctrl->Destroy(m_task_info.task_id());
+            }
+        }
         return status;
     }
     LOG(WARNING, "cgroup not inited for task %ld", m_task_info.task_id());

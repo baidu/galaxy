@@ -69,7 +69,7 @@ public:
     virtual int StartMonitor() = 0;
     int IsRunning();
     int IsProcessRunning(pid_t pid);
-    int Stop();
+    virtual int Stop();
     int ReStart();
     void AsyncDownload(boost::function<void()> callback);
     // do something after stop

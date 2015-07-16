@@ -64,6 +64,9 @@ public:
     int SetCpuShare(int64_t cpu_share);
     int SetCpuPeriod(int64_t cpu_period);
     int SetCpuQuota(int64_t cpu_quota);
+    int GetCpuQuota(int64_t* cpu_quota);
+    // small modification on cpu quota
+    int AdjustCpuQuota();
     ~CpuCtrl(){}
 };
 
@@ -105,6 +108,7 @@ public:
     void PersistenceAble(const std::string& persistence_path) {
         persistence_path_dir_ = persistence_path;
     }
+    int Stop();
     virtual void StopPost();
     virtual void Status(TaskStatus* status);
     ~ContainerTaskRunner();
