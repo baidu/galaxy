@@ -62,6 +62,12 @@ message NewJobResponse {
 message UpdateJobRequest {
     optional int64 job_id = 3;
     optional int32 replica_num = 4;
+    // new source package
+    optional bytes job_raw = 5;
+    optional int32 deploy_step_size = 6;
+    optional int32 update_step_size = 7;
+    // control update and pause 
+    optional bool is_updating = 8;
 };
 
 message UpdateJobResponse {
@@ -114,6 +120,9 @@ message JobCheckPointCell {
     optional bool one_task_per_host = 11;
     repeated string restrict_tags = 12;
     optional bytes monitor_conf = 13;
+    optional int32 version = 14;
+    optional bool is_updating = 15;
+    optional int32 update_step_size = 16;
 }
 
 message JobInstanceTrace {
