@@ -740,13 +740,31 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
 
     JobInfo& job = it->second;
     int64_t old_replica_num = job.replica_num;
-    job.replica_num = request->replica_num();
+    if (request->has_replica_num()) {
+        job.replica_num = request->replica_num();
+    }
+    int64_t old_deploy_step_size = job.deploy_step_size;
+    if (request->has_deploy_step_size()) {
+        job.deploy_step_size = request->deploy_step_size(); 
+        // NOTE 
+        if (job.deploy_step_size > job.replica_num) {
+            job.deploy_step_size = job.replica_num; 
+        }
+    }
 
     if (!PersistenceJobInfo(job)) {
         // roll back 
-        job.replica_num = old_replica_num;
+        if (request->has_replica_num()) {
+            job.replica_num = old_replica_num;
+        }
         response->set_status(kMasterResponseErrorInternal);
+        if (request->has_deploy_step_size()) {
+            job.deploy_step_size = old_deploy_step_size; 
+        }
+        LOG(WARNING, "update job %ld failed");
     } else {
+        LOG(INFO, "update job %ld to replicate_num %ld deploy_step_size %ld",
+                job_id, job.replica_num, job.deploy_step_size);
         response->set_status(kMasterResponseOK); 
     }
     done->Run();
