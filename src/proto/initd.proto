@@ -1,2 +1,8 @@
+package baidu.galaxy;
 
+option cc_generic_services = true;
 
+service Initd {
+    rpc GetTaskStatus() returns ();    
+    rpc Execute() returns ();
+}

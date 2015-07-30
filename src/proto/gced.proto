@@ -1,2 +1,9 @@
+package baidu.galaxy;
 
+option cc_generic_services = true;
 
+service Gced {
+    rpc RunTask() returns ();
+    rpc KillTask() returns ();
+    rpc QueryTasks() returns ();
+}

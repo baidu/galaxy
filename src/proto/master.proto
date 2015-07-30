@@ -1,2 +1,25 @@
+package baidu.galaxy;
 
+option cc_generic_services = true;
 
+service Master {
+    rpc SubmitJob() returns ();
+    rpc UpdateJob() returns ();
+    rpc SuspendJob() returns ();
+    rpc ResumeJob() returns (); 
+    rpc TerminateJob() returns ();
+    rpc ListJobs() returns ();
+
+    rpc HeartBeat() returns ();
+
+    rpc AddUser() returns ();
+    rpc DeleteUser() returns ();
+    rpc UpdateUser() returns ();
+    rpc ListUsers() returns ();
+
+    rpc GetWaitingTasks() returns ();
+    rpc GetResourceSnapshot() returns ();
+    rpc Propose() returns ();
+
+    rpc ListAgents() returns ();
+}

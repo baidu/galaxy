@@ -1,2 +1,10 @@
+package baidu.galaxy;
 
+option cc_generic_services = true;
 
+service Agent {
+    rpc Query() returns ();
+    rpc RunTask() returns ();
+    rpc KillTask() returns ();
+    rpc Suicide() returns ();
+}
