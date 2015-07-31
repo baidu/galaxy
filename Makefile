@@ -18,7 +18,8 @@ INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
 LDFLAGS = -L$(PROTOBUF_PATH)/lib -lprotobuf \
           -L$(PBRPC_PATH)/lib -lsofa-pbrpc \
           -L$(SNAPPY_PATH)/lib -lsnappy \
-          -lpthread -lz -lcurl -lidn -lssl -lldap -lleveldb -lgflags
+          -Lcommon/ -lcommon \
+          -lpthread -lz -lgflags
 
 CXXFLAGS += $(OPT)
 
@@ -30,6 +31,10 @@ PROTO_OBJ = $(patsubst %.proto,%.pb.o,$(PROTO_FILE))
 MASTER_SRC = $(wildcard src/master/*.cc)
 MASTER_OBJ = $(patsubst %.cc, %.o, $(MASTER_SRC))
 MASTER_HEADER = $(wildcard src/master/*.h)
+
+SCHEDULER_SRC = $(wildcard src/scheduler/*.cc)
+SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
+SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
 AGENT_SRC = $(wildcard src/agent/*.cc)
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
@@ -46,7 +51,7 @@ COMMON_OBJ = $(patsubst %.cc, %.o, $(wildcard common/*.cc))
 OBJS = $(FLAGS_OBJ) $(COMMON_OBJ) $(PROTO_OBJ)
 
 LIBS = libgalaxy.a
-BIN = master agent galaxy_client
+BIN = master agent scheduler
 
 all: $(BIN)
 
@@ -59,6 +64,9 @@ $(SDK_OBJ): $(SDK_HEADER)
 # Targets
 master: $(MASTER_OBJ) $(OBJS)
 	$(CXX) $(MASTER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+
+scheduler: $(SCHEDULER_OBJ) $(OBJS)
+	$(CXX) $(SCHEDULER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 agent: $(AGENT_OBJ) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
@@ -77,7 +85,7 @@ galaxy_client: $(CLIENT_OBJ) $(LIBS)
 
 clean:
 	rm -rf $(BIN)
-	rm -rf $(MASTER_OBJ) $(AGENT_OBJ) $(SDK_OBJ) $(CLIENT_OBJ) $(OBJS)
+	rm -rf $(MASTER_OBJ) $(SCHEDULER_OBJ) $(AGENT_OBJ) $(SDK_OBJ) $(CLIENT_OBJ) $(OBJS)
 	rm -rf $(PROTO_SRC) $(PROTO_HEADER)
 	rm -rf $(PREFIX)
 	rm $(LIBS) 
@@ -92,4 +100,4 @@ install: $(BIN) $(LIBS)
 
 .PHONY: test
 test:
-	cd test/integeration && sh inte-test-on-local.sh
+	echo done

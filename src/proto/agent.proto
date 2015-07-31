@@ -1,14 +1,9 @@
-
-package galaxy;
+import "galaxy.proto";
+package baidu.galaxy;
 
 option cc_generic_services = true;
-option py_generic_services = true;
 
-enum AgentResourceScheduleMode {
-    kAgentResourceScheduleStatic = 0;
-    kAgentResourceScheduleDynamic = 1;
-}
-
+<<<<<<< HEAD
 message RunTaskRequest {
     optional int64 task_id = 1;
     optional string task_name = 2;
@@ -25,28 +20,30 @@ message RunTaskRequest {
     optional AgentResourceScheduleMode schedule_mode = 12;
     // task configuration version which will be report to master
     optional int32 version = 13;
+=======
+message QueryRequest {
+>>>>>>> upstream/refactor
 }
 
-message RunTaskResponse {
-    optional int32 status = 1;
+message QueryResponse {
+    optional AgentInfo agent = 1;
 }
 
-message KillTaskRequest {
-    optional int64 task_id = 2;
+message RunPodRequest {
+    optional string podid = 1;
+    optional PodDescriptor pod = 2;
 }
 
-message KillTaskResponse {
-    optional int32 status = 2;
-    optional string gc_path = 3;
+message RunPodResponse {
+    optional Status status = 1;
 }
 
-message SetPasswordRequest {
-    optional string user_name = 1;
-    optional string password = 2;    
+message KillPodRequest {
+    optional string podid = 1;
 }
 
-message SetPasswordResponse {
-    optional int32 status = 1;    
+message KillPodResponse {
+    optional Status status = 1;
 }
 
 message UpdateTaskRequest {
@@ -62,9 +59,14 @@ message UpdateTaskResponse {
 
 
 service Agent {
+<<<<<<< HEAD
     rpc RunTask(RunTaskRequest) returns(RunTaskResponse);
     rpc KillTask(KillTaskRequest) returns(KillTaskResponse);
     rpc SetPassword(SetPasswordRequest) returns (SetPasswordResponse);
     rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
+=======
+    rpc Query(QueryRequest) returns (QueryResponse);
+    rpc RunPod(RunPodRequest) returns (RunPodResponse);
+    rpc KillPod(KillPodRequest) returns (KillPodResponse);
+>>>>>>> upstream/refactor
 }
-

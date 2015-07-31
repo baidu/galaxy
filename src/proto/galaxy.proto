@@ -1,0 +1,63 @@
+package baidu.galaxy;
+
+option cc_generic_services = true;
+
+enum Status {
+    kOk = 0;
+    kUnknown = 1;
+    kQuota = 2;
+    kNotFound = 3;
+}
+
+enum PodState {
+    kPodRunning = 0;
+    kPodTerminate = 1;
+}
+
+message Volume {
+    optional int64 quota = 1;
+    optional string path  = 2;
+}
+
+message Resource {
+    optional int32 millicores = 1; 
+    optional int32 memory = 2;
+    repeated int32 ports = 3;
+    repeated Volume disks = 4;
+    repeated Volume ssds = 5; 
+}
+
+message TaskDescriptor {
+    optional bytes binary = 1; 
+    optional string start_command = 2;
+    optional string stop_command = 3;
+    optional Resource requirement = 4;
+    repeated string labels = 5;
+}
+
+message PodDescriptor {
+    repeated TaskDescriptor tasks = 1;
+}
+
+message TaskStatus {
+    optional string taskid = 1;
+    optional int32 exit_code = 2;
+    optional Resource usage = 3;
+    optional string version = 4;
+}
+
+message PodStatus {
+    optional string podid = 1;
+    repeated TaskStatus status = 2; 
+    optional Resource usage = 3;
+    optional string hostname = 4;
+    optional string version = 5;
+    optional PodState state = 6;
+}
+
+
+message AgentInfo {
+    optional string endpoint = 1;
+    repeated PodStatus pods = 2;
+}
+
