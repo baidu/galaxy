@@ -10,13 +10,13 @@ namespace galaxy {
 class JobDescriptor;
 class MasterUtil {
 public:
-	static std::string GenerateJobId(const JobDescriptor& job_desc);
-	static std::string GeneratePodId(const JobDescriptor& job_desc);
+    static std::string GenerateJobId(const JobDescriptor& job_desc);
+    static std::string GeneratePodId(const JobDescriptor& job_desc);
 private:
-	static std::string UUID();
+    static std::string UUID();
 };
 
-}	
+}   
 }
 
 #endif

@@ -14,15 +14,15 @@ namespace baidu {
 namespace galaxy {
 
 std::string MasterUtil::GenerateJobId(const JobDescriptor& job_desc) {
-	return "job_" + job_desc.name() + UUID();
+    return "job_" + job_desc.name() + UUID();
 }
 
 std::string MasterUtil::GeneratePodId(const JobDescriptor& job_desc) {
-	return "pod_" + job_desc.name() + UUID();
+    return "pod_" + job_desc.name() + UUID();
 }
 
 std::string MasterUtil::UUID() {
-	boost::uuids::uuid uuid = boost::uuids::random_generator()();
+    boost::uuids::uuid uuid = boost::uuids::random_generator()();
     std::stringstream sm_uuid;
     sm_uuid << uuid;
     std::string str_uuid= sm_uuid.str();

@@ -18,18 +18,18 @@ typedef std::string PodId;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobInfo> JobInfoList;
 
 struct Job {
-	std::map<PodId, PodStatus*> pods_;
-	JobDescriptor desc_;
+    std::map<PodId, PodStatus*> pods_;
+    JobDescriptor desc_;
 };
 
 class JobManager {
 public:
-	void Add(const JobDescriptor& job_desc);
-	void GetPendingPods(JobInfoList* pending_pods);
+    void Add(const JobDescriptor& job_desc);
+    void GetPendingPods(JobInfoList* pending_pods);
 private:
-	std::map<JobId, Job*> jobs_;
-	std::map<JobId, std::map<PodId, PodStatus*> > pending_pods_;
-	Mutex mutex_;	
+    std::map<JobId, Job*> jobs_;
+    std::map<JobId, std::map<PodId, PodStatus*> > pending_pods_;
+    Mutex mutex_;   
 };
 
 }
