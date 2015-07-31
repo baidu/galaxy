@@ -18,6 +18,7 @@ INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
 LDFLAGS = -L$(PROTOBUF_PATH)/lib -lprotobuf \
           -L$(PBRPC_PATH)/lib -lsofa-pbrpc \
           -L$(SNAPPY_PATH)/lib -lsnappy \
+          -Lcommon/ -lcommon \
           -lpthread -lz -lgflags
 
 CXXFLAGS += $(OPT)
@@ -50,7 +51,7 @@ COMMON_OBJ = $(patsubst %.cc, %.o, $(wildcard common/*.cc))
 OBJS = $(FLAGS_OBJ) $(COMMON_OBJ) $(PROTO_OBJ)
 
 LIBS = libgalaxy.a
-BIN = master agent galaxy_client
+BIN = master agent scheduler
 
 all: $(BIN)
 
