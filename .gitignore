@@ -26,7 +26,4 @@ _testmain.go
 *.pb.h
 *.pb.cc
 
-Makefile
 output/*
-agent
-galaxy_client
