@@ -88,10 +88,13 @@ void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* controll
 }
 
 void MasterImpl::Propose(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::ProposeRequest*,
-                         ::baidu::galaxy::ProposeResponse*,
+                         const ::baidu::galaxy::ProposeRequest* request,
+                         ::baidu::galaxy::ProposeResponse* response,
                          ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method Propose() not implemented.");
+    for (int i = 0; i < request->schedule_size(); i++) {
+        const ScheduleInfo& sche_info = request->schedule(i);
+        response->add_status(job_manager_.Propose(sche_info));
+    }
     done->Run();
 }
 
