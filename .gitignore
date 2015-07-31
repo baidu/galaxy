@@ -28,6 +28,5 @@ _testmain.go
 
 Makefile
 output/*
-master
 agent
 galaxy_client
