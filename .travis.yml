@@ -21,4 +21,4 @@ install:
 
 script: 
     - make -j4 && make install &&
-    - cd sandobox && ./quick_test.sh
+    - cd sandbox && ./quick_test.sh
