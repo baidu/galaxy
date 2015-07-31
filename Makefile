@@ -13,13 +13,14 @@ PREFIX=./output
 INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
                -I$(PBRPC_PATH)/include \
                -I$(SNAPPY_PATH)/include \
-               -I$(BOOST_PATH)/include
+               -I$(BOOST_PATH)/include \
+               -Icommon/include
 
 LDFLAGS = -L$(PROTOBUF_PATH)/lib -lprotobuf \
           -L$(PBRPC_PATH)/lib -lsofa-pbrpc \
           -L$(SNAPPY_PATH)/lib -lsnappy \
           -Lcommon/ -lcommon \
-          -lpthread -lz -lgflags
+          -lgflags -lpthread -lz
 
 CXXFLAGS += $(OPT)
 
