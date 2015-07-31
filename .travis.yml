@@ -20,4 +20,5 @@ install:
     - ( cd ins && PBRPC_PATH=../thirdparty/sofa-pbrpc/output/ make sdk )
 
 script: 
-    - make -j4 && make install
+    - make -j4 && make install &&
+    - cd sandobox && ./quick_test.sh
