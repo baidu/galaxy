@@ -43,7 +43,7 @@ message PodDescriptor {
 message TaskStatus {
     optional string taskid = 1;
     optional int32 exit_code = 2;
-    optional Resource usage = 3;
+    optional Resource resource_used = 3;
     optional string version = 4;
 }
 
@@ -51,7 +51,7 @@ message PodStatus {
     optional string podid = 1;
     optional string jobid = 2;
     repeated TaskStatus status = 3; 
-    optional Resource usage = 4;
+    optional Resource resource_used = 4;
     optional string hostname = 5;
     optional string version = 6;
     optional PodState state = 7;
