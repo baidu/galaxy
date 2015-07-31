@@ -107,7 +107,7 @@ message JobOverview {
 
 message ListJobsResponse {
     optional Status status = 1;
-    repeated string jobsid = 2;
+    repeated string jobs = 2;
 }
 
 message ShowJobRequest {
