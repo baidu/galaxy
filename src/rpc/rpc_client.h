@@ -4,18 +4,19 @@
 //
 // Author: yanshiguang02@baidu.com
 
-#ifndef  BFS_RPC_CLIENT_H_
-#define  BFS_RPC_CLIENT_H_
+#ifndef  BAIDU_GALAXY_RPC_CLIENT_H_
+#define  BAIDU_GALAXY_RPC_CLIENT_H_
 
 #include <assert.h>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 #include <sofa/pbrpc/pbrpc.h>
-#include "common/mutex.h"
-#include "common/thread_pool.h"
-#include "common/logging.h"
+#include <mutex.h>
+#include <thread_pool.h>
+#include <logging.h>
 
-namespace bfs {
+namespace baidu {
+namespace galaxy {
     
 class RpcClient {
 public:
@@ -111,8 +112,8 @@ private:
     Mutex _host_map_lock;
 };
 
-} // namespace bfs
+} // namespace galaxy
 
-#endif  // BFS_RPC_CLIENT_H_
+#endif  // BAIDU_GALAXY_RPC_CLIENT_H_
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
