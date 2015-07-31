@@ -100,19 +100,19 @@ message ListJobsRequest {
 }
 
 message JobOverview {
-    optional string jobid = 1;
-    optional string name = 2;
-    optional int32 runing_num = 3;
-    optional Resource resource_sed = 4;
+    optional JobDescriptor desc = 1;
+    optional string jobid = 2;
+    optional int32 runing_num = 4;
+    optional Resource resource_sed = 5;
 }
 
 message ListJobsResponse {
     optional Status status = 1;
-    repeated string jobsid = 2;
+    repeated JobOverview jobs = 2;
 }
 
 message ShowJobRequest {
-    repeated JobOverview jobs = 1;
+    repeated string jobsid = 1;
 }
 
 message ShowJobResponse {
