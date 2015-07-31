@@ -130,7 +130,8 @@ message GetPendingJobsRequest {
 }
 
 message GetPendingJobsResponse {
-    repeated JobInfo jobs = 1;
+    optional Status status = 1;
+    repeated JobInfo jobs = 2;
 }
 
 message GetResourceSnapshotRequest {
