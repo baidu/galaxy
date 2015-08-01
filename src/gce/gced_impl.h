@@ -56,8 +56,7 @@ private:
 
     void TaskStatusCheck();
 
-    void GetProcessStatus(const std::string& key, 
-                          ProcessInfo* info);
+    void GetProcessStatus();
 
 private:
     struct Task {
@@ -76,6 +75,7 @@ private:
         std::vector<Task> task_group;
         int32_t port;
         PodState state;
+        std::string id;
     };
 
 private:
