@@ -162,9 +162,11 @@ bool IsExists(const std::string& path) {
 bool Mkdir(const std::string& dir_path) {
     const int dir_mode = 0777;
     int ret = ::mkdir(dir_path.c_str(), dir_mode); 
-    if (ret != 0 && errno == ) {
-         
-    } 
+    return ret == 0;
+    // TODO 
+    //if (ret != 0 && errno == ) {
+    //     
+    //} 
 }
 
 }   // ending namespace file

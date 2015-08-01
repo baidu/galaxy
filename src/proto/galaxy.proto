@@ -11,6 +11,8 @@ enum Status {
     kAgentNotFound = 5;
     kNotFound = 16;
     kInputError = 17;
+
+    kRpcError = 20;
 }
 
 enum PodState {
