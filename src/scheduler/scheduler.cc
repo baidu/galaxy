@@ -446,5 +446,31 @@ int32_t Scheduler::UpdateAgent(const AgentInfo* agent_info) {
     }
 }
 
+int32_t Scheduler::SyncJobOverview(const ListJobResponse* response) {
+    MutexLock lock(mutex_);
+    LOG(INFO, "start to sync job overview , old job count %u", job_overview_.size());
+    for (std::map<std::string, JobOverview*>::iterator job_it = job_overview_.begin();
+       job_it != job_overview_.end(); ++job_it) {
+           delete job_it->second
+    }
+    job_overview_.clear();
+
+    for (size_t i = 0; i < response->jobs_size(); ++i) {
+        JobOverview* job = new JobOverview();
+        job->CopyFrom(response->jobs(i));
+        job_overview_.insert(std::make_pair(job->jobid(), job));
+    }
+    LOG(INFO, "sync job overview successfully , job count %u", job_overview_.size());
+    return job_overview_.size();
+}
+
+int32_t Scheduler::CheckAgentOverLoad(std::vector<ScheduleInfo*>* propose) {
+    LOG(INFO, "start to check agent overload,  job count %u, agent count %u",
+        job_overview_.size(), resources_.size());
+
+
+
+}
+
 }// galaxy
 }// baidu
