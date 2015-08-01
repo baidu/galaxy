@@ -12,6 +12,7 @@ namespace galaxy {
 
 void JobManager::Add(const JobDescriptor& job_desc) {
     Job* job = new Job();
+    job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
     std::string job_id = MasterUtil::GenerateJobId(job_desc);
     MutexLock lock(&mutex_);
@@ -24,6 +25,102 @@ void JobManager::Add(const JobDescriptor& job_desc) {
         pending_pods_[job_id][pod_id] = pod_status;
     }   
     jobs_[job_id] = job;
+}
+
+Status JobManager::Suspend(const JobId jobid) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    Job* job = job_it->second;
+    if (job->state_ != kJobNormal) {
+        return kUnknown;
+    }
+    job->state_ = kJobSuspend;
+
+    assert(suspend_pods_.find(jobid) == suspend_pods_.end());
+
+    std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
+    it = pending_pods_.find(jobid);
+    if (it != deploy_pods_.end()) {
+        std::map<PodId, PodStatus*>& job_suspend_pods = suspend_pods_[jobid];
+        std::map<PodId, PodStatus*>& job_pending_pods = it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it;
+        for (pod_it = job_pending_pods.begin(); pod_it != job_pending_pods.end(); ++pod_it) {
+            PodStatus* pod = pod_it->second;
+            SuspendPod(pod);
+            job_suspend_pods[pod->podid()] = pod;
+        }
+        pending_pods_.erase(it);
+    }
+
+    it = deploy_pods_.find(jobid);
+    if (it != deploy_pods_.end()) {
+        std::map<PodId, PodStatus*>& job_suspend_pods = suspend_pods_[jobid];
+        std::map<PodId, PodStatus*>& job_deploy_pods = it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it;
+        for (pod_it = job_deploy_pods.begin(); pod_it != job_deploy_pods.end(); ++pod_it) {
+            PodStatus* pod = pod_it->second;
+            SuspendPod(pod);
+            job_suspend_pods[pod->podid()] = pod;
+        }
+        deploy_pods_.erase(it);
+    }
+    return kOk;
+}
+
+void JobManager::SuspendPod(PodStatus* pod) {
+    mutex_.AssertHeld();
+    PodState state = pod->state();
+    if (state == kPodPending) {
+        pod->set_state(kPodSuspend);
+    } else if (state == kPodDeploy) {
+        const std::string& hostname = pod->hostname();
+        AgentInfo* agent = agents_[hostname];
+        ReclaimResource(*pod, agent);
+        pod->set_state(kPodSuspend);
+        pod->set_hostname("");
+    }
+}
+
+Status JobManager::Resume(const JobId jobid) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    Job* job = job_it->second;
+    if (job->state_ != kJobSuspend) {
+        return kUnknown;
+    }
+    job->state_ = kJobNormal;
+
+    assert(pending_pods_.find(jobid) == pending_pods_.end());
+    assert(deploy_pods_.find(jobid) == deploy_pods_.end());
+
+    std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
+    it = suspend_pods_.find(jobid);
+    if (it != suspend_pods_.end()) {
+        std::map<PodId, PodStatus*>& job_pending_pods = pending_pods_[jobid];
+        std::map<PodId, PodStatus*>& job_suspend_pods = it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it;
+        for (pod_it = job_suspend_pods.begin(); pod_it != job_suspend_pods.end(); ++pod_it) {
+            PodStatus* pod = pod_it->second;
+            ResumePod(pod);
+            job_pending_pods[pod->podid()] = pod;
+        }
+        deploy_pods_.erase(it);
+    }
+    return kOk;
+}
+
+void JobManager::ResumePod(PodStatus* pod) {
+    mutex_.AssertHeld();
+    PodState state = pod->state();
+    if (state == kPodSuspend) {
+        pod->set_state(kPodPending);
+    }
 }
 
 void JobManager::GetPendingPods(JobInfoList* pending_pods) {
@@ -69,7 +166,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
 
     PodStatus* pod = jt->second;
     AgentInfo* agent = at->second;
-    Status feasible_status = CheckScheduleFeasible(pod, agent);
+    Status feasible_status = AcquireResource(*pod, agent);
     if (feasible_status != kOk) {
         return feasible_status;
     }
@@ -85,29 +182,44 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     return kOk;
 }
 
-Status JobManager::CheckScheduleFeasible(const PodStatus* pod, const AgentInfo* agent) {
+Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
     mutex_.AssertHeld();
-    Job* job = jobs_[pod->jobid()];
     Resource pod_requirement;
+    GetPodRequirement(pod, &pod_requirement);
+    const Resource& unassigned = agent->unassigned();
+    if (!MasterUtil::FitResource(pod_requirement, unassigned)) {
+        return kQuota;
+    }
+    MasterUtil::SubstractResource(pod_requirement, agent->mutable_unassigned());
+    MasterUtil::AddResource(pod_requirement, agent->mutable_assigned());
+    return kOk;
+}
+
+void JobManager::ReclaimResource(const PodStatus& pod, AgentInfo* agent) {
+    mutex_.AssertHeld();
+    Resource pod_requirement;
+    GetPodRequirement(pod, &pod_requirement);
+    MasterUtil::SubstractResource(pod_requirement, agent->mutable_assigned());
+    MasterUtil::AddResource(pod_requirement, agent->mutable_unassigned());
+}
+
+void JobManager::GetPodRequirement(const PodStatus& pod, Resource* requirement) {
+    Job* job = jobs_[pod.jobid()];
     const PodDescriptor& pod_desc = job->desc_.pod();
+    CalculatePodRequirement(pod_desc, requirement);
+}
+
+void JobManager::CalculatePodRequirement(const PodDescriptor& pod_desc,
+                                         Resource* pod_requirement) {
     for (int32_t i = 0; i < pod_desc.tasks_size(); i++) {
         const TaskDescriptor& task_desc = pod_desc.tasks(i);
         const Resource& task_requirement = task_desc.requirement();
-        pod_requirement.set_millicores(pod_requirement.millicores() + task_requirement.millicores());
-        pod_requirement.set_memory(pod_requirement.memory() + task_requirement.memory());
+        pod_requirement->set_millicores(pod_requirement->millicores() + task_requirement.millicores());
+        pod_requirement->set_memory(pod_requirement->memory() + task_requirement.memory());
         for (int32_t j = 0; j < task_requirement.ports_size(); j++) {
-            pod_requirement.add_ports(task_requirement.ports(j));
+            pod_requirement->add_ports(task_requirement.ports(j));
         }
     }
-    const Resource& unassigned = agent->unassigned();
-    if (unassigned.millicores() < pod_requirement.millicores()) {
-        return kQuota;
-    }
-    if (unassigned.memory() < pod_requirement.memory()) {
-        return kQuota;
-    }
-    // TODO: check port & disk & ssd
-    return kOk;
 }
 
 }

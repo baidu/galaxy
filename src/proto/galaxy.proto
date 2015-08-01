@@ -16,6 +16,7 @@ enum PodState {
     kPodDeploy = 1;
     kPodRunning = 2;
     kPodTerminate = 3;
+    kPodSuspend = 4;
 }
 
 message Volume {
