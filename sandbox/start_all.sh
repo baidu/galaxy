@@ -6,3 +6,6 @@ nohup  ../master --flagfile=galaxy.flag >master.log 2>&1 &
 echo "start agent"
 nohup  ../agent --flagfile=galaxy.flag >master.log 2>&1 &
 
+sleep 1
+echo "start scheduler"
+nohup ../scheduler --flagfile=galaxy.flag >scheduler.log 2>&1 &
