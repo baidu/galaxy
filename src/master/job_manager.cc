@@ -46,7 +46,7 @@ JobId JobManager::Add(const JobDescriptor& job_desc) {
     return job_id;
 }
 
-Status JobManager::Suspend(const JobId jobid) {
+Status JobManager::Suspend(const JobId& jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) {
@@ -107,7 +107,7 @@ void JobManager::SuspendPod(PodStatus* pod) {
     LOG(INFO, "pod suspended: %s", pod->podid().c_str());
 }
 
-Status JobManager::Resume(const JobId jobid) {
+Status JobManager::Resume(const JobId& jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) {
@@ -157,7 +157,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods) {
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
         const JobDescriptor& job_desc = jobs_[job_id]->desc_;
-        job_info->mutable_job()->CopyFrom(job_desc);
+        job_info->mutable_desc()->CopyFrom(job_desc);
 
         const std::map<PodId, PodStatus*> & job_pending_pods = it->second;
         std::map<PodId, PodStatus*>::const_iterator jt;
@@ -465,7 +465,29 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     LOG(INFO, "query agent [%s] success", endpoint.c_str());
 
     AgentInfo* agent = it->second;
-    agent->CopyFrom(response->agent());
+    const AgentInfo& report_agent_info = response->agent();
+    agent->CopyFrom(report_agent_info);
+
+    PodMap& agent_running_pods = running_pods_[endpoint];
+    for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
+        const PodStatus& report_pod_info = report_agent_info.pods(i);
+        const JobId& jobid = report_pod_info.jobid();
+        const PodId& podid = report_pod_info.podid();
+        if (agent_running_pods.find(jobid) == agent_running_pods.end()) {
+            LOG(WARNING, "report non-exist pod [%s %s]", jobid.c_str(), podid.c_str());
+            continue;
+        }
+        if (agent_running_pods[jobid].find(podid) == agent_running_pods[jobid].end()) {
+            LOG(WARNING, "report non-exist pod [%s %s]", jobid.c_str(), podid.c_str());
+            continue;
+        }
+        PodStatus* pod = agent_running_pods[jobid][podid];
+        // only copy dynamic information
+        pod->mutable_status()->CopyFrom(report_pod_info.status());
+        pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
+        LOG(DEBUG, "update pod [%s %s]", jobid.c_str(), podid.c_str());
+    }
+
     delete request;
     delete response;
 }
@@ -489,6 +511,50 @@ void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
         }
         agents_info->Add()->CopyFrom(*agent);
     }
+}
+
+void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.begin();
+    for (; job_it != jobs_.end(); ++job_it) {
+        const JobId& jobid = job_it->first;
+        Job* job = job_it->second;
+        JobOverview* overview = jobs_overview->Add();
+        overview->mutable_desc()->CopyFrom(job->desc_);
+        overview->set_jobid(jobid);
+        overview->set_state(job->state_);
+
+        uint32_t running_num = 0;
+        std::map<PodId, PodStatus*>& pods = job->pods_;
+        std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
+        for (; pod_it != pods.end(); ++pod_it) {
+            // const PodId& podid = pod_it->first;
+            const PodStatus* pod = pod_it->second;
+            if (pod->state() == kPodRunning) {
+                running_num++;
+                MasterUtil::AddResource(pod->resource_used(), overview->mutable_resource_used());
+            }
+        }
+    }
+}
+
+Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        LOG(WARNING, "get job info failed, no such job: %s", jobid.c_str());
+        return kJobNotFound;
+    }
+
+    Job* job = job_it->second;
+    job_info->set_jobid(jobid);
+    job_info->mutable_desc()->CopyFrom(job->desc_);
+    std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+    for (; pod_it != job->pods_.end(); ++pod_it) {
+        PodStatus* pod = pod_it->second;
+        job_info->add_pods()->CopyFrom(*pod);
+    }
+    return kOk;
 }
 
 }

@@ -23,6 +23,7 @@ typedef std::string PodId;
 typedef std::string AgentAddr;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobInfo> JobInfoList;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::AgentInfo> AgentInfoList;
+typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobOverview> JobOverviewList;
 
 struct Job {
     JobState state_;
@@ -35,12 +36,14 @@ public:
     JobManager();
     ~JobManager();
     JobId Add(const JobDescriptor& job_desc);
-    Status Suspend(const JobId jobid);
-    Status Resume(const JobId jobid);
+    Status Suspend(const JobId& jobid);
+    Status Resume(const JobId& jobid);
     void GetPendingPods(JobInfoList* pending_pods);
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
+    void GetJobsOverview(JobOverviewList* jobs_overview);
+    Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
 
