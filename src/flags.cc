@@ -4,6 +4,9 @@
 
 #include <gflags/gflags.h>
 
+// sdk
+DEFINE_string(master_host, "localhost", "Master service hostname");
+
 // master
 DEFINE_string(master_port, "7828", "Master service listen port");
 

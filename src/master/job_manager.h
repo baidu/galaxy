@@ -31,7 +31,7 @@ struct Job {
 
 class JobManager {
 public:
-    void Add(const JobDescriptor& job_desc);
+    JobId Add(const JobDescriptor& job_desc);
     Status Suspend(const JobId jobid);
     Status Resume(const JobId jobid);
     void GetPendingPods(JobInfoList* pending_pods);

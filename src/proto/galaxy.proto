@@ -30,7 +30,8 @@ message Volume {
 }
 
 message Resource {
-    optional int32 millicores = 1; 
+    optional int32 millicores = 1;
+    // MB
     optional int32 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;

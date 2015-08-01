@@ -10,7 +10,8 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SubmitJobRequest* request,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
-    job_manager_.Add(request->job());
+    JobId job_id = job_manager_.Add(request->job());
+    response->set_jobid(job_id);
     done->Run();
 }
 
@@ -94,7 +95,7 @@ void MasterImpl::Propose(::google::protobuf::RpcController* controller,
                          ::google::protobuf::Closure* done) {
     for (int i = 0; i < request->schedule_size(); i++) {
         const ScheduleInfo& sche_info = request->schedule(i);
-        response->add_status(job_manager_.Propose(sche_info));
+        response->set_status(job_manager_.Propose(sche_info));
     }
     done->Run();
     job_manager_.DeployPod();

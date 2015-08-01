@@ -18,7 +18,7 @@ DECLARE_int32(agent_rpc_timeout);
 namespace baidu {
 namespace galaxy {
 
-void JobManager::Add(const JobDescriptor& job_desc) {
+JobId JobManager::Add(const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
@@ -33,7 +33,8 @@ void JobManager::Add(const JobDescriptor& job_desc) {
         pending_pods_[job_id][pod_id] = pod_status;
     }
     jobs_[job_id] = job;
-    LOG(INFO, "job[%s] submitted by %s, ", job_id.c_str(), job_desc.user().c_str());
+    LOG(INFO, "job[%s] submitted by user: %s, ", job_id.c_str(), job_desc.user().c_str());
+    return job_id;
 }
 
 Status JobManager::Suspend(const JobId jobid) {
@@ -153,7 +154,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods) {
         std::map<PodId, PodStatus*>::const_iterator jt;
         for (jt = job_pending_pods.begin(); jt != job_pending_pods.end(); ++jt) {
             PodStatus* pod_status = jt->second;
-            PodStatus* new_pod_status = job_info->add_tasks();
+            PodStatus* new_pod_status = job_info->add_pods();
             new_pod_status->CopyFrom(*pod_status);
         }
     }
