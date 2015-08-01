@@ -40,7 +40,7 @@ static bool VolumeCompare(const Volume& volume1, const Volume& volume2) {
  *
  * */
 static bool JobCompare(const JobInfo* left, const JobInfo* right) {
-    return left->job().priority() > right->job().priority();
+    return left->desc().priority() > right->desc().priority();
 }
 
 int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
@@ -167,7 +167,7 @@ int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
     std::vector<JobInfo*>::iterator job_it = pending_jobs.begin();
     for (; job_it != pending_jobs.end(); ++job_it) {
         PodScaleUpCell* cell = new PodScaleUpCell();
-        cell->pod = (*job_it)->mutable_job()->mutable_pod();
+        cell->pod = (*job_it)->mutable_desc()->mutable_pod();
         cell->job = *job_it;
         cell->feasible_limit = (*job_it)->pods_size() * feasibility_factor;
         feasibility_count += cell->feasible_limit;
@@ -187,7 +187,7 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
     std::vector<JobInfo*>::iterator job_it = reducing_jobs.begin();
     for (; job_it != reducing_jobs.end(); ++job_it) {
         PodScaleDownCell* cell = new PodScaleDownCell();
-        cell->pod = (*job_it)->mutable_job()->mutable_pod();
+        cell->pod = (*job_it)->mutable_desc()->mutable_pod();
         cell->job = *job_it;
         for (int i = 0; i < (*job_it)->pods_size(); ++i) {
             std::map<std::string, AgentInfo*>::iterator agt_it =
@@ -203,7 +203,7 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
             }
         }
         // 计算需要scale_down数目
-        int32_t scale_down_count = (*job_it)->pods_size() - cell->job->job().replica();
+        int32_t scale_down_count = (*job_it)->pods_size() - cell->job->desc().replica();
         cell->scale_down_count = scale_down_count;
         reducing_count += scale_down_count;
         reducing_pods->push_back(cell);
@@ -217,8 +217,8 @@ PodScaleUpCell::PodScaleUpCell():pod(NULL), job(NULL),
 bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
     // 对于prod任务(kLongRun,kSystem)，根据unassign值check
     // 对于non-prod任务(kBatch)，根据free值check
-    if (job->job().type() == kLongRun ||
-            job->job().type() == kSystem) {
+    if (job->desc().type() == kLongRun ||
+            job->desc().type() == kSystem) {
         // 判断CPU是否满足
         if (agent_info->unassigned().millicores() < resource.millicores()) {
             return false;
@@ -228,7 +228,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
             return false;
         }
     }
-    else if (job->job().type() == kBatch) {
+    else if (job->desc().type() == kBatch) {
         // 判断CPU是否满足
         if (agent_info->free().millicores() < resource.millicores()) {
             return false;
