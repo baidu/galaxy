@@ -17,10 +17,10 @@ namespace galaxy {
 
 AgentImpl::AgentImpl() {
 	rpc_client_ = new RpcClient();
-	thread_pool_.AddTask(boost::bind(&AgentImpl::HeartBeat, this));
 	if (!rpc_client_->GetStub(FLAGS_master_host + ":" + FLAGS_master_port, &master_stub_)) {
         assert(0);
     }
+	thread_pool_.AddTask(boost::bind(&AgentImpl::HeartBeat, this));
 }
 
 void AgentImpl::HeartBeat() {
