@@ -107,11 +107,11 @@ int32_t Scheduler::ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc) {
     for (; it != resources_.end(); ++it) {
         resources_to_alloc->push_back(it->second);
         LOG(DEBUG, "agent resource free: millicores %d memory %d MB #disk %u #ssd %u",
-                it->second->free()->millicores(), it->second->free()->memory(),
-                it->second->free()->disks_size(), it->second->free()->ssds_size());
+                it->second->free().millicores(), it->second->free().memory(),
+                it->second->free().disks_size(), it->second->free().ssds_size());
         LOG(DEBUG, "agent resource unassigned: millicores %d memory %d MB #disk %u #ssd %u",
-                it->second->unassigned()->millicores(), it->second->unassigned()->memory(),
-                it->second->unassigned()->disks_size(), it->second->unassigned()->ssds_size());
+                it->second->unassigned().millicores(), it->second->unassigned().memory(),
+                it->second->unassigned().disks_size(), it->second->unassigned().ssds_size());
     }
     return 0;
 }
