@@ -28,6 +28,9 @@ void SchedulerIO::Loop() {
 
 	GetPendingJobsRequest get_jobs_request;
 	GetPendingJobsResponse get_jobs_response;
+
+	ProposeRequest pro_request;
+	ProposeResponse pro_response;
 	ret = rpc_client_.SendRequest(master_stub_,
 			 	 	 	 	 	 &Master_Stub::GetPendingJobs,
 								 &get_jobs_request,
@@ -50,14 +53,34 @@ void SchedulerIO::Loop() {
 	std::vector<ScheduleInfo*> propose;
 	status = scheduler_.ScheduleScaleUp(pending_jobs, &propose);
 	if (status != 0) {
-		LOG(INFO, "schedule scale up done ");
-		return;
+		LOG(INFO, "fail to schedule scale up ");
+		goto END;
 	}
 	status = scheduler_.ScheduleScaleDown(reducing_jobs, &propose);
 	if (status != 0) {
-		LOG(INFO, "schedule scale down done ");
-		return;
+		LOG(INFO, "fail to schedule scale down ");
+		goto END;
 	}
+
+	for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
+			it != propose.end(); ++it) {
+		ScheduleInfo* sched = pro_request.add_schedule();
+		sched->CopyFrom(*(*it));
+	}
+	ret = rpc_client_.SendRequest(master_stub_,
+				 	 	 	 	  &Master_Stub::Propose,
+								  &pro_request,
+								  &pro_response,
+								  5, 1);
+	if (!ret) {
+		LOG(INFO, "fail to propose");
+	}
+END:
+	for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
+				it != propose.end(); ++it) {
+		delete *it;
+    }
+	propose.clear();
 }
 
 } // galaxy
