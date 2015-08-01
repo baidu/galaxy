@@ -1,50 +1,70 @@
 // Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
-// Author: yanshiguang02@baidu.com
 
-#ifndef  GALAXY_AGENT_IMPL_H_
-#define  GALAXY_AGENT_IMPL_H_
+#ifndef _AGENT_IMPL_H_
+#define _AGENT_IMPL_H_
 
 #include <string>
-#include <thread_pool.h>
+#include <map>
 
+#include "sofa/pbrpc/pbrpc.h"
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
+#include "proto/gced.pb.h"
+
+#include "mutex.h"
+#include "thread_pool.h"
+#include "rpc/rpc_client.h"
 
 namespace baidu {
 namespace galaxy {
 
-class RpcClient;
-
 class AgentImpl : public Agent {
+
 public:
-	AgentImpl();
-	~AgentImpl() {}
-	void Query(::google::protobuf::RpcController* controller,
-	                   const ::baidu::galaxy::QueryRequest* request,
-	                   ::baidu::galaxy::QueryResponse* response,
-	                   ::google::protobuf::Closure* done);
-	void RunPod(::google::protobuf::RpcController* controller,
-	                   const ::baidu::galaxy::RunPodRequest* request,
-	                   ::baidu::galaxy::RunPodResponse* response,
-	                   ::google::protobuf::Closure* done);
-	void KillPod(::google::protobuf::RpcController* controller,
-	                   const ::baidu::galaxy::KillPodRequest* request,
-	                   ::baidu::galaxy::KillPodResponse* response,
-	                   ::google::protobuf::Closure* done);
-	void HeartBeat();
+    AgentImpl();
+    virtual ~AgentImpl(); 
+
+    bool Init();
+
+    virtual void Query(::google::protobuf::RpcController* cntl, 
+                       const ::baidu::galaxy::QueryRequest* req,
+                       ::baidu::galaxy::QueryResponse* resp,
+                       ::google::protobuf::Closure* done); 
+    virtual void RunPod(::google::protobuf::RpcController* cntl,
+                        const ::baidu::galaxy::RunPodRequest* req,
+                        ::baidu::galaxy::RunPodResponse* resp,
+                        ::google::protobuf::Closure* done);
+    virtual void KillPod(::google::protobuf::RpcController* cntl,
+                         const ::baidu::galaxy::KillPodRequest* req,
+                         ::baidu::galaxy::KillPodResponse* resp,
+                         ::google::protobuf::Closure* done);
 private:
-	common::ThreadPool thread_pool_;
-	Master_Stub* master_stub_;
-	RpcClient* rpc_client_;
-	std::string self_address_;
+    void KeepHeartBeat();
+    
+    bool RegistToMaster();
+    bool CheckGcedConnection();
+
+    bool PingMaster();
+
+    //void ParseVolumeInfoFromString(const std::string& volume_str,                                   std::vector<Volume>* volumes);
+
+    //void ConvertResourceToPb(const ResourceCapacity& resource, Resource* resource_pb);
+private:
+    std::string master_endpoint_;
+    std::string gce_endpoint_; 
+    
+    Mutex lock_;
+    ThreadPool background_threads_;
+    RpcClient* rpc_client_;
+    std::string endpoint_;
+    Master_Stub* master_;
+    Gced_Stub* gced_;
 };
 
-}
-}
+}   // ending namespace galaxy
+}   // ending namespace baidu
 
-#endif  //__AGENT_IMPL_H_
 
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
+#endif

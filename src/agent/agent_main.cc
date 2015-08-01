@@ -3,52 +3,57 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
-#include <signal.h>
+#include <stdlib.h>
 
-#include <sofa/pbrpc/pbrpc.h>
-#include <gflags/gflags.h>
+#include "gflags/gflags.h"
+#include "sofa/pbrpc/pbrpc.h"
 
-#include <logging.h>
+#include "agent/agent_impl.h"
+#include "logging.h"
 
-#include "agent_impl.h"
+volatile static bool s_is_stop = false;
 
-DECLARE_string(flagfile);
 DECLARE_string(agent_port);
 
-static volatile bool s_quit = false;
-static void SignalIntHandler(int /*sig*/)
-{
-    s_quit = true;
+void StopSigHandler(int /*sig*/) {
+    s_is_stop = true;
 }
 
-int main(int argc, char* argv[])
-{
-    FLAGS_flagfile = "./galaxy.flag";
-    ::google::ParseCommandLineFlags(&argc, &argv, false);
+int main (int argc, char* argv[]) {
 
+    using baidu::common::Log;
+    using baidu::common::FATAL;
+    using baidu::common::INFO;
+    using baidu::common::WARNING;
+
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     sofa::pbrpc::RpcServerOptions options;
-    options.work_thread_num = 8;
     sofa::pbrpc::RpcServer rpc_server(options);
 
-    baidu::galaxy::AgentImpl* agent_service = new baidu::galaxy::AgentImpl();
+    baidu::galaxy::AgentImpl* agent_service = 
+                        new baidu::galaxy::AgentImpl();
+    if (!agent_service->Init()) {
+        LOG(WARNING, "agent service init failed"); 
+        return EXIT_FAILURE;
+    }
 
     if (!rpc_server.RegisterService(agent_service)) {
-            return EXIT_FAILURE;
+        LOG(WARNING, "rpc server regist failed"); 
+        return EXIT_FAILURE;
     }
+    std::string server_host = std::string("0.0.0.0:") 
+        + FLAGS_agent_port;
 
-    std::string server_host = std::string("0.0.0.0:") + FLAGS_agent_port;
     if (!rpc_server.Start(server_host)) {
-            return EXIT_FAILURE;
+        LOG(WARNING, "Rpc Server Start failed");
+        return EXIT_FAILURE;
     }
 
-    signal(SIGINT, SignalIntHandler);
-    signal(SIGTERM, SignalIntHandler);
-    while (!s_quit) {
-        sleep(1);
-    }   
+    while (!s_is_stop) {
+        sleep(5); 
+    }
 
-    return EXIT_SUCCESS;
+    return EXIT_SUCCESS; 
 }
-
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

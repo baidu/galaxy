@@ -37,9 +37,27 @@ SCHEDULER_SRC = $(wildcard src/scheduler/*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
-AGENT_SRC = $(wildcard src/agent/*.cc)
+AGENT_SRC = $(wildcard src/agent/agent*.cc) 
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
-AGENT_HEADER = $(wildcard src/agent/*.h)
+AGENT_HEADER = $(wildcard src/agent/*.h) 
+
+TEST_AGENT_SRC = src/agent/test_agent.cc
+TEST_AGENT_OBJ = $(patsubst %.cc, %.o, $(TEST_AGENT_SRC))
+
+GCED_SRC = $(wildcard src/gce/gced*.cc) src/gce/utils.cc
+GCED_OBJ = $(patsubst %.cc, %.o, $(GCED_SRC))
+GCED_HEADER = $(wildcard src/agent/*.h) src/gce/utils.h
+
+INITD_SRC = $(wildcard src/gce/initd*.cc) src/gce/utils.cc src/flags.cc
+INITD_OBJ = $(patsubst %.cc, %.o, $(INITD_SRC))
+INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h
+
+TEST_INITD_SRC = src/gce/test_initd.cc
+TEST_INITD_OBJ = $(patsubst %.cc, %.o, $(TEST_INITD_SRC))
+#TEST_INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h
+
+TEST_GCED_SRC = src/gce/test_gced.cc
+TEST_GCED_OBJ = $(patsubst %.cc, %.o, $(TEST_GCED_SRC))
 
 SDK_SRC = $(wildcard src/sdk/*.cc)
 SDK_OBJ = $(patsubst %.cc, %.o, $(SDK_SRC))
@@ -51,7 +69,7 @@ FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
 OBJS = $(FLAGS_OBJ) $(PROTO_OBJ)
 
 LIBS = libgalaxy.a
-BIN = master agent scheduler galaxy
+BIN = master agent scheduler galaxy initd gced
 
 all: $(BIN) $(LIBS)
 
@@ -68,14 +86,29 @@ master: $(MASTER_OBJ) $(OBJS)
 scheduler: $(SCHEDULER_OBJ) $(OBJS)
 	$(CXX) $(SCHEDULER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-agent: $(AGENT_OBJ) $(OBJS)
+agent: $(AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+
+test_agent: $(TEST_AGENT_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(TEST_AGENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+gced: $(GCED_OBJ) $(OBJS)
+	$(CXX) $(GCED_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 libgalaxy.a: $(SDK_OBJ) $(OBJS) $(PROTO_HEADER)
 	$(AR) -rs $@ $(SDK_OBJ) $(OBJS)
 
 galaxy: $(CLIENT_OBJ) $(LIBS)
 	$(CXX) $(CLIENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+initd: $(INITD_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(INITD_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+test_initd: $(TEST_INITD_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(TEST_INITD_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+test_gced: $(TEST_GCED_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(TEST_GCED_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@
