@@ -93,8 +93,10 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
                                         5, 1);
     if (!ret) {
         resp->set_status(kRpcError); 
+        LOG(WARNING, "run pod failed for rpc failed");
     } else {
         resp->set_status(gced_response.status()); 
+        LOG(WARNING, "run pod status %s", Status_Name(gced_response.status()).c_str());
     }
 
     done->Run();
@@ -181,7 +183,6 @@ bool AgentImpl::RegistToMaster() {
 
     if (!PingMaster()) {
         LOG(WARNING, "connect master %s failed", master_endpoint_.c_str()); 
-        return false;
     }
     return true;
 }

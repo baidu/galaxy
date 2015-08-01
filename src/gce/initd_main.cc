@@ -90,7 +90,7 @@ bool DumpInitdCheckpoint(baidu::galaxy::InitdImpl* service) {
     return false;
 }
 
-int main (int argc, char* argv[]) {
+int main(int argc, char* argv[]) {
     // keep argv for restart
     char* restart_argv[argc + 1];
     int restart_argc = argc;

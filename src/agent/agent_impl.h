@@ -17,7 +17,6 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
-
 namespace baidu {
 namespace galaxy {
 
@@ -69,4 +68,3 @@ private:
 
 
 #endif
-

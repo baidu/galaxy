@@ -28,8 +28,9 @@ int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
-    baidu::galaxy::Master* master_server = new baidu::galaxy::MasterImpl();
-    if (!rpc_server.RegisterService(master_server)) {
+    baidu::galaxy::MasterImpl* master_impl = new baidu::galaxy::MasterImpl();
+    baidu::galaxy::Master* master_service = master_impl;
+    if (!rpc_server.RegisterService(master_service)) {
         LOG(FATAL, "failed to register master service");
         exit(-1);
     }   
@@ -37,7 +38,8 @@ int main(int argc, char* argv[]) {
     if (!rpc_server.Start(server_addr)) {
         LOG(FATAL, "failed to start galaxy master on %s", server_addr.c_str());
         exit(-2);
-    }   
+    }  
+    master_impl->Init();
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {

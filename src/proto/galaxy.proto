@@ -9,6 +9,7 @@ enum Status {
     kJobNotFound = 3;
     kPodNotFound = 4;
     kAgentNotFound = 5;
+    kJobSubmitFail = 6;
     kNotFound = 16;
     kInputError = 17;
 
@@ -20,6 +21,12 @@ enum PodState {
     kPodDeploy = 1;
     kPodRunning = 2;
     kPodTerminate = 3;
+    kPodSuspend = 4;
+}
+
+enum AgentState {
+    kAlive = 0;
+    kDead = 1;    
 }
 
 message Volume {
@@ -28,7 +35,8 @@ message Volume {
 }
 
 message Resource {
-    optional int32 millicores = 1; 
+    optional int32 millicores = 1;
+    // MB
     optional int32 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;
@@ -60,7 +68,7 @@ message PodStatus {
     optional string jobid = 2;
     repeated TaskStatus status = 3; 
     optional Resource resource_used = 4;
-    optional string hostname = 5;
+    optional string endpoint = 5;
     optional string version = 6;
     optional PodState state = 7;
 }
@@ -73,5 +81,6 @@ message AgentInfo {
     optional Resource used = 5;
     optional Resource free = 6;
     repeated PodStatus pods = 7;
+    optional AgentState state = 8;
 }
 

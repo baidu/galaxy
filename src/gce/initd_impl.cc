@@ -104,6 +104,8 @@ void InitdImpl::Execute(::google::protobuf::RpcController* controller,
         return;
     }
 
+    LOG(INFO, "run command %s at %s", request->commands().c_str(), request->path().c_str());
+
     // 1. collect initd fds
     std::vector<int> fd_vector;
     process::GetProcessOpenFds(::getpid(), &fd_vector);

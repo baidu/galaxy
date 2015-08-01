@@ -1,0 +1,128 @@
+// Copyright (c) 2015, Galaxy Authors. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "galaxy.h"
+
+#include "proto/master.pb.h"
+#include "rpc/rpc_client.h"
+
+namespace baidu {
+namespace galaxy {
+
+class GalaxyImpl : public Galaxy {
+public:
+    GalaxyImpl(const std::string& master_addr)
+      : master_(NULL) {
+        rpc_client_ = new RpcClient();
+        rpc_client_->GetStub(master_addr, &master_);
+    }
+    virtual ~GalaxyImpl() {}
+    std::string SubmitJob(const JobDescription& job);
+    bool UpdateJob(const std::string& jobid, const JobDescription& job);
+    bool ListJobs(std::vector<JobInformation>* jobs);
+    bool ListAgents(std::vector<NodeDescription>* nodes);
+    bool TerminateJob(const std::string& job_id);
+private:
+    RpcClient* rpc_client_;
+    Master_Stub* master_;
+};
+
+bool GalaxyImpl::TerminateJob(const std::string& job_id) {
+    TerminateJobRequest request;
+    TerminateJobResponse response;
+    request.set_jobid(job_id);
+    rpc_client_->SendRequest(master_, &Master_Stub::TerminateJob,
+                             &request,&response,5,1);
+
+    return true;
+}
+
+std::string GalaxyImpl::SubmitJob(const JobDescription& job){
+    SubmitJobRequest request;
+    SubmitJobResponse response;
+    request.mutable_job()->set_name(job.job_name);
+    TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
+    task->set_binary(job.binary);
+    task->set_start_command(job.cmd_line);
+    task->mutable_requirement()->set_millicores(job.cpu_required);
+    task->mutable_requirement()->set_memory(job.mem_required);
+    request.mutable_job()->set_replica(job.replica);
+
+    rpc_client_->SendRequest(master_, &Master_Stub::SubmitJob,
+                             &request,&response,5,1);
+    return response.jobid();
+}
+
+bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) {
+    UpdateJobRequest request;
+    UpdateJobResponse response;
+    request.mutable_job()->set_name(job.job_name);
+    TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
+    task->set_binary(job.binary);
+    task->set_start_command(job.cmd_line);
+    task->mutable_requirement()->set_millicores(job.cpu_required);
+    task->mutable_requirement()->set_memory(job.mem_required);
+    request.mutable_job()->set_replica(job.replica);
+
+    rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
+                             &request, &response, 5, 1);
+    if (response.status() != kOk) {
+        return false;
+    }
+    return true;
+}
+
+bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
+    ListJobsRequest request;
+    ListJobsResponse response;
+    bool ret = rpc_client_->SendRequest(master_, &Master_Stub::ListJobs,
+                             &request,&response,5,1);
+    if (!ret || response.status() != kOk) {
+        return false;
+    }
+    int job_num = response.jobs_size();
+    for(int i = 0; i< job_num;i++){
+        const JobOverview& job = response.jobs(i);
+        JobInformation job_info ;
+        job_info.job_id = job.jobid();
+        job_info.job_name = job.desc().name();
+        job_info.replica = job.desc().replica();
+        job_info.priority = job.desc().priority();
+        job_info.running_num = job.running_num();
+        job_info.cpu_used = job.resource_used().millicores();
+        job_info.mem_used = job.resource_used().memory();
+        jobs->push_back(job_info);
+    }
+    return true;
+}
+
+bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
+    ListAgentsRequest request;
+    ListAgentsResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::ListAgents,
+                             &request,&response, 5, 1);
+    int node_num = response.agents_size();
+    for (int i = 0; i < node_num; i++) {
+        const AgentInfo& node = response.agents(i);
+        NodeDescription node_desc;
+        node_desc.addr = node.endpoint();
+        node_desc.task_num = node.pods_size();
+        node_desc.cpu_share = node.total().millicores();
+        node_desc.mem_share = node.total().memory();
+        node_desc.cpu_used = node.assigned().millicores();
+        node_desc.mem_used = node.assigned().memory();
+        nodes->push_back(node_desc);
+    }
+    return true;
+
+}
+
+Galaxy* Galaxy::ConnectGalaxy(const std::string& master_addr) {
+    return new GalaxyImpl(master_addr);
+}
+
+} // namespace galaxy
+} // namespace baidu
+
+/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

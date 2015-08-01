@@ -9,7 +9,6 @@
 #include <vector>
 #include <map>
 #include <boost/noncopyable.hpp>
-#include <boost/scoped_ptr.hpp>
 #include "proto/gced.pb.h"
 #include "mutex.h"
 
@@ -17,6 +16,7 @@ namespace baidu {
 namespace galaxy {
 
 class RpcClient;
+class ProcessInfo;
 
 class GcedImpl : public Gced, 
                  boost::noncopyable {
@@ -43,16 +43,21 @@ public:
 private:
 
     struct Pod;
+    struct Task;
 
     void CreateCgroup();
 
-
-    void ConvertToInternalPod(const PodDescriptor& req_pod, 
-                              Pod* pod);
+    void ConvertToInternalTask(const TaskDescriptor& req_pod, 
+                               Task* task);
 
     void LaunchInitd();
 
-    // TODO  
+    int RandRange(int min, int max);
+
+    void TaskStatusCheck();
+
+    void GetProcessStatus(const std::string& key, 
+                          ProcessInfo* info);
 
 private:
     struct Task {
@@ -63,19 +68,21 @@ private:
         std::vector<int32_t> ports;
         std::vector<Volume> disks;
         std::vector<Volume> ssds;
+        std::string key;
     };
 
     struct Pod {
         // std::string podid;
         std::vector<Task> task_group;
+        int32_t port;
+        PodState state;
     };
 
 private:
-    boost::scoped_ptr<RpcClient> rpc_client_; 
-    
+    RpcClient* rpc_client_; 
     Mutex mutex_;
     std::map<std::string, Pod> pods_;
-
+    // common::ThreadPool* thread_pool_;
 };
 
 } // ending namespace galaxy
