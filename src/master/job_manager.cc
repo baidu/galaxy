@@ -487,6 +487,13 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     boost::scoped_ptr<const QueryRequest> request_ptr(request);
     boost::scoped_ptr<QueryResponse> response_ptr(response);
     MutexLock lock(&mutex_);
+    bool first_query_on_agent = false;
+    if (queried_agents_.find(endpoint) == queried_agents_.end()) {
+        first_query_on_agent = true;
+        LOG(INFO, "first query callback for agent: %s", endpoint.c_str());
+        queried_agents_.insert(endpoint);
+    }
+    
     if (--on_query_num_ == 0) {
         ScheduleNextQuery();
     }
@@ -511,18 +518,18 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid();
-        if (queried_agents_.find(endpoint) ==  queried_agents_.end()) { 
-            LOG(INFO, "first query received on agent: %s", endpoint.c_str());
-            if (jobs_.find(jobid) != jobs_.end() && 
-                jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
-                PodStatus* pod = new PodStatus();
-                pod->CopyFrom(report_pod_info);
-                jobs_[jobid]->pods_[podid] = pod;
+       
+        if (first_query_on_agent && jobs_.find(jobid) != jobs_.end() && 
+            jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
+            PodStatus* pod = new PodStatus();
+            pod->CopyFrom(report_pod_info);
+            jobs_[jobid]->pods_[podid] = pod;
+            if(pod->state() == kPodRunning) {
+                agent_running_pods[jobid][podid] = pod;
             }
         }
         if (agent_running_pods.find(jobid) == agent_running_pods.end()) {
             LOG(WARNING, "report non-exist pod [%s %s]", jobid.c_str(), podid.c_str());
-
             continue;
         }
         if (agent_running_pods[jobid].find(podid) == agent_running_pods[jobid].end()) {
@@ -555,7 +562,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             ReschedulePod(pod);
         }
     }
-    queried_agents_.insert(endpoint);
+    
     if (queried_agents_.size() == agents_.size() && safe_mode_) {
         FillAllJobs();
         safe_mode_ = false;
