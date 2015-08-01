@@ -76,7 +76,7 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                     (*pod_it)->feasible.push_back(*res_it);
                     cur_feasible_count++;
                     LOG(DEBUG, "feasibility checking pass: %s on %s",
-                            (*pod_it)->job.jobid().c_str(),
+                            (*pod_it)->job->jobid().c_str(),
                             (*res_it)->endpoint().c_str());
                 }
                 // 此处不break，说明一个Agent尽量调度多的Pod
@@ -90,7 +90,7 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
         (*pod_it)->Score();
         uint32_t count = (*pod_it)->Propose(propose);
         propose_count += count;
-        LOG(DEBUG, "propose jobid %s count %d", (*pod_it)->job.jobid().c_str(), count);
+        LOG(DEBUG, "propose jobid %s count %u", (*pod_it)->job->jobid().c_str(), count);
     }
 
     // 销毁PodScaleUpCell
