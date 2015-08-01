@@ -7,11 +7,18 @@
 
 namespace baidu {
 namespace galaxy {
+
 class JobDescriptor;
+class Resource;
+
 class MasterUtil {
 public:
     static std::string GenerateJobId(const JobDescriptor& job_desc);
     static std::string GeneratePodId(const JobDescriptor& job_desc);
+
+    static void AddResource(const Resource& from, Resource* to);
+    static void SubstractResource(const Resource& from, Resource* to);
+    static bool FitResource(const Resource& from, const Resource& to);
 private:
     static std::string UUID();
 };

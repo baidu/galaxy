@@ -19,6 +19,7 @@ typedef std::string AgentAddr;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobInfo> JobInfoList;
 
 struct Job {
+    JobState state_;
     std::map<PodId, PodStatus*> pods_;
     JobDescriptor desc_;
 };
@@ -26,14 +27,22 @@ struct Job {
 class JobManager {
 public:
     void Add(const JobDescriptor& job_desc);
+    Status Suspend(const JobId jobid);
+    Status Resume(const JobId jobid);
     void GetPendingPods(JobInfoList* pending_pods);
     Status Propose(const ScheduleInfo& sche_info);
 
 private:
-    Status CheckScheduleFeasible(const PodStatus* pod, const AgentInfo* agent);
+    void SuspendPod(PodStatus* pod);
+    void ResumePod(PodStatus* pod);
+    Status AcquireResource(const PodStatus& pod, AgentInfo* agent);
+    void ReclaimResource(const PodStatus& pod, AgentInfo* agent);
+    void GetPodRequirement(const PodStatus& pod, Resource* requirement);
+    void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
 
 private:
     std::map<JobId, Job*> jobs_;
+    std::map<JobId, std::map<PodId, PodStatus*> > suspend_pods_;
     std::map<JobId, std::map<PodId, PodStatus*> > pending_pods_;
     std::map<JobId, std::map<PodId, PodStatus*> > deploy_pods_;
     std::map<AgentAddr, AgentInfo*> agents_;
