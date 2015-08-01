@@ -4,11 +4,16 @@
 
 #include <gflags/gflags.h>
 
+// sdk
+DEFINE_string(master_host, "localhost", "Master service hostname");
+
 // master
 DEFINE_string(master_port, "7828", "Master service listen port");
 
 // scheduler
 
 // agent
+DEFINE_int32(agent_timeout, 40000, "Agent timeout");
+DEFINE_int32(agent_heartbeat_period, 5000, "Agent heartbeat period");
 
 // gce

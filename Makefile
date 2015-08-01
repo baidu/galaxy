@@ -49,7 +49,7 @@ FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
 OBJS = $(FLAGS_OBJ) $(PROTO_OBJ)
 
 LIBS = libgalaxy.a
-BIN = master agent scheduler
+BIN = master agent scheduler galaxy
 
 all: $(BIN) $(LIBS)
 
@@ -72,7 +72,7 @@ agent: $(AGENT_OBJ) $(OBJS)
 libgalaxy.a: $(SDK_OBJ) $(OBJS) $(PROTO_HEADER)
 	$(AR) -rs $@ $(SDK_OBJ) $(OBJS)
 
-galaxy_client: $(CLIENT_OBJ) $(LIBS)
+galaxy: $(CLIENT_OBJ) $(LIBS)
 	$(CXX) $(CLIENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cc
