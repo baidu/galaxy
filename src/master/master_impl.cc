@@ -104,18 +104,25 @@ void MasterImpl::TerminateJob(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::ShowJob(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::ShowJobRequest*,
-                         ::baidu::galaxy::ShowJobResponse*,
+                         const ::baidu::galaxy::ShowJobRequest* request,
+                         ::baidu::galaxy::ShowJobResponse* response,
                          ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method ShowJob() not implemented.");
+    for (int32_t i = 0; i < request->jobsid_size(); i++) {
+        const JobId& jobid = request->jobsid(i);
+        if (kOk != job_manager_.GetJobInfo(jobid, response->mutable_jobs()->Add())) {
+            response->mutable_jobs()->RemoveLast();
+        }
+    }
+    response->set_status(kOk);
     done->Run();
 }
 
 void MasterImpl::ListJobs(::google::protobuf::RpcController* controller,
-                          const ::baidu::galaxy::ListJobsRequest*,
-                          ::baidu::galaxy::ListJobsResponse*,
+                          const ::baidu::galaxy::ListJobsRequest* request,
+                          ::baidu::galaxy::ListJobsResponse* response,
                           ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method ListJobs() not implemented.");
+    job_manager_.GetJobsOverview(response->mutable_jobs());
+    response->set_status(kOk);
     done->Run();
 }
 
@@ -132,7 +139,7 @@ void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* controller,
                                 const ::baidu::galaxy::GetPendingJobsRequest*,
                                 ::baidu::galaxy::GetPendingJobsResponse* response,
                                 ::google::protobuf::Closure* done) {
-    job_manager_.GetPendingPods(response->mutable_jobs());
+    job_manager_.GetPendingPods(response->mutable_scale_up_jobs());
     response->set_status(kOk);
     done->Run();
 }
