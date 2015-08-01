@@ -10,6 +10,7 @@ DECLARE_string(nexus_servers);
 DECLARE_string(nexus_root_path);
 DECLARE_string(master_lock_path);
 DECLARE_string(master_path);
+DECLARE_string(jobs_store_path);
 
 namespace baidu {
 namespace galaxy {
@@ -46,6 +47,35 @@ void MasterImpl::OnSessionTimeout() {
     abort();
 }
 
+void MasterImpl::Init() {
+    AcquireMasterLock();
+    LOG(INFO, "begin to reload job descriptor from nexus");
+    ReloadJobInfo();
+}
+
+void MasterImpl::ReloadJobInfo() {
+    std::string start_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path + "/";
+    std::string end_key = start_key + "~";
+    ::galaxy::ins::sdk::ScanResult* result = nexus_->Scan(start_key, end_key);
+    int job_amount = 0;
+    while (!result->Done()) {
+        assert(result->Error() == ::galaxy::ins::sdk::kOK);
+        std::string key = result->Key();
+        std::string job_raw_data = result->Value(); 
+        JobInfo job_info;
+        bool ok = job_info.ParseFromString(job_raw_data);
+        if (ok) {
+            LOG(INFO, "reload job: %s", job_info.jobid().c_str());
+            job_manager_.ReloadJobInfo(job_info);
+        } else {
+            LOG(WARNING, "faild to parse job_info: %s", key.c_str());
+        }
+        result->Next();
+        job_amount ++;
+    }
+    LOG(INFO, "reload all job desc finish, total#: %d", job_amount);
+}
+
 void MasterImpl::AcquireMasterLock() {
     std::string master_lock = FLAGS_nexus_root_path + FLAGS_master_lock_path;
     ::galaxy::ins::sdk::SDKError err;
@@ -66,7 +96,28 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SubmitJobRequest* request,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
-    JobId job_id = job_manager_.Add(request->job());
+    const JobDescriptor& job_desc = request->job();
+    JobId job_id = MasterUtil::GenerateJobId(job_desc);
+
+    std::string job_raw_data;
+    JobInfo job_info;
+    job_info.mutable_desc()->CopyFrom(job_desc);
+    job_info.set_jobid(job_id);
+    job_info.SerializeToString(&job_raw_data);
+    job_info.set_state(kJobNormal);
+    std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
+                          + "/" + job_id;
+    ::galaxy::ins::sdk::SDKError err;
+    bool put_ok = nexus_->Put(job_key, job_raw_data, &err);
+    if (!put_ok) {
+        response->set_status(kJobSubmitFail);
+        LOG(WARNING, "save job_desc to nexus fail, reason: %s",
+            ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        done->Run();
+        return;
+    }
+
+    job_manager_.Add(job_id, job_desc);
     response->set_jobid(job_id);
     done->Run();
 }

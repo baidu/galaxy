@@ -18,6 +18,7 @@ DEFINE_int32(master_agent_rpc_timeout, 10000, "Agent RPC timeout");
 DEFINE_int32(master_query_period, 30000, "Query period");
 DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
 DEFINE_string(master_path, "/master", "master path on nexus");
+DEFINE_string(jobs_store_path, "/jobs", "");
 
 // scheduler
 

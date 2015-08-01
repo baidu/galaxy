@@ -27,11 +27,10 @@ JobManager::JobManager()
 JobManager::~JobManager() {
 }
 
-JobId JobManager::Add(const JobDescriptor& job_desc) {
+void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
-    JobId job_id = MasterUtil::GenerateJobId(job_desc);
     MutexLock lock(&mutex_);
     for(int i = 0; i < job_desc.replica(); i++) {
         PodId pod_id = MasterUtil::GeneratePodId(job_desc);
@@ -43,7 +42,15 @@ JobId JobManager::Add(const JobDescriptor& job_desc) {
     }
     jobs_[job_id] = job;
     LOG(INFO, "job[%s] submitted by user: %s, ", job_id.c_str(), job_desc.user().c_str());
-    return job_id;
+}
+
+void JobManager::ReloadJobInfo(const JobInfo& job_info) {
+    Job* job = new Job();
+    job->state_ = job_info.state();
+    job->desc_.CopyFrom(job_info.desc());
+    std::string job_id = job_info.jobid();
+    MutexLock lock(&mutex_);
+    jobs_[job_id] = job;
 }
 
 Status JobManager::Suspend(const JobId& jobid) {
@@ -255,13 +262,19 @@ void JobManager::CalculatePodRequirement(const PodDescriptor& pod_desc,
 }
 
 void JobManager::KeepAlive(const std::string& agent_addr) {
+    if (agent_addr == "") {
+        LOG(WARNING, "ignore heartbeat with empty endpoint");
+        return;
+    }
     {
         MutexLock lock(&mutex_);
         if (agents_.find(agent_addr) == agents_.end()) {
             LOG(INFO, "new agent added: %s", agent_addr.c_str());
             agents_[agent_addr] = new AgentInfo();
         }
-        agents_[agent_addr]->set_state(kAlive);
+        AgentInfo* agent = agents_[agent_addr];
+        agent->set_state(kAlive);
+        agent->set_endpoint(agent_addr);
     }
 
     MutexLock lock(&mutex_timer_);
