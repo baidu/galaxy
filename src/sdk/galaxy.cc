@@ -18,10 +18,10 @@ public:
         rpc_client_->GetStub(master_addr, &master_);
     }
     virtual ~GalaxyImpl() {}
-    std::string NewJob(const JobDescription& job);
+    std::string SubmitJob(const JobDescription& job);
     bool UpdateJob(const std::string& jobid, const JobDescription& job);
-    bool ListJob(std::vector<JobInformation>* jobs);
-    bool ListNode(std::vector<NodeDescription>* nodes);
+    bool ListJobs(std::vector<JobInformation>* jobs);
+    bool ListAgents(std::vector<NodeDescription>* nodes);
     bool TerminateJob(const std::string& job_id);
 private:
     RpcClient* rpc_client_;
@@ -38,7 +38,7 @@ bool GalaxyImpl::TerminateJob(const std::string& job_id) {
     return true;
 }
 
-std::string GalaxyImpl::NewJob(const JobDescription& job){
+std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     SubmitJobRequest request;
     SubmitJobResponse response;
     request.mutable_job()->set_name(job.job_name);
@@ -73,7 +73,7 @@ bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) 
     return true;
 }
 
-bool GalaxyImpl::ListJob(std::vector<JobInformation>* jobs) {
+bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
     ListJobsRequest request;
     ListJobsResponse response;
     rpc_client_->SendRequest(master_, &Master_Stub::ListJobs,
@@ -93,7 +93,7 @@ bool GalaxyImpl::ListJob(std::vector<JobInformation>* jobs) {
     return true;
 }
 
-bool GalaxyImpl::ListNode(std::vector<NodeDescription>* nodes) {
+bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
     ListAgentsRequest request;
     ListAgentsResponse response;
     rpc_client_->SendRequest(master_, &Master_Stub::ListAgents,

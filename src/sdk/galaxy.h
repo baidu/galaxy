@@ -46,15 +46,15 @@ class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
     //create a new job
-    virtual std::string NewJob(const JobDescription& job) = 0;
+    virtual std::string SubmitJob(const JobDescription& job) = 0;
     //update job for example update the replicate_count
     virtual bool UpdateJob(const std::string& jobid, const JobDescription& job) = 0;
     //list all jobs in galaxys
-    virtual bool ListJob(std::vector<JobInformation>* jobs) = 0;
+    virtual bool ListJobs(std::vector<JobInformation>* jobs) = 0;
     //termintate job
     virtual bool TerminateJob(const std::string& job_id) = 0;
     //list all nodes of cluster
-    virtual bool ListNode(std::vector<NodeDescription>* nodes) = 0;
+    virtual bool ListAgents(std::vector<NodeDescription>* nodes) = 0;
 };
 
 } // namespace galaxy
