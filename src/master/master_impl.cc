@@ -139,7 +139,7 @@ void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* controller,
                                 const ::baidu::galaxy::GetPendingJobsRequest*,
                                 ::baidu::galaxy::GetPendingJobsResponse* response,
                                 ::google::protobuf::Closure* done) {
-    job_manager_.GetPendingPods(response->mutable_jobs());
+    job_manager_.GetPendingPods(response->mutable_scale_up_jobs());
     response->set_status(kOk);
     done->Run();
 }
