@@ -13,44 +13,44 @@ namespace baidu {
 namespace galaxy {
 
 struct PodScaleUpCell {
-	PodDescriptor* pod;
-	JobInfo* job;
-	uint32_t schedule_count;
-	uint32_t feasible_limit;
-	Resource resource;
-	std::vector<std::string> pod_ids;
-	std::vector<AgentInfo*> feasible;
-	std::map<float, AgentInfo*> sorted;
+    PodDescriptor* pod;
+    JobInfo* job;
+    uint32_t schedule_count;
+    uint32_t feasible_limit;
+    Resource resource;
+    std::vector<std::string> pod_ids;
+    std::vector<AgentInfo*> feasible;
+    std::map<float, AgentInfo*> sorted;
 
-	PodScaleUpCell();
+    PodScaleUpCell();
 
 
     bool FeasibilityCheck(const AgentInfo* agent_info);
 
-	int32_t Score();
+    int32_t Score();
 
-	float ScoreAgent(const AgentInfo* agent_info,
+    float ScoreAgent(const AgentInfo* agent_info,
                        const PodDescriptor* desc);
 
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
 
     bool VolumeFit(std::vector<Volume>& unassigned,
-    		       std::vector<Volume>& required);
+                   std::vector<Volume>& required);
 
 };
 
 struct PodScaleDownCell {
-	PodDescriptor* pod;
-	JobInfo* job;
-	uint32_t scale_down_count;
-	std::map<std::string, AgentInfo*> pod_agent_map;
-	std::map<float, std::string> sorted_pods;
+    PodDescriptor* pod;
+    JobInfo* job;
+    uint32_t scale_down_count;
+    std::map<std::string, AgentInfo*> pod_agent_map;
+    std::map<float, std::string> sorted_pods;
 
-	PodScaleDownCell();
+    PodScaleDownCell();
 
-	int32_t Score();
+    int32_t Score();
 
-	float ScoreAgent(const AgentInfo* agent_info,
+    float ScoreAgent(const AgentInfo* agent_info,
                        const PodDescriptor* desc);
 
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
@@ -94,7 +94,7 @@ public:
     /*
      * @brief 从master同步资源数据
      * @param
-     * 	response [IN] : Agent全量状态
+     *     response [IN] : Agent全量状态
      *
      */
     int32_t SyncResources(const GetResourceSnapshotResponse* response);
@@ -107,10 +107,10 @@ public:
 
 private:
     int32_t ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
-    			std::vector<PodScaleUpCell*>* pending_pods);
+                std::vector<PodScaleUpCell*>* pending_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
-				std::vector<PodScaleDownCell*>* reducing_pods);
+                std::vector<PodScaleDownCell*>* reducing_pods);
 
     int32_t ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc);
 

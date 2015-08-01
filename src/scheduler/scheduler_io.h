@@ -20,13 +20,13 @@ class SchedulerIO {
 
 public:
     SchedulerIO(const std::string& master_addr)
-				:master_addr_(master_addr),
-				 rpc_client_(),
-				 master_stub_(NULL),
-				 scheduler_(){
-    	LOG(INFO, "create scheduler io from master %s", master_addr_.c_str());
-    	bool ret = rpc_client_.GetStub(master_addr_, &master_stub_);
-    	assert(ret == true);
+                :master_addr_(master_addr),
+                 rpc_client_(),
+                 master_stub_(NULL),
+                 scheduler_(){
+        LOG(INFO, "create scheduler io from master %s", master_addr_.c_str());
+        bool ret = rpc_client_.GetStub(master_addr_, &master_stub_);
+        assert(ret == true);
     }
     ~SchedulerIO(){}
 
