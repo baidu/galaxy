@@ -108,7 +108,7 @@ message JobOverview {
     optional JobDescriptor desc = 1;
     optional string jobid = 2;
     optional int32 runing_num = 4;
-    optional Resource resource_sed = 5;
+    optional Resource resource_used = 5;
 }
 
 message ListJobsResponse {
