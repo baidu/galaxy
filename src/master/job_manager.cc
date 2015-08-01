@@ -255,13 +255,19 @@ void JobManager::CalculatePodRequirement(const PodDescriptor& pod_desc,
 }
 
 void JobManager::KeepAlive(const std::string& agent_addr) {
+    if (agent_addr == "") {
+        LOG(WARNING, "ignore heartbeat with empty endpoint");
+        return;
+    }
     {
         MutexLock lock(&mutex_);
         if (agents_.find(agent_addr) == agents_.end()) {
             LOG(INFO, "new agent added: %s", agent_addr.c_str());
             agents_[agent_addr] = new AgentInfo();
         }
-        agents_[agent_addr]->set_state(kAlive);
+        AgentInfo* agent = agents_[agent_addr];
+        agent->set_state(kAlive);
+        agent->set_endpoint(agent_addr);
     }
 
     MutexLock lock(&mutex_timer_);
