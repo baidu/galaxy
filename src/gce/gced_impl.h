@@ -61,6 +61,7 @@ private:
 
 private:
     struct Task {
+        std::string binary;
         std::string start_command;
         std::string stop_command;
         int32_t millicores;
@@ -78,6 +79,7 @@ private:
         PodState state;
     };
 
+    void BuildDeployingCommand(const Task& task, std::string* deploying_command); 
 private:
     RpcClient* rpc_client_; 
     Mutex mutex_;
