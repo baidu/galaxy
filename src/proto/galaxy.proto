@@ -9,6 +9,8 @@ enum Status {
     kJobNotFound = 3;
     kPodNotFound = 4;
     kAgentNotFound = 5;
+    kNotFound = 16;
+    kInputError = 17;
 }
 
 enum PodState {
