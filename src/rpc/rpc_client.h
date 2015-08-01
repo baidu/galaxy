@@ -113,6 +113,7 @@ private:
 };
 
 } // namespace galaxy
+} // namespace baidu
 
 #endif  // BAIDU_GALAXY_RPC_CLIENT_H_
 
