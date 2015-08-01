@@ -4,6 +4,7 @@
 
 #include "scheduler/scheduler.h"
 
+#include <math.h>
 #include <algorithm>
 #include "logging.h"
 
@@ -347,10 +348,8 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
 
 double PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = agent_info->pods_size();
-    int non_prod_count = 0;
     // 计算机器当前使用率打分
-    double score = Schedule::CalcLoad(*agent_info);
+    double score = Scheduler::CalcLoad(*agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
     return score;
 }
@@ -368,10 +367,8 @@ int32_t PodScaleDownCell::Score() {
 
 double PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = agent_info->pods_size();
-    int non_prod_count = 0;
     // 计算机器当前使用率打分
-    double score = Schedule::CalcLoad(*agent_info);
+    double score = Scheduler::CalcLoad(*agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
     return -1 * score;
 }
