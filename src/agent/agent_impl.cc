@@ -13,11 +13,14 @@
 DECLARE_string(master_port);
 DECLARE_string(agent_port);
 DECLARE_string(master_host);
+DECLARE_int32(agent_cpu_share);
+DECLARE_int32(agent_mem_share);
 
 namespace baidu {
 namespace galaxy {
 
 AgentImpl::AgentImpl() {
+	self_address_ = common::util::GetLocalHostName() + ":" + FLAGS_agent_port;
 	rpc_client_ = new RpcClient();
 	if (!rpc_client_->GetStub(FLAGS_master_host + ":" + FLAGS_master_port, &master_stub_)) {
         assert(0);
@@ -28,7 +31,7 @@ AgentImpl::AgentImpl() {
 void AgentImpl::HeartBeat() {
 	HeartBeatRequest request;
 	HeartBeatResponse response;
-	request.set_endpoint(common::util::GetLocalHostName() + ":" + FLAGS_agent_port);
+	request.set_endpoint(self_address_);
 	rpc_client_->SendRequest(master_stub_, &Master_Stub::HeartBeat, &request, &response, 3, 1);
 	thread_pool_.DelayTask(5000, boost::bind(&AgentImpl::HeartBeat, this));
 }
@@ -38,6 +41,13 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
                        ::baidu::galaxy::QueryResponse* response,
                        ::google::protobuf::Closure* done) {
 	response->set_status(kOk);
+	AgentInfo* info = response->mutable_agent();
+	info->set_endpoint(self_address_);
+	info->set_state(kAlive);
+	info->mutable_total()->set_millicores(FLAGS_agent_cpu_share);
+	info->mutable_total()->set_memory(FLAGS_agent_mem_share);
+	info->mutable_unassigned()->set_millicores(FLAGS_agent_cpu_share);
+	info->mutable_unassigned()->set_memory(FLAGS_agent_mem_share);
 	done->Run();
 }
 
