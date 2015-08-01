@@ -5,12 +5,16 @@
 #include "master_util.h"
 
 #include <sstream>
+#include <sys/utsname.h>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <gflags/gflags.h>
 
 #include "proto/galaxy.pb.h"
 #include "proto/master.pb.h"
+
+DECLARE_string(master_port);
 
 namespace baidu {
 namespace galaxy {
@@ -54,6 +58,15 @@ bool MasterUtil::FitResource(const Resource& from, const Resource& to) {
     return true;
 }
 
+std::string MasterUtil::SelfEndpoint() {
+    std::string hostname = "";
+    struct utsname buf;
+    if (0 != uname(&buf)) {
+        *buf.nodename = '\0';
+    }
+    hostname = buf.nodename;
+    return hostname + ":" + FLAGS_master_port;
+}
 
 }
 }
