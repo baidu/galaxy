@@ -42,6 +42,9 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     SubmitJobRequest request;
     SubmitJobResponse response;
     request.mutable_job()->set_name(job.job_name);
+    if (job.is_batch) {
+        request.mutable_job()->set_type(kBatch);
+    }
     TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
     task->set_binary(job.binary);
     task->set_start_command(job.cmd_line);

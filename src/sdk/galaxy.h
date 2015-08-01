@@ -17,6 +17,7 @@ struct JobDescription {
     std::string job_name;
     std::string cmd_line;
     std::string binary;
+    bool is_batch;
     int32_t replica;
     int32_t cpu_required;
     int64_t mem_required;
