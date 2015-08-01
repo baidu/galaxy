@@ -12,8 +12,9 @@
 #include "proto/master.pb.h"
 #include "logging.h"
 
-DECLARE_string(master_endpoint);
-DECLARE_string(gce_endpoint);
+DECLARE_string(master_host);
+DECLARE_string(master_port);
+DECLARE_string(gce_gced_port);
 DECLARE_int32(agent_background_threads_num);
 DECLARE_int32(agent_heartbeat_interval);
 DECLARE_string(agent_ip);
@@ -23,8 +24,8 @@ namespace baidu {
 namespace galaxy {
 
 AgentImpl::AgentImpl() : 
-    master_endpoint_(FLAGS_master_endpoint),
-    gce_endpoint_(FLAGS_gce_endpoint),
+    master_endpoint_(),
+    gce_endpoint_(),
     lock_(),
     background_threads_(FLAGS_agent_background_threads_num),
     rpc_client_(NULL),
@@ -36,6 +37,11 @@ AgentImpl::AgentImpl() :
     endpoint_.append(":");
     endpoint_.append(FLAGS_agent_port);
 
+    master_endpoint_ = FLAGS_master_host;
+    master_endpoint_.append(":");
+    master_endpoint_.append(FLAGS_master_port);
+    gce_endpoint_ = "127.0.0.1:";
+    gce_endpoint_.append(FLAGS_gce_gced_port);
     background_threads_.DelayTask(
             FLAGS_agent_heartbeat_interval, boost::bind(&AgentImpl::KeepHeartBeat, this));
 }
