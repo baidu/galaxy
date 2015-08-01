@@ -10,6 +10,10 @@ enum Status {
     kPodNotFound = 4;
     kAgentNotFound = 5;
     kJobSubmitFail = 6;
+    kNotFound = 16;
+    kInputError = 17;
+
+    kRpcError = 20;
 }
 
 enum PodState {
@@ -45,6 +49,7 @@ message TaskDescriptor {
     optional string stop_command = 3;
     optional Resource requirement = 4;
     repeated string labels = 5;
+    repeated string env = 6;
 }
 
 message PodDescriptor {

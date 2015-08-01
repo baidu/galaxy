@@ -17,7 +17,7 @@ DECLARE_string(master_host);
 DECLARE_string(master_port);
 DECLARE_string(flagfile);
 
-const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd>\n" 
+const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd> <batch>\n" 
                                  "./galaxy_client list <jobid>\n"
                                  "./galaxy_client kill <jobid>";
 
@@ -34,6 +34,9 @@ void ReadBinary(const std::string& file, std::string* binary) {
 }
 
 int AddJob(int argc, char* argv[]) {
+    if (argc < 5) {
+        return 1;
+    }
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     baidu::galaxy::JobDescription job;
     job.job_name = argv[0];
@@ -42,6 +45,7 @@ int AddJob(int argc, char* argv[]) {
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
     job.deploy_step = 0;
+    job.is_batch = (atoi(argv[5]) != 0);
     std::string jobid = galaxy->SubmitJob(job);
     if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");
