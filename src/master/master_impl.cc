@@ -97,6 +97,7 @@ void MasterImpl::Propose(::google::protobuf::RpcController* controller,
         response->add_status(job_manager_.Propose(sche_info));
     }
     done->Run();
+    job_manager_.DeployPod();
 }
 
 void MasterImpl::ListAgents(::google::protobuf::RpcController* controller,
