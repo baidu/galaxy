@@ -180,8 +180,8 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods) {
 Status JobManager::Propose(const ScheduleInfo& sche_info) {
     MutexLock lock(&mutex_);
     const std::string& jobid = sche_info.jobid();
-    const std::string& podid = sche_info.jobid();
-    const std::string& endpoint = sche_info.jobid();
+    const std::string& podid = sche_info.podid();
+    const std::string& endpoint = sche_info.endpoint();
 
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     it = pending_pods_.find(jobid);
