@@ -32,17 +32,33 @@ void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
+    job->id_ = job_id;
     MutexLock lock(&mutex_);
-    for(int i = 0; i < job_desc.replica(); i++) {
-        PodId pod_id = MasterUtil::GeneratePodId(job_desc);
-        PodStatus* pod_status = new PodStatus();
-        pod_status->set_podid(pod_id);
-        pod_status->set_jobid(job_id);
-        job->pods_[pod_id] = pod_status;
-        pending_pods_[job_id][pod_id] = pod_status;
-    }
+    FillPodsToJob(job);
     jobs_[job_id] = job;
     LOG(INFO, "job[%s] submitted by user: %s, ", job_id.c_str(), job_desc.user().c_str());
+}
+
+void JobManager::FillPodsToJob(Job* job) {
+    mutex_.AssertHeld();
+    for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
+        PodId pod_id = MasterUtil::GeneratePodId(job->desc_);
+        PodStatus* pod_status = new PodStatus();
+        pod_status->set_podid(pod_id);
+        pod_status->set_jobid(job->id_);
+        job->pods_[pod_id] = pod_status;
+        pending_pods_[job->id_][pod_id] = pod_status;
+    }
+}
+
+void JobManager::FillAllJobs() {
+    mutex_.AssertHeld();
+    std::map<JobId, Job*>::iterator it;
+    for (it = jobs_.begin(); it != jobs_.end(); ++it) {
+        JobId job_id = it->first;
+        Job* job = it->second;
+        FillPodsToJob(job);
+    }
 }
 
 void JobManager::ReloadJobInfo(const JobInfo& job_info) {
@@ -464,8 +480,10 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     boost::scoped_ptr<const QueryRequest> request_ptr(request);
     boost::scoped_ptr<QueryResponse> response_ptr(response);
     MutexLock lock(&mutex_);
+    bool query_complete = false;
     if (--on_query_num_ == 0) {
         ScheduleNextQuery();
+        query_complete = true;
     }
 
     std::map<AgentAddr, AgentInfo*>::iterator it = agents_.find(endpoint);

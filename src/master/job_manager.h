@@ -29,6 +29,7 @@ struct Job {
     JobState state_;
     std::map<PodId, PodStatus*> pods_;
     JobDescriptor desc_;
+    JobId id_;
 };
 
 class JobManager {
@@ -47,7 +48,6 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
-
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -68,6 +68,8 @@ private:
                             QueryResponse* response, bool failed, int error);
 
     void ScheduleNextQuery();
+    void FillPodsToJob(Job* job);
+    void FillAllJobs();
 
 private:
     std::map<JobId, Job*> jobs_;
