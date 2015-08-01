@@ -19,6 +19,7 @@ public:
     static void AddResource(const Resource& from, Resource* to);
     static void SubstractResource(const Resource& from, Resource* to);
     static bool FitResource(const Resource& from, const Resource& to);
+    static std::string SelfEndpoint();
 private:
     static std::string UUID();
 };

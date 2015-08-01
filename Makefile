@@ -14,12 +14,14 @@ INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
                -I$(PBRPC_PATH)/include \
                -I$(SNAPPY_PATH)/include \
                -I$(BOOST_PATH)/include \
-               -Icommon/include
+               -Icommon/include \
+               -Iins/output/include
 
-LDFLAGS = -L$(PROTOBUF_PATH)/lib -lprotobuf \
-          -L$(PBRPC_PATH)/lib -lsofa-pbrpc \
+LDFLAGS = -L$(PROTOBUF_PATH)/lib \
+          -L$(PBRPC_PATH)/lib -lins_sdk -lsofa-pbrpc -lprotobuf \
           -L$(SNAPPY_PATH)/lib -lsnappy \
           -Lcommon/ -lcommon \
+          -Lins/output/lib \
           -lgflags -lpthread -lz
 
 CXXFLAGS += $(OPT)
