@@ -3,23 +3,21 @@ OPT ?= -g2 -Wall -Werror  # (B) Debug mode, w/ full line-level debugging symbols
 # OPT ?= -O2 -g2 -DNDEBUG # (C) Profiling mode: opt, but w/debugging symbols
 
 # Thirdparty
-SNAPPY_PATH=./thirdparty/snappy/
-PROTOBUF_PATH=./thirdparty/protobuf/
-PROTOC_PATH=
-PROTOC=$(PROTOC_PATH)protoc
-PBRPC_PATH=./thirdparty/sofa-pbrpc/output/
-BOOST_PATH=../boost/
+include depends.mk
+
 PREFIX=./output
 INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
                -I$(PBRPC_PATH)/include \
                -I$(SNAPPY_PATH)/include \
                -I$(BOOST_PATH)/include \
                -Icommon/include \
-               -Iins/output/include
+               -Iins/output/include \
+               -I$(GFLAGS_PATH)/include \
 
 LDFLAGS = -L$(PROTOBUF_PATH)/lib \
           -L$(PBRPC_PATH)/lib -lins_sdk -lsofa-pbrpc -lprotobuf \
           -L$(SNAPPY_PATH)/lib -lsnappy \
+          -L$(GFLAGS_PATH)/lib  \
           -Lcommon/ -lcommon \
           -Lins/output/lib \
           -lgflags -lpthread -lz
@@ -53,9 +51,9 @@ FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
 OBJS = $(FLAGS_OBJ) $(PROTO_OBJ)
 
 LIBS = libgalaxy.a
-BIN = master agent scheduler
+BIN = master agent scheduler galaxy
 
-all: $(BIN)
+all: $(BIN) $(LIBS)
 
 # Depends
 $(MASTER_OBJ) $(AGENT_OBJ) $(PROTO_OBJ) $(SDK_OBJ): $(PROTO_HEADER)
@@ -76,7 +74,7 @@ agent: $(AGENT_OBJ) $(OBJS)
 libgalaxy.a: $(SDK_OBJ) $(OBJS) $(PROTO_HEADER)
 	$(AR) -rs $@ $(SDK_OBJ) $(OBJS)
 
-galaxy_client: $(CLIENT_OBJ) $(LIBS)
+galaxy: $(CLIENT_OBJ) $(LIBS)
 	$(CXX) $(CLIENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cc

@@ -8,6 +8,9 @@
 DEFINE_string(nexus_servers, "", "server list of nexus, e.g abc.com:1234,def.com:5342");
 DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on nexus, e.g /ps/galaxy");
 
+// sdk
+DEFINE_string(master_host, "localhost", "Master service hostname");
+
 // master
 DEFINE_string(master_port, "7828", "Master service listen port");
 DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
