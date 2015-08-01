@@ -163,9 +163,6 @@ bool Mkdir(const std::string& dir_path) {
     const int dir_mode = 0777;
     int ret = ::mkdir(dir_path.c_str(), dir_mode); 
     return ret == 0;
-    // if (ret != 0 && errno == ) {
-         
-    // } 
 }
 
 }   // ending namespace file

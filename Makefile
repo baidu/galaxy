@@ -37,9 +37,9 @@ SCHEDULER_SRC = $(wildcard src/scheduler/*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
-AGENT_SRC = $(wildcard src/gce/agent*.cc) src/gce/utils.cc
+AGENT_SRC = $(wildcard src/agent/agent*.cc) 
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
-AGENT_HEADER = $(wildcard src/agent/*.h) src/gce/utils.h
+AGENT_HEADER = $(wildcard src/agent/*.h) 
 
 GCED_SRC = $(wildcard src/gce/gced*.cc) src/gce/utils.cc
 GCED_OBJ = $(patsubst %.cc, %.o, $(GCED_SRC))
@@ -83,7 +83,7 @@ master: $(MASTER_OBJ) $(OBJS)
 scheduler: $(SCHEDULER_OBJ) $(OBJS)
 	$(CXX) $(SCHEDULER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-agent: $(AGENT_OBJ) $(OBJS)
+agent: $(AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 gced: $(GCED_OBJ) $(OBJS)
