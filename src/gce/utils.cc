@@ -56,8 +56,8 @@ bool PrepareStdFds(const std::string& pwd,
     *stderr_fd = ::open(stderr_file.c_str(),
             STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
     if (*stdout_fd == -1 || *stderr_fd == -1) {
-        LOG(WARNING, "open file failed err[%d: %s]",
-                errno, strerror(errno));
+        LOG(WARNING, "open file %s failed err[%d: %s]",
+            stdout_file.c_str(), errno, strerror(errno));
         return false; 
     }
     return true;
@@ -162,9 +162,10 @@ bool IsExists(const std::string& path) {
 bool Mkdir(const std::string& dir_path) {
     const int dir_mode = 0777;
     int ret = ::mkdir(dir_path.c_str(), dir_mode); 
-    if (ret != 0 && errno == ) {
+    return ret == 0;
+    // if (ret != 0 && errno == ) {
          
-    } 
+    // } 
 }
 
 }   // ending namespace file

@@ -17,3 +17,4 @@ DEFINE_string(gce_support_subsystems, "cpu,memory,cpuacct,frozen", "Cgroup defau
 DEFINE_int64(gce_initd_zombie_check_interval, 10000, "Initd Zombie Check Interval");
 DEFINE_string(gce_initd_dump_file, "initd_checkpoint_file", "Initd Checkpoint File Name");
 DEFINE_string(gce_initd_port, "8765", "gce initd listen port");
+DEFINE_string(gce_gced_port, "8766", "gce initd listen port");

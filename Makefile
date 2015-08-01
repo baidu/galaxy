@@ -53,6 +53,9 @@ TEST_INITD_SRC = src/gce/test_initd.cc
 TEST_INITD_OBJ = $(patsubst %.cc, %.o, $(TEST_INITD_SRC))
 #TEST_INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h
 
+TEST_GCED_SRC = src/gce/test_gced.cc
+TEST_GCED_OBJ = $(patsubst %.cc, %.o, $(TEST_GCED_SRC))
+
 SDK_SRC = $(wildcard src/sdk/*.cc)
 SDK_OBJ = $(patsubst %.cc, %.o, $(SDK_SRC))
 SDK_HEADER = $(wildcard src/sdk/*.h)
@@ -97,6 +100,9 @@ initd: $(INITD_OBJ) $(LIBS) $(OBJS)
 
 test_initd: $(TEST_INITD_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_INITD_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+test_gced: $(TEST_GCED_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(TEST_GCED_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@
