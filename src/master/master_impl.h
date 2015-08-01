@@ -36,21 +36,21 @@ public:
                             ::baidu::galaxy::ResumeJobResponse* response,
                             ::google::protobuf::Closure* done);
       virtual void TerminateJob(::google::protobuf::RpcController* controller,
-                               const ::baidu::galaxy::TerminateJobRequest* request,
-                               ::baidu::galaxy::TerminateJobResponse* response,
-                               ::google::protobuf::Closure* done);
+                                const ::baidu::galaxy::TerminateJobRequest* request,
+                                ::baidu::galaxy::TerminateJobResponse* response,
+                                ::google::protobuf::Closure* done);
       virtual void ShowJob(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::ShowJobRequest* request,
                            ::baidu::galaxy::ShowJobResponse* response,
                            ::google::protobuf::Closure* done);
       virtual void ListJobs(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::ListJobsRequest* request,
-                           ::baidu::galaxy::ListJobsResponse* response,
-                           ::google::protobuf::Closure* done);
+                            const ::baidu::galaxy::ListJobsRequest* request,
+                            ::baidu::galaxy::ListJobsResponse* response,
+                            ::google::protobuf::Closure* done);
       virtual void HeartBeat(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::HeartBeatRequest* request,
-                           ::baidu::galaxy::HeartBeatResponse* response,
-                           ::google::protobuf::Closure* done);
+                             const ::baidu::galaxy::HeartBeatRequest* request,
+                             ::baidu::galaxy::HeartBeatResponse* response,
+                             ::google::protobuf::Closure* done);
       virtual void GetPendingJobs(::google::protobuf::RpcController* controller,
                                   const ::baidu::galaxy::GetPendingJobsRequest* request,
                                   ::baidu::galaxy::GetPendingJobsResponse* response,

@@ -12,11 +12,20 @@
 #include "master_util.h"
 #include <logging.h>
 
-DECLARE_int32(agent_timeout);
-DECLARE_int32(agent_rpc_timeout);
+DECLARE_int32(master_agent_timeout);
+DECLARE_int32(master_agent_rpc_timeout);
+DECLARE_int32(master_query_period);
 
 namespace baidu {
 namespace galaxy {
+
+JobManager::JobManager()
+    : on_query_num_(0) {
+    ScheduleNextQuery();
+}
+
+JobManager::~JobManager() {
+}
 
 void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
@@ -38,13 +47,13 @@ void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
 void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     Job* job = new Job();
     job->state_ = job_info.state();
-    job->desc_.CopyFrom(job_info.job());
+    job->desc_.CopyFrom(job_info.desc());
     std::string job_id = job_info.jobid();
     MutexLock lock(&mutex_);
     jobs_[job_id] = job;
 }
 
-Status JobManager::Suspend(const JobId jobid) {
+Status JobManager::Suspend(const JobId& jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) {
@@ -105,7 +114,7 @@ void JobManager::SuspendPod(PodStatus* pod) {
     LOG(INFO, "pod suspended: %s", pod->podid().c_str());
 }
 
-Status JobManager::Resume(const JobId jobid) {
+Status JobManager::Resume(const JobId& jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) {
@@ -155,7 +164,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods) {
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
         const JobDescriptor& job_desc = jobs_[job_id]->desc_;
-        job_info->mutable_job()->CopyFrom(job_desc);
+        job_info->mutable_desc()->CopyFrom(job_desc);
 
         const std::map<PodId, PodStatus*> & job_pending_pods = it->second;
         std::map<PodId, PodStatus*>::const_iterator jt;
@@ -272,7 +281,7 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
             LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
         }
     }
-    timer_id = death_checker_.DelayTask(FLAGS_agent_timeout,
+    timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
                                         boost::bind(&JobManager::HandleAgentOffline,
                                                     this,
                                                     agent_addr));
@@ -364,7 +373,7 @@ void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
     run_pod_callback = boost::bind(&JobManager::RunPodCallback, this, pod, endpoint,
                                    _1, _2, _3, _4);
     rpc_client_.AsyncRequest(stub, &Agent_Stub::RunPod, request, response,
-                             run_pod_callback, FLAGS_agent_rpc_timeout, 0);
+                             run_pod_callback, FLAGS_master_agent_rpc_timeout, 0);
     delete stub;
 }
 
@@ -398,6 +407,161 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
     }
     LOG(INFO, "run pod [%s %s] on [%s] success", jobid.c_str(),
         podid.c_str(), endpoint.c_str());
+    delete request;
+    delete response;
+}
+
+void JobManager::ScheduleNextQuery() {
+    thread_pool_.DelayTask(FLAGS_master_query_period, boost::bind(&JobManager::Query, this));
+}
+
+void JobManager::Query() {
+    MutexLock lock(&mutex_);
+    assert(on_query_num_ == 0);
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        AgentInfo* agent = it->second;
+        QueryAgent(agent);
+    }
+    LOG(INFO, "query %lld agents", on_query_num_);
+    if (on_query_num_ == 0) {
+        ScheduleNextQuery();
+    }
+}
+
+void JobManager::QueryAgent(AgentInfo* agent) {
+    const AgentAddr& endpoint = agent->endpoint();
+    if (agent->state() != kAlive) {
+        LOG(DEBUG, "ignore dead agent [%s]", endpoint.c_str());
+        return;
+    }
+
+    QueryRequest* request = new QueryRequest;
+    QueryResponse* response = new QueryResponse;
+
+    Agent_Stub* stub;
+    rpc_client_.GetStub(endpoint, &stub);
+    boost::function<void (const QueryRequest*, QueryResponse*, bool, int)> query_callback;
+    query_callback = boost::bind(&JobManager::QueryAgentCallback, this,
+                                 endpoint, _1, _2, _3, _4);
+
+    LOG(INFO, "query agent [%s]", endpoint.c_str());
+    rpc_client_.AsyncRequest(stub, &Agent_Stub::Query, request, response,
+                             query_callback, FLAGS_master_agent_rpc_timeout, 0);
+    delete stub;
+    on_query_num_++;
+}
+
+void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
+                                    QueryResponse* response, bool failed, int error) {
+    MutexLock lock(&mutex_);
+    if (--on_query_num_ == 0) {
+        ScheduleNextQuery();
+    }
+
+    std::map<AgentAddr, AgentInfo*>::iterator it = agents_.find(endpoint);
+    if (it == agents_.end()) {
+        LOG(FATAL, "query agent [%s] not exist", endpoint.c_str());
+        return;
+    }
+    Status status = response->status();
+    if (failed || status != kOk) {
+        LOG(INFO, "query agent [%s] fail: %d", endpoint.c_str(), status);
+        return;
+    }
+    LOG(INFO, "query agent [%s] success", endpoint.c_str());
+
+    AgentInfo* agent = it->second;
+    const AgentInfo& report_agent_info = response->agent();
+    agent->CopyFrom(report_agent_info);
+
+    PodMap& agent_running_pods = running_pods_[endpoint];
+    for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
+        const PodStatus& report_pod_info = report_agent_info.pods(i);
+        const JobId& jobid = report_pod_info.jobid();
+        const PodId& podid = report_pod_info.podid();
+        if (agent_running_pods.find(jobid) == agent_running_pods.end()) {
+            LOG(WARNING, "report non-exist pod [%s %s]", jobid.c_str(), podid.c_str());
+            continue;
+        }
+        if (agent_running_pods[jobid].find(podid) == agent_running_pods[jobid].end()) {
+            LOG(WARNING, "report non-exist pod [%s %s]", jobid.c_str(), podid.c_str());
+            continue;
+        }
+        PodStatus* pod = agent_running_pods[jobid][podid];
+        // only copy dynamic information
+        pod->mutable_status()->CopyFrom(report_pod_info.status());
+        pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
+        LOG(DEBUG, "update pod [%s %s]", jobid.c_str(), podid.c_str());
+    }
+
+    delete request;
+    delete response;
+}
+
+void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        AgentInfo* agent = it->second;
+        agents_info->Add()->CopyFrom(*agent);
+    }
+}
+
+void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        AgentInfo* agent = it->second;
+        if (agent->state() != kAlive) {
+            continue;
+        }
+        agents_info->Add()->CopyFrom(*agent);
+    }
+}
+
+void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.begin();
+    for (; job_it != jobs_.end(); ++job_it) {
+        const JobId& jobid = job_it->first;
+        Job* job = job_it->second;
+        JobOverview* overview = jobs_overview->Add();
+        overview->mutable_desc()->CopyFrom(job->desc_);
+        overview->set_jobid(jobid);
+        overview->set_state(job->state_);
+
+        uint32_t running_num = 0;
+        std::map<PodId, PodStatus*>& pods = job->pods_;
+        std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
+        for (; pod_it != pods.end(); ++pod_it) {
+            // const PodId& podid = pod_it->first;
+            const PodStatus* pod = pod_it->second;
+            if (pod->state() == kPodRunning) {
+                running_num++;
+                MasterUtil::AddResource(pod->resource_used(), overview->mutable_resource_used());
+            }
+        }
+    }
+}
+
+Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        LOG(WARNING, "get job info failed, no such job: %s", jobid.c_str());
+        return kJobNotFound;
+    }
+
+    Job* job = job_it->second;
+    job_info->set_jobid(jobid);
+    job_info->mutable_desc()->CopyFrom(job->desc_);
+    std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+    for (; pod_it != job->pods_.end(); ++pod_it) {
+        PodStatus* pod = pod_it->second;
+        job_info->add_pods()->CopyFrom(*pod);
+    }
+    return kOk;
 }
 
 }
