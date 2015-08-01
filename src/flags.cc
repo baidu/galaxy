@@ -13,15 +13,16 @@ DEFINE_string(master_host, "localhost", "Master service hostname");
 
 // master
 DEFINE_string(master_port, "7828", "Master service listen port");
+DEFINE_int32(master_agent_timeout, 40000, "Agent timeout");
+DEFINE_int32(master_agent_rpc_timeout, 10000, "Agent RPC timeout");
+DEFINE_int32(master_query_period, 30000, "Query period");
 DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
 DEFINE_string(master_path, "/master", "master path on nexus");
 
 // scheduler
 
 // agent
-DEFINE_int32(agent_timeout, 40000, "Agent timeout");
 DEFINE_int32(agent_heartbeat_period, 5000, "Agent heartbeat period");
-DEFINE_int32(agent_rpc_timeout, 10000, "Agent RPC timeout");
 
 // gce
 

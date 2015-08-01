@@ -7,7 +7,8 @@ message QueryRequest {
 }
 
 message QueryResponse {
-    optional AgentInfo agent = 1;
+    optional Status status = 1;
+    optional AgentInfo agent = 2;
 }
 
 message RunPodRequest {

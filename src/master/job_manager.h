@@ -22,6 +22,7 @@ typedef std::string JobId;
 typedef std::string PodId;
 typedef std::string AgentAddr;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobInfo> JobInfoList;
+typedef google::protobuf::RepeatedPtrField<baidu::galaxy::AgentInfo> AgentInfoList;
 
 struct Job {
     JobState state_;
@@ -31,11 +32,15 @@ struct Job {
 
 class JobManager {
 public:
+    JobManager();
+    ~JobManager();
     JobId Add(const JobDescriptor& job_desc);
     Status Suspend(const JobId jobid);
     Status Resume(const JobId jobid);
     void GetPendingPods(JobInfoList* pending_pods);
     Status Propose(const ScheduleInfo& sche_info);
+    void GetAgentsInfo(AgentInfoList* agents_info);
+    void GetAliveAgentsInfo(AgentInfoList* agents_info);
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
 
@@ -53,6 +58,13 @@ private:
     void RunPodCallback(PodStatus* pod, AgentAddr endpoint, const RunPodRequest* request,
                         RunPodResponse* response, bool failed, int error);
 
+    void Query();
+    void QueryAgent(AgentInfo* agent);
+    void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
+                            QueryResponse* response, bool failed, int error);
+
+    void ScheduleNextQuery();
+
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
@@ -63,9 +75,11 @@ private:
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
     ThreadPool death_checker_;
+    ThreadPool thread_pool_;
     Mutex mutex_;   
     Mutex mutex_timer_;
     RpcClient rpc_client_;
+    int64_t on_query_num_;
 };
 
 }

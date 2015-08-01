@@ -154,7 +154,8 @@ message GetResourceSnapshotRequest {
 }
 
 message GetResourceSnapshotResponse {
-    repeated AgentInfo agents = 1;
+    optional Status status = 1;
+    repeated AgentInfo agents = 2;
 }
 
 message ProposeRequest {
@@ -172,7 +173,8 @@ message ListAgentsRequest {
 }
 
 message ListAgentsResponse {
-    repeated AgentInfo agents = 1;
+    optional Status status = 1;
+    repeated AgentInfo agents = 2;
 }
 
 service Master {
