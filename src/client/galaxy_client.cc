@@ -24,8 +24,11 @@ const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_packa
 
 void ReadBinary(const std::string& file, std::string* binary) {
     FILE* fp = fopen(file.c_str(), "rb");
+    if (fp == NULL) {
+        return;
+    }
     char buf[1024];
-    while (fread(buf, sizeof(buf), 1, fp) >= 0) {
+    while (fread(buf, sizeof(buf), 1, fp) > 0) {
         binary->append(buf);
     }
 }
