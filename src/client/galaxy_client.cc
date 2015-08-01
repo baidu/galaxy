@@ -28,8 +28,9 @@ int AddJob(int argc, char* argv[]) {
     job.mem_required = atoi(argv[4]);
     job.deploy_step = 0;
     std::string jobid = galaxy->SubmitJob(job);
-    if (!jobid.empty()) {
+    if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");
+        return 1;
     }
     printf("Submit job %s\n", jobid.c_str());
     return 0;

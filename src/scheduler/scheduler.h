@@ -60,7 +60,7 @@ struct PodScaleDownCell {
 class Scheduler {
 
 public:
-    Scheduler(){}
+    Scheduler() : schedule_turns_(0){}
     ~Scheduler() {}
 
     /*
@@ -117,6 +117,9 @@ private:
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
     std::map<std::string, AgentInfo*> resources_;
+
+    int64_t schedule_turns_;    // 当前调度轮数
+
 };
 
 

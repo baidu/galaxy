@@ -24,6 +24,7 @@ cd common && make -j4
 cd -
 
 git clone https://github.com/fxsjy/ins
-cd ins && PBRPC_PATH=../thirdparty/sofa-pbrpc/output/ make sdk
+cd ins && PBRPC_PATH=../thirdparty/sofa-pbrpc/output/ make -j4 && make sdk
+cd -
 
 make -j4 && make install
