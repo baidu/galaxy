@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <errno.h>
+#include <string.h>
 #include <gflags/gflags.h>
 
 DECLARE_string(master_host);
