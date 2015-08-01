@@ -12,11 +12,20 @@
 #include "master_util.h"
 #include <logging.h>
 
-DECLARE_int32(agent_timeout);
-DECLARE_int32(agent_rpc_timeout);
+DECLARE_int32(master_agent_timeout);
+DECLARE_int32(master_agent_rpc_timeout);
+DECLARE_int32(master_query_period);
 
 namespace baidu {
 namespace galaxy {
+
+JobManager::JobManager()
+    : on_query_num_(0) {
+    ScheduleNextQuery();
+}
+
+JobManager::~JobManager() {
+}
 
 JobId JobManager::Add(const JobDescriptor& job_desc) {
     Job* job = new Job();
@@ -265,7 +274,7 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
             LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
         }
     }
-    timer_id = death_checker_.DelayTask(FLAGS_agent_timeout,
+    timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
                                         boost::bind(&JobManager::HandleAgentOffline,
                                                     this,
                                                     agent_addr));
@@ -357,7 +366,7 @@ void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
     run_pod_callback = boost::bind(&JobManager::RunPodCallback, this, pod, endpoint,
                                    _1, _2, _3, _4);
     rpc_client_.AsyncRequest(stub, &Agent_Stub::RunPod, request, response,
-                             run_pod_callback, FLAGS_agent_rpc_timeout, 0);
+                             run_pod_callback, FLAGS_master_agent_rpc_timeout, 0);
     delete stub;
 }
 
@@ -391,6 +400,95 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
     }
     LOG(INFO, "run pod [%s %s] on [%s] success", jobid.c_str(),
         podid.c_str(), endpoint.c_str());
+    delete request;
+    delete response;
+}
+
+void JobManager::ScheduleNextQuery() {
+    thread_pool_.DelayTask(FLAGS_master_query_period, boost::bind(&JobManager::Query, this));
+}
+
+void JobManager::Query() {
+    MutexLock lock(&mutex_);
+    assert(on_query_num_ == 0);
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        AgentInfo* agent = it->second;
+        QueryAgent(agent);
+    }
+    LOG(INFO, "query %lld agents", on_query_num_);
+    if (on_query_num_ == 0) {
+        ScheduleNextQuery();
+    }
+}
+
+void JobManager::QueryAgent(AgentInfo* agent) {
+    const AgentAddr& endpoint = agent->endpoint();
+    if (agent->state() != kAlive) {
+        LOG(DEBUG, "ignore dead agent [%s]", endpoint.c_str());
+        return;
+    }
+
+    QueryRequest* request = new QueryRequest;
+    QueryResponse* response = new QueryResponse;
+
+    Agent_Stub* stub;
+    rpc_client_.GetStub(endpoint, &stub);
+    boost::function<void (const QueryRequest*, QueryResponse*, bool, int)> query_callback;
+    query_callback = boost::bind(&JobManager::QueryAgentCallback, this,
+                                 endpoint, _1, _2, _3, _4);
+
+    LOG(INFO, "query agent [%s]", endpoint.c_str());
+    rpc_client_.AsyncRequest(stub, &Agent_Stub::Query, request, response,
+                             query_callback, FLAGS_master_agent_rpc_timeout, 0);
+    delete stub;
+    on_query_num_++;
+}
+
+void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
+                                    QueryResponse* response, bool failed, int error) {
+    MutexLock lock(&mutex_);
+    if (--on_query_num_ == 0) {
+        ScheduleNextQuery();
+    }
+
+    std::map<AgentAddr, AgentInfo*>::iterator it = agents_.find(endpoint);
+    if (it == agents_.end()) {
+        LOG(FATAL, "query agent [%s] not exist", endpoint.c_str());
+        return;
+    }
+    Status status = response->status();
+    if (failed || status != kOk) {
+        LOG(INFO, "query agent [%s] fail: %d", endpoint.c_str(), status);
+        return;
+    }
+    LOG(INFO, "query agent [%s] success", endpoint.c_str());
+
+    AgentInfo* agent = it->second;
+    agent->CopyFrom(response->agent());
+    delete request;
+    delete response;
+}
+
+void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        AgentInfo* agent = it->second;
+        agents_info->Add()->CopyFrom(*agent);
+    }
+}
+
+void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        AgentInfo* agent = it->second;
+        if (agent->state() != kAlive) {
+            continue;
+        }
+        agents_info->Add()->CopyFrom(*agent);
+    }
 }
 
 }

@@ -82,10 +82,11 @@ void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::GetResourceSnapshotRequest*,
-                         ::baidu::galaxy::GetResourceSnapshotResponse*,
+                         const ::baidu::galaxy::GetResourceSnapshotRequest* request,
+                         ::baidu::galaxy::GetResourceSnapshotResponse* response,
                          ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method GetResourceSnapshot() not implemented.");
+    job_manager_.GetAliveAgentsInfo(response->mutable_agents());
+    response->set_status(kOk);
     done->Run();
 }
 
@@ -102,10 +103,11 @@ void MasterImpl::Propose(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::ListAgents(::google::protobuf::RpcController* controller,
-                            const ::baidu::galaxy::ListAgentsRequest*,
-                            ::baidu::galaxy::ListAgentsResponse*,
+                            const ::baidu::galaxy::ListAgentsRequest* request,
+                            ::baidu::galaxy::ListAgentsResponse* response,
                             ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method ListAgents() not implemented.");
+    job_manager_.GetAgentsInfo(response->mutable_agents());
+    response->set_status(kOk);
     done->Run();
 }
 
