@@ -20,7 +20,8 @@ message Volume {
 }
 
 message Resource {
-    optional int32 millicores = 1; 
+    optional int32 millicores = 1;
+    // MB
     optional int32 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;
@@ -53,11 +54,17 @@ message PodStatus {
     optional string hostname = 4;
     optional string version = 5;
     optional PodState state = 6;
+    optional Resource requirement = 7;
 }
 
 
 message AgentInfo {
     optional string endpoint = 1;
-    repeated PodStatus pods = 2;
+    optional Resource total = 2;
+    optional Resource assigned = 3;
+    optional Resource unassigned = 4;
+    optional Resource used = 5;
+    optional Resource free = 6;
+    repeated PodStatus pods = 7;
 }
 
