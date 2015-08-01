@@ -5,6 +5,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <gflags/gflags.h>
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
@@ -381,6 +382,8 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
                                 const RunPodRequest* request,
                                 RunPodResponse* response,
                                 bool failed, int error) {
+    boost::scoped_ptr<const RunPodRequest> request_ptr(request);
+    boost::scoped_ptr<RunPodResponse> response_ptr(response);
     MutexLock lock(&mutex_);
     const std::string& jobid = pod->jobid();
     const std::string& podid = pod->podid();
@@ -407,8 +410,6 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
     }
     LOG(INFO, "run pod [%s %s] on [%s] success", jobid.c_str(),
         podid.c_str(), endpoint.c_str());
-    delete request;
-    delete response;
 }
 
 void JobManager::ScheduleNextQuery() {
@@ -454,6 +455,8 @@ void JobManager::QueryAgent(AgentInfo* agent) {
 
 void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
                                     QueryResponse* response, bool failed, int error) {
+    boost::scoped_ptr<const QueryRequest> request_ptr(request);
+    boost::scoped_ptr<QueryResponse> response_ptr(response);
     MutexLock lock(&mutex_);
     if (--on_query_num_ == 0) {
         ScheduleNextQuery();
@@ -494,9 +497,6 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
         LOG(DEBUG, "update pod [%s %s]", jobid.c_str(), podid.c_str());
     }
-
-    delete request;
-    delete response;
 }
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
