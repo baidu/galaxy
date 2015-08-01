@@ -86,11 +86,11 @@ void JobManager::SuspendPod(PodStatus* pod) {
     if (state == kPodPending) {
         pod->set_state(kPodSuspend);
     } else if (state == kPodDeploy) {
-        const std::string& hostname = pod->hostname();
-        AgentInfo* agent = agents_[hostname];
+        const std::string& endpoint = pod->endpoint();
+        AgentInfo* agent = agents_[endpoint];
         ReclaimResource(*pod, agent);
         pod->set_state(kPodSuspend);
-        pod->set_hostname("");
+        pod->set_endpoint("");
     }
     LOG(INFO, "pod suspended: %s", pod->podid().c_str());
 }
@@ -151,7 +151,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods) {
         std::map<PodId, PodStatus*>::const_iterator jt;
         for (jt = job_pending_pods.begin(); jt != job_pending_pods.end(); ++jt) {
             PodStatus* pod_status = jt->second;
-            PodStatus* new_pod_status = job_info->add_tasks();
+            PodStatus* new_pod_status = job_info->add_pods();
             new_pod_status->CopyFrom(*pod_status);
         }
     }
@@ -189,7 +189,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         return feasible_status;
     }
 
-    pod->set_hostname(sche_info.endpoint());
+    pod->set_endpoint(sche_info.endpoint());
     pod->set_state(kPodDeploy);
     job_pending_pods.erase(jt);
     if (job_pending_pods.size() == 0) {
@@ -291,7 +291,7 @@ void JobManager::ReschedulePod(PodStatus* pod_status) {
     mutex_.AssertHeld();
     
     pod_status->set_state(kPodPending);
-    pod_status->set_hostname("");
+    pod_status->set_endpoint("");
     pod_status->mutable_resource_used()->Clear();
     for (int i = 0; i < pod_status->status_size(); i++) {
         pod_status->mutable_status(i)->Clear();
