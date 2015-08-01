@@ -7,6 +7,7 @@
 #ifndef  GALAXY_AGENT_IMPL_H_
 #define  GALAXY_AGENT_IMPL_H_
 
+#include <string>
 #include <thread_pool.h>
 
 #include "proto/agent.pb.h"
@@ -38,6 +39,7 @@ private:
 	common::ThreadPool thread_pool_;
 	Master_Stub* master_stub_;
 	RpcClient* rpc_client_;
+	std::string self_address_;
 };
 
 }
