@@ -10,7 +10,8 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SubmitJobRequest* request,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
-    job_manager_.Add(request->job());
+    JobId job_id = job_manager_.Add(request->job());
+    response->set_jobid(job_id);
     done->Run();
 }
 
