@@ -20,11 +20,11 @@ namespace baidu {
 namespace galaxy {
 
 std::string MasterUtil::GenerateJobId(const JobDescriptor& job_desc) {
-    return "job_" + job_desc.name() + UUID();
+    return "job_" + job_desc.name() + "_" + UUID();
 }
 
 std::string MasterUtil::GeneratePodId(const JobDescriptor& job_desc) {
-    return "pod_" + job_desc.name() + UUID();
+    return "pod_" + job_desc.name() + "_" + UUID();
 }
 
 std::string MasterUtil::UUID() {

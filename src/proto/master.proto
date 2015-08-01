@@ -52,6 +52,7 @@ message JobInfo {
     optional string jobid = 1;
     optional JobDescriptor desc = 2;
     repeated PodStatus pods = 3;
+    optional JobState state = 4;
 }
 
 message ScheduleInfo {
