@@ -3,9 +3,15 @@
 // found in the LICENSE file.
 #include "job_manager.h"
 
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+#include <gflags/gflags.h>
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
 #include "master_util.h"
+#include <logging.h>
+
+DECLARE_int32(agent_timeout);
 
 namespace baidu {
 namespace galaxy {
@@ -14,10 +20,10 @@ void JobManager::Add(const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
-    std::string job_id = MasterUtil::GenerateJobId(job_desc);
+    JobId job_id = MasterUtil::GenerateJobId(job_desc);
     MutexLock lock(&mutex_);
     for(int i = 0; i < job_desc.replica(); i++) {
-        std::string pod_id = MasterUtil::GeneratePodId(job_desc);
+        PodId pod_id = MasterUtil::GeneratePodId(job_desc);
         PodStatus* pod_status = new PodStatus();
         pod_status->set_podid(pod_id);
         pod_status->set_jobid(job_id);
@@ -25,16 +31,19 @@ void JobManager::Add(const JobDescriptor& job_desc) {
         pending_pods_[job_id][pod_id] = pod_status;
     }   
     jobs_[job_id] = job;
+    LOG(INFO, "job[%s] submitted by %s, ", job_id.c_str(), job_desc.user().c_str());
 }
 
 Status JobManager::Suspend(const JobId jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) {
+        LOG(INFO, "suspend failed. no such job :%s", jobid.c_str());
         return kJobNotFound;
     }
     Job* job = job_it->second;
     if (job->state_ != kJobNormal) {
+        LOG(INFO, "suspend failed. job is not running: %s", jobid.c_str());
         return kUnknown;
     }
     job->state_ = kJobSuspend;
@@ -67,6 +76,7 @@ Status JobManager::Suspend(const JobId jobid) {
         }
         deploy_pods_.erase(it);
     }
+    LOG(INFO, "job suspended: %s", jobid.c_str());
     return kOk;
 }
 
@@ -82,16 +92,19 @@ void JobManager::SuspendPod(PodStatus* pod) {
         pod->set_state(kPodSuspend);
         pod->set_hostname("");
     }
+    LOG(INFO, "pod suspended: %s", pod->podid().c_str());
 }
 
 Status JobManager::Resume(const JobId jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) {
+        LOG(INFO, "resume failed, no such job: %s", jobid.c_str());
         return kJobNotFound;
     }
     Job* job = job_it->second;
     if (job->state_ != kJobSuspend) {
+        LOG(INFO, "resume failed, no such job: %s", jobid.c_str());
         return kUnknown;
     }
     job->state_ = kJobNormal;
@@ -112,6 +125,7 @@ Status JobManager::Resume(const JobId jobid) {
         }
         deploy_pods_.erase(it);
     }
+    LOG(INFO, "job resumed: %s", jobid.c_str());
     return kOk;
 }
 
@@ -152,15 +166,18 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     it = pending_pods_.find(jobid);
     if (it == pending_pods_.end()) {
+        LOG(INFO, "propose fail, no such job: %s", jobid.c_str());
         return kJobNotFound;
     }
     std::map<PodId, PodStatus*>& job_pending_pods = it->second;
     std::map<PodId, PodStatus*>::iterator jt = job_pending_pods.find(podid);
     if (jt == job_pending_pods.end()) {
+        LOG(INFO, "propse fail, no such pod: %s", podid.c_str());
         return kPodNotFound;
     }
     std::map<AgentAddr, AgentInfo*>::iterator at = agents_.find(endpoint);
     if (at == agents_.end()) {
+        LOG(INFO, "propose fail, no such agent: %s", endpoint.c_str());
         return kAgentNotFound;
     }
 
@@ -168,6 +185,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     AgentInfo* agent = at->second;
     Status feasible_status = AcquireResource(*pod, agent);
     if (feasible_status != kOk) {
+        LOG(INFO, "propose fail, no resource, error code:[%d]", feasible_status);
         return feasible_status;
     }
 
@@ -179,6 +197,8 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     }
 
     deploy_pods_[jobid][podid] = pod;
+    LOG(INFO, "propose success, %s will be run on %s", 
+        podid.c_str(), endpoint.c_str());
     return kOk;
 }
 
@@ -220,6 +240,67 @@ void JobManager::CalculatePodRequirement(const PodDescriptor& pod_desc,
             pod_requirement->add_ports(task_requirement.ports(j));
         }
     }
+}
+
+void JobManager::KeepAlive(const std::string& agent_addr) {
+    {
+        MutexLock lock(&mutex_);
+        if (agents_.find(agent_addr) == agents_.end()) {
+            LOG(INFO, "new agent added: %s", agent_addr.c_str());
+            agents_[agent_addr] = new AgentInfo();
+        }
+        agents_[agent_addr]->set_state(kAlive);
+    }
+
+    MutexLock lock(&mutex_timer_);
+    LOG(DEBUG, "receive heartbeat from %s", agent_addr.c_str());
+    int64_t timer_id;
+    if (agent_timer_.find(agent_addr) != agent_timer_.end()) {
+        timer_id = agent_timer_[agent_addr];
+        bool cancel_ok = death_checker_.CancelTask(timer_id);    
+        if (!cancel_ok) {
+            LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
+        }
+    }
+    timer_id = death_checker_.DelayTask(FLAGS_agent_timeout,
+                                        boost::bind(&JobManager::HandleAgentOffline,
+                                                    this,
+                                                    agent_addr));
+    agent_timer_[agent_addr] = timer_id;
+}
+
+void JobManager::HandleAgentOffline(const std::string agent_addr) {
+    LOG(WARNING, "agent is offline: %s", agent_addr.c_str());
+    MutexLock lock(&mutex_);
+    if (agents_.find(agent_addr) == agents_.end()) {
+        LOG(INFO, "no such agent %s", agent_addr.c_str());
+        return;
+    }
+    AgentInfo* agent_info = agents_[agent_addr];
+    for (int i = 0; i < agent_info->pods_size(); i++) {
+        PodStatus* pod_status = agent_info->mutable_pods(i);
+        ReschedulePod(pod_status);
+    }
+    agent_info->set_state(kDead);
+    LOG(INFO, "agent is dead: %s", agent_addr.c_str());
+}
+
+void JobManager::ReschedulePod(PodStatus* pod_status) {
+    assert(pod_status);
+    assert(pod_status->state() == kPodRunning);
+    mutex_.AssertHeld();
+    
+    pod_status->set_state(kPodPending);
+    pod_status->set_hostname("");
+    pod_status->mutable_resource_used()->Clear();
+    for (int i = 0; i < pod_status->status_size(); i++) {
+        pod_status->mutable_status(i)->Clear();
+    }
+
+    const JobId& job_id = pod_status->jobid();
+    const PodId& pod_id = pod_status->podid();    
+    pending_pods_[job_id][pod_id] = pod_status;
+    LOG(INFO, "pod state rescheuled to pending, pod id:%s", pod_id.c_str());
 }
 
 }

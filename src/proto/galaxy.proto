@@ -19,6 +19,11 @@ enum PodState {
     kPodSuspend = 4;
 }
 
+enum AgentState {
+    kAlive = 0;
+    kDead = 1;    
+}
+
 message Volume {
     optional int64 quota = 1;
     optional string path  = 2;
@@ -69,5 +74,6 @@ message AgentInfo {
     optional Resource used = 5;
     optional Resource free = 6;
     repeated PodStatus pods = 7;
+    optional AgentState state = 8;
 }
 

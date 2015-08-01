@@ -8,7 +8,8 @@
 #include <vector>
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
-#include <mutex.h>
+//#include <mutex.h>
+#include <thread_pool.h>
 
 namespace baidu {
 namespace galaxy {
@@ -31,7 +32,7 @@ public:
     Status Resume(const JobId jobid);
     void GetPendingPods(JobInfoList* pending_pods);
     Status Propose(const ScheduleInfo& sche_info);
-
+    void KeepAlive(const std::string& agent_addr);    
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -39,14 +40,18 @@ private:
     void ReclaimResource(const PodStatus& pod, AgentInfo* agent);
     void GetPodRequirement(const PodStatus& pod, Resource* requirement);
     void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
-
+    void HandleAgentOffline(const std::string agent_addr);
+    void ReschedulePod(PodStatus* pod_status);
 private:
     std::map<JobId, Job*> jobs_;
     std::map<JobId, std::map<PodId, PodStatus*> > suspend_pods_;
     std::map<JobId, std::map<PodId, PodStatus*> > pending_pods_;
     std::map<JobId, std::map<PodId, PodStatus*> > deploy_pods_;
     std::map<AgentAddr, AgentInfo*> agents_;
+    std::map<AgentAddr, int64_t> agent_timer_;
+    ThreadPool death_checker_;
     Mutex mutex_;   
+    Mutex mutex_timer_;
 };
 
 }

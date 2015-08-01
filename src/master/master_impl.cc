@@ -63,10 +63,11 @@ void MasterImpl::ListJobs(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
-                          const ::baidu::galaxy::HeartBeatRequest*,
+                          const ::baidu::galaxy::HeartBeatRequest* request,
                           ::baidu::galaxy::HeartBeatResponse*,
                           ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method HeartBeat() not implemented.");
+    std::string agent_addr = request->endpoint();
+    job_manager_.KeepAlive(agent_addr);
     done->Run();
 }
 
