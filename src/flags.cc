@@ -21,6 +21,7 @@ DEFINE_string(master_path, "/master", "master path on nexus");
 // agent
 DEFINE_int32(agent_timeout, 40000, "Agent timeout");
 DEFINE_int32(agent_heartbeat_period, 5000, "Agent heartbeat period");
+DEFINE_int32(agent_rpc_timeout, 10000, "Agent RPC timeout");
 
 // gce
 

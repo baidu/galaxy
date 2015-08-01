@@ -151,9 +151,10 @@ void MasterImpl::Propose(::google::protobuf::RpcController* controller,
                          ::google::protobuf::Closure* done) {
     for (int i = 0; i < request->schedule_size(); i++) {
         const ScheduleInfo& sche_info = request->schedule(i);
-        response->add_status(job_manager_.Propose(sche_info));
+        response->set_status(job_manager_.Propose(sche_info));
     }
     done->Run();
+    job_manager_.DeployPod();
 }
 
 void MasterImpl::ListAgents(::google::protobuf::RpcController* controller,

@@ -30,7 +30,8 @@ message Volume {
 }
 
 message Resource {
-    optional int32 millicores = 1; 
+    optional int32 millicores = 1;
+    // MB
     optional int32 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;
@@ -61,7 +62,7 @@ message PodStatus {
     optional string jobid = 2;
     repeated TaskStatus status = 3; 
     optional Resource resource_used = 4;
-    optional string hostname = 5;
+    optional string endpoint = 5;
     optional string version = 6;
     optional PodState state = 7;
 }

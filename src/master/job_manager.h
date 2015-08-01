@@ -6,10 +6,14 @@
 #include <string>
 #include <map>
 #include <vector>
-#include "proto/master.pb.h"
-#include "proto/galaxy.pb.h"
+
 //#include <mutex.h>
 #include <thread_pool.h>
+
+#include "proto/agent.pb.h"
+#include "proto/master.pb.h"
+#include "proto/galaxy.pb.h"
+#include "rpc/rpc_client.h"
 
 namespace baidu {
 namespace galaxy {
@@ -32,7 +36,9 @@ public:
     Status Resume(const JobId jobid);
     void GetPendingPods(JobInfoList* pending_pods);
     Status Propose(const ScheduleInfo& sche_info);
-    void KeepAlive(const std::string& agent_addr);    
+    void KeepAlive(const std::string& agent_addr);
+    void DeployPod();
+
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -42,16 +48,24 @@ private:
     void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
     void HandleAgentOffline(const std::string agent_addr);
     void ReschedulePod(PodStatus* pod_status);
+
+    void RunPod(const PodDescriptor& desc, PodStatus* pod) ;
+    void RunPodCallback(PodStatus* pod, AgentAddr endpoint, const RunPodRequest* request,
+                        RunPodResponse* response, bool failed, int error);
+
 private:
     std::map<JobId, Job*> jobs_;
-    std::map<JobId, std::map<PodId, PodStatus*> > suspend_pods_;
-    std::map<JobId, std::map<PodId, PodStatus*> > pending_pods_;
-    std::map<JobId, std::map<PodId, PodStatus*> > deploy_pods_;
+    typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
+    PodMap suspend_pods_;
+    PodMap pending_pods_;
+    PodMap deploy_pods_;
+    std::map<AgentAddr, PodMap> running_pods_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
     ThreadPool death_checker_;
     Mutex mutex_;   
     Mutex mutex_timer_;
+    RpcClient rpc_client_;
 };
 
 }
