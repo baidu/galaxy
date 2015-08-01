@@ -49,7 +49,7 @@ private:
     std::map<JobId, std::map<PodId, PodStatus*> > deploy_pods_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
-    ThreadPool pool_;
+    ThreadPool death_checker_;
     Mutex mutex_;   
     Mutex mutex_timer_;
 };
