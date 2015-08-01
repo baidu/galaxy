@@ -15,6 +15,7 @@ namespace galaxy {
 
 typedef std::string JobId;
 typedef std::string PodId;
+typedef std::string AgentAddr;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobInfo> JobInfoList;
 
 struct Job {
@@ -26,9 +27,16 @@ class JobManager {
 public:
     void Add(const JobDescriptor& job_desc);
     void GetPendingPods(JobInfoList* pending_pods);
+    Status Propose(const ScheduleInfo& sche_info);
+
+private:
+    Status CheckScheduleFeasible(const PodStatus* pod, const AgentInfo* agent);
+
 private:
     std::map<JobId, Job*> jobs_;
     std::map<JobId, std::map<PodId, PodStatus*> > pending_pods_;
+    std::map<JobId, std::map<PodId, PodStatus*> > deploy_pods_;
+    std::map<AgentAddr, AgentInfo*> agents_;
     Mutex mutex_;   
 };
 

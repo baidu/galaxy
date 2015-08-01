@@ -46,7 +46,8 @@ message JobInfo {
 
 message ScheduleInfo {
     optional string endpoint = 1;
-    optional string podid = 2;
+    optional string jobid = 2;
+    optional string podid = 3;
 }
 
 message UserDescriptor {
@@ -146,7 +147,8 @@ message ProposeRequest {
 }
 
 message ProposeResponse {
-    optional Status status = 1;
+    repeated Status status = 1;
+    repeated AgentInfo agent = 2;
 }
 
 message ListAgentsRequest {
