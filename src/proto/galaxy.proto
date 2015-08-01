@@ -6,13 +6,16 @@ enum Status {
     kOk = 0;
     kUnknown = 1;
     kQuota = 2;
-    kNotFound = 3;
+    kJobNotFound = 3;
+    kPodNotFound = 4;
+    kAgentNotFound = 5;
 }
 
 enum PodState {
     kPodPending = 0;
-    kPodRunning = 1;
-    kPodTerminate = 2;
+    kPodDeploy = 1;
+    kPodRunning = 2;
+    kPodTerminate = 3;
 }
 
 message Volume {
@@ -59,6 +62,11 @@ message PodStatus {
 
 message AgentInfo {
     optional string endpoint = 1;
-    repeated PodStatus pods = 2;
+    optional Resource total = 2;
+    optional Resource assigned = 3;
+    optional Resource unassigned = 4;
+    optional Resource used = 5;
+    optional Resource free = 6;
+    repeated PodStatus pods = 7;
 }
 
