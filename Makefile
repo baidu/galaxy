@@ -37,9 +37,21 @@ SCHEDULER_SRC = $(wildcard src/scheduler/*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
-AGENT_SRC = $(wildcard src/agent/*.cc)
+AGENT_SRC = $(wildcard src/gce/agent*.cc) src/gce/utils.cc
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
-AGENT_HEADER = $(wildcard src/agent/*.h)
+AGENT_HEADER = $(wildcard src/agent/*.h) src/gce/utils.h
+
+GCED_SRC = $(wildcard src/gce/gced*.cc) src/gce/utils.cc
+GCED_OBJ = $(patsubst %.cc, %.o, $(GCED_SRC))
+GCED_HEADER = $(wildcard src/agent/*.h) src/gce/utils.h
+
+INITD_SRC = $(wildcard src/gce/initd*.cc) src/gce/utils.cc src/flags.cc
+INITD_OBJ = $(patsubst %.cc, %.o, $(INITD_SRC))
+INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h
+
+TEST_INITD_SRC = src/gce/test_initd.cc
+TEST_INITD_OBJ = $(patsubst %.cc, %.o, $(TEST_INITD_SRC))
+#TEST_INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h
 
 SDK_SRC = $(wildcard src/sdk/*.cc)
 SDK_OBJ = $(patsubst %.cc, %.o, $(SDK_SRC))
@@ -51,7 +63,7 @@ FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
 OBJS = $(FLAGS_OBJ) $(PROTO_OBJ)
 
 LIBS = libgalaxy.a
-BIN = master agent scheduler
+BIN = master agent scheduler initd gced
 
 all: $(BIN)
 
@@ -71,11 +83,20 @@ scheduler: $(SCHEDULER_OBJ) $(OBJS)
 agent: $(AGENT_OBJ) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
+gced: $(GCED_OBJ) $(OBJS)
+	$(CXX) $(GCED_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+
 libgalaxy.a: $(SDK_OBJ) $(OBJS) $(PROTO_HEADER)
 	$(AR) -rs $@ $(SDK_OBJ) $(OBJS)
 
 galaxy_client: $(CLIENT_OBJ) $(LIBS)
 	$(CXX) $(CLIENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+initd: $(INITD_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(INITD_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+test_initd: $(TEST_INITD_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(TEST_INITD_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@
