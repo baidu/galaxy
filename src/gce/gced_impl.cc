@@ -6,12 +6,14 @@
 #include <cstdlib>
 #include <sstream>
 #include <boost/lexical_cast.hpp>
+#include "gflags/gflags.h"
 #include "rpc/rpc_client.h"
 #include "logging.h"
 #include "proto/initd.pb.h"
 #include "utils.h"
 #include "thread_pool.h"
 
+DECLARE_string(gce_initd_bin);
 namespace baidu {
 namespace galaxy {
 
@@ -138,8 +140,8 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
     // TODO
     int port = RandRange(9000, 9999);
     std::stringstream ss;
-    ss << "/home/shicy/project/galaxy/initd ";
-    ss << "--gce_initd_port=";
+    ss << FLAGS_gce_initd_bin;
+    ss << " --gce_initd_port=";
     ss << port; 
       
     // 1. collect initd fds
@@ -208,7 +210,7 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
 
     sleep(5);
 
-    std::string addr("localhost:");
+    std::string addr("127.0.0.1:");
     addr += boost::lexical_cast<std::string>(port);
     baidu::galaxy::Initd_Stub* initd;
 
@@ -224,6 +226,7 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         ConvertToInternalTask(task_desc, &user_task);
         user_task.key = request->podid();
         user_task.key += task_desc.start_command();
+        user_task.binary = task_desc.binary();
         pod.task_group.push_back(user_task);
 
         std::string path(task_desc.binary());
@@ -231,7 +234,10 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         exec_request.set_key(request->podid() + 
                              user_task.key +  "_getpackage");
         // TODO
-        exec_request.set_commands(task_desc.start_command());
+        std::string deploying_command;
+        BuildDeployingCommand(user_task, &deploying_command);
+        exec_request.set_commands(deploying_command);
+        //exec_request.set_commands(task_desc.start_command());
         exec_request.set_path(".");
         baidu::galaxy::ExecuteResponse exec_response;
         rpc_client_->SendRequest(initd, 
@@ -303,6 +309,24 @@ void GcedImpl::QueryPods(::google::protobuf::RpcController* controller,
                          ::google::protobuf::Closure* done) {
     
     done->Run(); 
+    return;
+}
+
+void GcedImpl::BuildDeployingCommand(const Task& task, std::string* deploying_command) {
+    if (deploying_command == NULL) {
+        return; 
+    }
+
+    if (task.binary.empty()) {
+        return; 
+    }
+
+    deploying_command->clear();
+    deploying_command->append("echo \"");
+    deploying_command->append(task.binary);
+    deploying_command->append("\" > test && chmod u+x test");
+
+    LOG(WARNING, "build deploying %s", deploying_command->c_str());
     return;
 }
 
