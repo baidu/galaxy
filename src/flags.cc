@@ -15,6 +15,7 @@ DEFINE_string(master_host, "localhost", "Master service hostname");
 DEFINE_string(master_port, "7828", "Master service listen port");
 DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
 DEFINE_string(master_path, "/master", "master path on nexus");
+DEFINE_string(jobs_store_path, "/jobs", "");
 
 // scheduler
 

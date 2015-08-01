@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         LOG(FATAL, "failed to start galaxy master on %s", server_addr.c_str());
         exit(-2);
     }  
-    master_impl->AcquireMasterLock();
+    master_impl->Init();
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {

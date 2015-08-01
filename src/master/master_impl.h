@@ -17,7 +17,8 @@ public:
       MasterImpl();
       virtual ~MasterImpl();
       void AcquireMasterLock();
-      
+      void Init();
+      void ReloadJobInfo();
       virtual void SubmitJob(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::SubmitJobRequest* request,
                             ::baidu::galaxy::SubmitJobResponse* response,

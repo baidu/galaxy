@@ -31,13 +31,14 @@ struct Job {
 
 class JobManager {
 public:
-    JobId Add(const JobDescriptor& job_desc);
+    void Add(const JobId& job_id, const JobDescriptor& job_desc);
     Status Suspend(const JobId jobid);
     Status Resume(const JobId jobid);
     void GetPendingPods(JobInfoList* pending_pods);
     Status Propose(const ScheduleInfo& sche_info);
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
+    void ReloadJobInfo(const JobInfo& job_info);
 
 private:
     void SuspendPod(PodStatus* pod);
