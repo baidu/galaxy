@@ -4,6 +4,7 @@
 #ifndef BAIDU_GALAXY_JOB_MANGER_H
 #define BAIDU_GALAXY_JOB_MANGER_H
 #include <string>
+#include <set>
 #include <map>
 #include <vector>
 
@@ -86,6 +87,8 @@ private:
     Mutex mutex_timer_;
     RpcClient rpc_client_;
     int64_t on_query_num_;
+    std::set<AgentAddr> queried_agents_;
+    bool safe_mode_;
 };
 
 }
