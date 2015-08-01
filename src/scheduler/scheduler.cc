@@ -4,6 +4,7 @@
 
 #include "scheduler/scheduler.h"
 
+#include <math.h>
 #include <algorithm>
 #include "logging.h"
 
@@ -12,21 +13,26 @@ namespace galaxy {
 
 const static int feasibility_factor = 2;
 
-const static float cpu_used_factor = 2;
+// cpu单位为milli
+const static double cpu_used_factor = 10.0f;
 
-const static float cpu_assigned_factor = 2;
+const static double mem_used_factor = 1.0f;
 
-const static float prod_count_factor = 2;
+const static double prod_count_factor = 100.0f;
 
-const static float non_prod_count_factor = 2;
+//const static double non_prod_count_factor = 2;
 
-const static float mem_used_factor = 2;
 
-const static float mem_assigned_factor = 2;
-
-const static float disk_used_factor = 2;
-
-const static float disk_assigned_factor = 2;
+double Scheduler::CalcLoad(const AgentInfo& agent) {
+    double cpu_load = agent.used().millicores() * cpu_used_factor /
+            agent.total().millicores();
+    double mem_load = agent.used().memory() * mem_used_factor /
+            agent.total().memory();
+    double prod_load = agent.pods_size() / prod_count_factor;
+    // TODO: Agent增加non-prod计数
+    //double non_prod_load = agent.pods_size() / prod_count_factor;
+    return exp(cpu_load) + exp(mem_load) + exp(prod_load);
+}
 
 /*
  * @brief 按照磁盘可用大小升序排列
@@ -311,7 +317,7 @@ bool PodScaleUpCell::VolumeFit(std::vector<Volume>& unassigned,
 int32_t PodScaleUpCell::Score() {
     std::vector<AgentInfo*>::iterator agt_it = feasible.begin();
     for(; agt_it != feasible.end(); ++agt_it) {
-        float score = ScoreAgent(*agt_it, pod);
+        double score = ScoreAgent(*agt_it, pod);
         sorted.insert(std::make_pair(score, *agt_it));
     }
     return 0;
@@ -319,7 +325,7 @@ int32_t PodScaleUpCell::Score() {
 
 int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
     int propose_count = 0;
-    std::map<float, AgentInfo*>::iterator sorted_it = sorted.begin();
+    std::map<double, AgentInfo*>::iterator sorted_it = sorted.begin();
     for (size_t i = 0; i < pod_ids.size(); ++i) {
         if (sorted_it == sorted.end()) {
             break;
@@ -340,18 +346,11 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
     return propose_count;
 }
 
-float PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
+double PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = agent_info->pods_size();
-    int non_prod_count = 0;
     // 计算机器当前使用率打分
-    float score = cpu_used_factor * agent_info->used().millicores() +
-             cpu_assigned_factor * agent_info->assigned().millicores() +
-            mem_used_factor * agent_info->used().memory() +
-            mem_assigned_factor * agent_info->assigned().memory() +
-            prod_count_factor * prod_count +
-            non_prod_count_factor * non_prod_count;
-    LOG(DEBUG, "score %s %f", agent_info->endpoint().c_str(), score);
+    double score = Scheduler::CalcLoad(*agent_info);
+    LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
     return score;
 }
 
@@ -360,31 +359,24 @@ PodScaleDownCell::PodScaleDownCell() : pod(NULL), job(NULL), scale_down_count(0)
 int32_t PodScaleDownCell::Score() {
     std::map<std::string, AgentInfo*>::iterator pod_agt_it = pod_agent_map.begin();
     for(; pod_agt_it != pod_agent_map.end(); ++pod_agt_it) {
-        float score = ScoreAgent(pod_agt_it->second, pod);
+        double score = ScoreAgent(pod_agt_it->second, pod);
         sorted_pods.insert(std::make_pair(score, pod_agt_it->first));
     }
     return 0;
 }
 
-float PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
+double PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = agent_info->pods_size();
-    int non_prod_count = 0;
     // 计算机器当前使用率打分
-    float score = cpu_used_factor * agent_info->used().millicores() +
-             cpu_assigned_factor * agent_info->assigned().millicores() +
-            mem_used_factor * agent_info->used().memory() +
-            mem_assigned_factor * agent_info->assigned().memory() +
-            prod_count_factor * prod_count +
-            non_prod_count_factor * non_prod_count;
-    LOG(DEBUG, "score %s %f", agent_info->endpoint().c_str(), score);
+    double score = Scheduler::CalcLoad(*agent_info);
+    LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
     return -1 * score;
 }
 
 int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
     int propose_count = 0;
     std::map<std::string, AgentInfo*>::iterator pod_agent_it;
-    std::map<float, std::string>::iterator sorted_it = sorted_pods.begin();
+    std::map<double, std::string>::iterator sorted_it = sorted_pods.begin();
     for (size_t i = 0; i < scale_down_count; ++i) {
         if (sorted_it == sorted_pods.end()) {
             break;
