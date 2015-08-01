@@ -85,6 +85,7 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
     for(int i = 0; i< job_num;i++){
         const JobOverview& job = response.jobs(i);
         JobInformation job_info ;
+        job_info.job_id = job.jobid();
         job_info.job_name = job.desc().name();
         job_info.replica = job.desc().replica();
         job_info.priority = job.desc().priority();

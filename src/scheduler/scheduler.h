@@ -20,7 +20,7 @@ struct PodScaleUpCell {
     Resource resource;
     std::vector<std::string> pod_ids;
     std::vector<AgentInfo*> feasible;
-    std::map<float, AgentInfo*> sorted;
+    std::map<double, AgentInfo*> sorted;
 
     PodScaleUpCell();
 
@@ -29,7 +29,7 @@ struct PodScaleUpCell {
 
     int32_t Score();
 
-    float ScoreAgent(const AgentInfo* agent_info,
+    double ScoreAgent(const AgentInfo* agent_info,
                        const PodDescriptor* desc);
 
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
@@ -44,13 +44,13 @@ struct PodScaleDownCell {
     JobInfo* job;
     uint32_t scale_down_count;
     std::map<std::string, AgentInfo*> pod_agent_map;
-    std::map<float, std::string> sorted_pods;
+    std::map<double, std::string> sorted_pods;
 
     PodScaleDownCell();
 
     int32_t Score();
 
-    float ScoreAgent(const AgentInfo* agent_info,
+    double ScoreAgent(const AgentInfo* agent_info,
                        const PodDescriptor* desc);
 
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
@@ -71,6 +71,8 @@ private:
 class Scheduler {
 
 public:
+    static double CalcLoad(const AgentInfo& agent);
+
     Scheduler() : schedule_turns_(0){}
     ~Scheduler() {}
 
