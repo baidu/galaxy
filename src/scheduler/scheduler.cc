@@ -16,22 +16,30 @@ const static int feasibility_factor = 2;
 // cpu单位为milli
 const static double cpu_used_factor = 10.0f;
 
+const static double cpu_overload_threashold = 0.9f;
+
+const static int agent_overload_turns_threashold = 3;
+
 const static double mem_used_factor = 1.0f;
 
-const static double prod_count_factor = 100.0f;
+const static double prod_count_factor = 32.0f;
 
-//const static double non_prod_count_factor = 2;
+//const static double non_prod_count_factor = 100.0f;
 
-
-double Scheduler::CalcLoad(const AgentInfo& agent) {
-    double cpu_load = agent.used().millicores() * cpu_used_factor /
-            agent.total().millicores();
-    double mem_load = agent.used().memory() * mem_used_factor /
-            agent.total().memory();
-    double prod_load = agent.pods_size() / prod_count_factor;
+double Scheduler::CalcLoad(const AgentInfo* agent) {
+    double cpu_load = agent->used().millicores() * cpu_used_factor /
+            agent->total().millicores();
+    double mem_load = agent->used().memory() * mem_used_factor /
+            agent->total().memory();
+    double prod_load = agent->pods_size() / prod_count_factor;
     // TODO: Agent增加non-prod计数
     //double non_prod_load = agent.pods_size() / prod_count_factor;
     return exp(cpu_load) + exp(mem_load) + exp(prod_load);
+}
+
+bool Scheduler::CheckOverLoad(const AgentInfo* agent) {
+    return (agent->used().millicores() * 1.0 / agent->total().millicores()
+            > cpu_overload_threashold);
 }
 
 /*
@@ -50,7 +58,7 @@ static bool JobCompare(const JobInfo* left, const JobInfo* right) {
 }
 
 int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
-                 std::vector<ScheduleInfo*>* propose) {
+                                  std::vector<ScheduleInfo*>* propose) {
     LOG(INFO, "schedule scale up turns: %lld", schedule_turns_);
     ++schedule_turns_;
 
@@ -75,28 +83,34 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
             cur_feasible_count < total_feasible_count; ++res_it) {
         for (std::vector<PodScaleUpCell*>::iterator pod_it = pending_pods.begin();
                 pod_it != pending_pods.end(); ++pod_it) {
+            LOG(INFO, "checking: %s on %s",
+                    (*pod_it)->job->jobid().c_str(),
+                    (*res_it)->endpoint().c_str());
             if ((*pod_it)->feasible.size() >= (*pod_it)->feasible_limit ) {
+                LOG(INFO, "feasibility checking done for %s",
+                        (*pod_it)->job->jobid().c_str());
                 continue;
             } else {
-                if ((*pod_it)->FeasibilityCheck(*res_it) == true) {
+                bool check = (*pod_it)->FeasibilityCheck(*res_it);
+                LOG(INFO, "feasibility checking %s on %s return %d",
+                        (*pod_it)->job->jobid().c_str(),
+                        (*res_it)->endpoint().c_str(), (int)check);
+                if (check == true) {
                     (*pod_it)->feasible.push_back(*res_it);
                     cur_feasible_count++;
-                    LOG(DEBUG, "feasibility checking pass: %s on %s",
-                            (*pod_it)->job->jobid().c_str(),
-                            (*res_it)->endpoint().c_str());
                 }
                 // 此处不break，说明一个Agent尽量调度多的Pod
             }
         }
     }
-
+    LOG(INFO, " PodScaleUpCell count %u", pending_pods.size());
     // 对增加实例任务进行优先级计算
     for (std::vector<PodScaleUpCell*>::iterator pod_it = pending_pods.begin();
             pod_it != pending_pods.end(); ++pod_it) {
         (*pod_it)->Score();
         uint32_t count = (*pod_it)->Propose(propose);
         propose_count += count;
-        LOG(DEBUG, "propose jobid %s count %u", (*pod_it)->job->jobid().c_str(), count);
+        LOG(INFO, "propose jobid %s count %u", (*pod_it)->job->jobid().c_str(), count);
     }
 
     // 销毁PodScaleUpCell
@@ -158,6 +172,9 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
    for (int32_t i =0 ; i < response->agents_size(); i++) {
        AgentInfo* agent = new AgentInfo();
        agent->CopyFrom(response->agents(i));
+       LOG(INFO, "agent %s unassigned cpu %d unassigned mem %d", response->agents(i).endpoint().c_str(),
+                response->agents(i).unassigned().millicores(),
+                response->agents(i).unassigned().memory());
        resources_.insert(std::make_pair(agent->endpoint(), agent));
    }
    return resources_.size();
@@ -179,6 +196,7 @@ int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
         feasibility_count += cell->feasible_limit;
         for (int i = 0; i < (*job_it)->pods_size(); ++i) {
             cell->pod_ids.push_back((*job_it)->pods(i).podid());
+            LOG(INFO, "POD ID %s" , (*job_it)->pods(i).podid().c_str());
         }
         CalcSources(*(cell->pod), &(cell->resource));
         pending_pods->push_back(cell);
@@ -227,25 +245,31 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
             job->desc().type() == kSystem) {
         // 判断CPU是否满足
         if (agent_info->unassigned().millicores() < resource.millicores()) {
+            LOG(INFO, "See Code Line agent %d  resource %d", agent_info->unassigned().millicores(),
+             resource.millicores());
             return false;
         }
         // 判断mem
         if (agent_info->unassigned().memory() < resource.memory()) {
+            LOG(INFO, "See Code Line");
             return false;
         }
     }
     else if (job->desc().type() == kBatch) {
         // 判断CPU是否满足
         if (agent_info->free().millicores() < resource.millicores()) {
+            LOG(INFO, "See Code Line");
             return false;
         }
         // 判断mem
         if (agent_info->free().memory() < resource.memory()) {
+            LOG(INFO, "See Code Line");
             return false;
         }
     }
     else {
         // 不支持类型
+        LOG(INFO, "See Code Line");
         return false;
     }
 
@@ -254,6 +278,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
         for (int i = 0; i < agent_info->used().ports_size(); i++) {
             for (int j = 0; j < resource.ports_size(); j++) {
                 if (agent_info->used().ports(i) == resource.ports(j)) {
+                    LOG(INFO, "See Code Line");
                     return false;
                 }
             }
@@ -262,10 +287,12 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
     // 判断disks
     if (resource.disks_size() > 0) {
         if (resource.disks_size() > agent_info->unassigned().disks_size()) {
+            LOG(INFO, "See Code Line");
             return false;
         }
         std::vector<Volume> unassigned;
         for (int i = 0; i < agent_info->unassigned().disks_size(); i++) {
+            LOG(INFO, "See Code Line");
             unassigned.push_back(agent_info->unassigned().disks(i));
         }
         std::vector<Volume> required;
@@ -273,6 +300,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
             required.push_back(resource.disks(j));
         }
         if (!VolumeFit(unassigned, required)) {
+            LOG(INFO, "See Code Line");
             return false;
         }
     }
@@ -280,6 +308,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
     // 判断ssd
     if (resource.ssds_size() > 0) {
          if (resource.ssds_size() > agent_info->unassigned().ssds_size()) {
+             LOG(INFO, "See Code Line");
              return false;
          }
          std::vector<Volume> unassigned;
@@ -291,9 +320,11 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
              required.push_back(resource.ssds(j));
          }
          if (!VolumeFit(unassigned, required)) {
-                 return false;
+             LOG(INFO, "See Code Line");
+             return false;
          }
     }
+    LOG(INFO, "FeasibilityCheck Pass");
     return true;
 }
 
@@ -334,9 +365,11 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
             ScheduleInfo* sched = new ScheduleInfo();
             sched->set_endpoint(sorted_it->second->endpoint());
             sched->set_podid(pod_ids[i]);
+            sched->set_jobid(job->jobid());
             sched->set_action(kLaunch);
             propose->push_back(sched);
-            LOG(DEBUG, "propose[%d] %s on %s", propose_count,
+            LOG(DEBUG, "propose[%d] %s:%s on %s", propose_count,
+                    sched->jobid().c_str(),
                     sched->podid().c_str(),
                     sched->endpoint().c_str());
             ++propose_count;
@@ -349,7 +382,7 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
 double PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
     // 计算机器当前使用率打分
-    double score = Scheduler::CalcLoad(*agent_info);
+    double score = Scheduler::CalcLoad(agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
     return score;
 }
@@ -368,7 +401,7 @@ int32_t PodScaleDownCell::Score() {
 double PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
     // 计算机器当前使用率打分
-    double score = Scheduler::CalcLoad(*agent_info);
+    double score = Scheduler::CalcLoad(agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
     return -1 * score;
 }
@@ -389,9 +422,11 @@ int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
             ScheduleInfo* sched = new ScheduleInfo();
             sched->set_endpoint(pod_agent_it->second->endpoint());
             sched->set_podid(sorted_it->second);
+            sched->set_jobid(job->jobid());
             sched->set_action(kTerminate);
             propose->push_back(sched);
-            LOG(DEBUG, "propose[%u] %s on %s", propose_count,
+            LOG(DEBUG, "propose[%d] %s:%s on %s", propose_count,
+                    sched->jobid().c_str(),
                     sched->podid().c_str(),
                     sched->endpoint().c_str());
             ++propose_count;
@@ -438,16 +473,16 @@ int32_t Scheduler::UpdateAgent(const AgentInfo* agent_info) {
     }
 }
 
-int32_t Scheduler::SyncJobOverview(const ListJobResponse* response) {
-    MutexLock lock(mutex_);
+int32_t Scheduler::SyncJobOverview(const ListJobsResponse* response) {
+    //MutexLock lock(mutex_);
     LOG(INFO, "start to sync job overview , old job count %u", job_overview_.size());
     for (std::map<std::string, JobOverview*>::iterator job_it = job_overview_.begin();
        job_it != job_overview_.end(); ++job_it) {
-           delete job_it->second
+           delete job_it->second;
     }
     job_overview_.clear();
 
-    for (size_t i = 0; i < response->jobs_size(); ++i) {
+    for (int i = 0; i < response->jobs_size(); ++i) {
         JobOverview* job = new JobOverview();
         job->CopyFrom(response->jobs(i));
         job_overview_.insert(std::make_pair(job->jobid(), job));
@@ -456,12 +491,143 @@ int32_t Scheduler::SyncJobOverview(const ListJobResponse* response) {
     return job_overview_.size();
 }
 
-int32_t Scheduler::CheckAgentOverLoad(std::vector<ScheduleInfo*>* propose) {
+int32_t AgentHistory::PushOverloadAgent(const AgentInfo* agent) {
+    int32_t turns = 0;
+    std::map<std::string, int32_t>::iterator count_it =
+            agent_overload_map_.find(agent->endpoint());
+    if (count_it != agent_overload_map_.end()){
+        turns = ++count_it->second;
+    }
+    else {
+        turns = 1;
+        agent_overload_map_.insert(std::make_pair(agent->endpoint(), turns));
+
+    }
+    return turns;
+}
+
+int32_t AgentHistory::CleanOverloadAgent(const AgentInfo* agent) {
+    agent_overload_map_.erase(agent->endpoint());
+    return 0;
+}
+
+int32_t AgentHistory::CheckOverloadAgent(const AgentInfo* agent) {
+    std::map<std::string, int32_t>::iterator count_it =
+            agent_overload_map_.find(agent->endpoint());
+    if (count_it != agent_overload_map_.end()){
+        return count_it->second;
+    }
+    else {
+        return 0;
+    }
+}
+
+int32_t Scheduler::ScheduleAgentOverLoad(std::vector<ScheduleInfo*>* propose) {
     LOG(INFO, "start to check agent overload,  job count %u, agent count %u",
         job_overview_.size(), resources_.size());
+    int32_t scale_down_count = 0;
+    std::map<std::string, AgentInfo*>::iterator agt_it = resources_.begin();
+    for (; agt_it != resources_.end(); agt_it++) {
+        if (CheckOverLoad(agt_it->second) == true) {
+            int turns = agent_his_.PushOverloadAgent(agt_it->second);
+            //  连续N次都过载，则需要scale down
+            if (turns > agent_overload_turns_threashold) {
+                LOG(INFO, "Agent %s has been overloading for %d turns, need schedule",
+                    agt_it->first.c_str(), turns);
+                //  计算需要ternimate的job
+                int32_t count = ScaleDownOverloadAgent(agt_it->second, propose);
+                if (count > 0) {
+                    scale_down_count += count;
+                }
+            }
+        }
+        else {
+            agent_his_.CleanOverloadAgent(agt_it->second);
+        }
+
+    }
+    return scale_down_count;
+}
+
+struct PodToFree {
+    std::string jobid;
+    std::string podid;
+    int32_t cpu_used;
+    PodToFree(const std::string& job_id, const std::string& pod_id, int32_t cpu_used)
+        : jobid(job_id), podid(pod_id), cpu_used(cpu_used) {}
+};
+
+/*
+ * @brief 按照cpu实际使用率升序排列
+ */
+static bool PodToFreeCompare(const PodToFree& l, const PodToFree& r) {
+    return l.cpu_used < r.cpu_used;
+}
+
+int32_t Scheduler::ScaleDownOverloadAgent(const AgentInfo* agent,
+        std::vector<ScheduleInfo*>* propose) {
+    int32_t prod_count = 0;
+    int32_t non_prod_count = 0;
+    int32_t ret = GetPodCountForAgent(agent, &prod_count, &non_prod_count);
+    if (ret != 0) {
+        LOG(WARNING, "can not get pod count for agent %s", agent->endpoint().c_str());
+        return -1;
+    }
+
+    int32_t cpu_to_be_free =
+            (agent->used().millicores() * 1.0f / agent->total().millicores() - cpu_overload_threashold)
+            * agent->total().millicores();
+    if (cpu_to_be_free < 0) {
+        LOG(WARNING, "agent %s dose not need to scale down", agent->endpoint().c_str());
+        return -1;
+    }
+    std::vector<PodToFree> pods_to_free;
+
+    std::map<std::string, JobOverview*>::iterator job_it;
+    for (int pod_idx = 0; pod_idx < agent->pods_size(); ++pod_idx) {
+        const std::string& jobid = agent->pods(pod_idx).jobid();
+        const std::string& podid = agent->pods(pod_idx).podid();
+        job_it = job_overview_.find(jobid);
+        if (job_it == job_overview_.end()) {
+            LOG(WARNING, "jobid %s @ agent %s dose not exist",
+                jobid.c_str(),
+                agent->endpoint().c_str());
+            continue;
+        }
+        JobType type = job_it->second->desc().type();
+        if (type != kBatch) {
+            continue;
+        }
+        int cpu_used = agent->pods(pod_idx).resource_used().millicores();
+        pods_to_free.push_back(PodToFree(jobid, podid, cpu_used));
+    }
+
+    // 按照cpu实际使用率对non-prod任务进行排序
+    std::sort(pods_to_free.begin(), pods_to_free.end(), PodToFreeCompare);
+    for (size_t pod_idx = 0; pod_idx < pods_to_free.size(); ++pod_idx) {
+        if (pods_to_free[pod_idx].cpu_used > cpu_to_be_free) {
+            ScheduleInfo* sched = new ScheduleInfo();
+            sched->set_endpoint(agent->endpoint());
+            sched->set_podid(pods_to_free[pod_idx].podid);
+            sched->set_jobid(pods_to_free[pod_idx].jobid);
+            sched->set_action(kTerminate);
+            propose->push_back(sched);
+            LOG(DEBUG, "propose %s:%s on %s",
+                    sched->jobid().c_str(),
+                    sched->podid().c_str(),
+                    sched->endpoint().c_str());
+            propose->push_back(sched);
+            break;
+        }
+    }
+    return 1;
+}
 
 
+int32_t Scheduler::GetPodCountForAgent(const AgentInfo* agent,
+                int32_t* prod_count, int32_t* non_prod_count) {
 
+    return 0;
 }
 
 }// galaxy
