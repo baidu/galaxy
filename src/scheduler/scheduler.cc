@@ -37,11 +37,11 @@ static bool VolumeCompare(const Volume& volume1, const Volume& volume2) {
 }
 
 /*
- * @brief 按照priority排序
+ * @brief 按照priority降序排序
  *
  * */
-static bool  PodCompare(const PodScaleUpCell* cell1, const PodScaleUpCell* cell2) {
-    return cell1->job->job().priority() > cell2->job->job().priority();
+static bool JobCompare(const JobInfo* left, const JobInfo* right) {
+    return left->job().priority() > right->job().priority();
 }
 
 int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
@@ -146,6 +146,9 @@ int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
                                     std::vector<PodScaleUpCell*>* pending_pods) {
     // 获取scale up的任务
     int feasibility_count = 0;
+
+    // 按照Job优先级进行排序
+    std::sort(pending_jobs.begin(), pending_jobs.end(), JobCompare);
     std::vector<JobInfo*>::iterator job_it = pending_jobs.begin();
     for (; job_it != pending_jobs.end(); ++job_it) {
         PodScaleUpCell* cell = new PodScaleUpCell();
@@ -321,7 +324,7 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
 
 float PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = 0;
+    int prod_count = agent_info->pods_size();
     int non_prod_count = 0;
     // 计算机器当前使用率打分
     float score = cpu_used_factor * agent_info->used().millicores() +
@@ -346,7 +349,7 @@ int32_t PodScaleDownCell::Score() {
 
 float PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = 0;
+    int prod_count = agent_info->pods_size();
     int non_prod_count = 0;
     // 计算机器当前使用率打分
     float score = cpu_used_factor * agent_info->used().millicores() +
