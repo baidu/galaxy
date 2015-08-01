@@ -20,6 +20,12 @@ void StopSigHandler(int /*sig*/) {
 }
 
 int main (int argc, char* argv[]) {
+
+    using baidu::common::Log;
+    using baidu::common::FATAL;
+    using baidu::common::INFO;
+    using baidu::common::WARNING;
+
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);

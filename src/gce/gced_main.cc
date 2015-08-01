@@ -17,6 +17,10 @@ void StopSigHandler(int /*sig*/) {
 }
 
 int main(int argc, char* argv[]) {
+    using baidu::common::Log;
+    using baidu::common::FATAL;
+    using baidu::common::INFO;
+    using baidu::common::WARNING;
     // GcedImpl* impl = new GcedImpl();
     ::google::ParseCommandLineFlags(&argc, &argv, true);
 

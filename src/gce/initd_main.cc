@@ -16,6 +16,10 @@
 #include "logging.h"
 #include "gce/utils.h"
 
+using baidu::common::Log;
+using baidu::common::FATAL;
+using baidu::common::INFO;
+using baidu::common::WARNING;
 const int RPC_START_FAIL = -3;
 
 DECLARE_string(gce_initd_dump_file);
