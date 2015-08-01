@@ -481,7 +481,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     const AgentInfo& report_agent_info = response->agent();
     agent->CopyFrom(report_agent_info);
 
-    PodMap& agent_running_pods = running_pods_[endpoint];
+    PodMap agent_running_pods = running_pods_[endpoint]; // this is a copy
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
@@ -499,6 +499,26 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         pod->mutable_status()->CopyFrom(report_pod_info.status());
         pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
         LOG(DEBUG, "update pod [%s %s]", jobid.c_str(), podid.c_str());
+
+        agent_running_pods[jobid].erase(podid);
+        if (agent_running_pods[jobid].size() == 0) {
+            agent_running_pods.erase(jobid);
+        }
+    }
+
+    // reschedule un-report pods
+    PodMap::iterator pod_it = agent_running_pods.begin();
+    for (; pod_it != agent_running_pods.end(); ++pod_it) {
+        const JobId& jobid = pod_it->first;
+        std::map<PodId, PodStatus*>& pods = pod_it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
+        for (; pod_it != pods.end(); ++pod_it) {
+            const PodId& podid = pod_it->first;
+            LOG(WARNING, "dead pod [%s %s]", jobid.c_str(), podid.c_str());
+            PodStatus* pod = pod_it->second;
+            running_pods_[endpoint][jobid].erase(podid);
+            ReschedulePod(pod);
+        }
     }
 
     delete request;
