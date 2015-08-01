@@ -24,6 +24,7 @@ DEFINE_string(jobs_store_path, "/jobs", "");
 
 // agent
 DEFINE_int32(agent_heartbeat_period, 5000, "Agent heartbeat period");
+DEFINE_string(agent_port, "7819", "Agent listen port");
 
 // gce
 
