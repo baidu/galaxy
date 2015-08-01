@@ -3,9 +3,14 @@
 // found in the LICENSE file.
 #include "job_manager.h"
 
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
+#include <gflags/gflags.h>
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
 #include "master_util.h"
+
+DECLARE_int32(agent_timeout);
 
 namespace baidu {
 namespace galaxy {
@@ -219,6 +224,52 @@ void JobManager::CalculatePodRequirement(const PodDescriptor& pod_desc,
         for (int32_t j = 0; j < task_requirement.ports_size(); j++) {
             pod_requirement->add_ports(task_requirement.ports(j));
         }
+    }
+}
+
+void JobManager::KeepAlive(const std::string& agent_addr) {
+    MutexLock lock(&mutex_timer_);
+    int64_t timer_id;
+    if (agent_timer_.find(agent_addr) != agent_timer_.end()) {
+        timer_id = agent_timer_[agent_addr];
+        bool cancel_ok = pool_.CancelTask(timer_id);    
+        if (!cancel_ok) {
+            return;
+        }
+    }
+    timer_id = pool_.DelayTask(FLAGS_agent_timeout,
+                               boost::bind(&JobManager::HandleAgentOffline,
+                                           this,
+                                           agent_addr));
+    agent_timer_[agent_addr] = timer_id;
+}
+
+void JobManager::HandleAgentOffline(const std::string agent_addr) {
+    MutexLock lock(&mutex_);
+    if (agents_.find(agent_addr) == agents_.end()) {
+        return;
+    }
+    AgentInfo* agent_info = agents_[agent_addr];
+    for (int i = 0; i < agent_info->pods_size(); i++) {
+        PodStatus* pod_status = agent_info->mutable_pods(i);
+        ReschedulePod(pod_status);
+        const JobId& job_id = pod_status->jobid();
+        const PodId& pod_id = pod_status->podid();    
+        pending_pods_[job_id][pod_id] = pod_status;
+    }
+    delete agent_info;
+    agents_.erase(agent_addr);
+}
+
+void JobManager::ReschedulePod(PodStatus* pod_status) {
+    assert(pod_status);
+    assert(pod_status->state() == kPodRunning);
+    mutex_.AssertHeld();
+    pod_status->set_state(kPodPending);
+    pod_status->set_hostname("");
+    pod_status->mutable_resource_used()->Clear();
+    for (int i = 0; i < pod_status->status_size(); i++) {
+        pod_status->mutable_status(i)->Clear();
     }
 }
 
