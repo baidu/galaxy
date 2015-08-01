@@ -20,6 +20,9 @@ DECLARE_int32(agent_heartbeat_interval);
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 
+DECLARE_int32(agent_millicores);
+DECLARE_int32(agent_memory);
+
 namespace baidu {
 namespace galaxy {
 
@@ -68,6 +71,8 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
         resp->set_status(kRpcError); 
     } else {
         resp->set_status(kOk);
+        resp->mutable_agent()->mutable_total()->set_millicores(FLAGS_agent_millicores);
+        resp->mutable_agent()->mutable_total()->set_memory(FLAGS_agent_memory);
         for (int i = 0; i < gced_response.pods_size(); i++) {
             PodStatus* pod_status = 
                             resp->mutable_agent()->add_pods();
