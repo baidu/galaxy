@@ -18,6 +18,11 @@ enum JobPriority {
     kBestEffort = 0;
 }
 
+enum JobState {
+    kJobNormal = 0;
+    kJobSuspend = 1;
+    kJobTerminated = 2;
+}
 
 enum TaskState {
     kRunning = 0;

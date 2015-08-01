@@ -23,18 +23,18 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::SuspendJob(::google::protobuf::RpcController* controller,
-                            const ::baidu::galaxy::SuspendJobRequest*,
-                            ::baidu::galaxy::SuspendJobResponse*,
+                            const ::baidu::galaxy::SuspendJobRequest* request,
+                            ::baidu::galaxy::SuspendJobResponse* response,
                             ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method SuspendJob() not implemented.");
+    response->set_status(job_manager_.Suspend(request->jobid()));
     done->Run();
 }
 
 void MasterImpl::ResumeJob(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::ResumeJobRequest*,
-                           ::baidu::galaxy::ResumeJobResponse*,
+                           const ::baidu::galaxy::ResumeJobRequest* request,
+                           ::baidu::galaxy::ResumeJobResponse* response,
                            ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method ResumeJob() not implemented.");
+    response->set_status(job_manager_.Resume(request->jobid()));
     done->Run();
 }
 
