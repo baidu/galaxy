@@ -19,13 +19,9 @@ void SchedulerIO::Loop() {
         LOG(WARNING, "fail to get master resource snapshot");
         return;
     }
-    int32_t status = scheduler_.SyncResources(&sync_response);
-    if (status != 0) {
-        LOG(WARNING, "fail to sync resource from master");
-        return;
-    }
-    LOG(INFO, "sync resource from master  successfully");
-
+    int32_t agent_count = scheduler_.SyncResources(&sync_response);
+    LOG(INFO, "sync resource from master successfully, agent count %d",
+             agent_count);
     GetPendingJobsRequest get_jobs_request;
     GetPendingJobsResponse get_jobs_response;
 
@@ -51,7 +47,7 @@ void SchedulerIO::Loop() {
         reducing_jobs.push_back(get_jobs_response.mutable_scale_down_jobs(i));
     }
     std::vector<ScheduleInfo*> propose;
-    status = scheduler_.ScheduleScaleUp(pending_jobs, &propose);
+    int32_t status = scheduler_.ScheduleScaleUp(pending_jobs, &propose);
     if (status != 0) {
         LOG(INFO, "fail to schedule scale up ");
         goto END;
