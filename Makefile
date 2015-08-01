@@ -11,7 +11,7 @@ INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
                -I$(SNAPPY_PATH)/include \
                -I$(BOOST_PATH)/include \
                -Icommon/include \
-               -Iins/output/include \
+               -I$(INS_PATH)/include \
                -I$(GFLAGS_PATH)/include \
 
 LDFLAGS = -L$(PROTOBUF_PATH)/lib \
@@ -19,7 +19,7 @@ LDFLAGS = -L$(PROTOBUF_PATH)/lib \
           -L$(SNAPPY_PATH)/lib -lsnappy \
           -L$(GFLAGS_PATH)/lib  \
           -Lcommon/ -lcommon \
-          -Lins/output/lib \
+          -L$(INS_PATH)/lib \
           -lgflags -lpthread -lz
 
 CXXFLAGS += $(OPT)
