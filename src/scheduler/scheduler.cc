@@ -28,17 +28,20 @@ const static float disk_used_factor = 2;
 
 const static float disk_assigned_factor = 2;
 
-
+/*
+ * @brief 按照磁盘可用大小升序排列
+ *
+ */
 static bool VolumeCompare(const Volume& volume1, const Volume& volume2) {
     return volume1.quota() < volume2.quota();
 }
 
 /*
- * @brief 按照priority排序
+ * @brief 按照priority降序排序
  *
  * */
-static bool  PodCompare(const PodScaleUpCell* cell1, const PodScaleUpCell* cell2) {
-    return cell1->job->job().priority() > cell2->job->job().priority();
+static bool JobCompare(const JobInfo* left, const JobInfo* right) {
+    return left->job().priority() > right->job().priority();
 }
 
 int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
@@ -46,7 +49,6 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
     int propose_count = 0;
     // 计算job优先级，及其需要调度的pod数量
     std::vector<PodScaleUpCell*> pending_pods;
-    std::vector<PodScaleUpCell*> reducing_pods;
 
     // pod 依照优先级进行排序
     int32_t total_feasible_count = ChoosePendingPod(pending_jobs, &pending_pods);
@@ -106,7 +108,7 @@ int32_t Scheduler::ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
 
     int32_t total_reducing_count = ChooseReducingPod(reducing_jobs, &reducing_pods);
 
-    assert(total_reducing_count > 0);
+    assert(total_reducing_count >= 0);
 
     // 对减少实例任务进行优先级计算
     for (std::vector<PodScaleDownCell*>::iterator pod_it = reducing_pods.begin();
@@ -144,6 +146,9 @@ int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
                                     std::vector<PodScaleUpCell*>* pending_pods) {
     // 获取scale up的任务
     int feasibility_count = 0;
+
+    // 按照Job优先级进行排序
+    std::sort(pending_jobs.begin(), pending_jobs.end(), JobCompare);
     std::vector<JobInfo*>::iterator job_it = pending_jobs.begin();
     for (; job_it != pending_jobs.end(); ++job_it) {
         PodScaleUpCell* cell = new PodScaleUpCell();
@@ -157,7 +162,6 @@ int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
         CalcSources(*(cell->pod), &(cell->resource));
         pending_pods->push_back(cell);
     }
-    std::sort(pending_pods->begin(), pending_pods->end(), PodCompare);
     return feasibility_count;
 }
 
@@ -274,17 +278,17 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
 
 bool PodScaleUpCell::VolumeFit(std::vector<Volume>& unassigned,
                                     std::vector<Volume>& required) {
+    // 磁盘需求升序排列, best fit
     std::sort(unassigned.begin(), unassigned.end(), VolumeCompare);
     std::sort(required.begin(), required.end(), VolumeCompare);
     size_t fit_index = 0;
-    for (size_t i = 0; i < unassigned.size()
-                    && fit_index < required.size(); i++) {
-        if (required[fit_index].quota() >= unassigned[i].quota()) {
-                fit_index ++;
+    for (size_t i = 0; i < unassigned.size() && fit_index < required.size(); ++i) {
+        if (required[fit_index].quota() <= unassigned[i].quota()) {
+            ++fit_index;
         }
-        if (fit_index  < (required.size() - 1)) {
-            return false;
-        }
+    }
+    if (fit_index  < (required.size() - 1)) {
+        return false;
     }
     return true;
 }
@@ -320,7 +324,7 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
 
 float PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = 0;
+    int prod_count = agent_info->pods_size();
     int non_prod_count = 0;
     // 计算机器当前使用率打分
     float score = cpu_used_factor * agent_info->used().millicores() +
@@ -345,7 +349,7 @@ int32_t PodScaleDownCell::Score() {
 
 float PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
                    const PodDescriptor* desc) {
-    int prod_count = 0;
+    int prod_count = agent_info->pods_size();
     int non_prod_count = 0;
     // 计算机器当前使用率打分
     float score = cpu_used_factor * agent_info->used().millicores() +
@@ -354,7 +358,7 @@ float PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
             mem_assigned_factor * agent_info->assigned().memory() +
             prod_count_factor * prod_count +
             non_prod_count_factor * non_prod_count;
-    return -score;
+    return -1 * score;
 }
 
 int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
@@ -380,11 +384,6 @@ int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
         }
     }
     return propose_count;
-}
-
-int32_t ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc) {
-    // TODO
-    return 0;
 }
 
 int32_t Scheduler::CalcSources(const PodDescriptor& pod, Resource* resource) {
@@ -420,7 +419,6 @@ int32_t Scheduler::UpdateAgent(const AgentInfo* agent_info) {
         return 1;
     }
 }
-
 
 }// galaxy
 }// baidu
