@@ -41,6 +41,9 @@ AGENT_SRC = $(wildcard src/agent/agent*.cc)
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
 AGENT_HEADER = $(wildcard src/agent/*.h) 
 
+TEST_AGENT_SRC = src/agent/test_agent.cc
+TEST_AGENT_OBJ = $(patsubst %.cc, %.o, $(TEST_INITD_SRC))
+
 GCED_SRC = $(wildcard src/gce/gced*.cc) src/gce/utils.cc
 GCED_OBJ = $(patsubst %.cc, %.o, $(GCED_SRC))
 GCED_HEADER = $(wildcard src/agent/*.h) src/gce/utils.h
@@ -82,6 +85,9 @@ scheduler: $(SCHEDULER_OBJ) $(OBJS)
 
 agent: $(AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+
+test_agent: $(TEST_AGENT_OBJ) $(LIBS) $(OBJS)
+	$(CXX) $(TEST_AGENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 gced: $(GCED_OBJ) $(OBJS)
 	$(CXX) $(GCED_OBJ) $(OBJS) -o $@ $(LDFLAGS)
