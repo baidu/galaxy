@@ -76,8 +76,11 @@ bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) 
 bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
     ListJobsRequest request;
     ListJobsResponse response;
-    rpc_client_->SendRequest(master_, &Master_Stub::ListJobs,
+    bool ret = rpc_client_->SendRequest(master_, &Master_Stub::ListJobs,
                              &request,&response,5,1);
+    if (!ret || response.status() != kOk) {
+        return false;
+    }
     int job_num = response.jobs_size();
     for(int i = 0; i< job_num;i++){
         const JobOverview& job = response.jobs(i);
