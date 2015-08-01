@@ -50,7 +50,7 @@ message JobDescriptor {
 
 message JobInfo {
     optional string jobid = 1;
-    optional JobDescriptor job = 2;
+    optional JobDescriptor desc = 2;
     repeated PodStatus pods = 3;
 }
 
@@ -115,6 +115,7 @@ message ListJobsRequest {
 message JobOverview {
     optional JobDescriptor desc = 1;
     optional string jobid = 2;
+    optional JobState state = 3;
     optional int32 running_num = 4;
     optional Resource resource_used = 5;
 }
@@ -147,7 +148,6 @@ message GetPendingJobsResponse {
     repeated JobInfo scale_up_jobs = 1;
     repeated JobInfo scale_down_jobs = 2;
     optional Status status = 3;
-    repeated JobInfo jobs = 4;
 }
 
 message GetResourceSnapshotRequest {
