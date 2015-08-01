@@ -18,6 +18,11 @@ enum JobPriority {
     kBestEffort = 0;
 }
 
+enum JobState {
+    kJobNormal = 0;
+    kJobSuspend = 1;
+    kJobTerminated = 2;
+}
 
 enum TaskState {
     kRunning = 0;
@@ -36,7 +41,6 @@ message JobDescriptor {
     optional string user = 2;
     optional JobType type = 3;
     optional int32 priority = 4;
-    // repeated TaskDescriptor tasks = 5;
     optional PodDescriptor pod = 5;
     repeated string labels = 6;
     optional int32 replica = 7;
@@ -52,9 +56,10 @@ message JobInfo {
 
 message ScheduleInfo {
     optional string endpoint = 1;
-    optional string podid = 2;
-    optional ScheduleAction action = 3;
-    optional int32 agent_version = 4;
+    optional string jobid = 2;
+    optional string podid = 3;
+    optional ScheduleAction action = 4;
+    optional int32 agent_version = 5;
 }
 
 
@@ -72,8 +77,8 @@ message SubmitJobResponse {
 }
 
 message UpdateJobRequest {
-    optional JobDescriptor job = 1;
-    optional string jobid = 2;
+    optional string jobid = 1;
+    optional JobDescriptor job = 2;
 }
 
 message UpdateJobResponse {
@@ -107,9 +112,16 @@ message TerminateJobResponse {
 message ListJobsRequest {
 }
 
+message JobOverview {
+    optional JobDescriptor desc = 1;
+    optional string jobid = 2;
+    optional int32 running_num = 4;
+    optional Resource resource_used = 5;
+}
+
 message ListJobsResponse {
     optional Status status = 1;
-    repeated string jobsid = 2;
+    repeated JobOverview jobs = 2;
 }
 
 message ShowJobRequest {
@@ -134,6 +146,8 @@ message GetPendingJobsRequest {
 message GetPendingJobsResponse {
     repeated JobInfo scale_up_jobs = 1;
     repeated JobInfo scale_down_jobs = 2;
+    optional Status status = 1;
+    repeated JobInfo jobs = 2;
 }
 
 message GetResourceSnapshotRequest {
