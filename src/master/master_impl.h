@@ -6,11 +6,18 @@
 
 #include "proto/master.pb.h"
 #include "job_manager.h"
+#include "ins_sdk.h"
+
+using ::galaxy::ins::sdk::InsSDK;
 
 namespace baidu {
 namespace galaxy {
 class MasterImpl : public Master {
 public:
+      MasterImpl();
+      virtual ~MasterImpl();
+      void AcquireMasterLock();
+      
       virtual void SubmitJob(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::SubmitJobRequest* request,
                             ::baidu::galaxy::SubmitJobResponse* response,
@@ -59,8 +66,11 @@ public:
                               const ::baidu::galaxy::ListAgentsRequest* request,
                               ::baidu::galaxy::ListAgentsResponse* response,
                               ::google::protobuf::Closure* done);
+      void OnSessionTimeout();
+      void OnLockChange(std::string lock_session_id);
 private:
       JobManager job_manager_;
+      InsSDK* nexus_;
 };
 
 }

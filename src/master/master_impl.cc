@@ -2,9 +2,65 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "master_impl.h"
+#include <gflags/gflags.h>
+#include "master_util.h"
+#include <logging.h>
+
+DECLARE_string(nexus_servers);
+DECLARE_string(nexus_root_path);
+DECLARE_string(master_lock_path);
+DECLARE_string(master_path);
 
 namespace baidu {
 namespace galaxy {
+
+MasterImpl::MasterImpl() : nexus_(NULL) {
+    nexus_ = new InsSDK(FLAGS_nexus_servers);
+}
+
+MasterImpl::~MasterImpl() {
+    delete nexus_;
+}
+
+static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param, 
+                               ::galaxy::ins::sdk::SDKError error) {
+    MasterImpl* master = static_cast<MasterImpl*>(param.context);
+    master->OnLockChange(param.value);
+}
+
+static void OnMasterSessionTimeout(void* ctx) {
+    MasterImpl* master = static_cast<MasterImpl*>(ctx);
+    master->OnSessionTimeout();
+}
+
+void MasterImpl::OnLockChange(std::string lock_session_id) {
+    std::string self_session_id = nexus_->GetSessionID();
+    if (self_session_id != lock_session_id) {
+        LOG(FATAL, "master lost lock , die.");
+        abort();
+    }
+}
+
+void MasterImpl::OnSessionTimeout() {
+    LOG(FATAL, "master lost session with nexus, die.");
+    abort();
+}
+
+void MasterImpl::AcquireMasterLock() {
+    std::string master_lock = FLAGS_nexus_root_path + FLAGS_master_lock_path;
+    ::galaxy::ins::sdk::SDKError err;
+    nexus_->RegisterSessionTimeout(&OnMasterSessionTimeout, this);
+    bool ret = nexus_->Lock(master_lock, &err); //whould block until accquired
+    assert(ret && err == ::galaxy::ins::sdk::kOK);
+    std::string master_endpoint = MasterUtil::SelfEndpoint();
+    std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
+    ret = nexus_->Put(master_path_key, master_endpoint, &err);
+    assert(ret && err == ::galaxy::ins::sdk::kOK);
+    nexus_->Watch(master_lock, &OnMasterLockChange, this, &err);
+    assert(ret && err == ::galaxy::ins::sdk::kOK);
+    LOG(INFO, "master lock [ok].  %s -> %s", 
+        master_path_key.c_str(), master_endpoint.c_str());
+}
 
 void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SubmitJobRequest* request,
