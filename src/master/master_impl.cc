@@ -72,7 +72,7 @@ void MasterImpl::ReloadJobInfo() {
         }
         result->Next();
         job_amount ++;
-}
+    }
     LOG(INFO, "reload all job desc finish, total#: %d", job_amount);
 }
 
