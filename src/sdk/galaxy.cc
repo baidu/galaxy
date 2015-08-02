@@ -95,6 +95,7 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.running_num = job.running_num();
         job_info.cpu_used = job.resource_used().millicores();
         job_info.mem_used = job.resource_used().memory();
+				job_info.is_batch = (job.desc().type() == kBatch);
         jobs->push_back(job_info);
     }
     return true;

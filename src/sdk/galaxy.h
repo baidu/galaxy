@@ -27,6 +27,7 @@ struct JobDescription {
 struct JobInformation {
     std::string job_name;
     std::string job_id;
+		bool is_batch;
     int32_t replica;
     int32_t priority;
     int32_t running_num;

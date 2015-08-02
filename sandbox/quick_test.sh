@@ -15,5 +15,7 @@ echo "--master_addr=localhost:7810" >> galaxy.flag
 ./start_all.sh
 sleep 3
 
-../galaxy submit job1 ../galaxy 3 3 3 "./galaxy" 1
+../galaxy submit job1 ../galaxy 3 3 3 "./galaxy" batch
 ../galaxy submit job1 ../galaxy 3 3 3 "./galaxy"
+
+../galaxy list

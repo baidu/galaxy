@@ -45,7 +45,9 @@ int AddJob(int argc, char* argv[]) {
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
     job.deploy_step = 0;
-    job.is_batch = (atoi(argv[5]) != 0);
+		if (argc > 5 && 0 == strcmp(argv[5], "batch")) {
+				job.is_batch = true;
+		}
     std::string jobid = galaxy->SubmitJob(job);
     if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");
@@ -58,8 +60,8 @@ int AddJob(int argc, char* argv[]) {
 int ListJob(int argc, char* argv[]) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
-    baidu::common::TPrinter tp(7);
-    tp.AddRow(7, "", "id", "name", "running", "replica", "cpu", "memory");
+    baidu::common::TPrinter tp(8);
+    tp.AddRow(8, "", "id", "name", "running", "replica", "batch", "cpu", "memory");
     if (galaxy->ListJobs(&infos)) {
         for (uint32_t i = 0; i < infos.size(); i++) {
             std::vector<std::string> vs;
@@ -68,6 +70,7 @@ int ListJob(int argc, char* argv[]) {
             vs.push_back(infos[i].job_name);
             vs.push_back(baidu::common::NumToString(infos[i].running_num));
             vs.push_back(baidu::common::NumToString(infos[i].replica));
+						vs.push_back(infos[i].is_batch ? "batch" : "");
             vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
             vs.push_back(baidu::common::NumToString(infos[i].mem_used));
             tp.AddRow(vs);
