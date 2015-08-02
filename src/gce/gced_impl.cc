@@ -5,6 +5,7 @@
 #include "gced_impl.h"
 #include <cstdlib>
 #include <sstream>
+#include <fstream>
 #include <boost/lexical_cast.hpp>
 #include "gflags/gflags.h"
 #include "rpc/rpc_client.h"
@@ -137,6 +138,9 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
     work_dir += request->podid();
     file::Mkdir(work_dir.c_str());
 
+    LOG(INFO, "initd work mkdir %s", work_dir.c_str());
+
+
     // TODO
     int port = RandRange(9000, 9999);
     std::stringstream ss;
@@ -179,7 +183,7 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         // setpgid  & chdir
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid, 
-                                             work_dir.c_str());
+                                             "./");
 
         process::PrepareChildProcessEnvStep2(stdout_fd, 
                                              stderr_fd, 
@@ -209,7 +213,6 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
     ::close(stderr_fd);
 
     sleep(5);
-
     std::string addr("127.0.0.1:");
     addr += boost::lexical_cast<std::string>(port);
     baidu::galaxy::Initd_Stub* initd;
@@ -227,19 +230,49 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         user_task.key = request->podid();
         user_task.key += task_desc.start_command();
         user_task.binary = task_desc.binary();
+
+        // std::string filename(work_dir);
+        LOG(INFO, "prepare task workdir %s", work_dir.c_str());
+        std::stringstream ss;
+        ss << work_dir;
+        ss << "/test_";
+        ss << i;
+        ss << ".tar.gz";
+
+        std::stringstream st;
+        st << "test_";
+        st << i;
+        st << ".tar.gz";
+        LOG(INFO, "download binary to file %s binary size %u", ss.str().c_str(), task_desc.binary().size());
+        std::ofstream ofs(ss.str().c_str(), std::ios::binary);
+        ofs << task_desc.binary();
+        ofs.close();
+
         pod.task_group.push_back(user_task);
 
-        std::string path(task_desc.binary());
+        //std::string path(task_desc.binary());
         baidu::galaxy::ExecuteRequest exec_request;
         exec_request.set_key(request->podid() + 
                              user_task.key +  "_getpackage");
-        // TODO
-        std::string deploying_command;
-        BuildDeployingCommand(user_task, &deploying_command);
-        exec_request.set_commands(deploying_command);
-        //exec_request.set_commands(task_desc.start_command());
-        exec_request.set_path(".");
+
         baidu::galaxy::ExecuteResponse exec_response;
+        exec_request.set_path(work_dir);
+        exec_request.set_commands("tar zxvf " + st.str());
+        LOG(INFO, "execute command %s", exec_request.commands().c_str());
+        rpc_client_->SendRequest(initd, 
+                                 &baidu::galaxy::Initd_Stub::Execute, 
+                                 &exec_request, 
+                                 &exec_response, 5, 1);
+        sleep(5);
+
+        // TODO
+        // std::string deploying_command;
+        // BuildDeployingCommand(user_task, &deploying_command);
+        // exec_request.set_commands(deploying_command);
+        exec_request.set_commands(task_desc.start_command());
+
+        LOG(INFO, "start command %s", task_desc.start_command().c_str());
+        // exec_request.set_path(".");
         rpc_client_->SendRequest(initd, 
                                  &baidu::galaxy::Initd_Stub::Execute, 
                                  &exec_request, 
@@ -253,6 +286,14 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         }
         LOG(WARNING, "execute task success");
         pod.state = kPodDeploy;  
+
+        sleep(5);
+
+        exec_request.set_commands(task_desc.start_command());
+        rpc_client_->SendRequest(initd, 
+                                 &baidu::galaxy::Initd_Stub::Execute, 
+                                 &exec_request, 
+                                 &exec_response, 5, 1);
         
         // TODO
         // Task get_package_task; 

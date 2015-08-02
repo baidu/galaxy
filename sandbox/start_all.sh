@@ -3,10 +3,11 @@ cd ../ins/sandbox && nohup ./start_all.sh &> ins_start.log &
 sleep 2
 echo "start master"
 nohup  ../master --flagfile=galaxy.flag >master.log 2>&1 &
-
+sleep 2
 echo "start gced"
 nohup ../gced --flagfile=galaxy.flag > gced.log 2>&1 &
 
+sleep 1
 echo "start agent"
 nohup  ../agent --flagfile=galaxy.flag >agent.log 2>&1 &
 

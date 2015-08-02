@@ -48,9 +48,15 @@ private:
 
     bool PingMaster();
 
-    //void ParseVolumeInfoFromString(const std::string& volume_str,                                   std::vector<Volume>* volumes);
+    struct ResourceCapacity {
+        int64_t millicores; 
+        int64_t memory;
+        ResourceCapacity() 
+            : millicores(0),
+              memory(0) {
+        }
+    };
 
-    //void ConvertResourceToPb(const ResourceCapacity& resource, Resource* resource_pb);
 private:
     std::string master_endpoint_;
     std::string gce_endpoint_; 
@@ -61,6 +67,7 @@ private:
     std::string endpoint_;
     Master_Stub* master_;
     Gced_Stub* gced_;
+    ResourceCapacity resource_capacity_;
 };
 
 }   // ending namespace galaxy

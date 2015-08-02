@@ -58,6 +58,7 @@ private:
 
     void GetProcessStatus();
 
+    void BuildDeployingCommand(const Task& task, std::string* deploying_command); 
 private:
     struct Task {
         std::string binary;
@@ -79,7 +80,6 @@ private:
         std::string id;
     };
 
-    void BuildDeployingCommand(const Task& task, std::string* deploying_command); 
 private:
     RpcClient* rpc_client_; 
     Mutex mutex_;
