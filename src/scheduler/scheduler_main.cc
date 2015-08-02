@@ -6,7 +6,9 @@
 #include <gflags/gflags.h>
 //#include "logging.h"
 #include "scheduler/scheduler_io.h"
-DEFINE_string(master_addr, "localhost:8080", "galaxy master addr");
+DECLARE_string(master_host);
+DECLARE_string(master_port);
+
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/) {
     s_quit = true;
@@ -15,7 +17,7 @@ static void SignalIntHandler(int /*sig*/) {
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     //LOG(INFO, "start scheduler....")
-    ::baidu::galaxy::SchedulerIO io(FLAGS_master_addr);
+    ::baidu::galaxy::SchedulerIO io(FLAGS_master_host + ":" + FLAGS_master_port);
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {
