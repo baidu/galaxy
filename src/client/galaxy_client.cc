@@ -45,9 +45,9 @@ int AddJob(int argc, char* argv[]) {
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
     job.deploy_step = 0;
-		if (argc > 5 && 0 == strcmp(argv[5], "batch")) {
-				job.is_batch = true;
-		}
+		job.cmd_line = argv[5];
+		job.is_batch = (argc > 6 && 0 == strcmp(argv[6], "batch"));
+
     std::string jobid = galaxy->SubmitJob(job);
     if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");

@@ -15,7 +15,13 @@ echo "--master_addr=localhost:7810" >> galaxy.flag
 ./start_all.sh
 sleep 3
 
-../galaxy submit job1 ../galaxy 3 3 3 "./galaxy" batch
-../galaxy submit job1 ../galaxy 3 3 3 "./galaxy"
+tar zcf batch.tar.gz ../galaxy
+echo "top" >> longrun.sh
+tar zcf longrun.tar.gz longrun.sh
 
+../galaxy submit job_batch batch.tar.gz 3 3 3 "./galaxy list" batch
+../galaxy submit job_longrun longrun.tar.gz 3 3 3 "sh longrun.sh"
+
+rm -rf longrun*
+rm -rf batch.tar.gz
 ../galaxy list
