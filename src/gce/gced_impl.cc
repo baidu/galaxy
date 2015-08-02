@@ -6,12 +6,14 @@
 #include <cstdlib>
 #include <sstream>
 #include <boost/lexical_cast.hpp>
+#include "gflags/gflags.h"
 #include "rpc/rpc_client.h"
 #include "logging.h"
 #include "proto/initd.pb.h"
 #include "utils.h"
 #include "thread_pool.h"
 
+DECLARE_string(gce_initd_bin);
 namespace baidu {
 namespace galaxy {
 
@@ -37,18 +39,38 @@ void GcedImpl::LaunchInitd() {
       
 }
 
-void GcedImpl::GetProcessStatus(const std::string& key, ProcessInfo* info) {
-    // if (info == NULL) {
-    //     return;
-    // }
+void GcedImpl::GetProcessStatus() {
+    {
+    MutexLock lock(&mutex_);
+    std::map<std::string, Pod>::iterator it = pods_.begin();
+    for (; it != pods_.end(); ++it) {
+        if (it->second.state == kPodDeploy) {
+            std::stringstream ss("localhost:");
+            ss << it->second.port;
+            baidu::galaxy::Initd_Stub* initd;
+            rpc_client_->GetStub(ss.str(), &initd);
+            if (initd == NULL) {
+                LOG(WARNING, "get initd service error");
+                continue;
+            }
 
-    // Initd_Stub* initd;
-    // // TODO validate return value
-    // rpc_client_->GetStub(addr, &initd);
-    // if (initd == NULL) {
-    //     LOG(WARNING, "get stub error");
-    //     return;
-    // }
+            const std::vector<Task>& task_group = 
+                it->second.task_group;
+            for (size_t i = 0; i < task_group.size(); ++i) {
+                std::string key(it->first + task_group[i].key);
+                GetProcessStatusRequest get_status_req;
+                GetProcessStatusResponse get_status_resp;
+                get_status_req.set_key(key);
+                rpc_client_->SendRequest(initd, 
+                                         &baidu::galaxy::Initd_Stub::GetProcessStatus, 
+                                         &get_status_req, 
+                                         &get_status_resp, 5, 1);
+                if (get_status_resp.status() != kOk) {
+                }
+            }
+        }
+    }
+    }
 }
 
 void GcedImpl::TaskStatusCheck() {
@@ -118,8 +140,8 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
     // TODO
     int port = RandRange(9000, 9999);
     std::stringstream ss;
-    ss << "/home/shicy/project/galaxy/initd ";
-    ss << "--gce_initd_port=";
+    ss << FLAGS_gce_initd_bin;
+    ss << " --gce_initd_port=";
     ss << port; 
       
     // 1. collect initd fds
@@ -188,7 +210,7 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
 
     sleep(5);
 
-    std::string addr("localhost:");
+    std::string addr("127.0.0.1:");
     addr += boost::lexical_cast<std::string>(port);
     baidu::galaxy::Initd_Stub* initd;
 
@@ -196,21 +218,26 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
 
     rpc_client_->GetStub(addr, &initd);
     Pod pod;
+    pod.id = request->podid();
     LOG(WARNING, "run pod with %d tasks", request->pod().tasks_size());
     for (int i = 0; i < request->pod().tasks_size(); ++i) {
-
         const TaskDescriptor& task_desc = request->pod().tasks(i);
         Task user_task;
         ConvertToInternalTask(task_desc, &user_task);
         user_task.key = request->podid();
         user_task.key += task_desc.start_command();
+        user_task.binary = task_desc.binary();
         pod.task_group.push_back(user_task);
 
         std::string path(task_desc.binary());
         baidu::galaxy::ExecuteRequest exec_request;
-        exec_request.set_key(request->podid() + "_getpackage");
+        exec_request.set_key(request->podid() + 
+                             user_task.key +  "_getpackage");
         // TODO
-        exec_request.set_commands(task_desc.start_command());
+        std::string deploying_command;
+        BuildDeployingCommand(user_task, &deploying_command);
+        exec_request.set_commands(deploying_command);
+        //exec_request.set_commands(task_desc.start_command());
         exec_request.set_path(".");
         baidu::galaxy::ExecuteResponse exec_response;
         rpc_client_->SendRequest(initd, 
@@ -226,9 +253,12 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         }
         LOG(WARNING, "execute task success");
         pod.state = kPodDeploy;  
-        Task get_package_task; 
-        get_package_task.start_command = path;
-        pod.task_group.push_back(get_package_task);
+        
+        // TODO
+        // Task get_package_task; 
+        // get_package_task.start_command = path;
+        // pod.task_group.push_back(get_package_task);
+        
         // exec_request.set_key(request->podid() + task_desc.start_command());
         // exec_request.set_commands(task_desc.start_command());
         // exec_request.set_path(work_dir);
@@ -279,6 +309,24 @@ void GcedImpl::QueryPods(::google::protobuf::RpcController* controller,
                          ::google::protobuf::Closure* done) {
     
     done->Run(); 
+    return;
+}
+
+void GcedImpl::BuildDeployingCommand(const Task& task, std::string* deploying_command) {
+    if (deploying_command == NULL) {
+        return; 
+    }
+
+    if (task.binary.empty()) {
+        return; 
+    }
+
+    deploying_command->clear();
+    deploying_command->append("echo \"");
+    deploying_command->append(task.binary);
+    deploying_command->append("\" > test && chmod u+x test");
+
+    LOG(WARNING, "build deploying %s", deploying_command->c_str());
     return;
 }
 

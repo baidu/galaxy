@@ -9,13 +9,14 @@ int main(int argc, char** argv) {
     baidu::galaxy::Gced_Stub* gced;
     baidu::galaxy::RpcClient* rpc_client = 
         new baidu::galaxy::RpcClient();
-    rpc_client->GetStub("localhost:8766", &gced);
+    rpc_client->GetStub("127.0.0.1:8766", &gced);
 
     baidu::galaxy::LaunchPodRequest launch_request;
     launch_request.set_podid("testgced");
     baidu::galaxy::PodDescriptor pod;
     baidu::galaxy::TaskDescriptor task;
 
+    task.set_binary("1111");
     task.set_start_command("touch testgced");
 
     baidu::galaxy::TaskDescriptor* task_desc = pod.add_tasks();

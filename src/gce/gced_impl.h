@@ -56,11 +56,11 @@ private:
 
     void TaskStatusCheck();
 
-    void GetProcessStatus(const std::string& key, 
-                          ProcessInfo* info);
+    void GetProcessStatus();
 
 private:
     struct Task {
+        std::string binary;
         std::string start_command;
         std::string stop_command;
         int32_t millicores;
@@ -76,8 +76,10 @@ private:
         std::vector<Task> task_group;
         int32_t port;
         PodState state;
+        std::string id;
     };
 
+    void BuildDeployingCommand(const Task& task, std::string* deploying_command); 
 private:
     RpcClient* rpc_client_; 
     Mutex mutex_;
