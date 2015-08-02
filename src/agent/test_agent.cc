@@ -12,7 +12,7 @@ int main (int argc, char* argv[]) {
     baidu::galaxy::Agent_Stub* agent;
     baidu::galaxy::RpcClient* rpc_client =
         new baidu::galaxy::RpcClient();
-    rpc_client->GetStub("localhost:8080", &agent);
+    rpc_client->GetStub("127.0.0.1:8080", &agent);
     baidu::galaxy::QueryRequest request;
     baidu::galaxy::QueryResponse response;
     bool ret = rpc_client->SendRequest(agent,
@@ -23,6 +23,7 @@ int main (int argc, char* argv[]) {
         fprintf(stderr, "Query agent failed\n"); 
         return -1;
     }
+    fprintf(stdout, "Query agent %d", response.agent().total().millicores());
 
     baidu::galaxy::PodDescriptor pod;
     baidu::galaxy::TaskDescriptor task;

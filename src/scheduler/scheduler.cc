@@ -599,8 +599,8 @@ int32_t Scheduler::ScaleDownOverloadAgent(const AgentInfo* agent,
     }
 
     int32_t cpu_to_be_free =
-            (agent->used().millicores() * 1.0f / agent->total().millicores() - cpu_overload_threashold)
-            * agent->total().millicores();
+            static_cast<int32_t>((agent->used().millicores() * 1.0f / agent->total().millicores() - cpu_overload_threashold)
+            * agent->total().millicores());
     if (cpu_to_be_free < 0) {
         LOG(WARNING, "agent %s dose not need to scale down", agent->endpoint().c_str());
         return -1;

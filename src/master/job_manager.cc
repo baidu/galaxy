@@ -22,6 +22,7 @@ namespace galaxy {
 
 JobManager::JobManager()
     : on_query_num_(0) {
+    safe_mode_ = true;
     ScheduleNextQuery();
 }
 
@@ -32,17 +33,37 @@ void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
+    job->id_ = job_id;
     MutexLock lock(&mutex_);
-    for(int i = 0; i < job_desc.replica(); i++) {
-        PodId pod_id = MasterUtil::GeneratePodId(job_desc);
-        PodStatus* pod_status = new PodStatus();
-        pod_status->set_podid(pod_id);
-        pod_status->set_jobid(job_id);
-        job->pods_[pod_id] = pod_status;
-        pending_pods_[job_id][pod_id] = pod_status;
-    }
+    FillPodsToJob(job);
     jobs_[job_id] = job;
     LOG(INFO, "job[%s] submitted by user: %s, ", job_id.c_str(), job_desc.user().c_str());
+}
+
+void JobManager::FillPodsToJob(Job* job) {
+    mutex_.AssertHeld();
+    if (jobs_.find(job->id_) == jobs_.end()) {
+        return;
+    }
+    for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
+        PodId pod_id = MasterUtil::GeneratePodId(job->desc_);
+        PodStatus* pod_status = new PodStatus();
+        pod_status->set_podid(pod_id);
+        pod_status->set_jobid(job->id_);
+        job->pods_[pod_id] = pod_status;
+        pending_pods_[job->id_][pod_id] = pod_status;
+        LOG(INFO, "move pod to pendings: %s", pod_id.c_str());
+    }
+}
+
+void JobManager::FillAllJobs() {
+    mutex_.AssertHeld();
+    std::map<JobId, Job*>::iterator it;
+    for (it = jobs_.begin(); it != jobs_.end(); ++it) {
+        JobId job_id = it->first;
+        Job* job = it->second;
+        FillPodsToJob(job);
+    }
 }
 
 void JobManager::ReloadJobInfo(const JobInfo& job_info) {
@@ -50,6 +71,7 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     job->state_ = job_info.state();
     job->desc_.CopyFrom(job_info.desc());
     std::string job_id = job_info.jobid();
+    job->id_ = job_id;
     MutexLock lock(&mutex_);
     jobs_[job_id] = job;
 }
@@ -164,6 +186,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods) {
         JobInfo* job_info = pending_pods->Add();
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
+        LOG(DEBUG, "pending job: %s", job_id.c_str());
         const JobDescriptor& job_desc = jobs_[job_id]->desc_;
         job_info->mutable_desc()->CopyFrom(job_desc);
 
@@ -464,10 +487,16 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     boost::scoped_ptr<const QueryRequest> request_ptr(request);
     boost::scoped_ptr<QueryResponse> response_ptr(response);
     MutexLock lock(&mutex_);
+    bool first_query_on_agent = false;
+    if (queried_agents_.find(endpoint) == queried_agents_.end()) {
+        first_query_on_agent = true;
+        LOG(INFO, "first query callback for agent: %s", endpoint.c_str());
+        queried_agents_.insert(endpoint);
+    }
+    
     if (--on_query_num_ == 0) {
         ScheduleNextQuery();
     }
-
     std::map<AgentAddr, AgentInfo*>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
         LOG(FATAL, "query agent [%s] not exist", endpoint.c_str());
@@ -479,7 +508,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     LOG(INFO, "query agent [%s] success", endpoint.c_str());
-
+    
     AgentInfo* agent = it->second;
     const AgentInfo& report_agent_info = response->agent();
     agent->CopyFrom(report_agent_info);
@@ -489,6 +518,16 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid();
+       
+        if (first_query_on_agent && jobs_.find(jobid) != jobs_.end() && 
+            jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
+            PodStatus* pod = new PodStatus();
+            pod->CopyFrom(report_pod_info);
+            jobs_[jobid]->pods_[podid] = pod;
+            if(pod->state() == kPodRunning) {
+                agent_running_pods[jobid][podid] = pod;
+            }
+        }
         if (agent_running_pods.find(jobid) == agent_running_pods.end()) {
             LOG(WARNING, "report non-exist pod [%s %s]", jobid.c_str(), podid.c_str());
             continue;
@@ -523,6 +562,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             ReschedulePod(pod);
         }
     }
+    
+    if (queried_agents_.size() == agents_.size() && safe_mode_) {
+        FillAllJobs();
+        safe_mode_ = false;
+        LOG(INFO, "master leave safe mode");
+    }
 }
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
@@ -554,6 +599,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         Job* job = job_it->second;
         JobOverview* overview = jobs_overview->Add();
         overview->mutable_desc()->CopyFrom(job->desc_);
+        overview->mutable_desc()->mutable_pod()->Clear();
         overview->set_jobid(jobid);
         overview->set_state(job->state_);
 

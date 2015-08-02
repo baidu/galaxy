@@ -51,7 +51,6 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     task->mutable_requirement()->set_millicores(job.cpu_required);
     task->mutable_requirement()->set_memory(job.mem_required);
     request.mutable_job()->set_replica(job.replica);
-
     rpc_client_->SendRequest(master_, &Master_Stub::SubmitJob,
                              &request,&response,5,1);
     return response.jobid();
@@ -95,6 +94,7 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.running_num = job.running_num();
         job_info.cpu_used = job.resource_used().millicores();
         job_info.mem_used = job.resource_used().memory();
+				job_info.is_batch = (job.desc().type() == kBatch);
         jobs->push_back(job_info);
     }
     return true;
@@ -113,8 +113,11 @@ bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
         node_desc.task_num = node.pods_size();
         node_desc.cpu_share = node.total().millicores();
         node_desc.mem_share = node.total().memory();
-        node_desc.cpu_used = node.assigned().millicores();
-        node_desc.mem_used = node.assigned().memory();
+        node_desc.cpu_assigned = node.assigned().millicores();
+        node_desc.mem_assigned = node.assigned().memory();
+        node_desc.cpu_used = node.used().millicores();
+        node_desc.mem_used = node.used().memory();
+ 
         nodes->push_back(node_desc);
     }
     return true;

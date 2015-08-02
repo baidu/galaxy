@@ -20,6 +20,9 @@ DECLARE_int32(agent_heartbeat_interval);
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 
+DECLARE_int32(agent_millicores);
+DECLARE_int32(agent_memory);
+
 namespace baidu {
 namespace galaxy {
 
@@ -31,7 +34,8 @@ AgentImpl::AgentImpl() :
     rpc_client_(NULL),
     endpoint_(),
     master_(NULL),
-    gced_(NULL) { 
+    gced_(NULL),
+    resource_capacity_() { 
     rpc_client_ = new RpcClient();    
     endpoint_ = FLAGS_agent_ip;
     endpoint_.append(":");
@@ -68,6 +72,14 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
         resp->set_status(kRpcError); 
     } else {
         resp->set_status(kOk);
+        resp->mutable_agent()->mutable_total()->set_millicores(FLAGS_agent_millicores);
+        resp->mutable_agent()->mutable_total()->set_memory(FLAGS_agent_memory);
+        resp->mutable_agent()->mutable_unassigned()->set_millicores(resource_capacity_.millicores);
+        resp->mutable_agent()->mutable_unassigned()->set_memory(resource_capacity_.memory);
+        resp->mutable_agent()->mutable_assigned()->set_millicores(FLAGS_agent_millicores - resource_capacity_.millicores);
+        resp->mutable_agent()->mutable_assigned()->set_memory(FLAGS_agent_memory - resource_capacity_.memory);
+        resp->mutable_agent()->mutable_free()->set_millicores(FLAGS_agent_millicores);
+        resp->mutable_agent()->mutable_free()->set_memory(FLAGS_agent_memory);
         for (int i = 0; i < gced_response.pods_size(); i++) {
             PodStatus* pod_status = 
                             resp->mutable_agent()->add_pods();
@@ -92,6 +104,23 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
         gced_request.mutable_pod()->CopyFrom(req->pod());
     }
 
+    ResourceCapacity requirement;
+    requirement.millicores = 0; 
+    requirement.memory = 0;
+    for (int i = 0; i < req->pod().tasks_size(); i++) {
+        requirement.millicores += 
+            req->pod().tasks(i).requirement().millicores(); 
+        requirement.memory += 
+            req->pod().tasks(i).requirement().memory();
+    }
+
+    if (requirement.millicores > resource_capacity_.millicores
+            || requirement.memory > resource_capacity_.memory) {
+        resp->set_status(kQuota); 
+        done->Run();
+        return;
+    }
+
     bool ret = rpc_client_->SendRequest(gced_,
                                         &Gced_Stub::LaunchPod,
                                         &gced_request,
@@ -102,9 +131,14 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
         LOG(WARNING, "run pod failed for rpc failed");
     } else {
         resp->set_status(gced_response.status()); 
-        LOG(WARNING, "run pod status %s", Status_Name(gced_response.status()).c_str());
+        LOG(WARNING, "run pod status %s", 
+                Status_Name(gced_response.status()).c_str());
     }
 
+    if (resp->status() == kOk) {
+        resource_capacity_.millicores -= requirement.millicores;    
+        resource_capacity_.memory -= requirement.memory;
+    }
     done->Run();
     return;
 }
@@ -144,8 +178,8 @@ void AgentImpl::KeepHeartBeat() {
 
 bool AgentImpl::Init() {
 
-    //resource_capacity_.millicores = FLAGS_agent_millicores;
-    //resource_capacity_.memory = FLAGS_agent_memory;
+    resource_capacity_.millicores = FLAGS_agent_millicores;
+    resource_capacity_.memory = FLAGS_agent_memory;
     //ParseVolumeInfoFromString(FLAGS_agent_volume_disks, &(resource_capacity_.disks));
     //ParseVolumeInfoFromString(FLAGS_agent_volume_ssds, &(resource_capacity_.ssds));
 
@@ -175,11 +209,6 @@ bool AgentImpl::PingMaster() {
                                     &response,
                                     5, 1);    
 }
-
-//void AgentImpl::ParseVolumeInfoFromString(const std::string& volume_str,
-//                                          std::vector<Volume>* volumes) {
-//    return;    
-//}
 
 bool AgentImpl::RegistToMaster() {
     if (!rpc_client_->GetStub(master_endpoint_, &master_)) {
