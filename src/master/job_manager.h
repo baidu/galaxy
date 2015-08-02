@@ -4,6 +4,7 @@
 #ifndef BAIDU_GALAXY_JOB_MANGER_H
 #define BAIDU_GALAXY_JOB_MANGER_H
 #include <string>
+#include <set>
 #include <map>
 #include <vector>
 
@@ -29,6 +30,7 @@ struct Job {
     JobState state_;
     std::map<PodId, PodStatus*> pods_;
     JobDescriptor desc_;
+    JobId id_;
 };
 
 class JobManager {
@@ -47,7 +49,6 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
-
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -68,6 +69,8 @@ private:
                             QueryResponse* response, bool failed, int error);
 
     void ScheduleNextQuery();
+    void FillPodsToJob(Job* job);
+    void FillAllJobs();
 
 private:
     std::map<JobId, Job*> jobs_;
@@ -84,6 +87,8 @@ private:
     Mutex mutex_timer_;
     RpcClient rpc_client_;
     int64_t on_query_num_;
+    std::set<AgentAddr> queried_agents_;
+    bool safe_mode_;
 };
 
 }
