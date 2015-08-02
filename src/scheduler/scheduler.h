@@ -75,6 +75,7 @@ class Scheduler {
 public:
     static double CalcLoad(const AgentInfo* agent);
 
+    // 检查agent是否处于超载
     static bool CheckOverLoad(const AgentInfo* agent);
 
     Scheduler() : schedule_turns_(0){}

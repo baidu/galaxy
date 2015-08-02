@@ -245,31 +245,47 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
             job->desc().type() == kSystem) {
         // 判断CPU是否满足
         if (agent_info->unassigned().millicores() < resource.millicores()) {
-            LOG(INFO, "See Code Line agent %d  resource %d", agent_info->unassigned().millicores(),
-             resource.millicores());
+            LOG(INFO, "agent %s does not satisfy long run job %s cpu  requirement , require %d unassigned %d ",
+                agent_info->endpoint().c_str(),
+                job->jobid().c_str(),
+                resource.millicores(),
+                agent_info->unassigned().millicores());
             return false;
         }
+
         // 判断mem
         if (agent_info->unassigned().memory() < resource.memory()) {
-            LOG(INFO, "See Code Line");
+            LOG(INFO, "agent %s does not satisfy long run job %s memory  requirement , require %d unassigned %d ",
+                agent_info->endpoint().c_str(),
+                job->jobid().c_str(),
+                resource.memory(),
+                agent_info->unassigned().memory() );
             return false;
         }
     }
     else if (job->desc().type() == kBatch) {
         // 判断CPU是否满足
         if (agent_info->free().millicores() < resource.millicores()) {
-            LOG(INFO, "See Code Line");
+            LOG(INFO, "agent %s does not satisfy batch job %s cpu  requirement , require %d unassigned %d ",
+                agent_info->endpoint().c_str(),
+                job->jobid().c_str(),
+                resource.millicores(),
+                agent_info->unassigned().millicores());
             return false;
         }
         // 判断mem
         if (agent_info->free().memory() < resource.memory()) {
-            LOG(INFO, "See Code Line");
+            LOG(INFO, "agent %s does not satisfy batch run job %s memory  requirement , require %d unassigned %d ",
+                agent_info->endpoint().c_str(),
+                job->jobid().c_str(),
+                resource.memory(),
+                agent_info->unassigned().memory() );
             return false;
         }
     }
     else {
         // 不支持类型
-        LOG(INFO, "See Code Line");
+        LOG(INFO, "scheduler does not support job %s", job->jobid().c_str());
         return false;
     }
 
@@ -278,7 +294,10 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
         for (int i = 0; i < agent_info->used().ports_size(); i++) {
             for (int j = 0; j < resource.ports_size(); j++) {
                 if (agent_info->used().ports(i) == resource.ports(j)) {
-                    LOG(INFO, "See Code Line");
+                    LOG(INFO, "the port %d on agent %s has been used, but job %s required it ",
+                            resource.ports(j),
+                            agent_info->endpoint().c_str(),
+                            job->jobid().c_str());
                     return false;
                 }
             }
@@ -287,12 +306,13 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
     // 判断disks
     if (resource.disks_size() > 0) {
         if (resource.disks_size() > agent_info->unassigned().disks_size()) {
-            LOG(INFO, "See Code Line");
+            LOG(INFO, "the disk size on agent %s dost not satisfy job %s requirement, left %d, require %d",
+                agent_info->endpoint().c_str(), job->jobid().c_str(),
+                resource.disks_size(), agent_info->unassigned().disks_size());
             return false;
         }
         std::vector<Volume> unassigned;
         for (int i = 0; i < agent_info->unassigned().disks_size(); i++) {
-            LOG(INFO, "See Code Line");
             unassigned.push_back(agent_info->unassigned().disks(i));
         }
         std::vector<Volume> required;
@@ -300,7 +320,8 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
             required.push_back(resource.disks(j));
         }
         if (!VolumeFit(unassigned, required)) {
-            LOG(INFO, "See Code Line");
+            LOG(INFO, "disk quota on agent %s does not satisfy  job %s requirement ",
+                agent_info->endpoint().c_str(), job->jobid().c_str());
             return false;
         }
     }
@@ -308,7 +329,9 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
     // 判断ssd
     if (resource.ssds_size() > 0) {
          if (resource.ssds_size() > agent_info->unassigned().ssds_size()) {
-             LOG(INFO, "See Code Line");
+             LOG(INFO, "the ssd size on agent %s dost not satisfy job %s requirement, left %d, require %d",
+                 agent_info->endpoint().c_str(), job->jobid().c_str(),
+                 resource.disks_size(), agent_info->unassigned().disks_size());
              return false;
          }
          std::vector<Volume> unassigned;
@@ -320,7 +343,8 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
              required.push_back(resource.ssds(j));
          }
          if (!VolumeFit(unassigned, required)) {
-             LOG(INFO, "See Code Line");
+             LOG(INFO, "ssd quota on agent %s does not satisfy  job %s requirement ",
+                 agent_info->endpoint().c_str(), job->jobid().c_str());
              return false;
          }
     }
