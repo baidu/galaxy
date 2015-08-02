@@ -18,7 +18,8 @@ DECLARE_string(master_port);
 DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd> <batch>\n" 
-                                 "./galaxy_client list <jobid>\n"
+                                 "./galaxy_client list\n"
+                                 "./galaxy_client listagent\n"
                                  "./galaxy_client kill <jobid>";
 
 
