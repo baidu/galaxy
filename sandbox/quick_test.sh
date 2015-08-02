@@ -16,7 +16,7 @@ echo "--nexus_servers=$hn:8868,$hn:8869,$hn:8870,$hn:8871,$hn:8872" >> galaxy.fl
 sleep 3
 
 tar zcf batch.tar.gz ../galaxy
-echo "top" > longrun.sh
+echo "yes" > longrun.sh
 tar zcf longrun.tar.gz longrun.sh
 
 ../galaxy submit job_batch batch.tar.gz 3 3 3 "./galaxy list" batch
