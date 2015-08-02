@@ -6,6 +6,7 @@ set -e
 hn=`hostname`
 echo "--master_port=7810" > galaxy.flag
 echo "--master_host=127.0.0.1" >> galaxy.flag
+echo "--agent_port=7182" >> galaxy.flag
 echo "--agent_cpu_share=1000000" >> galaxy.flag
 echo "--agent_mem_share=1000000" >> galaxy.flag
 
