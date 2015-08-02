@@ -25,3 +25,4 @@ tar zcf longrun.tar.gz longrun.sh
 rm -rf longrun*
 rm -rf batch.tar.gz
 ../galaxy list
+../galaxy listagent
