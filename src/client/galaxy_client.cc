@@ -56,7 +56,30 @@ int AddJob(int argc, char* argv[]) {
     printf("Submit job %s\n", jobid.c_str());
     return 0;
 }
-
+int ListAgent(int argc, char* argv[]) {
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
+    std::vector<baidu::galaxy::NodeDescription> agents;
+    baidu::common::TPrinter tp(7);
+    tp.AddRow(7, "", "addr", "pods", "cpu_used", "cpu_total", "mem_used", "mem_total");
+    if (galaxy->ListAgents(&agents)) {
+        for (uint32_t i = 0; i < agents.size(); i++) {
+            std::vector<std::string> vs;
+						vs.push_back(baidu::common::NumToString(i + 1));
+						vs.push_back(agents[i].addr);
+						vs.push_back(baidu::common::NumToString(agents[i].task_num));
+						vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
+						vs.push_back(baidu::common::NumToString(agents[i].cpu_share));
+						vs.push_back(baidu::common::NumToString(agents[i].mem_used));
+						vs.push_back(baidu::common::NumToString(agents[i].mem_share));
+            tp.AddRow(vs);
+				}
+        printf("%s\n", tp.ToString().c_str());
+				return 0;
+		}
+		printf("Listagent fail\n");
+		return 1;
+}
+ 
 int ListJob(int argc, char* argv[]) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
@@ -93,6 +116,8 @@ int main(int argc, char* argv[]) {
         return AddJob(argc - 2, argv + 2);
     } else if (strcmp(argv[1], "list") == 0) {
         return ListJob(argc - 2, argv + 2);
+    } else if (strcmp(argv[1], "listagent") == 0) {
+				return ListAgent(argc - 2, argv + 2);
     } else {
         fprintf(stderr,"Usage:%s\n", kGalaxyUsage.c_str());
         return -1;
