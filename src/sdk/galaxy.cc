@@ -51,7 +51,6 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     task->mutable_requirement()->set_millicores(job.cpu_required);
     task->mutable_requirement()->set_memory(job.mem_required);
     request.mutable_job()->set_replica(job.replica);
-
     rpc_client_->SendRequest(master_, &Master_Stub::SubmitJob,
                              &request,&response,5,1);
     return response.jobid();

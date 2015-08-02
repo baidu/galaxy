@@ -26,12 +26,15 @@ const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_packa
 void ReadBinary(const std::string& file, std::string* binary) {
     FILE* fp = fopen(file.c_str(), "rb");
     if (fp == NULL) {
+        fprintf(stderr, "Read binary fail\n");
         return;
     }
     char buf[1024];
-    while (fread(buf, sizeof(buf), 1, fp) > 0) {
-        binary->append(buf);
+		int len = 0;
+    while ((len = fread(buf, 1, sizeof(buf), fp)) > 0) {
+        binary->append(buf, len);
     }
+		fclose(fp);
 }
 
 int AddJob(int argc, char* argv[]) {
@@ -42,6 +45,7 @@ int AddJob(int argc, char* argv[]) {
     baidu::galaxy::JobDescription job;
     job.job_name = argv[0];
     ReadBinary(argv[1], &job.binary);
+    printf("binary size %lu\n", job.binary.size());
     job.replica = atoi(argv[2]);
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
