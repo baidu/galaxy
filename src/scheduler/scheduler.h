@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 #include "proto/master.pb.h"
-
+#include "mutex.h"
 
 namespace baidu {
 namespace galaxy {
@@ -54,13 +54,29 @@ struct PodScaleDownCell {
                        const PodDescriptor* desc);
 
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
+};
 
+class AgentHistory {
+public:
+    // 返回此Agent连续处于OverLoad的轮数
+    int32_t PushOverloadAgent(const AgentInfo* agent);
+
+    int32_t CleanOverloadAgent(const AgentInfo* agent);
+
+    // 返回此Agent连续处于OverLoad的轮数
+    int32_t CheckOverloadAgent(const AgentInfo* agent);
+
+private:
+    std::map<std::string, int32_t> agent_overload_map_;
 };
 
 class Scheduler {
 
 public:
-    static double CalcLoad(const AgentInfo& agent);
+    static double CalcLoad(const AgentInfo* agent);
+
+    // 检查agent是否处于超载
+    static bool CheckOverLoad(const AgentInfo* agent);
 
     Scheduler() : schedule_turns_(0){}
     ~Scheduler() {}
@@ -107,7 +123,25 @@ public:
      */
     int32_t UpdateAgent(const AgentInfo* agent_info);
 
+    /**
+     *
+     */
+    int32_t SyncJobOverview(const ListJobsResponse* response);
+
+    int32_t ScheduleAgentOverLoad(std::vector<ScheduleInfo*>* propose);
+
+    /*
+     * @return
+     *   0 for found
+     *  -1 for not found
+     */
+    int32_t GetPodCountForAgent(const AgentInfo* agent,
+                    int32_t* prod_count, int32_t* non_prod_count);
+
+    int32_t ScaleDownOverloadAgent(const AgentInfo* agent,
+                    std::vector<ScheduleInfo*>* propose);
 private:
+
     int32_t ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
                 std::vector<PodScaleUpCell*>* pending_pods);
 
@@ -119,9 +153,10 @@ private:
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
     std::map<std::string, AgentInfo*> resources_;
-
+    std::map<std::string, JobOverview*> job_overview_;
     int64_t schedule_turns_;    // 当前调度轮数
-
+    AgentHistory agent_his_;
+    Mutex mutex_;
 };
 
 

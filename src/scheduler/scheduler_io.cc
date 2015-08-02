@@ -25,10 +25,14 @@ void SchedulerIO::Loop() {
     GetPendingJobsRequest get_jobs_request;
     GetPendingJobsResponse get_jobs_response;
 
+    ListJobsRequest list_jobs_request;
+    ListJobsResponse list_jobs_response;
+
     ProposeRequest pro_request;
     ProposeResponse pro_response;
+
     ret = rpc_client_.SendRequest(master_stub_,
-                                      &Master_Stub::GetPendingJobs,
+                                 &Master_Stub::GetPendingJobs,
                                  &get_jobs_request,
                                  &get_jobs_response,
                                  5, 1);
@@ -38,6 +42,17 @@ void SchedulerIO::Loop() {
     LOG(INFO, "get pending jobs from master , pending_size %d, scale_down_size %d",
             get_jobs_response.scale_up_jobs_size(),
             get_jobs_response.scale_down_jobs_size());
+
+    ret = rpc_client_.SendRequest(master_stub_,
+                            &Master_Stub::ListJobs,
+                            &list_jobs_request,
+                            &list_jobs_response,
+                            5, 1);
+    if (!ret) {
+        LOG(WARNING, "fail to get list jobs from master");
+    }
+    LOG(INFO, "list jobs from master , #job %d", list_jobs_response.jobs_size());
+
     std::vector<JobInfo*> pending_jobs;
     for (int i = 0; i < get_jobs_response.scale_up_jobs_size(); i++) {
         pending_jobs.push_back(get_jobs_response.mutable_scale_up_jobs(i));
@@ -48,13 +63,18 @@ void SchedulerIO::Loop() {
     }
     std::vector<ScheduleInfo*> propose;
     int32_t status = scheduler_.ScheduleScaleUp(pending_jobs, &propose);
-    if (status != 0) {
+    if (status < 0) {
         LOG(INFO, "fail to schedule scale up ");
         goto END;
     }
     status = scheduler_.ScheduleScaleDown(reducing_jobs, &propose);
-    if (status != 0) {
+    if (status < 0) {
         LOG(INFO, "fail to schedule scale down ");
+        goto END;
+    }
+    status = scheduler_.ScheduleAgentOverLoad(&propose);
+    if (status < 0) {
+        LOG(INFO, "fail to schedule agent overload");
         goto END;
     }
 
