@@ -599,7 +599,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         Job* job = job_it->second;
         JobOverview* overview = jobs_overview->Add();
         overview->mutable_desc()->CopyFrom(job->desc_);
-				overview->mutable_desc()->mutable_pod()->Clear();
+        overview->mutable_desc()->mutable_pod()->Clear();
         overview->set_jobid(jobid);
         overview->set_state(job->state_);
 
