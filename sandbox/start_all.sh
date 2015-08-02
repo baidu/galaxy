@@ -9,3 +9,7 @@ nohup  ../agent --flagfile=galaxy.flag >agent.log 2>&1 &
 sleep 1
 echo "start scheduler"
 nohup ../scheduler --flagfile=galaxy.flag >scheduler.log 2>&1 &
+
+sleep 1
+echo "start gced"
+nohup ../gced --gce_initd_bin=`pwd`/../initd > gced.log 2>&1 &
