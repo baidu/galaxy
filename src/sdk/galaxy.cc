@@ -114,8 +114,11 @@ bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
         node_desc.task_num = node.pods_size();
         node_desc.cpu_share = node.total().millicores();
         node_desc.mem_share = node.total().memory();
-        node_desc.cpu_used = node.assigned().millicores();
-        node_desc.mem_used = node.assigned().memory();
+        node_desc.cpu_assigned = node.assigned().millicores();
+        node_desc.mem_assigned = node.assigned().memory();
+        node_desc.cpu_used = node.used().millicores();
+        node_desc.mem_used = node.used().memory();
+ 
         nodes->push_back(node_desc);
     }
     return true;

@@ -38,10 +38,12 @@ struct JobInformation {
 struct NodeDescription {
     std::string addr;
     int32_t task_num;
-    int32_t cpu_share;
+    int64_t cpu_share;
     int64_t mem_share;
     int64_t cpu_used;
     int64_t mem_used;
+		int64_t cpu_assigned;
+		int64_t mem_assigned;
 };
 
 class Galaxy {
