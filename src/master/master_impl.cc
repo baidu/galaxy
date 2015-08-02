@@ -72,7 +72,7 @@ void MasterImpl::ReloadJobInfo() {
         }
         result->Next();
         job_amount ++;
-    }
+}
     LOG(INFO, "reload all job desc finish, total#: %d", job_amount);
 }
 
@@ -105,6 +105,18 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
     job_info.set_jobid(job_id);
     job_info.SerializeToString(&job_raw_data);
     job_info.set_state(kJobNormal);
+    LOG(INFO, "user[%s] try to submit a job: \"%s\"", 
+        job_info.desc().user().c_str(), job_info.desc().name().c_str());
+    for (int i = 0; i < job_info.desc().pod().tasks_size(); i++) {
+        const TaskDescriptor& task_desc = job_info.desc().pod().tasks(i);
+        LOG(INFO, "try submmit job: \"%s\", "
+            "tasks[%d]: start_cmd: \"%s\", stop_cmd: \"%s\", binary_size: %d",
+            job_info.desc().name().c_str(), 
+            i, 
+            task_desc.start_command().c_str(),
+            task_desc.stop_command().c_str(),
+            task_desc.binary().size());
+    }
     std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
                           + "/" + job_id;
     ::galaxy::ins::sdk::SDKError err;
