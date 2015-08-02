@@ -266,20 +266,20 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
     else if (job->desc().type() == kBatch) {
         // 判断CPU是否满足
         if (agent_info->free().millicores() < resource.millicores()) {
-            LOG(INFO, "agent %s does not satisfy batch job %s cpu  requirement , require %d unassigned %d ",
+            LOG(INFO, "agent %s does not satisfy batch job %s cpu  requirement , require %d free %d ",
                 agent_info->endpoint().c_str(),
                 job->jobid().c_str(),
                 resource.millicores(),
-                agent_info->unassigned().millicores());
+                agent_info->free().millicores());
             return false;
         }
         // 判断mem
         if (agent_info->free().memory() < resource.memory()) {
-            LOG(INFO, "agent %s does not satisfy batch run job %s memory  requirement , require %d unassigned %d ",
+            LOG(INFO, "agent %s does not satisfy batch run job %s memory  requirement , require %d free %d ",
                 agent_info->endpoint().c_str(),
                 job->jobid().c_str(),
                 resource.memory(),
-                agent_info->unassigned().memory() );
+                agent_info->free().memory());
             return false;
         }
     }
