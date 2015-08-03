@@ -17,7 +17,12 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
+<<<<<<< HEAD
 #include "pod_manager.h"
+=======
+#include "ins_sdk.h"
+using ::galaxy::ins::sdk::InsSDK;
+>>>>>>> upstream/refactor
 
 namespace baidu {
 namespace galaxy {
@@ -42,6 +47,7 @@ public:
                          const ::baidu::galaxy::KillPodRequest* req,
                          ::baidu::galaxy::KillPodResponse* resp,
                          ::google::protobuf::Closure* done);
+    void HandleMasterChange(const std::string& new_master_endpoint);
 private:
     void KeepHeartBeat();
     
@@ -49,6 +55,7 @@ private:
     bool CheckGcedConnection();
 
     bool PingMaster();
+    bool WatchMasterPath();
 
     struct ResourceCapacity {
         int64_t millicores; 
@@ -58,7 +65,6 @@ private:
               memory(0) {
         }
     };
-
 private:
     std::string master_endpoint_;
     std::string gce_endpoint_; 
@@ -70,6 +76,9 @@ private:
     Master_Stub* master_;
     Gced_Stub* gced_;
     ResourceCapacity resource_capacity_;
+
+    InsSDK* nexus_;
+    Mutex mutex_master_endpoint_;
 
     PodManager pod_manager_;
 };
