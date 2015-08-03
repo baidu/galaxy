@@ -17,6 +17,8 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
+#include "pod_manager.h"
+
 namespace baidu {
 namespace galaxy {
 
@@ -68,6 +70,8 @@ private:
     Master_Stub* master_;
     Gced_Stub* gced_;
     ResourceCapacity resource_capacity_;
+
+    PodManager pod_manager_;
 };
 
 }   // ending namespace galaxy

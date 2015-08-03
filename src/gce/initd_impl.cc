@@ -142,11 +142,6 @@ void InitdImpl::Execute(::google::protobuf::RpcController* controller,
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid, 
                                              request->path().c_str());
-
-        // int ret = ::setpgid(my_pid, my_pid);
-        // if (ret != 0) {
-        //     assert(0); 
-        // }
         
         // attach cgroup 
         if (request->has_cgroup_path() 
@@ -157,22 +152,6 @@ void InitdImpl::Execute(::google::protobuf::RpcController* controller,
         process::PrepareChildProcessEnvStep2(stdout_fd, 
                                              stderr_fd, 
                                              fd_vector);
-
-        // deal with std fd
-        // while (::dup2(stdout_fd, STDOUT_FILENO) == -1 
-        //         && errno == EINTR) {}
-        // while (::dup2(stderr_fd, STDERR_FILENO) == -1
-        //         && errno == EINTR) {}
-        // for (size_t i = 0; i < fd_vector.size(); i++) {
-        //     if (fd_vector[i] == STDOUT_FILENO
-        //         || fd_vector[i] == STDERR_FILENO
-        //         || fd_vector[i] == STDIN_FILENO) {
-        //         // not close std fds
-        //         continue; 
-        //     } 
-        //     ::close(fd_vector[i]);
-        // }
-
         // prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),
@@ -290,6 +269,20 @@ bool InitdImpl::AttachCgroup(const std::string& cgroup_path,
         }
     }
     return true;
+}
+
+
+void InitdImpl::CreatePod(::google::protobuf::RpcController* controller,
+                      const ::baidu::galaxy::CreatePodRequest* request,
+                      ::baidu::galaxy::CreatePodResponse* response,
+                      ::google::protobuf::Closure* done) {
+}
+
+
+void InitdImpl::GetPodStatus(::google::protobuf::RpcController* controller,
+                         const ::baidu::galaxy::GetPodStatusRequest* request,
+                         ::baidu::galaxy::GetPodStatusResponse* response,
+                         ::google::protobuf::Closure* done) {
 }
 
 bool InitdImpl::LoadProcessInfoCheckPoint(const ProcessInfoCheckpoint& checkpoint) {

@@ -21,14 +21,25 @@ public:
     InitdImpl();
     virtual ~InitdImpl() {}
     bool Init();
-    virtual void GetProcessStatus(::google::protobuf::RpcController* controller,
-                       const ::baidu::galaxy::GetProcessStatusRequest* request,
-                       ::baidu::galaxy::GetProcessStatusResponse* response,
-                       ::google::protobuf::Closure* done);
-    virtual void Execute(::google::protobuf::RpcController* controller,
-                       const ::baidu::galaxy::ExecuteRequest* request,
-                       ::baidu::galaxy::ExecuteResponse* response,
-                       ::google::protobuf::Closure* done);
+    void GetProcessStatus(::google::protobuf::RpcController* controller,
+                          const ::baidu::galaxy::GetProcessStatusRequest* request,
+                          ::baidu::galaxy::GetProcessStatusResponse* response, 
+                          ::google::protobuf::Closure* done);
+
+    void Execute(::google::protobuf::RpcController* controller,
+                 const ::baidu::galaxy::ExecuteRequest* request,
+                 ::baidu::galaxy::ExecuteResponse* response,
+                 ::google::protobuf::Closure* done);
+
+    void CreatePod(::google::protobuf::RpcController* controller,
+                   const ::baidu::galaxy::CreatePodRequest* request,
+                   ::baidu::galaxy::CreatePodResponse* response,
+                   ::google::protobuf::Closure* done);
+
+    void GetPodStatus(::google::protobuf::RpcController* controller,
+                      const ::baidu::galaxy::GetPodStatusRequest* request,
+                      ::baidu::galaxy::GetPodStatusResponse* response,
+                      ::google::protobuf::Closure* done);
 
     bool LoadProcessInfoCheckPoint(const ProcessInfoCheckpoint& checkpoint);
     bool DumpProcessInfoCheckPoint(ProcessInfoCheckpoint* checkpoint);
