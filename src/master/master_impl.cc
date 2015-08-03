@@ -86,7 +86,7 @@ void MasterImpl::AcquireMasterLock() {
     std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
     ret = nexus_->Put(master_path_key, master_endpoint, &err);
     assert(ret && err == ::galaxy::ins::sdk::kOK);
-    nexus_->Watch(master_lock, &OnMasterLockChange, this, &err);
+    ret = nexus_->Watch(master_lock, &OnMasterLockChange, this, &err);
     assert(ret && err == ::galaxy::ins::sdk::kOK);
     LOG(INFO, "master lock [ok].  %s -> %s", 
         master_path_key.c_str(), master_endpoint.c_str());

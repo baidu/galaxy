@@ -17,6 +17,9 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
+#include "ins_sdk.h"
+using ::galaxy::ins::sdk::InsSDK;
+
 namespace baidu {
 namespace galaxy {
 
@@ -40,6 +43,7 @@ public:
                          const ::baidu::galaxy::KillPodRequest* req,
                          ::baidu::galaxy::KillPodResponse* resp,
                          ::google::protobuf::Closure* done);
+    void HandleMasterChange(const std::string& new_master_endpoint);
 private:
     void KeepHeartBeat();
     
@@ -56,7 +60,6 @@ private:
               memory(0) {
         }
     };
-
 private:
     std::string master_endpoint_;
     std::string gce_endpoint_; 
@@ -68,6 +71,8 @@ private:
     Master_Stub* master_;
     Gced_Stub* gced_;
     ResourceCapacity resource_capacity_;
+    InsSDK* nexus_;
+    Mutex mutex_master_endpoint_;
 };
 
 }   // ending namespace galaxy
