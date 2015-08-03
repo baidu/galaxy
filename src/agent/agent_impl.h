@@ -17,12 +17,9 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
-<<<<<<< HEAD
 #include "pod_manager.h"
-=======
 #include "ins_sdk.h"
 using ::galaxy::ins::sdk::InsSDK;
->>>>>>> upstream/refactor
 
 namespace baidu {
 namespace galaxy {
