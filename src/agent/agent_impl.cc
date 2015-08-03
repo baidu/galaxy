@@ -193,7 +193,9 @@ bool AgentImpl::Init() {
     if (!CheckGcedConnection()) {
         return false; 
     }
-
+    if (!WatchMasterPath()) {
+        return false;
+    }
     if (!RegistToMaster()) {
         return false; 
     }
@@ -223,6 +225,10 @@ static void OnMasterChange(const ::galaxy::ins::sdk::WatchParam& param,
 }
 
 void AgentImpl::HandleMasterChange(const std::string& new_master_endpoint) {
+    if (!WatchMasterPath()) {
+        LOG(WARNING, "watch master again failed");
+        abort();
+    }
     MutexLock lock(&mutex_master_endpoint_);
     if (new_master_endpoint.empty()) {
         LOG(WARNING, "the master endpoint is deleted from nexus");
@@ -238,16 +244,18 @@ void AgentImpl::HandleMasterChange(const std::string& new_master_endpoint) {
             return;
         }  
     }
-    //Watch Again to Nexus
+}
+
+bool AgentImpl::WatchMasterPath() {
     std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Watch(master_path_key, &OnMasterChange, this, &err);
     if (!ok) {
-        LOG(FATAL, "fail to watch again on nexus, err_code: %d", err);
-        abort();
+        LOG(WARNING, "fail to watch on nexus, err_code: %d", err);
     } else {
-        LOG(INFO, "watch master again success.");
-    } 
+        LOG(INFO, "watch master success.");
+    }
+    return ok;
 }
 
 bool AgentImpl::RegistToMaster() {
@@ -256,17 +264,10 @@ bool AgentImpl::RegistToMaster() {
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Get(master_path_key, &master_endpoint_, &err);
     if (!ok) {
-        LOG(FATAL, "fail to get master endpoint from nexus, err_code: %d", err);
-        abort();
+        LOG(WARNING, "fail to get master endpoint from nexus, err_code: %d", err);
+        return false;
     } else {
         LOG(INFO, "master endpoint is: %s", master_endpoint_.c_str());
-    }
-    ok = nexus_->Watch(master_path_key, &OnMasterChange, this, &err);
-    if (!ok) {
-        LOG(FATAL, "fail to watch on nexus, err_code: %d", err);
-        abort();
-    } else {
-        LOG(INFO, "watch master success.");
     }
 
     if (!rpc_client_->GetStub(master_endpoint_, &master_)) {

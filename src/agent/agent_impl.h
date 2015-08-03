@@ -51,6 +51,7 @@ private:
     bool CheckGcedConnection();
 
     bool PingMaster();
+    bool WatchMasterPath();
 
     struct ResourceCapacity {
         int64_t millicores; 
