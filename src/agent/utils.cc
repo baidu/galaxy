@@ -19,6 +19,11 @@
 namespace baidu {
 namespace galaxy {
 
+int RandRange(int min, int max) {
+    srand(time(NULL));
+    return min + rand() % (max - min + 1);
+}
+
 void GetStrFTime(std::string* time_str) {
     const int TIME_BUFFER_LEN = 100;        
     char time_buffer[TIME_BUFFER_LEN];
@@ -35,14 +40,6 @@ void GetStrFTime(std::string* time_str) {
     return ;
 }
 
-void ReplaceEmptyChar(std::string& str) {
-    size_t index = str.find_first_of(" ");
-    while (index != std::string::npos) {
-        str.replace(index, 1, "_");
-        index = str.find_first_of(" ");
-    }
-}
-
 namespace process { 
 
 bool PrepareStdFds(const std::string& pwd, 
@@ -54,8 +51,10 @@ bool PrepareStdFds(const std::string& pwd,
     }
     std::string now_str_time;
     GetStrFTime(&now_str_time);
-    std::string stdout_file = pwd + "/stdout_" + now_str_time;
-    std::string stderr_file = pwd + "/stderr_" + now_str_time;
+    pid_t pid = ::getpid();
+    std::string str_pid = boost::lexical_cast<std::string>(pid);
+    std::string stdout_file = pwd + "/stdout_" + str_pid + "_" + now_str_time;
+    std::string stderr_file = pwd + "/stderr_" + str_pid + "_" + now_str_time;
 
     const int STD_FILE_OPEN_FLAG = O_CREAT | O_APPEND | O_WRONLY;
     const int STD_FILE_OPEN_MODE = S_IRWXU | S_IRWXG | S_IROTH;
@@ -170,7 +169,7 @@ bool IsExists(const std::string& path) {
 bool Mkdir(const std::string& dir_path) {
     const int dir_mode = 0777;
     int ret = ::mkdir(dir_path.c_str(), dir_mode); 
-    return ret == 0;
+    return ret;
 }
 
 }   // ending namespace file

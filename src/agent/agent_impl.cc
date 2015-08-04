@@ -98,53 +98,64 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
                        const ::baidu::galaxy::RunPodRequest* req,
                        ::baidu::galaxy::RunPodResponse* resp,
                        ::google::protobuf::Closure* done) {
-     
-    LaunchPodRequest gced_request;
-    LaunchPodResponse gced_response;
-    if (req->has_podid()) {
-        gced_request.set_podid(req->podid()); 
-    }
-    if (req->has_pod()) {
-        gced_request.mutable_pod()->CopyFrom(req->pod());
-    }
-
-    ResourceCapacity requirement;
-    requirement.millicores = 0; 
-    requirement.memory = 0;
-    for (int i = 0; i < req->pod().tasks_size(); i++) {
-        requirement.millicores += 
-            req->pod().tasks(i).requirement().millicores(); 
-        requirement.memory += 
-            req->pod().tasks(i).requirement().memory();
-    }
-
-    if (requirement.millicores > resource_capacity_.millicores
-            || requirement.memory > resource_capacity_.memory) {
-        resp->set_status(kQuota); 
-        done->Run();
-        return;
-    }
-
-    bool ret = rpc_client_->SendRequest(gced_,
-                                        &Gced_Stub::LaunchPod,
-                                        &gced_request,
-                                        &gced_response,
-                                        5, 1);
-    if (!ret) {
-        resp->set_status(kRpcError); 
-        LOG(WARNING, "run pod failed for rpc failed");
+    PodDesc pod;
+    pod.id = req->podid();
+    pod.desc = req->pod();
+    int ret = pod_manager_.Run(pod);
+    if (ret != 0) {
+        resp->set_status(kUnknown);
     } else {
-        resp->set_status(gced_response.status()); 
-        LOG(WARNING, "run pod status %s", 
-                Status_Name(gced_response.status()).c_str());
-    }
-
-    if (resp->status() == kOk) {
-        resource_capacity_.millicores -= requirement.millicores;    
-        resource_capacity_.memory -= requirement.memory;
+        resp->set_status(kOk);
     }
     done->Run();
     return;
+    
+    // LaunchPodRequest gced_request;
+    // LaunchPodResponse gced_response;
+    // if (req->has_podid()) {
+    //     gced_request.set_podid(req->podid()); 
+    // }
+    // if (req->has_pod()) {
+    //     gced_request.mutable_pod()->CopyFrom(req->pod());
+    // }
+
+    // ResourceCapacity requirement;
+    // requirement.millicores = 0; 
+    // requirement.memory = 0;
+    // for (int i = 0; i < req->pod().tasks_size(); i++) {
+    //     requirement.millicores += 
+    //         req->pod().tasks(i).requirement().millicores(); 
+    //     requirement.memory += 
+    //         req->pod().tasks(i).requirement().memory();
+    // }
+
+    // if (requirement.millicores > resource_capacity_.millicores
+    //         || requirement.memory > resource_capacity_.memory) {
+    //     resp->set_status(kQuota); 
+    //     done->Run();
+    //     return;
+    // }
+
+    // bool ret = rpc_client_->SendRequest(gced_,
+    //                                     &Gced_Stub::LaunchPod,
+    //                                     &gced_request,
+    //                                     &gced_response,
+    //                                     5, 1);
+    // if (!ret) {
+    //     resp->set_status(kRpcError); 
+    //     LOG(WARNING, "run pod failed for rpc failed");
+    // } else {
+    //     resp->set_status(gced_response.status()); 
+    //     LOG(WARNING, "run pod status %s", 
+    //             Status_Name(gced_response.status()).c_str());
+    // }
+
+    // if (resp->status() == kOk) {
+    //     resource_capacity_.millicores -= requirement.millicores;    
+    //     resource_capacity_.memory -= requirement.memory;
+    // }
+    // done->Run();
+    // return;
 }
 
 void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
