@@ -22,6 +22,8 @@ bool PrepareStdFds(const std::string& pwd,
                    int* stdout_fd, 
                    int* stderr_fd);
 
+void ReplaceEmptyChar(std::string& str);
+
 void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir);
 
 void PrepareChildProcessEnvStep2(const int stdout_fd, 

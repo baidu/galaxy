@@ -38,32 +38,20 @@ int TaskManager::DeletePodTasks(const PodDescriptor& pod) {
     return 0;
 }
 
-int TaskManager::UpdateTasksCpuLimit(const std::string& podid, 
-                                     const uint32_t millicores) {
+int TaskManager::UpdateTasksCpuLimit(const uint32_t millicores) {
     return 0;
 }
 
 void TaskManager::LoopCheckTaskStatus() {
-    // int status = 0;
-    // pid_t pid = ::waitpid(-1, &status, WNOHANG);    
-    // if (pid > 0 && WIFEXITED(status)) {
-    //     LOG(WARNING, "process %d exit ret %d",
-    //             pid, WEXITSTATUS(status));
-    //     MutexLock scope_lock(&lock_);
-    //     std::map<std::string, ProcessInfo>::iterator it
-    //         = process_infos_.begin();
-    //     for (; it != process_infos_.end(); ++it) {
-    //         if (it->second.pid() == pid) {
-    //             it->second.set_exit_code(WEXITSTATUS(status)); 
-    //             it->second.set_status(kProcessTerminate);
-    //             break;
-    //         } 
-    //     }
-    // }
-    // background_thread_.DelayTask(
-    //         FLAGS_gce_initd_zombie_check_interval,
-    //         boost::bind(&InitdImpl::ZombieCheck, this));
+}
+
+
+int Execute(const std::string& command) {
+    return 0;
+        
 }
 
 } // ending namespace galaxy
 } // ending namespace baidu
+
+

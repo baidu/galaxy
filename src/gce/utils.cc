@@ -35,6 +35,14 @@ void GetStrFTime(std::string* time_str) {
     return ;
 }
 
+void ReplaceEmptyChar(std::string& str) {
+    size_t index = str.find_first_of(" ");
+    while (index != std::string::npos) {
+        str.replace(index, 1, "_");
+        index = str.find_first_of(" ");
+    }
+}
+
 namespace process { 
 
 bool PrepareStdFds(const std::string& pwd, 

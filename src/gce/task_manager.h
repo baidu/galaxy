@@ -34,7 +34,7 @@ private:
         std::string cgroup_path;
     };
 
-    int Execute(const TaskDescriptor& desc);
+    int Execute(const std::string& desc);
 
     int Kill(const std::string& task_id);
 
