@@ -1,7 +1,0 @@
---master_port=7810
---master_host=127.0.0.1
---agent_port=7182
---agent_cpu_share=1000000
---agent_mem_share=1000000
---nexus_servers=ubuntu:8868,ubuntu:8869,ubuntu:8870,ubuntu:8871,ubuntu:8872
---gce_initd_bin=`pwd`/../initd
