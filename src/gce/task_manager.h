@@ -20,13 +20,12 @@ public:
 
     int DeletePodTasks(const PodDescriptor& pod);
 
-    int UpdateTasksCpuLimit(const std::string& podid, 
-                            const uint32_t millicores);
+    int UpdateTasksCpuLimit(const uint32_t millicores);
 
 private:
     struct TaskInfo {
         // meta infomation
-        std::string podid;
+        // std::string podid;
         TaskDescriptor desc;
 
         // dynamic resource usage
@@ -49,8 +48,8 @@ private:
     void LoopCheckTaskStatus();
 
 private:
-    // key pod id
-    Mutex lock_;
+    // key task id
+    Mutex tasks_mutex_;
     std::map<std::string, TaskInfo*> tasks_;
 
     ThreadPool background_thread_;
