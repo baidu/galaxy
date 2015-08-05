@@ -23,27 +23,6 @@ public:
     static void SubstractResource(const Resource& from, Resource* to);
     static bool FitResource(const Resource& from, const Resource& to);
     static std::string SelfEndpoint();
-    static bool CompareResource(const Resource& r_old, 
-                                const Resource& r_new);
-    template<class T, class Compare>
-    static bool CompareVector(std::vector<T>& l, 
-                              std::vector<T>& r,
-                              Compare comp) {
-        if (l.size() != r.size()) {
-            return false;
-        }
-        std::sort(l.begin(), l.end(), comp);
-        std::sort(r.begin(), r.end(), comp);
-        for (int i = 0; i < r.size(); i++) {
-            // has the same value
-            if (!comp(l[i], r[i]) && !comp(r[i], l[i])){
-                continue;
-            }
-            return false;
-        }
-        // has the same value
-        return true;
-    }
 
 private:
     static std::string UUID();

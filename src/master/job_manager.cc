@@ -12,6 +12,7 @@
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
 #include "master_util.h"
+#include "utils/resource_utils.h"
 #include "timer.h"
 #include <logging.h>
 
@@ -135,6 +136,7 @@ void JobManager::SuspendPod(PodStatus* pod) {
         ReclaimResource(*pod, agent);
         pod->set_state(kPodSuspend);
         pod->set_endpoint("");
+        agent->set_version(agent->version() + 1);
     }
     LOG(INFO, "pod suspended: %s", pod->podid().c_str());
 }
@@ -233,7 +235,8 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         LOG(INFO, "propose fail, no resource, error code:[%d]", feasible_status);
         return feasible_status;
     }
-
+    // update agent version
+    agent->set_version(agent->version() + 1);
     pod->set_endpoint(sche_info.endpoint());
     pod->set_state(kPodDeploy);
     job_pending_pods.erase(jt);
@@ -513,9 +516,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     LOG(INFO, "query agent [%s] success", endpoint.c_str());
     
     AgentInfo* agent = it->second;
+    AgentInfo* new_agent_info = response->mutable_agent();
+    UpdateAgentVersion(agent, new_agent_info);
+    LOG(INFO, "old agent info version is %d, the new is %d",
+        agent->version(),
+        new_agent_info->version());
     const AgentInfo& report_agent_info = response->agent();
-    // compare agent info
-    MasterUtil::CompareResource(agent->total(), report_agent_info->total());
     agent->CopyFrom(report_agent_info);
     PodMap agent_running_pods = running_pods_[endpoint]; // this is a copy
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
@@ -574,6 +580,36 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     }
 }
 
+void JobManager::UpdateAgentVersion(const AgentInfo* old_agent_info,
+                        AgentInfo* new_agent_info) {
+  
+    // check assigned
+    int32_t check_assigned = ResourceUtils::Compare(
+                    old_agent_info->assigned(),
+                    new_agent_info->assigned());
+    if (check_assigned != 0) {
+        new_agent_info->set_version(old_agent_info->version() + 1);
+        return;
+    }
+
+    // check used
+    int32_t check_used = ResourceUtils::Compare(
+                    old_agent_info->used(),
+                    new_agent_info->used());
+    if (check_used != 0) {
+        new_agent_info->set_version(old_agent_info->version() + 1);
+        return;
+    }
+
+    // check total resource 
+    int32_t check_total = ResourceUtils::Compare(
+                    old_agent_info->total(), 
+                    new_agent_info->total());
+    if (check_total != 0) {
+        new_agent_info->set_version(old_agent_info->version() + 1);
+    }
+    
+}
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     MutexLock lock(&mutex_);

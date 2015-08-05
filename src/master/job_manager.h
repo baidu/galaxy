@@ -72,6 +72,8 @@ private:
     void QueryAgent(AgentInfo* agent);
     void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
                             QueryResponse* response, bool failed, int error);
+    void UpdateAgentVersion(const AgentInfo* old_agent_info, 
+                            AgentInfo* new_agent_info);
     
     bool CompareAgentInfo(const AgentInfo* old_agent_info, const AgentInfo* new_agent_info);
 

@@ -57,6 +57,26 @@ struct PodScaleDownCell {
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
 };
 
+struct AgentInfoExtend {
+    Resource free;
+    Resource unassigned;
+    AgentInfo* agent_info;
+
+    AgentInfoExtend(AgentInfo* p_agent_info):free(),
+                                           unassigned(){
+        if (p_agent_info != NULL) {
+            agent_info = p_agent_info;
+        }else {
+            assert(false);
+        } 
+    }
+
+    void CalcExtend();
+    ~AgentInfoExtend(){
+        delete agent_info;
+    }
+};
+
 class AgentHistory {
 public:
     // 返回此Agent连续处于OverLoad的轮数
@@ -153,7 +173,7 @@ private:
 
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
-    boost::unordered_map<std::string, AgentInfo*> resources_;
+    boost::unordered_map<std::string, AgentInfoExtend*> resources_;
     std::map<std::string, JobOverview*> job_overview_;
     int64_t schedule_turns_;    // 当前调度轮数
     AgentHistory agent_his_;
