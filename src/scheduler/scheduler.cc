@@ -59,7 +59,7 @@ static bool JobCompare(const JobInfo* left, const JobInfo* right) {
 }
 
 int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
-                                  std::vector<ScheduleInfo*>* propose) {
+                                   std::vector<ScheduleInfo*>* propose) {
     LOG(INFO, "schedule scale up turns: %lld", schedule_turns_);
     ++schedule_turns_;
 
@@ -73,12 +73,12 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
             , total_feasible_count, feasibility_factor);
 
     // shuffle resources_
-    std::vector<AgentInfo*> resources_to_alloc;
+    std::vector<AgentInfoExtend*> resources_to_alloc;
     ChooseRecourse(&resources_to_alloc);
     LOG(INFO, "resources choosen : %u", resources_to_alloc.size());
 
     // 计算feasibility
-    std::vector<AgentInfo*>::iterator res_it = resources_to_alloc.begin();
+    std::vector<AgentInfoExtend*>::iterator res_it = resources_to_alloc.begin();
     int cur_feasible_count = 0;
     for (; res_it != resources_to_alloc.end() &&
             cur_feasible_count < total_feasible_count; ++res_it) {
@@ -86,7 +86,7 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                 pod_it != pending_pods.end(); ++pod_it) {
             LOG(INFO, "checking: %s on %s",
                     (*pod_it)->job->jobid().c_str(),
-                    (*res_it)->endpoint().c_str());
+                    (*res_it)->agent_info->endpoint().c_str());
             if ((*pod_it)->feasible.size() >= (*pod_it)->feasible_limit ) {
                 LOG(INFO, "feasibility checking done for %s",
                         (*pod_it)->job->jobid().c_str());
@@ -95,7 +95,7 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                 bool check = (*pod_it)->FeasibilityCheck(*res_it);
                 LOG(INFO, "feasibility checking %s on %s return %d",
                         (*pod_it)->job->jobid().c_str(),
-                        (*res_it)->endpoint().c_str(), (int)check);
+                         (*res_it)->agent_info->endpoint().c_str(), (int)check);
                 if (check == true) {
                     (*pod_it)->feasible.push_back(*res_it);
                     cur_feasible_count++;
@@ -123,16 +123,16 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
     return propose_count;
 }
 
-int32_t Scheduler::ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc) {
+int32_t Scheduler::ChooseRecourse(std::vector<AgentInfoExtend*>* resources_to_alloc) {
     boost::unordered_map<std::string, AgentInfoExtend*>::iterator it = resources_.begin();
     for (; it != resources_.end(); ++it) {
-        resources_to_alloc->push_back(it->second->agent_info);
+        resources_to_alloc->push_back(it->second);
         LOG(DEBUG, "agent resource free: millicores %d memory %d MB #disk %u #ssd %u",
-                it->second->agent_info->free().millicores(), it->second->agent_info->free().memory(),
-                it->second->agent_info->free().disks_size(), it->second->agent_info->free().ssds_size());
+                it->second->free.millicores(), it->second->free.memory(),
+                it->second->free.disks_size(), it->second->free.ssds_size());
         LOG(DEBUG, "agent resource unassigned: millicores %d memory %d MB #disk %u #ssd %u",
-                it->second->agent_info->unassigned().millicores(), it->second->agent_info->unassigned().memory(),
-                it->second->agent_info->unassigned().disks_size(), it->second->agent_info->unassigned().ssds_size());
+                it->second->unassigned.millicores(), it->second->unassigned.memory(),
+                it->second->unassigned.disks_size(), it->second->unassigned.ssds_size());
     }
     return 0;
 }
@@ -175,9 +175,6 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
        }
    }
    for (int32_t i =0 ; i < response->agents_size(); i++) {
-             LOG(INFO, "agent %s unassigned cpu %d unassigned mem %d", response->agents(i).endpoint().c_str(),
-                response->agents(i).unassigned().millicores(),
-                response->agents(i).unassigned().memory());
        boost::unordered_map<std::string, AgentInfoExtend*>::iterator it =
          resources_.find(response->agents(i).endpoint());
        if (it == resources_.end()) {
@@ -252,118 +249,48 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
 PodScaleUpCell::PodScaleUpCell():pod(NULL), job(NULL),
         schedule_count(0), feasible_limit(0) {}
 
-bool PodScaleUpCell::FeasibilityCheck(const AgentInfo* agent_info) {
+bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) {
     // 对于prod任务(kLongRun,kSystem)，根据unassign值check
     // 对于non-prod任务(kBatch)，根据free值check
     if (job->desc().type() == kLongRun ||
             job->desc().type() == kSystem) {
-        // 判断CPU是否满足
-        if (agent_info->unassigned().millicores() < resource.millicores()) {
-            LOG(INFO, "agent %s does not satisfy long run job %s cpu  requirement , require %d unassigned %d ",
-                agent_info->endpoint().c_str(),
-                job->jobid().c_str(),
-                resource.millicores(),
-                agent_info->unassigned().millicores());
-            return false;
+        bool fit = ResourceUtils::GtOrEq(agent_info_extend->unassigned, resource);
+        if (fit) {
+            LOG(INFO, "agent %s fit long run job %s resource requirement", 
+                agent_info_extend->agent_info->endpoint().c_str(), 
+                job->jobid().c_str());
+        } else {
+            LOG(INFO, "agent %s does not fit job %s resource requirement, agent unassigned cpu %d, mem %d M, resource require cpu %d, mem %d m",
+              agent_info_extend->agent_info->endpoint().c_str(),
+              job->jobid().c_str(),
+              agent_info_extend->unassigned.millicores(),
+              agent_info_extend->unassigned.memory(),
+              resource.millicores(),
+              resource.memory());
         }
-
-        // 判断mem
-        if (agent_info->unassigned().memory() < resource.memory()) {
-            LOG(INFO, "agent %s does not satisfy long run job %s memory  requirement , require %d unassigned %d ",
-                agent_info->endpoint().c_str(),
-                job->jobid().c_str(),
-                resource.memory(),
-                agent_info->unassigned().memory() );
-            return false;
-        }
+        return fit;
     }
     else if (job->desc().type() == kBatch) {
-        // 判断CPU是否满足
-        if (agent_info->free().millicores() < resource.millicores()) {
-            LOG(INFO, "agent %s does not satisfy batch job %s cpu  requirement , require %d free %d ",
-                agent_info->endpoint().c_str(),
-                job->jobid().c_str(),
-                resource.millicores(),
-                agent_info->free().millicores());
-            return false;
+        bool fit = ResourceUtils::GtOrEq(agent_info_extend->free, resource);
+        if (fit) {
+            LOG(INFO, "agent %s fit batch job %s resource requirement", 
+                agent_info_extend->agent_info->endpoint().c_str(), job->jobid().c_str());
+        } else {
+            LOG(INFO, "agent %s does not fit job %s resource requirement, agent unassigned cpu %d, mem %d M, resource require cpu %d, mem %d m",
+              agent_info_extend->agent_info->endpoint().c_str(),
+              job->jobid().c_str(),
+              agent_info_extend->free.millicores(),
+              agent_info_extend->free.memory(),
+              resource.millicores(),
+              resource.memory());
         }
-        // 判断mem
-        if (agent_info->free().memory() < resource.memory()) {
-            LOG(INFO, "agent %s does not satisfy batch run job %s memory  requirement , require %d free %d ",
-                agent_info->endpoint().c_str(),
-                job->jobid().c_str(),
-                resource.memory(),
-                agent_info->free().memory());
-            return false;
-        }
+        return fit;
     }
     else {
         // 不支持类型
         LOG(INFO, "scheduler does not support job %s", job->jobid().c_str());
         return false;
     }
-
-    // 判断ports
-    if (resource.ports_size() > 0) {
-        for (int i = 0; i < agent_info->used().ports_size(); i++) {
-            for (int j = 0; j < resource.ports_size(); j++) {
-                if (agent_info->used().ports(i) == resource.ports(j)) {
-                    LOG(INFO, "the port %d on agent %s has been used, but job %s required it ",
-                            resource.ports(j),
-                            agent_info->endpoint().c_str(),
-                            job->jobid().c_str());
-                    return false;
-                }
-            }
-        }
-    }
-    // 判断disks
-    if (resource.disks_size() > 0) {
-        if (resource.disks_size() > agent_info->unassigned().disks_size()) {
-            LOG(INFO, "the disk size on agent %s dost not satisfy job %s requirement, left %d, require %d",
-                agent_info->endpoint().c_str(), job->jobid().c_str(),
-                resource.disks_size(), agent_info->unassigned().disks_size());
-            return false;
-        }
-        std::vector<Volume> unassigned;
-        for (int i = 0; i < agent_info->unassigned().disks_size(); i++) {
-            unassigned.push_back(agent_info->unassigned().disks(i));
-        }
-        std::vector<Volume> required;
-        for (int j = 0; j < resource.disks_size(); j++) {
-            required.push_back(resource.disks(j));
-        }
-        if (!VolumeFit(unassigned, required)) {
-            LOG(INFO, "disk quota on agent %s does not satisfy  job %s requirement ",
-                agent_info->endpoint().c_str(), job->jobid().c_str());
-            return false;
-        }
-    }
-
-    // 判断ssd
-    if (resource.ssds_size() > 0) {
-         if (resource.ssds_size() > agent_info->unassigned().ssds_size()) {
-             LOG(INFO, "the ssd size on agent %s dost not satisfy job %s requirement, left %d, require %d",
-                 agent_info->endpoint().c_str(), job->jobid().c_str(),
-                 resource.disks_size(), agent_info->unassigned().disks_size());
-             return false;
-         }
-         std::vector<Volume> unassigned;
-         for (int i = 0; i < agent_info->unassigned().ssds_size(); i++) {
-             unassigned.push_back(agent_info->unassigned().ssds(i));
-         }
-         std::vector<Volume> required;
-         for (int j = 0; j < resource.ssds_size(); j++) {
-             required.push_back(resource.ssds(j));
-         }
-         if (!VolumeFit(unassigned, required)) {
-             LOG(INFO, "ssd quota on agent %s does not satisfy  job %s requirement ",
-                 agent_info->endpoint().c_str(), job->jobid().c_str());
-             return false;
-         }
-    }
-    LOG(INFO, "FeasibilityCheck Pass");
-    return true;
 }
 
 bool PodScaleUpCell::VolumeFit(std::vector<Volume>& unassigned,
@@ -384,10 +311,10 @@ bool PodScaleUpCell::VolumeFit(std::vector<Volume>& unassigned,
 }
 
 int32_t PodScaleUpCell::Score() {
-    std::vector<AgentInfo*>::iterator agt_it = feasible.begin();
+    std::vector<AgentInfoExtend*>::iterator agt_it = feasible.begin();
     for(; agt_it != feasible.end(); ++agt_it) {
-        double score = ScoreAgent(*agt_it, pod);
-        sorted.insert(std::make_pair(score, *agt_it));
+        double score = ScoreAgent((*agt_it)->agent_info, pod);
+        sorted.insert(std::make_pair(score, (*agt_it)->agent_info));
     }
     return 0;
 }

@@ -13,6 +13,27 @@
 namespace baidu {
 namespace galaxy {
 
+struct AgentInfoExtend {
+    Resource free;
+    Resource unassigned;
+    AgentInfo* agent_info;
+
+    AgentInfoExtend(AgentInfo* p_agent_info):free(),
+                                           unassigned(){
+        if (p_agent_info != NULL) {
+            agent_info = p_agent_info;
+        }else {
+            assert(false);
+        } 
+    }
+
+    void CalcExtend();
+    ~AgentInfoExtend(){
+        delete agent_info;
+    }
+};
+
+
 struct PodScaleUpCell {
     PodDescriptor* pod;
     JobInfo* job;
@@ -20,13 +41,13 @@ struct PodScaleUpCell {
     uint32_t feasible_limit;
     Resource resource;
     std::vector<std::string> pod_ids;
-    std::vector<AgentInfo*> feasible;
+    std::vector<AgentInfoExtend*> feasible;
     std::map<double, AgentInfo*> sorted;
 
     PodScaleUpCell();
 
 
-    bool FeasibilityCheck(const AgentInfo* agent_info);
+    bool FeasibilityCheck(const AgentInfoExtend* agent_info);
 
     int32_t Score();
 
@@ -55,26 +76,6 @@ struct PodScaleDownCell {
                        const PodDescriptor* desc);
 
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
-};
-
-struct AgentInfoExtend {
-    Resource free;
-    Resource unassigned;
-    AgentInfo* agent_info;
-
-    AgentInfoExtend(AgentInfo* p_agent_info):free(),
-                                           unassigned(){
-        if (p_agent_info != NULL) {
-            agent_info = p_agent_info;
-        }else {
-            assert(false);
-        } 
-    }
-
-    void CalcExtend();
-    ~AgentInfoExtend(){
-        delete agent_info;
-    }
 };
 
 class AgentHistory {
@@ -169,7 +170,7 @@ private:
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
-    int32_t ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc);
+    int32_t ChooseRecourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
 
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
