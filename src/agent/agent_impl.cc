@@ -78,12 +78,8 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
         resp->set_status(kOk);
         resp->mutable_agent()->mutable_total()->set_millicores(FLAGS_agent_millicores);
         resp->mutable_agent()->mutable_total()->set_memory(FLAGS_agent_memory);
-        resp->mutable_agent()->mutable_unassigned()->set_millicores(resource_capacity_.millicores);
-        resp->mutable_agent()->mutable_unassigned()->set_memory(resource_capacity_.memory);
         resp->mutable_agent()->mutable_assigned()->set_millicores(FLAGS_agent_millicores - resource_capacity_.millicores);
         resp->mutable_agent()->mutable_assigned()->set_memory(FLAGS_agent_memory - resource_capacity_.memory);
-        resp->mutable_agent()->mutable_free()->set_millicores(FLAGS_agent_millicores);
-        resp->mutable_agent()->mutable_free()->set_memory(FLAGS_agent_memory);
         for (int i = 0; i < gced_response.pods_size(); i++) {
             PodStatus* pod_status = 
                             resp->mutable_agent()->add_pods();

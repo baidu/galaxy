@@ -25,6 +25,8 @@ typedef std::string AgentAddr;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobInfo> JobInfoList;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::AgentInfo> AgentInfoList;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobOverview> JobOverviewList;
+typedef google::protobuf::RepeatedPtrField<baidu::galaxy::DiffVersion> DiffVersionList;
+typedef google::protobuf::RepeatedPtrField<std::string> StringList;
 
 struct Job {
     JobState state_;
@@ -44,6 +46,9 @@ public:
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
+    void GetAliveAgentsByDiff(const DiffVersionList& versions,
+                              AgentInfoList* agents_info,
+                              StringList* deleted_agents);
     void GetJobsOverview(JobOverviewList* jobs_overview);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
     void KeepAlive(const std::string& agent_addr);
@@ -67,6 +72,10 @@ private:
     void QueryAgent(AgentInfo* agent);
     void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
                             QueryResponse* response, bool failed, int error);
+    void UpdateAgentVersion(const AgentInfo* old_agent_info, 
+                            AgentInfo* new_agent_info);
+    
+    bool CompareAgentInfo(const AgentInfo* old_agent_info, const AgentInfo* new_agent_info);
 
     void ScheduleNextQuery();
     void FillPodsToJob(Job* job);

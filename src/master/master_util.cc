@@ -10,7 +10,6 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <gflags/gflags.h>
-
 #include "proto/galaxy.pb.h"
 #include "proto/master.pb.h"
 
@@ -67,6 +66,7 @@ std::string MasterUtil::SelfEndpoint() {
     hostname = buf.nodename;
     return hostname + ":" + FLAGS_master_port;
 }
+
 
 }
 }
