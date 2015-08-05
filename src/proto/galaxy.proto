@@ -82,5 +82,6 @@ message AgentInfo {
     optional Resource free = 6;
     repeated PodStatus pods = 7;
     optional AgentState state = 8;
+    optional int32 version = 9;
 }
 

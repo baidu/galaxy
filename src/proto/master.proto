@@ -36,6 +36,9 @@ enum ScheduleAction {
    kTerminate = 1;
 }
 
+
+
+
 message JobDescriptor {
     optional string name = 1;
     optional string user = 2;
@@ -151,12 +154,21 @@ message GetPendingJobsResponse {
     optional Status status = 3;
 }
 
-message GetResourceSnapshotRequest {
+message DiffVersion {
+   optional int32 version = 1;
+   optional string endpoint = 2;
 }
+
+
+message GetResourceSnapshotRequest {
+   repeated DiffVersion versions = 1;
+}
+
 
 message GetResourceSnapshotResponse {
     optional Status status = 1;
     repeated AgentInfo agents = 2;
+    repeated string deleted_agents = 3;
 }
 
 message ProposeRequest {

@@ -6,6 +6,7 @@
 #define BAIDU_GALAXY_SCHEDULER_H
 #include <map>
 #include <string>
+#include <boost/unordered_map.hpp>
 #include "proto/master.pb.h"
 #include "mutex.h"
 
@@ -152,7 +153,7 @@ private:
 
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
-    std::map<std::string, AgentInfo*> resources_;
+    boost::unordered_map<std::string, AgentInfo*> resources_;
     std::map<std::string, JobOverview*> job_overview_;
     int64_t schedule_turns_;    // 当前调度轮数
     AgentHistory agent_his_;

@@ -33,7 +33,7 @@ MASTER_SRC = $(wildcard src/master/*.cc)
 MASTER_OBJ = $(patsubst %.cc, %.o, $(MASTER_SRC))
 MASTER_HEADER = $(wildcard src/master/*.h)
 
-SCHEDULER_SRC = $(wildcard src/scheduler/*.cc)
+SCHEDULER_SRC = $(wildcard src/scheduler/scheduler*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
@@ -63,6 +63,9 @@ SDK_SRC = $(wildcard src/sdk/*.cc)
 SDK_OBJ = $(patsubst %.cc, %.o, $(SDK_SRC))
 SDK_HEADER = $(wildcard src/sdk/*.h)
 
+SCHED_TEST_SRC = $(wildcard src/scheduler/test*.cc)
+SCHED_TEST_OBJ = $(patsubst %.cc, %.o, $(SCHED_TEST_SRC))
+
 CLIENT_OBJ = $(patsubst %.cc, %.o, $(wildcard src/client/*.cc))
 
 FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
@@ -78,6 +81,7 @@ $(MASTER_OBJ) $(AGENT_OBJ) $(PROTO_OBJ) $(SDK_OBJ): $(PROTO_HEADER)
 $(MASTER_OBJ): $(MASTER_HEADER)
 $(AGENT_OBJ): $(AGENT_HEADER)
 $(SDK_OBJ): $(SDK_HEADER)
+$(SCHED_TEST_OBJ): $(PROTO_OBJ)
 
 # Targets
 master: $(MASTER_OBJ) $(OBJS)
@@ -109,6 +113,9 @@ test_initd: $(TEST_INITD_OBJ) $(LIBS) $(OBJS)
 
 test_gced: $(TEST_GCED_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_GCED_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
+test_sched: $(SCHED_TEST_OBJ) $(LIBS) $(OBJS) 
+	$(CXX) $(SCHED_TEST_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@

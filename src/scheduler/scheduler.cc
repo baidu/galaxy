@@ -123,7 +123,7 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
 }
 
 int32_t Scheduler::ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc) {
-    std::map<std::string, AgentInfo*>::iterator it = resources_.begin();
+    boost::unordered_map<std::string, AgentInfo*>::iterator it = resources_.begin();
     for (; it != resources_.end(); ++it) {
         resources_to_alloc->push_back(it->second);
         LOG(DEBUG, "agent resource free: millicores %d memory %d MB #disk %u #ssd %u",
@@ -162,20 +162,30 @@ int32_t Scheduler::ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
 }
 
 int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
-   LOG(INFO, "sync resource from master");
-   std::map<std::string, AgentInfo*>::iterator agt_it = resources_.begin();
-   for (; agt_it != resources_.end(); agt_it++) {
-       delete agt_it->second;
+   LOG(INFO, "sync resource from master, update agent_info count %d, deleted count %d", 
+             response->agents_size(),
+             response->deleted_agents_size());
+   for (int32_t i = 0; i < response->deleted_agents_size(); i++) {
+       boost::unordered_map<std::string, AgentInfo*>::iterator it =
+         resources_.find(response->deleted_agents(i));
+       if (it != resources_.end()) {
+           delete it->second;
+           resources_.erase(it->first);
+       }
    }
-   resources_.clear();
-
    for (int32_t i =0 ; i < response->agents_size(); i++) {
-       AgentInfo* agent = new AgentInfo();
-       agent->CopyFrom(response->agents(i));
-       LOG(INFO, "agent %s unassigned cpu %d unassigned mem %d", response->agents(i).endpoint().c_str(),
+             LOG(INFO, "agent %s unassigned cpu %d unassigned mem %d", response->agents(i).endpoint().c_str(),
                 response->agents(i).unassigned().millicores(),
                 response->agents(i).unassigned().memory());
-       resources_.insert(std::make_pair(agent->endpoint(), agent));
+       boost::unordered_map<std::string, AgentInfo*>::iterator it =
+         resources_.find(response->agents(i).endpoint());
+       if (it == resources_.end()) {
+           AgentInfo* agent = new AgentInfo();
+           agent->CopyFrom(response->agents(i));
+           resources_.insert(std::make_pair(agent->endpoint(), agent));
+       }else {
+           it->second->CopyFrom(response->agents(i));
+       }
    }
    return resources_.size();
 }
@@ -214,7 +224,7 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
         cell->pod = (*job_it)->mutable_desc()->mutable_pod();
         cell->job = *job_it;
         for (int i = 0; i < (*job_it)->pods_size(); ++i) {
-            std::map<std::string, AgentInfo*>::iterator agt_it =
+            boost::unordered_map<std::string, AgentInfo*>::iterator agt_it =
                     resources_.find((*job_it)->pods(i).endpoint());
             if (agt_it == resources_.end()) {
                 LOG(INFO, "scale down pod %s dose not belong to agent %s",
@@ -485,7 +495,8 @@ int32_t Scheduler::CalcSources(const PodDescriptor& pod, Resource* resource) {
 }
 
 int32_t Scheduler::UpdateAgent(const AgentInfo* agent_info) {
-    std::map<std::string, AgentInfo*>::iterator agt_it = resources_.find(agent_info->endpoint());
+    boost::unordered_map<std::string, AgentInfo*>::iterator agt_it =
+      resources_.find(agent_info->endpoint());
     if (agt_it != resources_.end()) {
         LOG(INFO, "update agent %s", agent_info->endpoint().c_str());
         agt_it->second->CopyFrom(*agent_info);
@@ -550,7 +561,7 @@ int32_t Scheduler::ScheduleAgentOverLoad(std::vector<ScheduleInfo*>* propose) {
     LOG(INFO, "start to check agent overload,  job count %u, agent count %u",
         job_overview_.size(), resources_.size());
     int32_t scale_down_count = 0;
-    std::map<std::string, AgentInfo*>::iterator agt_it = resources_.begin();
+    boost::unordered_map<std::string, AgentInfo*>::iterator agt_it = resources_.begin();
     for (; agt_it != resources_.end(); agt_it++) {
         if (CheckOverLoad(agt_it->second) == true) {
             int turns = agent_his_.PushOverloadAgent(agt_it->second);

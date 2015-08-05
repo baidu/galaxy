@@ -6,11 +6,13 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/unordered_map.hpp>
 #include <gflags/gflags.h>
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
 #include "master_util.h"
+#include "timer.h"
 #include <logging.h>
 
 DECLARE_int32(master_agent_timeout);
@@ -294,7 +296,9 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         MutexLock lock(&mutex_);
         if (agents_.find(agent_addr) == agents_.end()) {
             LOG(INFO, "new agent added: %s", agent_addr.c_str());
-            agents_[agent_addr] = new AgentInfo();
+            AgentInfo* agent = new AgentInfo();
+            agent->set_version(0);
+            agents_[agent_addr] = agent;
         }
         AgentInfo* agent = agents_[agent_addr];
         agent->set_state(kAlive);
@@ -465,7 +469,6 @@ void JobManager::QueryAgent(AgentInfo* agent) {
         LOG(DEBUG, "ignore dead agent [%s]", endpoint.c_str());
         return;
     }
-
     QueryRequest* request = new QueryRequest;
     QueryResponse* response = new QueryResponse;
 
@@ -511,8 +514,9 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     
     AgentInfo* agent = it->second;
     const AgentInfo& report_agent_info = response->agent();
+    // compare agent info
+    MasterUtil::CompareResource(agent->total(), report_agent_info->total());
     agent->CopyFrom(report_agent_info);
-
     PodMap agent_running_pods = running_pods_[endpoint]; // this is a copy
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
         const PodStatus& report_pod_info = report_agent_info.pods(i);
@@ -570,6 +574,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     }
 }
 
+
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     MutexLock lock(&mutex_);
     std::map<AgentAddr, AgentInfo*>::iterator it;
@@ -591,6 +596,39 @@ void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
     }
 }
 
+void JobManager::GetAliveAgentsByDiff(const DiffVersionList& versions,
+                                      AgentInfoList* agents_info,
+                                      StringList* deleted_agents) {
+    MutexLock lock(&mutex_);
+    LOG(INFO, "get alive agents by diff , diff count %u", versions.size());
+    // ms
+    long now_time = ::baidu::common::timer::get_micros() / 1000;
+    boost::unordered_map<AgentAddr, int32_t> agents_ver_map;
+    for (int i = 0; i < versions.size(); i++) {
+        agents_ver_map.insert(std::make_pair(versions.Get(i).endpoint(),
+                                             versions.Get(i).version()));
+    }
+    std::map<AgentAddr, AgentInfo*>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); ++it) {
+        boost::unordered_map<AgentAddr, int32_t>::iterator a_it =
+                       agents_ver_map.find(it->first);
+        AgentInfo* agent = it->second;
+        if (agent->state() != kAlive) {
+            if (a_it != agents_ver_map.end()) {
+                deleted_agents->Add()->assign(it->first);
+            }
+            continue;
+        }
+        if (a_it != agents_ver_map.end() && a_it->second == it->second->version()) {
+            continue;
+        }
+        agents_info->Add()->CopyFrom(*agent);
+    }
+    long used_time = ::baidu::common::timer::get_micros() / 1000 - now_time;
+    LOG(INFO, "process diff with time consumed %ld, agents count %d ", 
+               used_time,
+               agents_info->size());
+}
 void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.begin();
