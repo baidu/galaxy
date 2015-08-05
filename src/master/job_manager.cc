@@ -254,12 +254,15 @@ Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
     mutex_.AssertHeld();
     Resource pod_requirement;
     GetPodRequirement(pod, &pod_requirement);
-    const Resource& unassigned = agent->unassigned();
+    Resource unassigned;
+    unassigned.CopyFrom(agent->total());
+    bool ret = ResourceUtils::Alloc(agent->assigned(), unassigned);
+    if (!ret) {
+        return kQuota;
+    }
     if (!MasterUtil::FitResource(pod_requirement, unassigned)) {
         return kQuota;
     }
-    MasterUtil::SubstractResource(pod_requirement, agent->mutable_unassigned());
-    MasterUtil::AddResource(pod_requirement, agent->mutable_assigned());
     return kOk;
 }
 
@@ -268,7 +271,6 @@ void JobManager::ReclaimResource(const PodStatus& pod, AgentInfo* agent) {
     Resource pod_requirement;
     GetPodRequirement(pod, &pod_requirement);
     MasterUtil::SubstractResource(pod_requirement, agent->mutable_assigned());
-    MasterUtil::AddResource(pod_requirement, agent->mutable_unassigned());
 }
 
 void JobManager::GetPodRequirement(const PodStatus& pod, Resource* requirement) {

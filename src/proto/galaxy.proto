@@ -77,9 +77,7 @@ message AgentInfo {
     optional string endpoint = 1;
     optional Resource total = 2;
     optional Resource assigned = 3;
-    optional Resource unassigned = 4;
     optional Resource used = 5;
-    optional Resource free = 6;
     repeated PodStatus pods = 7;
     optional AgentState state = 8;
     optional int32 version = 9;
