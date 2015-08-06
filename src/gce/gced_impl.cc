@@ -15,6 +15,7 @@
 #include "thread_pool.h"
 
 DECLARE_string(gce_initd_bin);
+DECLARE_string(gce_work_dir);
 namespace baidu {
 namespace galaxy {
 
@@ -25,6 +26,13 @@ GcedImpl::GcedImpl() {
     // thread_pool_.DelayTask(
     //     10000,
     //     boost::bind(&GcedImpl::TaskStatusCheck, this));
+    if (!file::IsExists(FLAGS_gce_work_dir)) {
+        bool ret = file::Mkdir(FLAGS_gce_work_dir);
+        if (!ret) {
+            LOG(WARNING, "fail to create gce work dir %s", FLAGS_gce_work_dir.c_str());
+            assert(0);
+        }
+    }
 }
 
 GcedImpl::~GcedImpl() {
@@ -133,12 +141,12 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
     // 2. TODO clone namespace
      
     // 3. TODO launch
-    
-    std::string work_dir("./");
-    work_dir += request->podid();
-    file::Mkdir(work_dir.c_str());
+     
+    std::string work_dir(FLAGS_gce_work_dir);
+    std::string pod_work_dir = work_dir +  "/" + request->podid();
+    file::Mkdir(pod_work_dir.c_str());
 
-    LOG(INFO, "initd work mkdir %s", work_dir.c_str());
+    LOG(INFO, "initd pod work mkdir %s", pod_work_dir.c_str());
 
 
     // TODO
@@ -157,7 +165,7 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
     int stderr_fd = 0;
 
     // TODO
-    if (!process::PrepareStdFds(".", 
+    if (!process::PrepareStdFds(pod_work_dir, 
                                 &stdout_fd, &stderr_fd)) {
         if (stdout_fd != -1) {
             ::close(stdout_fd); 
