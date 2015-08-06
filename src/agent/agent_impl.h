@@ -17,6 +17,7 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
+#include "pod_manager.h"
 #include "ins_sdk.h"
 using ::galaxy::ins::sdk::InsSDK;
 
@@ -72,8 +73,11 @@ private:
     Master_Stub* master_;
     Gced_Stub* gced_;
     ResourceCapacity resource_capacity_;
+
     InsSDK* nexus_;
     Mutex mutex_master_endpoint_;
+
+    PodManager pod_manager_;
 };
 
 }   // ending namespace galaxy

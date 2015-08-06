@@ -13,6 +13,8 @@ namespace galaxy {
 
 void GetStrFTime(std::string* time);
 
+int RandRange(int min, int max);
+
 namespace process {
 
 void GetProcessOpenFds(const pid_t pid, 
@@ -21,8 +23,6 @@ void GetProcessOpenFds(const pid_t pid,
 bool PrepareStdFds(const std::string& pwd, 
                    int* stdout_fd, 
                    int* stderr_fd);
-
-void ReplaceEmptyChar(std::string& str);
 
 void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir);
 
