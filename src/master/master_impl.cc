@@ -208,8 +208,11 @@ void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* controll
                          const ::baidu::galaxy::GetResourceSnapshotRequest* request,
                          ::baidu::galaxy::GetResourceSnapshotResponse* response,
                          ::google::protobuf::Closure* done) {
-    job_manager_.GetAliveAgentsInfo(response->mutable_agents());
+    job_manager_.GetAliveAgentsByDiff(request->versions(),
+                                      response->mutable_agents(), 
+                                      response->mutable_deleted_agents());
     response->set_status(kOk);
+    LOG(INFO, "get response snapshot whose bytes size is %d ", response->ByteSize());
     done->Run();
 }
 

@@ -33,7 +33,7 @@ MASTER_SRC = $(wildcard src/master/*.cc)
 MASTER_OBJ = $(patsubst %.cc, %.o, $(MASTER_SRC))
 MASTER_HEADER = $(wildcard src/master/*.h)
 
-SCHEDULER_SRC = $(wildcard src/scheduler/*.cc)
+SCHEDULER_SRC = $(wildcard src/scheduler/scheduler*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
@@ -63,6 +63,13 @@ SDK_SRC = $(wildcard src/sdk/*.cc)
 SDK_OBJ = $(patsubst %.cc, %.o, $(SDK_SRC))
 SDK_HEADER = $(wildcard src/sdk/*.h)
 
+SCHED_TEST_SRC = $(wildcard src/scheduler/test*.cc)
+SCHED_TEST_OBJ = $(patsubst %.cc, %.o, $(SCHED_TEST_SRC))
+
+UTILS_SRC = $(wildcard src/utils/*.cc)
+UTILS_HEADER = $(wildcard src/utils/*.h)
+UTILS_OBJ = $(patsubst %.cc, %.o, $(UTILS_SRC))
+
 CLIENT_OBJ = $(patsubst %.cc, %.o, $(wildcard src/client/*.cc))
 
 FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
@@ -74,17 +81,18 @@ BIN = master agent scheduler galaxy initd gced
 all: $(BIN) $(LIBS)
 
 # Depends
-$(MASTER_OBJ) $(AGENT_OBJ) $(PROTO_OBJ) $(SDK_OBJ): $(PROTO_HEADER)
-$(MASTER_OBJ): $(MASTER_HEADER)
+$(MASTER_OBJ) $(AGENT_OBJ) $(PROTO_OBJ) $(SDK_OBJ) $(SCHED_TEST_OBJ): $(PROTO_HEADER)
+$(MASTER_OBJ): $(MASTER_HEADER) $(UTILS_HEADER)
 $(AGENT_OBJ): $(AGENT_HEADER)
 $(SDK_OBJ): $(SDK_HEADER)
+$(SCHEDULER_OBJ): $(UTILS_HEADER)
 
 # Targets
-master: $(MASTER_OBJ) $(OBJS)
-	$(CXX) $(MASTER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+master: $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS)
+	$(CXX) $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-scheduler: $(SCHEDULER_OBJ) $(OBJS)
-	$(CXX) $(SCHEDULER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+scheduler: $(SCHEDULER_OBJ) $(OBJS) $(UTILS_OBJ) 
+	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 agent: $(AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
@@ -110,6 +118,9 @@ test_initd: $(TEST_INITD_OBJ) $(LIBS) $(OBJS)
 test_gced: $(TEST_GCED_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_GCED_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
+test_sched: $(SCHED_TEST_OBJ) $(LIBS) $(OBJS) 
+	$(CXX) $(SCHED_TEST_OBJ) $(LIBS) -o $@ $(LDFLAGS)
+
 %.o: %.cc
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@
 
@@ -118,7 +129,7 @@ test_gced: $(TEST_GCED_OBJ) $(LIBS) $(OBJS)
 
 clean:
 	rm -rf $(BIN)
-	rm -rf $(MASTER_OBJ) $(SCHEDULER_OBJ) $(AGENT_OBJ) $(SDK_OBJ) $(CLIENT_OBJ) $(OBJS)
+	rm -rf $(MASTER_OBJ) $(SCHEDULER_OBJ) $(AGENT_OBJ) $(SDK_OBJ) $(CLIENT_OBJ) $(SCHED_TEST_OBJ) $(UTILS_OBJ) $(OBJS)
 	rm -rf $(PROTO_SRC) $(PROTO_HEADER)
 	rm -rf $(PREFIX)
 	rm -rf $(LIBS) 

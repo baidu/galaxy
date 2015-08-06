@@ -6,11 +6,33 @@
 #define BAIDU_GALAXY_SCHEDULER_H
 #include <map>
 #include <string>
+#include <boost/unordered_map.hpp>
 #include "proto/master.pb.h"
 #include "mutex.h"
 
 namespace baidu {
 namespace galaxy {
+
+struct AgentInfoExtend {
+    Resource free;
+    Resource unassigned;
+    AgentInfo* agent_info;
+
+    AgentInfoExtend(AgentInfo* p_agent_info):free(),
+                                           unassigned(){
+        if (p_agent_info != NULL) {
+            agent_info = p_agent_info;
+        }else {
+            assert(false);
+        } 
+    }
+
+    void CalcExtend();
+    ~AgentInfoExtend(){
+        delete agent_info;
+    }
+};
+
 
 struct PodScaleUpCell {
     PodDescriptor* pod;
@@ -19,13 +41,13 @@ struct PodScaleUpCell {
     uint32_t feasible_limit;
     Resource resource;
     std::vector<std::string> pod_ids;
-    std::vector<AgentInfo*> feasible;
+    std::vector<AgentInfoExtend*> feasible;
     std::map<double, AgentInfo*> sorted;
 
     PodScaleUpCell();
 
 
-    bool FeasibilityCheck(const AgentInfo* agent_info);
+    bool FeasibilityCheck(const AgentInfoExtend* agent_info);
 
     int32_t Score();
 
@@ -148,11 +170,11 @@ private:
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
-    int32_t ChooseRecourse(std::vector<AgentInfo*>* resources_to_alloc);
+    int32_t ChooseRecourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
 
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
-    std::map<std::string, AgentInfo*> resources_;
+    boost::unordered_map<std::string, AgentInfoExtend*> resources_;
     std::map<std::string, JobOverview*> job_overview_;
     int64_t schedule_turns_;    // 当前调度轮数
     AgentHistory agent_his_;
