@@ -9,7 +9,37 @@
 namespace baidu {
 namespace galaxy {
 
+void SchedulerIO::HandleMasterChange(const std::string& new_master_endpoint) {
+    if (new_master_endpoint.empty()) {
+        LOG(WARNING, "the master endpoint is deleted from nexus");
+    }
+    if (new_master_endpoint != master_addr_) {
+        MutexLock lock(&master_mutex_);
+        LOG(INFO, "master change to %s", new_master_endpoint.c_str());
+        master_addr_ = new_master_endpoint; 
+        if (master_stub_) {
+            delete master_stub_;
+        }
+        if (!rpc_client_.GetStub(master_addr_, &master_stub_)) {
+            LOG(WARNING, "connect master %s failed", master_addr_.c_str()); 
+            return;
+        }  
+    }
+}
+
+bool SchedulerIO::Init() {
+    bool ok = master_watcher_.Init(
+                    boost::bind(&SchedulerIO::HandleMasterChange, this, _1) );
+    assert(ok);
+    master_addr_ = master_watcher_.GetMasterEndpoint();
+    LOG(INFO, "create scheduler io from master %s", master_addr_.c_str());
+    bool ret = rpc_client_.GetStub(master_addr_, &master_stub_);
+    assert(ret == true);
+    return ok;
+}
+
 void SchedulerIO::Loop() {
+    MutexLock lock(&master_mutex_);
     GetResourceSnapshotRequest sync_request;
     GetResourceSnapshotResponse sync_response;
     bool ret = rpc_client_.SendRequest(master_stub_,

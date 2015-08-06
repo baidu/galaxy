@@ -96,8 +96,8 @@ $(SCHEDULER_OBJ): $(UTILS_HEADER)
 master: $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS)
 	$(CXX) $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-scheduler: $(SCHEDULER_OBJ) $(OBJS) $(UTILS_OBJ) 
-	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+scheduler: $(SCHEDULER_OBJ) $(OBJS) $(WATCHER_OBJ) $(UTILS_OBJ) 
+	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 agent: $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS)
 	$(CXX) $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
@@ -105,8 +105,8 @@ agent: $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS)
 test_agent: $(TEST_AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_AGENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
-gced: $(GCED_OBJ) $(OBJS)
-	$(CXX) $(GCED_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+gced: $(GCED_OBJ) $(OBJS) $(WATCHER_OBJ)
+	$(CXX) $(GCED_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 libgalaxy.a: $(SDK_OBJ) $(OBJS) $(PROTO_HEADER)
 	$(AR) -rs $@ $(SDK_OBJ) $(OBJS)
