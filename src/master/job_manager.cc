@@ -48,6 +48,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
     std::map<JobId, Job*>::iterator it;
     it = jobs_.find(job_id);
     if (it == jobs_.end()) {
+        LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
         return kJobNotFound;
     }
     jobs_[job_id]->desc_.CopyFrom(job_desc);
