@@ -191,7 +191,7 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         // setpgid  & chdir
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid, 
-                                             "./");
+                                             pod_work_dir.c_str());
 
         process::PrepareChildProcessEnvStep2(stdout_fd, 
                                              stderr_fd, 
@@ -240,9 +240,9 @@ void GcedImpl::LaunchPod(::google::protobuf::RpcController* controller,
         user_task.binary = task_desc.binary();
 
         // std::string filename(work_dir);
-        LOG(INFO, "prepare task workdir %s", work_dir.c_str());
+        LOG(INFO, "prepare task workdir %s", pod_work_dir.c_str());
         std::stringstream ss;
-        ss << work_dir;
+        ss << pod_work_dir;
         ss << "/test_";
         ss << i;
         ss << ".tar.gz";

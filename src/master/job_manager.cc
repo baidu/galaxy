@@ -660,6 +660,10 @@ void JobManager::GetAliveAgentsByDiff(const DiffVersionList& versions,
         if (a_it != agents_ver_map.end() && a_it->second == it->second->version()) {
             continue;
         }
+        if (a_it != agents_ver_map.end()) {
+            LOG(INFO, "agent %s version has diff , the old is %d, the new is %d",
+                it->second->endpoint().c_str(), a_it->second, it->second->version());
+        }
         agents_info->Add()->CopyFrom(*agent);
     }
     long used_time = ::baidu::common::timer::get_micros() / 1000 - now_time;

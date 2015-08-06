@@ -11,6 +11,7 @@ namespace galaxy {
 
 void SchedulerIO::Loop() {
     GetResourceSnapshotRequest sync_request;
+    scheduler_.BuildSyncRequest(&sync_request);
     GetResourceSnapshotResponse sync_response;
     bool ret = rpc_client_.SendRequest(master_stub_,
                                       &Master_Stub::GetResourceSnapshot,

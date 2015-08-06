@@ -246,6 +246,16 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
     return reducing_count;
 }
 
+void Scheduler::BuildSyncRequest(GetResourceSnapshotRequest* request) {
+    boost::unordered_map<std::string, AgentInfoExtend*>::iterator it =
+      resources_.begin();
+    for (; it != resources_.end(); ++it) {
+        DiffVersion* version = request->add_versions();
+        version->set_version(it->second->agent_info->version());
+        version->set_endpoint(it->second->agent_info->endpoint());
+    }
+}
+
 PodScaleUpCell::PodScaleUpCell():pod(NULL), job(NULL),
         schedule_count(0), feasible_limit(0) {}
 
