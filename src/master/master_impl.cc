@@ -107,16 +107,8 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
     job_info.set_state(kJobNormal);
     LOG(INFO, "user[%s] try to submit a job: \"%s\"", 
         job_info.desc().user().c_str(), job_info.desc().name().c_str());
-    for (int i = 0; i < job_info.desc().pod().tasks_size(); i++) {
-        const TaskDescriptor& task_desc = job_info.desc().pod().tasks(i);
-        LOG(INFO, "try submmit job: \"%s\", "
-            "tasks[%d]: start_cmd: \"%s\", stop_cmd: \"%s\", binary_size: %d",
-            job_info.desc().name().c_str(), 
-            i, 
-            task_desc.start_command().c_str(),
-            task_desc.stop_command().c_str(),
-            task_desc.binary().size());
-    }
+    MasterUtil::TraceJobDesc(job_info.desc());
+
     std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
                           + "/" + job_id;
     ::galaxy::ins::sdk::SDKError err;
@@ -135,10 +127,15 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::UpdateJobRequest*,
-                           ::baidu::galaxy::UpdateJobResponse*,
+                           const ::baidu::galaxy::UpdateJobRequest* request,
+                           ::baidu::galaxy::UpdateJobResponse* response,
                            ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method UpdateJob() not implemented.");
+    const JobDescriptor& job_desc = request->job();
+    JobId job_id = request->jobid();
+    LOG(INFO, "update job desc: %s", job_desc.name().c_str());
+    MasterUtil::TraceJobDesc(job_desc);
+    Status status = job_manager_.Update(job_id, job_desc);
+    response->set_status(status);
     done->Run();
 }
 

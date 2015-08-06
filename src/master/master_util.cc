@@ -10,6 +10,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <gflags/gflags.h>
+#include <logging.h>
 
 #include "proto/galaxy.pb.h"
 #include "proto/master.pb.h"
@@ -66,6 +67,28 @@ std::string MasterUtil::SelfEndpoint() {
     }
     hostname = buf.nodename;
     return hostname + ":" + FLAGS_master_port;
+}
+
+void MasterUtil::TraceJobDesc(const JobDescriptor& job_desc) {
+    LOG(INFO, "job descriptor: \"%s\", "
+              "replica:%d, "
+              "deploy_step:%d, version:\"%s\"",
+              job_desc.name().c_str(),
+              job_desc.replica(),
+              job_desc.deploy_step(),
+              job_desc.version().c_str()
+    );
+    for (int i = 0; i < job_desc.pod().tasks_size(); i++) {
+        const TaskDescriptor& task_desc = job_desc.pod().tasks(i);
+        LOG(INFO, "job[%s]:task[%d] descriptor: "
+            "start_cmd: \"%s\", stop_cmd: \"%s\", binary_size:%d",
+            job_desc.name().c_str(),
+            i, 
+            task_desc.start_command().c_str(),
+            task_desc.stop_command().c_str(),
+            task_desc.binary().size()
+        );
+    }
 }
 
 }

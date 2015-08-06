@@ -40,6 +40,18 @@ void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     LOG(INFO, "job[%s] submitted by user: %s, ", job_id.c_str(), job_desc.user().c_str());
 }
 
+Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator it;
+    it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    jobs_[job_id]->desc_.CopyFrom(job_desc);
+    LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
+    return kOk;
+}
+
 void JobManager::FillPodsToJob(Job* job) {
     mutex_.AssertHeld();
     if (jobs_.find(job->id_) == jobs_.end()) {
@@ -165,7 +177,7 @@ Status JobManager::Resume(const JobId& jobid) {
             ResumePod(pod);
             job_pending_pods[pod->podid()] = pod;
         }
-        deploy_pods_.erase(it);
+        suspend_pods_.erase(it);
     }
     LOG(INFO, "job resumed: %s", jobid.c_str());
     return kOk;

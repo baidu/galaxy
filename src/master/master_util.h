@@ -20,6 +20,7 @@ public:
     static void SubstractResource(const Resource& from, Resource* to);
     static bool FitResource(const Resource& from, const Resource& to);
     static std::string SelfEndpoint();
+    static void TraceJobDesc(const JobDescriptor& job_desc);
 private:
     static std::string UUID();
 };
