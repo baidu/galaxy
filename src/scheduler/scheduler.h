@@ -162,6 +162,8 @@ public:
 
     int32_t ScaleDownOverloadAgent(const AgentInfo* agent,
                     std::vector<ScheduleInfo*>* propose);
+
+    void BuildSyncRequest(GetResourceSnapshotRequest* request);
 private:
 
     int32_t ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
