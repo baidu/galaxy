@@ -23,10 +23,6 @@ DECLARE_string(agent_port);
 DECLARE_int32(agent_millicores);
 DECLARE_int32(agent_memory);
 
-DECLARE_string(nexus_root_path);
-DECLARE_string(master_path);
-DECLARE_string(nexus_servers);
-
 namespace baidu {
 namespace galaxy {
 
@@ -40,13 +36,13 @@ AgentImpl::AgentImpl() :
     master_(NULL),
     gced_(NULL),
     resource_capacity_(),
-    nexus_(NULL),
+    master_watcher_(NULL),
     mutex_master_endpoint_() { 
     rpc_client_ = new RpcClient();    
     endpoint_ = FLAGS_agent_ip;
     endpoint_.append(":");
     endpoint_.append(FLAGS_agent_port);
-    nexus_ = new InsSDK(FLAGS_nexus_servers);
+    master_watcher_ = new MasterWatcher();
     gce_endpoint_ = "127.0.0.1:";
     gce_endpoint_.append(FLAGS_gce_gced_port);
     background_threads_.DelayTask(
@@ -58,7 +54,7 @@ AgentImpl::~AgentImpl() {
         delete rpc_client_; 
         rpc_client_ = NULL;
     }
-    delete nexus_;
+    delete master_watcher_;
 }
 
 void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
@@ -200,9 +196,7 @@ bool AgentImpl::Init() {
     if (!CheckGcedConnection()) {
         return false; 
     }
-    if (!WatchMasterPath()) {
-        return false;
-    }
+
     if (!RegistToMaster()) {
         return false; 
     }
@@ -225,22 +219,12 @@ bool AgentImpl::PingMaster() {
                                     5, 1);    
 }
 
-static void OnMasterChange(const ::galaxy::ins::sdk::WatchParam& param, 
-                           ::galaxy::ins::sdk::SDKError error) {
-    AgentImpl* agent = static_cast<AgentImpl*>(param.context);
-    agent->HandleMasterChange(param.value);
-}
-
 void AgentImpl::HandleMasterChange(const std::string& new_master_endpoint) {
-    if (!WatchMasterPath()) {
-        LOG(WARNING, "watch master again failed");
-        abort();
-    }
-    MutexLock lock(&mutex_master_endpoint_);
     if (new_master_endpoint.empty()) {
         LOG(WARNING, "the master endpoint is deleted from nexus");
     }
     if (new_master_endpoint != master_endpoint_) {
+        MutexLock lock(&mutex_master_endpoint_);
         LOG(INFO, "master change to %s", new_master_endpoint.c_str());
         master_endpoint_ = new_master_endpoint; 
         if (master_) {
@@ -253,29 +237,17 @@ void AgentImpl::HandleMasterChange(const std::string& new_master_endpoint) {
     }
 }
 
-bool AgentImpl::WatchMasterPath() {
-    std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
-    ::galaxy::ins::sdk::SDKError err;
-    bool ok = nexus_->Watch(master_path_key, &OnMasterChange, this, &err);
-    if (!ok) {
-        LOG(WARNING, "fail to watch on nexus, err_code: %d", err);
-    } else {
-        LOG(INFO, "watch master success.");
-    }
-    return ok;
-}
-
 bool AgentImpl::RegistToMaster() {
-    MutexLock lock(&mutex_master_endpoint_);
-    std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
-    ::galaxy::ins::sdk::SDKError err;
-    bool ok = nexus_->Get(master_path_key, &master_endpoint_, &err);
+    boost::function<void(const std::string)> handler;
+    handler = boost::bind(&AgentImpl::HandleMasterChange, this, _1);
+    bool ok = master_watcher_->Init(handler);
     if (!ok) {
-        LOG(WARNING, "fail to get master endpoint from nexus, err_code: %d", err);
+        LOG(WARNING, "fail to watch on nexus");
         return false;
-    } else {
-        LOG(INFO, "master endpoint is: %s", master_endpoint_.c_str());
     }
+    MutexLock lock(&mutex_master_endpoint_);
+    
+    master_endpoint_ = master_watcher_->GetMasterEndpoint();
 
     if (!rpc_client_->GetStub(master_endpoint_, &master_)) {
         LOG(WARNING, "connect master %s failed", master_endpoint_.c_str()); 

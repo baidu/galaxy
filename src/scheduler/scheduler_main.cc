@@ -17,7 +17,8 @@ static void SignalIntHandler(int /*sig*/) {
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     //LOG(INFO, "start scheduler....")
-    ::baidu::galaxy::SchedulerIO io(FLAGS_master_host + ":" + FLAGS_master_port);
+    ::baidu::galaxy::SchedulerIO io;
+    io.Init();
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {

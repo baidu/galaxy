@@ -11,34 +11,31 @@
 #include <assert.h>
 #include "proto/master.pb.h"
 #include "scheduler/scheduler.h"
-
+#include "master/master_watcher.h"
 #include "rpc/rpc_client.h"
+#include <mutex.h>
 
 namespace baidu {
 namespace galaxy {
 class SchedulerIO {
 
 public:
-    SchedulerIO(const std::string& master_addr)
-                :master_addr_(master_addr),
-                 rpc_client_(),
-                 master_stub_(NULL),
-                 scheduler_(){
-        LOG(INFO, "create scheduler io from master %s", master_addr_.c_str());
-        bool ret = rpc_client_.GetStub(master_addr_, &master_stub_);
-        assert(ret == true);
+    SchedulerIO() : rpc_client_(),
+                    master_stub_(NULL),
+                    scheduler_() {
     }
     ~SchedulerIO(){}
-
+    void HandleMasterChange(const std::string& new_master_endpoint);
+    bool Init();
     void Loop();
 private:
     std::string master_addr_;
     RpcClient rpc_client_;
     Master_Stub* master_stub_;
     Scheduler scheduler_;
-
+    MasterWatcher master_watcher_;
+    Mutex master_mutex_;
 };
-
 
 } // galaxy
 }// baidu
