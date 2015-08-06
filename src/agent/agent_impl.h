@@ -18,8 +18,7 @@
 #include "rpc/rpc_client.h"
 
 #include "pod_manager.h"
-#include "ins_sdk.h"
-using ::galaxy::ins::sdk::InsSDK;
+#include "master/master_watcher.h"
 
 namespace baidu {
 namespace galaxy {
@@ -52,7 +51,6 @@ private:
     bool CheckGcedConnection();
 
     bool PingMaster();
-    bool WatchMasterPath();
 
     struct ResourceCapacity {
         int64_t millicores; 
@@ -74,7 +72,7 @@ private:
     Gced_Stub* gced_;
     ResourceCapacity resource_capacity_;
 
-    InsSDK* nexus_;
+    MasterWatcher* master_watcher_;
     Mutex mutex_master_endpoint_;
 
     PodManager pod_manager_;

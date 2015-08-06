@@ -70,6 +70,11 @@ UTILS_SRC = $(wildcard src/utils/*.cc)
 UTILS_HEADER = $(wildcard src/utils/*.h)
 UTILS_OBJ = $(patsubst %.cc, %.o, $(UTILS_SRC))
 
+WATCHER_SRC = $(wildcard src/master/master_watcher.cc)
+WATCHER_OBJ = $(patsubst %.cc, %.o, $(WATCHER_SRC))
+WATCHER_HEADER = $(wildcard src/master/master_watcher.h)
+
+
 CLIENT_OBJ = $(patsubst %.cc, %.o, $(wildcard src/client/*.cc))
 
 FLAGS_OBJ = $(patsubst %.cc, %.o, $(wildcard src/*.cc))
@@ -94,8 +99,8 @@ master: $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS)
 scheduler: $(SCHEDULER_OBJ) $(OBJS) $(UTILS_OBJ) 
 	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-agent: $(AGENT_OBJ) $(LIBS) $(OBJS)
-	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+agent: $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS)
+	$(CXX) $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 test_agent: $(TEST_AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_AGENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
