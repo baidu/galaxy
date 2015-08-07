@@ -16,9 +16,7 @@ class MasterImpl : public Master {
 public:
       MasterImpl();
       virtual ~MasterImpl();
-      void AcquireMasterLock();
       void Init();
-      void ReloadJobInfo();
       virtual void SubmitJob(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::SubmitJobRequest* request,
                             ::baidu::galaxy::SubmitJobResponse* response,
@@ -69,6 +67,9 @@ public:
                               ::google::protobuf::Closure* done);
       void OnSessionTimeout();
       void OnLockChange(std::string lock_session_id);
+private:
+      void AcquireMasterLock();
+      void ReloadJobInfo();
 private:
       JobManager job_manager_;
       InsSDK* nexus_;
