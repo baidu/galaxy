@@ -2,12 +2,12 @@
 #define POD_MANAGER_H
 
 #include <string>
+#include "agent/pod_info.h"
+#include "agent/initd_handler.h"
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/function.hpp>
 #include "mutex.h"
-#include "pod_info.h"
-#include "initd_handler.h"
 
 namespace baidu {
 
