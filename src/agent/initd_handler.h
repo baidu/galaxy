@@ -6,7 +6,7 @@
 #include <boost/shared_ptr.hpp>
 #include "rpc/rpc_client.h"
 #include "proto/initd.pb.h"
-#include "pod_info.h"
+#include "agent/pod_info.h"
 
 namespace baidu {
 
@@ -67,5 +67,4 @@ private:
 
 }
 }
-
 #endif

@@ -1,0 +1,106 @@
+#edit-mode: -*- python -*-
+#coding:utf-8
+
+#工作路径.
+WORKROOT('../../../')
+
+#使用硬链接copy.
+CopyUsingHardLink(True)
+
+#支持32位/64位平台编译
+#ENABLE_MULTI_LIBS(True)
+
+#C预处理器参数.
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\" -D_BD_KERNEL_')
+#为32位目标编译指定额外的预处理参数
+#CPPFLAGS_32('-D_XOPEN_SOURE=500')
+
+#C编译参数.
+CFLAGS('-g -pipe -W -Wall -Werror -fPIC')
+
+#C++编译参数.
+CXXFLAGS('-g -pipe -W -Wall -fPIC')
+
+# protoc
+PROTOC('../../../third-64/protobuf/bin/protoc')
+
+#头文件路径.
+INCPATHS('. ./src ./output/include ./common/include ./ins/sdk/')
+
+#使用库
+LIBS('./common/libcommon.a ./ins/libins_sdk.a')
+
+#链接参数.
+LDFLAGS('-lpthread -lz')
+
+#依赖模块
+CONFIGS('public/sofa-pbrpc@trunk@comake')
+CONFIGS('thirdsrc/protobuf@2.6.2.0')
+CONFIGS('third-64/boost@1.63.0.101')
+CONFIGS('third-64/gflags@gflags_2-0-0-100_PD_BL')
+
+scheduler_src='src/scheduler/scheduler.cc\
+               src/proto/galaxy.proto\
+               src/proto/master.proto\
+               src/scheduler/scheduler_io.cc\
+               src/utils/resource_utils.cc\
+               src/flags.cc \
+               src/master/master_watcher.cc\
+               src/scheduler/scheduler_main.cc'
+
+master_src='src/master/master_impl.cc\
+            src/master/master_util.cc\
+            src/master/master_main.cc\
+            src/master/job_manager.cc\
+            src/flags.cc \
+            src/master/master_watcher.cc\
+            src/utils/resource_utils.cc\
+            src/proto/galaxy.proto\
+            src/proto/master.proto\
+            src/proto/agent.proto'
+
+agent_src='src/agent/agent_impl.cc\
+           src/agent/agent_main.cc\
+           src/agent/pod_manager.cc\
+           src/agent/initd_handler.cc\
+           src/agent/utils.cc\
+           src/flags.cc\
+           src/proto/agent.proto\
+           src/proto/master.proto\
+           src/master/master_watcher.cc\
+           src/proto/galaxy.proto\
+           src/proto/gced.proto\
+           src/proto/initd.proto'
+
+initd_src='src/gce/initd_main.cc\
+           src/gce/initd_impl.cc\
+           src/gce/utils.cc\
+           src/proto/agent.proto\
+           src/proto/galaxy.proto\
+           src/flags.cc\
+           src/proto/initd.proto'
+
+gced_src='src/gce/gced_impl.cc\
+          src/gce/gced_main.cc\
+          src/flags.cc\
+          src/gce/utils.cc\
+          src/proto/gced.proto\
+          src/proto/agent.proto\
+          src/proto/master.proto\
+          src/proto/galaxy.proto\
+          src/proto/initd.proto'
+sdk_src='src/sdk/galaxy.cc\
+         src/proto/galaxy.proto\
+         src/proto/master.proto'
+sdk_headers='src/sdk/galaxy.h'
+
+client_src='src/client/galaxy_client.cc \
+            src/flags.cc'
+
+Application('scheduler',Sources(scheduler_src))
+Application('master',Sources(master_src))
+Application('agent',Sources(agent_src))
+Application('initd',Sources(initd_src))
+Application('gced',Sources(gced_src))
+StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
+Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))

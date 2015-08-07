@@ -267,6 +267,7 @@ Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
     mutex_.AssertHeld();
     Resource pod_requirement;
     GetPodRequirement(pod, &pod_requirement);
+    // calc agent unassigned resource 
     Resource unassigned;
     unassigned.CopyFrom(agent->total());
     bool ret = ResourceUtils::Alloc(agent->assigned(), unassigned);
@@ -279,6 +280,7 @@ Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
     return kOk;
 }
 
+
 void JobManager::ReclaimResource(const PodStatus& pod, AgentInfo* agent) {
     mutex_.AssertHeld();
     Resource pod_requirement;
@@ -289,7 +291,7 @@ void JobManager::ReclaimResource(const PodStatus& pod, AgentInfo* agent) {
 void JobManager::GetPodRequirement(const PodStatus& pod, Resource* requirement) {
     Job* job = jobs_[pod.jobid()];
     const PodDescriptor& pod_desc = job->desc_.pod();
-    CalculatePodRequirement(pod_desc, requirement);
+    requirement->CopyFrom(pod_desc.requirement());
 }
 
 void JobManager::CalculatePodRequirement(const PodDescriptor& pod_desc,
