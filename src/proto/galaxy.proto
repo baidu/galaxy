@@ -24,6 +24,7 @@ enum PodState {
     kPodSuspend = 4;
 }
 
+
 enum AgentState {
     kAlive = 0;
     kDead = 1;    
@@ -36,8 +37,7 @@ message Volume {
 
 message Resource {
     optional int32 millicores = 1;
-    // MB
-    optional int32 memory = 2;
+    optional int64 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;
     repeated Volume ssds = 5; 
@@ -46,14 +46,23 @@ message Resource {
 message TaskDescriptor {
     optional bytes binary = 1; 
     optional string start_command = 2;
-    optional string stop_command = 3;
+    optional string stop_command = 3; 
+    // the disk and ssd path must be the same with
+    // pod's resource 
     optional Resource requirement = 4;
     repeated string labels = 5;
     repeated string env = 6;
+    // generate it automatically when create job
+    optional int32 offset = 7;
 }
 
 message PodDescriptor {
     repeated TaskDescriptor tasks = 1;
+    // request cpu,mem,port,disk and ssd from agent
+    // and mount the alloced disk and alloced ssd to path
+    // that user required
+    optional Resource requirement = 2;
+    optional bool pin_on_agent = 3 [default = false];
 }
 
 message TaskStatus {
@@ -82,4 +91,3 @@ message AgentInfo {
     optional AgentState state = 8;
     optional int32 version = 9;
 }
-
