@@ -36,8 +36,7 @@ message Volume {
 
 message Resource {
     optional int32 millicores = 1;
-    // MB
-    optional int32 memory = 2;
+    optional int32 memory = 2;    // MB
     repeated int32 ports = 3;
     repeated Volume disks = 4;
     repeated Volume ssds = 5; 
@@ -82,4 +81,3 @@ message AgentInfo {
     optional AgentState state = 8;
     optional int32 version = 9;
 }
-
