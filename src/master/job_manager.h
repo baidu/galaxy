@@ -38,6 +38,7 @@ struct Job {
 class JobManager {
 public:
     void Add(const JobId& job_id, const JobDescriptor& job_desc);
+    Status Update(const JobId& job_id, const JobDescriptor& job_desc);
     Status Suspend(const JobId& jobid);
     Status Resume(const JobId& jobid);
     JobManager();

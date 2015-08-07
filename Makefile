@@ -37,9 +37,9 @@ SCHEDULER_SRC = $(wildcard src/scheduler/scheduler*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
-AGENT_SRC = $(wildcard src/agent/agent*.cc) 
+AGENT_SRC = $(wildcard src/agent/agent*.cc) src/agent/pod_manager.cc src/agent/initd_handler.cc src/agent/utils.cc
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
-AGENT_HEADER = $(wildcard src/agent/*.h) 
+AGENT_HEADER = $(wildcard src/agent/*.h) src/agent/pod_manager.h src/agent/initd_handler.h src/agent/utils.h
 
 TEST_AGENT_SRC = src/agent/test_agent.cc
 TEST_AGENT_OBJ = $(patsubst %.cc, %.o, $(TEST_AGENT_SRC))
@@ -48,9 +48,9 @@ GCED_SRC = $(wildcard src/gce/gced*.cc) src/gce/utils.cc
 GCED_OBJ = $(patsubst %.cc, %.o, $(GCED_SRC))
 GCED_HEADER = $(wildcard src/agent/*.h) src/gce/utils.h
 
-INITD_SRC = $(wildcard src/gce/initd*.cc) src/gce/utils.cc src/flags.cc
+INITD_SRC = $(wildcard src/gce/initd*.cc) src/gce/utils.cc src/flags.cc src/gce/task_manager.cc
 INITD_OBJ = $(patsubst %.cc, %.o, $(INITD_SRC))
-INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h
+INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h src/gce/task_manager.h
 
 TEST_INITD_SRC = src/gce/test_initd.cc
 TEST_INITD_OBJ = $(patsubst %.cc, %.o, $(TEST_INITD_SRC))
@@ -69,6 +69,11 @@ SCHED_TEST_OBJ = $(patsubst %.cc, %.o, $(SCHED_TEST_SRC))
 UTILS_SRC = $(wildcard src/utils/*.cc)
 UTILS_HEADER = $(wildcard src/utils/*.h)
 UTILS_OBJ = $(patsubst %.cc, %.o, $(UTILS_SRC))
+
+WATCHER_SRC = $(wildcard src/master/master_watcher.cc)
+WATCHER_OBJ = $(patsubst %.cc, %.o, $(WATCHER_SRC))
+WATCHER_HEADER = $(wildcard src/master/master_watcher.h)
+
 
 CLIENT_OBJ = $(patsubst %.cc, %.o, $(wildcard src/client/*.cc))
 
@@ -91,17 +96,17 @@ $(SCHEDULER_OBJ): $(UTILS_HEADER)
 master: $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS)
 	$(CXX) $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-scheduler: $(SCHEDULER_OBJ) $(OBJS) $(UTILS_OBJ) 
-	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+scheduler: $(SCHEDULER_OBJ) $(OBJS) $(WATCHER_OBJ) $(UTILS_OBJ) 
+	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
-agent: $(AGENT_OBJ) $(LIBS) $(OBJS)
-	$(CXX) $(AGENT_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+agent: $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS)
+	$(CXX) $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 test_agent: $(TEST_AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_AGENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
 
-gced: $(GCED_OBJ) $(OBJS)
-	$(CXX) $(GCED_OBJ) $(OBJS) -o $@ $(LDFLAGS)
+gced: $(GCED_OBJ) $(OBJS) $(WATCHER_OBJ)
+	$(CXX) $(GCED_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 libgalaxy.a: $(SDK_OBJ) $(OBJS) $(PROTO_HEADER)
 	$(AR) -rs $@ $(SDK_OBJ) $(OBJS)

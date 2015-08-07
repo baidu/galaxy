@@ -16,8 +16,8 @@ int main(int argc, char** argv) {
     baidu::galaxy::PodDescriptor pod;
     baidu::galaxy::TaskDescriptor task;
 
-    task.set_binary("1111");
-    task.set_start_command("touch testgced");
+    task.set_binary("#!/bin/bash \n touch dapigu");
+    task.set_start_command("sh test");
 
     baidu::galaxy::TaskDescriptor* task_desc = pod.add_tasks();
     task_desc->CopyFrom(task);
