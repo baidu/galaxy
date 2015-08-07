@@ -1,7 +1,7 @@
 #ifndef INITDHANDLER_H
 #define INITDHANDLER_H
 
-#include "rpc_client.h"
+#include "rpc/rpc_client.h"
 
 namespace baidu {
 namespace galaxy  {
@@ -29,3 +29,4 @@ private:
 
 }
 }
+#endif

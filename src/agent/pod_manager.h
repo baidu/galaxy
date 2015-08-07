@@ -2,8 +2,8 @@
 #define POD_MANAGER_H
 
 #include <string>
-#include "pod_info.h"
-#include "initd_handler.h"
+#include "agent/pod_info.h"
+#include "agent/initd_handler.h"
 
 namespace baidu {
 namespace galaxy {
