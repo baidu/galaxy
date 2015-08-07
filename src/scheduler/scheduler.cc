@@ -66,9 +66,23 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
     int propose_count = 0;
     // 计算job优先级，及其需要调度的pod数量
     std::vector<PodScaleUpCell*> pending_pods;
-
+    std::vector<PodScaleUpCell*> keep_running_pods;
     // pod 依照优先级进行排序
-    int32_t total_feasible_count = ChoosePendingPod(pending_jobs, &pending_pods);
+    int32_t total_feasible_count = ChoosePods(pending_jobs, 
+                                              &pending_pods,
+                                              &keep_running_pods);
+    for (size_t i = 0; i < keep_running_pods.size(); i++) {
+        JobInfo* job = keep_running_pods[i]->job;
+        for (int j = 0; j < job->pods_size(); j++) {
+            const PodStatus& pod_status = job->pods(j);
+            ScheduleInfo* sched_info = new ScheduleInfo();
+            sched_info->set_jobid(pod_status.jobid());
+            sched_info->set_podid(pod_status.podid());
+            sched_info->set_endpoint(pod_status.endpoint());
+            sched_info->set_action(kKeepRunning);
+            propose->push_back(sched_info);
+        }
+    }
     LOG(INFO, "feasibility checking count : %d, factor %d"
             , total_feasible_count, feasibility_factor);
 
@@ -120,6 +134,11 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
         delete *pod_it;
     }
 
+    for (std::vector<PodScaleUpCell*>::iterator pod_it =
+      keep_running_pods.begin();
+      pod_it != pending_pods.end(); ++pod_it) {
+        delete *pod_it;
+    }
     return propose_count;
 }
 
@@ -191,8 +210,9 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
    return resources_.size();
 }
 
-int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
-                                    std::vector<PodScaleUpCell*>* pending_pods) {
+int32_t Scheduler::ChoosePods(std::vector<JobInfo*>& pending_jobs,
+                              std::vector<PodScaleUpCell*>* pending_pods,
+                              std::vector<PodScaleUpCell*>* keep_running_pods) {
     // 获取scale up的任务
     int feasibility_count = 0;
 
@@ -200,14 +220,24 @@ int32_t Scheduler::ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
     std::sort(pending_jobs.begin(), pending_jobs.end(), JobCompare);
     std::vector<JobInfo*>::iterator job_it = pending_jobs.begin();
     for (; job_it != pending_jobs.end(); ++job_it) {
+        JobInfo* job = *job_it;
+        if (job->pods_size() <= 0) {
+            LOG(WARNING, "job %s has no pending pod but it is in master pending queue", job->jobid().c_str());
+            continue;
+        }
         PodScaleUpCell* cell = new PodScaleUpCell();
-        cell->pod = (*job_it)->mutable_desc()->mutable_pod();
-        cell->job = *job_it;
-        cell->feasible_limit = (*job_it)->pods_size() * feasibility_factor;
+        cell->pod = job->mutable_desc()->mutable_pod();
+        cell->job = job;
+
+        if (job->desc().pod().pin_on_agent()) {
+            keep_running_pods->push_back(cell);
+            continue;
+        }
+        cell->feasible_limit = job->pods_size() * feasibility_factor;
         feasibility_count += cell->feasible_limit;
-        for (int i = 0; i < (*job_it)->pods_size(); ++i) {
-            cell->pod_ids.push_back((*job_it)->pods(i).podid());
-            LOG(INFO, "POD ID %s" , (*job_it)->pods(i).podid().c_str());
+        for (int i = 0; i < job->pods_size(); ++i) {
+            cell->pod_ids.push_back(job->pods(i).podid());
+            LOG(INFO, "scheduler pod %s" , job->pods(i).podid().c_str());
         }
         CalcSources(*(cell->pod), &(cell->resource));
         pending_pods->push_back(cell);

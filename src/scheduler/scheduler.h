@@ -166,8 +166,9 @@ public:
     void BuildSyncRequest(GetResourceSnapshotRequest* request);
 private:
 
-    int32_t ChoosePendingPod(std::vector<JobInfo*>& pending_jobs,
-                std::vector<PodScaleUpCell*>* pending_pods);
+    int32_t ChoosePods(std::vector<JobInfo*>& pending_jobs,
+                       std::vector<PodScaleUpCell*>* pending_pods,
+                       std::vector<PodScaleUpCell*>* keep_running_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
                 std::vector<PodScaleDownCell*>* reducing_pods);
