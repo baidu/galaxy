@@ -33,6 +33,10 @@ struct AgentInfoExtend {
     }
 };
 
+struct PodKeepRunningCell {
+    std::map<std::string, std::string> keep_running_pods;
+    JobInfo* job;
+};
 
 struct PodScaleUpCell {
     PodDescriptor* pod;
@@ -168,12 +172,12 @@ private:
 
     int32_t ChoosePods(std::vector<JobInfo*>& pending_jobs,
                        std::vector<PodScaleUpCell*>* pending_pods,
-                       std::vector<PodScaleUpCell*>* keep_running_pods);
+                       std::vector<PodKeepRunningCell*>* keep_running_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
-    int32_t ChooseRecourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
+    int32_t ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
 
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
