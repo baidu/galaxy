@@ -238,8 +238,9 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo*>& pending_jobs,
         std::vector<std::string> need_schedule;
         std::map<std::string, std::string> no_need_schedule;
         for (int i = 0; i < job->pods_size(); ++i) {
+            //TODO handle dead agent
             if (job->desc().pod().pin_on_agent() &&
-                !job->pods(i).endpoint().empty()){
+                !job->pods(i).endpoint().empty() ){
                 no_need_schedule.insert(std::make_pair(job->pods(i).podid(),
                                         job->pods(i).endpoint()));
                 LOG(INFO, "no need to schedule pod %d and keep it running on agent %s ", job->pods(i).podid().c_str(), job->pods(i).endpoint().c_str());
