@@ -154,6 +154,60 @@ void JobManager::SuspendPod(PodStatus* pod) {
     LOG(INFO, "pod suspended: %s", pod->podid().c_str());
 }
 
+void JobManager::KillPod(PodStatus* pod) {
+    mutex_.AssertHeld();
+    assert(pod);
+    PodState state = pod->state();
+    if (state == kPodRunning) {
+        std::string agent_addr = pod->endpoint();
+        KillPodRequest* request = new KillPodRequest;
+        KillPodResponse* response = new KillPodResponse;
+        request->set_podid(pod->podid());
+        Agent_Stub* stub;
+        rpc_client_.GetStub(agent_addr, &stub);
+        boost::function<void (const KillPodRequest*, KillPodResponse*, bool, int)> kill_pod_callback;
+        kill_pod_callback = boost::bind(&JobManager::KillPodCallback, this, pod, agent_addr,
+                                       _1, _2, _3, _4);
+        rpc_client_.AsyncRequest(stub, &Agent_Stub::KillPod, request, response,
+                                 kill_pod_callback, FLAGS_master_agent_rpc_timeout, 0);
+        delete stub;
+    } else {
+        LOG(WARNING, "fail to kill , pod state invalid, pod_id:%s, state:%d",
+            pod->podid().c_str(), state);
+    }
+}
+
+void JobManager::KillPodCallback(PodStatus* pod, std::string agent_addr,
+                                 const KillPodRequest* request, KillPodResponse* response, 
+                                 bool failed, int error) {
+    boost::scoped_ptr<const KillPodRequest> request_ptr(request);
+    boost::scoped_ptr<KillPodResponse> response_ptr(response);
+    MutexLock lock(&mutex_);
+    const std::string& jobid = pod->jobid();
+    const std::string& podid = pod->podid();
+    if (pod->state() != kPodRunning || pod->endpoint() != agent_addr) {
+        LOG(INFO, "ignore Kill pod callback of pod [%s %s] on [%s]",
+            jobid.c_str(), podid.c_str(), agent_addr.c_str());
+        return;
+    }
+
+    Status status = response->status();
+    if (failed || status != kOk) {
+        LOG(INFO, "Kill pod [%s %s] on [%s] fail: %d", jobid.c_str(),
+            podid.c_str(), agent_addr.c_str(), status);
+        return;
+    }
+    pod->set_state(kPodTerminate);
+    if (running_pods_.find(agent_addr) != running_pods_.end()) {
+        running_pods_[agent_addr].erase(pod->podid());
+        if (running_pods_[agent_addr].size() == 0 ){
+            running_pods_.erase(agent_addr);
+        }
+    }
+    LOG(INFO, "Kill pod [%s %s] on [%s] success", jobid.c_str(),
+        podid.c_str(), agent_addr.c_str());
+}
+
 Status JobManager::Resume(const JobId& jobid) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
@@ -239,6 +293,11 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     if (at == agents_.end()) {
         LOG(INFO, "propose fail, no such agent: %s", endpoint.c_str());
         return kAgentNotFound;
+    }
+
+    if (sche_info.action() == kTerminate) {
+        KillPod(jt->second);
+        return kOk;
     }
 
     PodStatus* pod = jt->second;
