@@ -134,6 +134,35 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     JobId job_id = request->jobid();
     LOG(INFO, "update job desc: %s", job_desc.name().c_str());
     MasterUtil::TraceJobDesc(job_desc);
+    std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
+                          + "/" + job_id;
+    ::galaxy::ins::sdk::SDKError err;
+    std::string job_raw_data;
+    bool get_ok = nexus_->Get(job_key, &job_raw_data, &err);
+    if (!get_ok) {
+        LOG(WARNING, "no such job: %s", job_key.c_str());
+        response->set_status(kJobNotFound);
+        done->Run();
+        return;
+    }
+    JobInfo job_info;
+    bool parse_ok = job_info.ParseFromString(job_raw_data);
+    if (!parse_ok) {
+        LOG(WARNING, "parse old jobinfo failed, %s", job_id.c_str());
+        response->set_status(kJobUpdateFail);
+        done->Run();
+        return;
+    }
+    job_info.mutable_desc()->CopyFrom(job_desc);
+    job_info.SerializeToString(&job_raw_data);
+    bool put_ok = nexus_->Put(job_key, job_raw_data, &err);
+    if (!put_ok) {
+        response->set_status(kJobUpdateFail);
+        LOG(WARNING, "update job_desc to nexus fail, reason: %s",
+            ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        done->Run();
+        return;
+    }
     Status status = job_manager_.Update(job_id, job_desc);
     response->set_status(status);
     done->Run();
