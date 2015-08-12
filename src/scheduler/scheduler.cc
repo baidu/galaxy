@@ -8,7 +8,6 @@
 #include <algorithm>
 #include "logging.h"
 #include "utils/resource_utils.h"
-#include "utils/collections.h"
 
 namespace baidu {
 namespace galaxy {
@@ -151,7 +150,7 @@ int32_t Scheduler::ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_al
     for (; it != resources_.end(); ++it) {
         keys.push_back(it->first);
     }
-    Collections::Shuffle(keys);
+    Shuffle(keys);
     std::vector<std::string>::iterator k_it = keys.begin();
     for (; k_it != keys.end(); ++k_it) {
         AgentInfoExtend* agent = resources_[*k_it];
