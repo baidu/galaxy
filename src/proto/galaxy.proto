@@ -10,6 +10,7 @@ enum Status {
     kPodNotFound = 4;
     kAgentNotFound = 5;
     kJobSubmitFail = 6;
+    kJobUpdateFail = 7;
     kNotFound = 16;
     kInputError = 17;
 

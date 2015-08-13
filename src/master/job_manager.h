@@ -55,6 +55,7 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
+    void KillPod(PodStatus* pod);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -81,7 +82,9 @@ private:
     void ScheduleNextQuery();
     void FillPodsToJob(Job* job);
     void FillAllJobs();
-
+    void KillPodCallback(PodStatus* pod, std::string agent_addr,
+                         const KillPodRequest* request, KillPodResponse* response, 
+                         bool failed, int error);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
