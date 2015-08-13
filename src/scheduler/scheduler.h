@@ -6,6 +6,8 @@
 #define BAIDU_GALAXY_SCHEDULER_H
 #include <map>
 #include <string>
+#include <stdlib.h>
+#include <algorithm>
 #include <boost/unordered_map.hpp>
 #include "proto/master.pb.h"
 #include "mutex.h"
@@ -33,6 +35,10 @@ struct AgentInfoExtend {
     }
 };
 
+struct PodKeepRunningCell {
+    std::map<std::string, std::string> keep_running_pods;
+    JobInfo* job;
+};
 
 struct PodScaleUpCell {
     PodDescriptor* pod;
@@ -168,14 +174,26 @@ private:
 
     int32_t ChoosePods(std::vector<JobInfo*>& pending_jobs,
                        std::vector<PodScaleUpCell*>* pending_pods,
-                       std::vector<PodScaleUpCell*>* keep_running_pods);
+                       std::vector<PodKeepRunningCell*>* keep_running_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
-    int32_t ChooseRecourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
+    int32_t ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
 
     int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
+
+    template<class T>
+    void Shuffle(std::vector<T>& list) {
+        for (size_t i = list.size(); i > 1; i--) {
+            T tmp = list[i-1];
+            size_t target_index = ::rand() % i ;
+            list[i-1] = list[target_index];
+            list[target_index] = tmp;
+        }
+    }
+
+private:
 
     boost::unordered_map<std::string, AgentInfoExtend*> resources_;
     std::map<std::string, JobOverview*> job_overview_;
