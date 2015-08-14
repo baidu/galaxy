@@ -469,6 +469,7 @@ void JobManager::DeployPod() {
             running_pods_[endpoint][jobid][podid] = pod;
             RunPod(pod_desc, pod);
         }
+        it->second.clear();
     }
 }
 
