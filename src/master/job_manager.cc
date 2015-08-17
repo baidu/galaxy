@@ -66,6 +66,7 @@ void JobManager::FillPodsToJob(Job* job) {
         PodStatus* pod_status = new PodStatus();
         pod_status->set_podid(pod_id);
         pod_status->set_jobid(job->id_);
+        pod_status->set_state(kPodPending);
         job->pods_[pod_id] = pod_status;
         pending_pods_[job->id_][pod_id] = pod_status;
         LOG(INFO, "move pod to pendings: %s", pod_id.c_str());
@@ -436,7 +437,7 @@ void JobManager::ReschedulePod(PodStatus* pod_status) {
     mutex_.AssertHeld();
 
     pod_status->set_state(kPodPending);
-    pod_status->set_endpoint("");
+    // record last deploy agent endpoint
     pod_status->mutable_resource_used()->Clear();
     for (int i = 0; i < pod_status->status_size(); i++) {
         pod_status->mutable_status(i)->Clear();
@@ -759,6 +760,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         overview->set_state(job->state_);
 
         uint32_t running_num = 0;
+        uint32_t pending_num = 0;
         std::map<PodId, PodStatus*>& pods = job->pods_;
         std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
         for (; pod_it != pods.end(); ++pod_it) {
@@ -767,8 +769,12 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
             if (pod->state() == kPodRunning) {
                 running_num++;
                 MasterUtil::AddResource(pod->resource_used(), overview->mutable_resource_used());
+            } else if(pod->state() == kPodPending) {
+                pending_num++;
             }
         }
+        overview->set_running_num(running_num);
+        overview->set_pending_num(pending_num);
     }
 }
 
