@@ -19,7 +19,7 @@ echo "--gce_work_dir=./work_dir" >> galaxy.flag
 sleep 3
 
 tar zcf batch.tar.gz ../galaxy
-echo "yes" > longrun.sh
+echo "sleep 2000000" > longrun.sh
 tar zcf longrun.tar.gz longrun.sh
 
 ../galaxy submit job_batch batch.tar.gz 3 3 3 "./galaxy list" batch

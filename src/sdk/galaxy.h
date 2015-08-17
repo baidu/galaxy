@@ -44,7 +44,7 @@ struct NodeDescription {
     int64_t cpu_used;
     int64_t mem_used;
     int64_t cpu_assigned;
-	int64_t mem_assigned;
+    int64_t mem_assigned;
 };
 
 class Galaxy {
