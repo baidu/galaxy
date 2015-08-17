@@ -379,7 +379,6 @@ void JobManager::ReschedulePod(PodStatus* pod_status) {
 
     pod_status->set_state(kPodPending);
     // record last deploy agent endpoint
-    pod_status->set_endpoint(pod_status->endpoint());
     pod_status->mutable_resource_used()->Clear();
     for (int i = 0; i < pod_status->status_size(); i++) {
         pod_status->mutable_status(i)->Clear();
