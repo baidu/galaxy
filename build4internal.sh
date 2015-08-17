@@ -9,11 +9,17 @@ fi
 
 echo "build common done"
 
-cd $BUILD_HOME/common && make -j4
+cd $BUILD_HOME/common 
+# for use the same boost header
+cp Makefile Makefile_bak
+sed -i 's/^INCLUDE_PATH.*$/INCLUDE_PATH=-Iinclude -I..\/..\/..\/..\/third-64\/boost\/include/' Makefile
+make -j4
+cd -
+
 cd $BUILD_HOME
 if [ -e ../ins ];then
     cd ../ins && comake2 -UB && comake2 && make -j6
-else:
+else
     cd $BUILD_HOME && cd .. && git clone http://gitlab.baidu.com/baidups/ins.git && cd ins && comake2 -UB && comake2 && make -j6
 fi
 cd $BUILD_HOME && test -e ins && rm -rf ins
