@@ -91,14 +91,15 @@ int ListJob(int argc, char* argv[]) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
     baidu::common::TPrinter tp(8);
-    tp.AddRow(8, "", "id", "name", "running", "replica", "batch", "cpu", "memory");
+    tp.AddRow(8, "", "id", "name", "stat(r/p)", "replica", "batch", "cpu", "memory");
     if (galaxy->ListJobs(&infos)) {
         for (uint32_t i = 0; i < infos.size(); i++) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString(i + 1));
             vs.push_back(infos[i].job_id);
             vs.push_back(infos[i].job_name);
-            vs.push_back(baidu::common::NumToString(infos[i].running_num));
+            vs.push_back(baidu::common::NumToString(infos[i].running_num) + "/" + 
+                         baidu::common::NumToString(infos[i].pending_num));
             vs.push_back(baidu::common::NumToString(infos[i].replica));
 						vs.push_back(infos[i].is_batch ? "batch" : "");
             vs.push_back(baidu::common::NumToString(infos[i].cpu_used));

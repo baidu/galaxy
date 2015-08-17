@@ -27,12 +27,13 @@ struct JobDescription {
 struct JobInformation {
     std::string job_name;
     std::string job_id;
-		bool is_batch;
+	bool is_batch;
     int32_t replica;
     int32_t priority;
     int32_t running_num;
     int32_t cpu_used;
     int32_t mem_used;
+    int32_t pending_num;
 };
 
 struct NodeDescription {
@@ -42,8 +43,8 @@ struct NodeDescription {
     int64_t mem_share;
     int64_t cpu_used;
     int64_t mem_used;
-		int64_t cpu_assigned;
-		int64_t mem_assigned;
+	int64_t cpu_assigned;
+	int64_t mem_assigned;
 };
 
 class Galaxy {
