@@ -47,10 +47,18 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     // TODO may use internal AgentInfo with set 
     for (AgentSet::iterator it = to_remove.begin(); 
                                 it != to_remove.end(); ++it) {
+        boost::unordered_map<AgentAddr, LabelSet>::iterator 
+                lab_it = agent_labels_.find(label_cell.label());
+        if (lab_it == agent_labels_.end()) {
+            continue; 
+        }
+        lab_it->second.erase(label_cell.label());
         agent_labels_[*it].erase(label_cell.label()); 
         // update Version
-        AgentInfo* agent_ptr = agents_[*it]; 
-        if (agent_ptr != NULL) {
+        std::map<AgentAddr, AgentInfo*>::iterator agent_it 
+                                            = agents_.find(*it); 
+        if (agent_it != agents_.end()) {
+            AgentInfo* agent_ptr = agent_it->second;
             agent_ptr->set_version(agent_ptr->version() + 1);
             MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
         }
@@ -59,8 +67,10 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
                                 it != to_add.end(); ++it) {
         agent_labels_[*it].insert(label_cell.label()); 
         // update Version
-        AgentInfo* agent_ptr = agents_[*it]; 
-        if (agent_ptr != NULL) {
+        std::map<AgentAddr, AgentInfo*>::iterator agent_it 
+                                            = agents_.find(*it);
+        if (agent_it != agents_.end()) {
+            AgentInfo* agent_ptr = agent_it->second;
             agent_ptr->set_version(agent_ptr->version() + 1);
             MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
         }

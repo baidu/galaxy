@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 
+#include <boost/unordered_map.hpp>
 //#include <mutex.h>
 #include <thread_pool.h>
 
@@ -109,7 +110,7 @@ private:
     typedef std::set<std::string> AgentSet;
     typedef std::set<std::string> LabelSet;
     std::map<LabelName, AgentSet> labels_;
-    std::map<AgentAddr, LabelSet> agent_labels_;
+    boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
 };
 
 }
