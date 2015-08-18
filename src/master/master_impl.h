@@ -70,6 +70,9 @@ public:
 private:
       void AcquireMasterLock();
       void ReloadJobInfo();
+      bool SaveJobInfo(const JobId& job_id,
+                       const JobDescriptor* desc,
+                       const JobState* state);
 private:
       JobManager job_manager_;
       InsSDK* nexus_;

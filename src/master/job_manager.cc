@@ -788,6 +788,7 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
 
     Job* job = job_it->second;
     job_info->set_jobid(jobid);
+    job_info->set_state(job->state_);
     job_info->mutable_desc()->CopyFrom(job->desc_);
     std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
     for (; pod_it != job->pods_.end(); ++pod_it) {
