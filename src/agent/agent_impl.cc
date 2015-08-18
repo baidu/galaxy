@@ -93,6 +93,7 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
     PodDesc pod;
     pod.id = req->podid();
     pod.desc = req->pod();
+    pod.jobid = req->jobid();
     int ret = pod_manager_.Run(pod);
     if (ret != 0) {
         resp->set_status(kUnknown);

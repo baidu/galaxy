@@ -14,6 +14,7 @@ public:
 
     // pod meta infomation
     PodDescriptor desc;
+    std::string jobid;
 };
 
 class PodInfo {
