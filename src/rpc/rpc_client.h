@@ -78,7 +78,7 @@ public:
                     const Request*, Response*, Callback*),
                     const Request* request, Response* response,
                     boost::function<void (const Request*, Response*, bool, int)> callback,
-                    int32_t rpc_timeout, int retry_times) {
+                    int32_t rpc_timeout, int /*retry_times*/) {
         sofa::pbrpc::RpcController* controller = new sofa::pbrpc::RpcController();
         controller->SetTimeout(rpc_timeout * 1000L);
         google::protobuf::Closure* done = 
