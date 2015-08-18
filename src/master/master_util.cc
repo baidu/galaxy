@@ -91,5 +91,61 @@ void MasterUtil::TraceJobDesc(const JobDescriptor& job_desc) {
     }
 }
 
+void MasterUtil::SetDiff(const std::set<std::string>& left_set,
+                         const std::set<std::string>& right_set,
+                         std::set<std::string>* left_diff,
+                         std::set<std::string>* right_diff) {
+    if (left_diff == NULL || right_diff == NULL) {
+        LOG(WARNING, "set diff error for input NULL");
+        return; 
+    }
+
+    if (left_set.size() == 0) {
+        *right_diff = right_set;
+        return;
+    }
+
+    if (right_set.size() == 0) {
+        *left_diff = left_set; 
+        return;
+    }
+    std::set<std::string>::iterator it_left = left_set.begin();    
+    std::set<std::string>::iterator it_right = right_set.begin();
+    while (it_left != left_set.end() 
+            && it_right != right_set.end()) {
+        if (*it_left == *it_right) {
+            ++it_left;
+            ++it_right;
+        } else if (*it_left > *it_right) {
+            right_diff->insert(*it_right);
+            ++it_right;
+        } else {
+            left_diff->insert(*it_left);
+            ++it_left;
+        }
+    }
+
+    for (; it_left != left_set.end(); ++it_left) {
+        left_diff->insert(*it_left); 
+    }
+    for (; it_right != right_set.end(); ++it_right) {
+        right_diff->insert(*it_right); 
+    }
+    return;
+}
+
+void MasterUtil::ResetLabels(AgentInfo* agent, const std::set<std::string>& labels) {
+    if (agent == NULL) {
+        return; 
+    }
+
+    agent->clear_tags();
+    std::set<std::string>::iterator it = labels.begin();
+    for (; it != labels.end(); ++it) {
+        agent->add_tags(*it); 
+    }
+    return;
+}
+
 }
 }

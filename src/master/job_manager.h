@@ -56,6 +56,7 @@ public:
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
     void KillPod(PodStatus* pod);
+    Status LabelAgents(const LabelCell& label_cell);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -102,6 +103,13 @@ private:
     int64_t on_query_num_;
     std::set<AgentAddr> queried_agents_;
     bool safe_mode_;
+
+    // for label on agent 
+    typedef std::string LabelName;
+    typedef std::set<std::string> AgentSet;
+    typedef std::set<std::string> LabelSet;
+    std::map<LabelName, AgentSet> labels_;
+    std::map<AgentAddr, LabelSet> agent_labels_;
 };
 
 }

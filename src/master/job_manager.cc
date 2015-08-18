@@ -32,6 +32,44 @@ JobManager::JobManager()
 JobManager::~JobManager() {
 }
 
+Status JobManager::LabelAgents(const LabelCell& label_cell) {
+    AgentSet new_label_set;
+    for (int i = 0; i < label_cell.agents_endpoint_size(); ++i) {
+        new_label_set.insert(label_cell.agents_endpoint(i)); 
+    }
+    MutexLock lock(&mutex_);
+    AgentSet& old_label_set = labels_[label_cell.label()];
+    AgentSet to_remove;
+    AgentSet to_add;
+    MasterUtil::SetDiff(old_label_set, 
+                        new_label_set, &to_remove, &to_add);
+    
+    // TODO may use internal AgentInfo with set 
+    for (AgentSet::iterator it = to_remove.begin(); 
+                                it != to_remove.end(); ++it) {
+        agent_labels_[*it].erase(label_cell.label()); 
+        // update Version
+        AgentInfo* agent_ptr = agents_[*it]; 
+        if (agent_ptr != NULL) {
+            agent_ptr->set_version(agent_ptr->version() + 1);
+            MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
+        }
+    }
+    for (AgentSet::iterator it = to_add.begin();
+                                it != to_add.end(); ++it) {
+        agent_labels_[*it].insert(label_cell.label()); 
+        // update Version
+        AgentInfo* agent_ptr = agents_[*it]; 
+        if (agent_ptr != NULL) {
+            agent_ptr->set_version(agent_ptr->version() + 1);
+            MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
+        }
+    }
+
+    labels_[label_cell.label()] = new_label_set;
+    return kOk;
+}
+
 void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
