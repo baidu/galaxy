@@ -182,6 +182,7 @@ void InitdHandler::InitdCallback(const GetPodStatusRequest* request,
     {
     MutexLock lock(&info_mutex_);
     pod_info_.usage = status;
+    pod_info_.usage.set_jobid(pod_info_.desc.jobid); 
     }
     return;
 }
