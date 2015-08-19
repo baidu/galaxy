@@ -142,9 +142,11 @@ bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
         node_desc.cpu_used = node.used().millicores();
         node_desc.mem_used = node.used().memory();
         std::string labels;
-        for (int i = 0; i < node.tags_size(); i++) {
-            labels.append(node.tags(i));     
-            labels.append(" ");
+        for (int label_ind = 0; label_ind < node.tags_size(); label_ind++) {
+            labels.append(node.tags(label_ind));     
+            if (label_ind != node.tags_size() - 1) {
+                labels.append(",");
+            }
         }
         node_desc.labels = labels; 
         nodes->push_back(node_desc);
