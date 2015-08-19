@@ -294,7 +294,7 @@ void MasterImpl::ListAgents(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-void MasterImpl::LabelAgents(::google::protobuf::RpcController* controller,
+void MasterImpl::LabelAgents(::google::protobuf::RpcController* /*controller*/,
                              const ::baidu::galaxy::LabelAgentRequest* request,
                              ::baidu::galaxy::LabelAgentResponse* response,
                              ::google::protobuf::Closure* done) {

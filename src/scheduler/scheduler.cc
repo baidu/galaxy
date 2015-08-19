@@ -314,6 +314,20 @@ PodScaleUpCell::PodScaleUpCell():pod(NULL), job(NULL),
         schedule_count(0), feasible_limit(0) {}
 
 bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) {
+
+    // check label 
+    // TODO for simple only check first label   
+    if (pod->tasks_size() > 0 
+            && pod->tasks(0).labels_size() > 0) {
+        std::string label = pod->tasks(0).labels(0); 
+        if (agent_info_extend->labels_set.find(label) != agent_info_extend->labels_set.end()) {
+            LOG(INFO, "agent %s does not fit job %s label check", 
+                      agent_info_extend->agent_info->endpoint().c_str(),
+                      job->jobid().c_str());         
+            return false;
+        }
+    }
+
     // 对于prod任务(kLongRun,kSystem)，根据unassign值check
     // 对于non-prod任务(kBatch)，根据free值check
     if (job->desc().type() == kLongRun ||
@@ -409,7 +423,7 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
 }
 
 double PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
-                   const PodDescriptor* desc) {
+                   const PodDescriptor* /*desc*/) {
     // 计算机器当前使用率打分
     double score = Scheduler::CalcLoad(agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
@@ -428,7 +442,7 @@ int32_t PodScaleDownCell::Score() {
 }
 
 double PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
-                   const PodDescriptor* desc) {
+                   const PodDescriptor* /*desc*/) {
     // 计算机器当前使用率打分
     double score = Scheduler::CalcLoad(agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
@@ -473,6 +487,10 @@ void AgentInfoExtend::CalcExtend() {
     free.CopyFrom(agent_info->total());
     ret = ResourceUtils::Alloc(agent_info->used(), free);
     assert(ret);
+    labels_set.clear();
+    for (int i = 0; i < agent_info->tags_size(); i++) {
+        labels_set.insert(agent_info->tags(i)); 
+    }
 }
 
 
@@ -666,8 +684,8 @@ int32_t Scheduler::ScaleDownOverloadAgent(const AgentInfo* agent,
 }
 
 
-int32_t Scheduler::GetPodCountForAgent(const AgentInfo* agent,
-                int32_t* prod_count, int32_t* non_prod_count) {
+int32_t Scheduler::GetPodCountForAgent(const AgentInfo* /*agent*/,
+                int32_t* /*prod_count*/, int32_t* /*non_prod_count*/) {
 
     return 0;
 }

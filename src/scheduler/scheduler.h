@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include "proto/master.pb.h"
 #include "mutex.h"
 
@@ -19,6 +20,7 @@ struct AgentInfoExtend {
     Resource free;
     Resource unassigned;
     AgentInfo* agent_info;
+    boost::unordered_set<std::string> labels_set;
 
     AgentInfoExtend(AgentInfo* p_agent_info):free(),
                                            unassigned(){
