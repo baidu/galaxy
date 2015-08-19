@@ -434,9 +434,7 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
 
 void JobManager::ReschedulePod(PodStatus* pod_status) {
     assert(pod_status);
-    assert(pod_status->state() == kPodRunning);
     mutex_.AssertHeld();
-
     pod_status->set_state(kPodPending);
     // record last deploy agent endpoint
     pod_status->mutable_resource_used()->Clear();
@@ -478,7 +476,7 @@ void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
     RunPodResponse* response = new RunPodResponse;
     request->set_podid(pod->podid());
     request->mutable_pod()->CopyFrom(desc);
-
+    request->set_jobid(pod->jobid());
     Agent_Stub* stub;
     const AgentAddr& endpoint = pod->endpoint();
     rpc_client_.GetStub(endpoint, &stub);
@@ -586,9 +584,10 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     AgentInfo* agent = it->second;
     AgentInfo* new_agent_info = response->mutable_agent();
     UpdateAgentVersion(agent, new_agent_info);
-    LOG(INFO, "old agent info version is %d, the new is %d",
+    LOG(INFO, "old agent info version is %d, the new is %d , pod num %u",
         agent->version(),
-        new_agent_info->version());
+        new_agent_info->version(),
+        new_agent_info->pods_size());
     const AgentInfo& report_agent_info = response->agent();
     agent->CopyFrom(report_agent_info);
     // currently pods_need_reschedule records pod 
@@ -599,6 +598,11 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid(); 
+        LOG(INFO, "the pod %s  of job %s on agent %s state %s",
+                  podid.c_str(), 
+                  jobid.c_str(), 
+                  report_agent_info.endpoint().c_str(),
+                  PodState_Name(report_pod_info.state()).c_str());
         // for recovering
         if (first_query_on_agent && jobs_.find(jobid) != jobs_.end() && 
             jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
@@ -643,10 +647,11 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             && report_pod_info.state() == kPodTerminate) {
             LOG(WARNING, "pod %s 's state changes from deploying to terminated, reschedule it", podid.c_str());
             ReschedulePod(pod);
-
-        } else if(pod->state() == kPodRunning
+        } else if (pod->state() == kPodRunning
             && report_pod_info.state() == kPodTerminate) {
-            LOG(WARNING, "pod %s 's state changes from running to termintaed, reschedule it ", podid.c_str());
+            LOG(WARNING, "pod %s 's state changes from running to termintaed, reschedule it ", podid.c_str()); 
+        } else if (pod->state() == kPodRunning 
+            && report_pod_info.state() == kPodRunning) {
             pods_need_reschedule[jobid].erase(podid);
             if (pods_need_reschedule[jobid].size() == 0) {
                 pods_need_reschedule.erase(jobid);
