@@ -67,8 +67,6 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
             AgentInfo* agent_ptr = agent_it->second;
             agent_ptr->set_version(agent_ptr->version() + 1);
             MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
-        } else {
-            LOG(WARNING, "agent %s not exists", (*it).c_str()); 
         }
     }
     for (AgentSet::iterator it = to_add.begin();
@@ -82,8 +80,6 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
             AgentInfo* agent_ptr = agent_it->second;
             agent_ptr->set_version(agent_ptr->version() + 1);
             MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
-        } else {
-            LOG(WARNING, "agent %s not exists", (*it).c_str()); 
         }
     }
 
