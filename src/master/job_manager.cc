@@ -458,9 +458,7 @@ void JobManager::DeployPod() {
         const PodDescriptor& pod_desc = job->desc_.pod();
         std::map<PodId, PodStatus*>::iterator jt;
         for (jt = job_deploy_pods.begin(); jt != job_deploy_pods.end(); ++jt) {
-            const PodId& podid = jt->first;
             PodStatus* pod = jt->second;
-            const std::string& endpoint = pod->endpoint();
             pod->set_state(kPodDeploying);
             // TODO:: check agent health
             // AgentInfo* agent = agents_[endpoint];
