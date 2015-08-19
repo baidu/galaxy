@@ -11,9 +11,12 @@ DECLARE_string(nexus_root_path);
 DECLARE_string(master_lock_path);
 DECLARE_string(master_path);
 DECLARE_string(jobs_store_path);
+DECLARE_string(labels_store_path);
 
 namespace baidu {
 namespace galaxy {
+
+const std::string LABEL_PREFIX = "LABEL_";
 
 MasterImpl::MasterImpl() : nexus_(NULL) {
     nexus_ = new InsSDK(FLAGS_nexus_servers);
@@ -51,6 +54,31 @@ void MasterImpl::Init() {
     AcquireMasterLock();
     LOG(INFO, "begin to reload job descriptor from nexus");
     ReloadJobInfo();
+    ReloadLabelInfo();
+}
+
+void MasterImpl::ReloadLabelInfo() {
+    std::string start_key = FLAGS_nexus_root_path + FLAGS_labels_store_path + "/";
+    std::string end_key = start_key + "~";
+    ::galaxy::ins::sdk::ScanResult* result = nexus_->Scan(start_key, end_key);
+    int label_amount = 0;
+    while (!result->Done()) {
+        assert(result->Error() == ::galaxy::ins::sdk::kOK);
+        std::string key = result->Key();
+        std::string label_raw_data = result->Value();
+        LabelCell label;
+        bool ok = label.ParseFromString(label_raw_data);
+        if (ok) {
+            LOG(INFO, "reload label: %s", label.label().c_str()); 
+            job_manager_.LabelAgents(label);
+        } else {
+            LOG(WARNING, "faild to parse label: %s", key.c_str());
+        }
+        result->Next();
+        label_amount ++;
+    }
+    LOG(INFO, "reload label info %d", label_amount);
+    return;
 }
 
 void MasterImpl::ReloadJobInfo() {
@@ -264,6 +292,37 @@ void MasterImpl::ListAgents(::google::protobuf::RpcController* controller,
     job_manager_.GetAgentsInfo(response->mutable_agents());
     response->set_status(kOk);
     done->Run();
+}
+
+void MasterImpl::LabelAgents(::google::protobuf::RpcController* controller,
+                             const ::baidu::galaxy::LabelAgentRequest* request,
+                             ::baidu::galaxy::LabelAgentResponse* response,
+                             ::google::protobuf::Closure* done) {
+    std::string label_key = FLAGS_nexus_root_path + FLAGS_labels_store_path 
+                            + "/" + request->labels().label();
+    std::string label_value;
+    if (!request->labels().SerializeToString(&label_value)) {
+        LOG(WARNING, "label %s serialize failed", 
+                request->labels().label().c_str()); 
+        response->set_status(kUnknown);
+        done->Run();
+        return;
+    }
+    // TODO lock ?
+    ::galaxy::ins::sdk::SDKError err;
+    bool put_ok = nexus_->Put(label_key, label_value, &err);    
+    if (!put_ok) {
+        response->set_status(kPersistenceError); 
+        LOG(WARNING, "persisten label info to nexus fail, reason: %s",
+                ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        done->Run();
+        return;
+    }
+
+    Status status = job_manager_.LabelAgents(request->labels());
+    response->set_status(status);
+    done->Run();
+    return;
 }
 
 }

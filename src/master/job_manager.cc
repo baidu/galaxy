@@ -32,6 +32,61 @@ JobManager::JobManager()
 JobManager::~JobManager() {
 }
 
+Status JobManager::LabelAgents(const LabelCell& label_cell) {
+    AgentSet new_label_set;
+    for (int i = 0; i < label_cell.agents_endpoint_size(); ++i) {
+        new_label_set.insert(label_cell.agents_endpoint(i)); 
+    }
+    MutexLock lock(&mutex_);
+    AgentSet& old_label_set = labels_[label_cell.label()];
+    AgentSet to_remove;
+    AgentSet to_add;
+    MasterUtil::SetDiff(old_label_set, 
+                        new_label_set, &to_remove, &to_add);
+    LOG(INFO, "label %s old label %u, new label %u, to_remove %u, to_add %u",
+            label_cell.label().c_str(), 
+            old_label_set.size(), 
+            new_label_set.size(), 
+            to_remove.size(), 
+            to_add.size()); 
+    // TODO may use internal AgentInfo with set 
+    for (AgentSet::iterator it = to_remove.begin(); 
+                                it != to_remove.end(); ++it) {
+        boost::unordered_map<AgentAddr, LabelSet>::iterator 
+                lab_it = agent_labels_.find(*it);
+        if (lab_it == agent_labels_.end()) {
+            continue; 
+        }
+        LOG(DEBUG, "%s remove label %s", (*it).c_str(), label_cell.label().c_str());
+        lab_it->second.erase(label_cell.label());
+        agent_labels_[*it].erase(label_cell.label()); 
+        // update Version
+        std::map<AgentAddr, AgentInfo*>::iterator agent_it 
+                                            = agents_.find(*it); 
+        if (agent_it != agents_.end()) {
+            AgentInfo* agent_ptr = agent_it->second;
+            agent_ptr->set_version(agent_ptr->version() + 1);
+            MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
+        }
+    }
+    for (AgentSet::iterator it = to_add.begin();
+                                it != to_add.end(); ++it) {
+        agent_labels_[*it].insert(label_cell.label()); 
+        // update Version
+        LOG(DEBUG, "%s add label %s", (*it).c_str(), label_cell.label().c_str());
+        std::map<AgentAddr, AgentInfo*>::iterator agent_it 
+                                            = agents_.find(*it);
+        if (agent_it != agents_.end()) {
+            AgentInfo* agent_ptr = agent_it->second;
+            agent_ptr->set_version(agent_ptr->version() + 1);
+            MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
+        }
+    }
+
+    labels_[label_cell.label()] = new_label_set;
+    return kOk;
+}
+
 void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
@@ -379,6 +434,7 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
             AgentInfo* agent = new AgentInfo();
             agent->set_version(0);
             agents_[agent_addr] = agent;
+            MasterUtil::ResetLabels(agent, agent_labels_[agent_addr]);
         }
         AgentInfo* agent = agents_[agent_addr];
         agent->set_state(kAlive);
@@ -594,13 +650,16 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     LOG(INFO, "query agent [%s] success", endpoint.c_str());
     
     AgentInfo* agent = it->second;
-    AgentInfo* new_agent_info = response->mutable_agent();
-    UpdateAgentVersion(agent, new_agent_info);
-    LOG(INFO, "old agent info version is %d, the new is %d",
-        agent->version(),
-        new_agent_info->version());
     const AgentInfo& report_agent_info = response->agent();
-    agent->CopyFrom(report_agent_info);
+    UpdateAgentVersion(agent, report_agent_info);
+    // copy only needed 
+    agent->mutable_total()->CopyFrom(report_agent_info.total()); 
+    agent->mutable_assigned()->CopyFrom(report_agent_info.assigned());
+    agent->mutable_used()->CopyFrom(report_agent_info.used());
+    agent->mutable_pods()->CopyFrom(report_agent_info.pods());
+    agent->set_state(report_agent_info.state());
+    //agent->CopyFrom(report_agent_info);
+    
     PodMap agent_running_pods = running_pods_[endpoint]; // this is a copy
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
         const PodStatus& report_pod_info = report_agent_info.pods(i);
@@ -658,35 +717,44 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     }
 }
 
-void JobManager::UpdateAgentVersion(const AgentInfo* old_agent_info,
-                        AgentInfo* new_agent_info) {
+void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
+                        const AgentInfo& new_agent_info) {
   
+    int old_version = old_agent_info->version();
     // check assigned
-    int32_t check_assigned = ResourceUtils::Compare(
-                    old_agent_info->assigned(),
-                    new_agent_info->assigned());
-    if (check_assigned != 0) {
-        new_agent_info->set_version(old_agent_info->version() + 1);
-        return;
-    }
+    do {
+        int32_t check_assigned = ResourceUtils::Compare(
+                        old_agent_info->assigned(),
+                        new_agent_info.assigned());
+        if (check_assigned != 0) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
 
-    // check used
-    int32_t check_used = ResourceUtils::Compare(
-                    old_agent_info->used(),
-                    new_agent_info->used());
-    if (check_used != 0) {
-        new_agent_info->set_version(old_agent_info->version() + 1);
-        return;
-    }
+        // check used
+        int32_t check_used = ResourceUtils::Compare(
+                        old_agent_info->used(),
+                        new_agent_info.used());
+        if (check_used != 0) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
 
-    // check total resource 
-    int32_t check_total = ResourceUtils::Compare(
-                    old_agent_info->total(), 
-                    new_agent_info->total());
-    if (check_total != 0) {
-        new_agent_info->set_version(old_agent_info->version() + 1);
-    }
-    
+        // check total resource 
+        int32_t check_total = ResourceUtils::Compare(
+                        old_agent_info->total(), 
+                        new_agent_info.total());
+        if (check_total != 0) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        } 
+    } while(0);
+
+    LOG(INFO, "agent %s change version from %d to %d", 
+              old_agent_info->endpoint().c_str(), 
+              old_version,
+              old_agent_info->version());
+    return; 
 }
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {

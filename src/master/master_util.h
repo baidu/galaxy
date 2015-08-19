@@ -5,6 +5,7 @@
 #define BAIDU_GALAXY_MASTER_UTIL_H
 
 #include <vector>
+#include <set>
 #include <algorithm> 
 #include <string>
 
@@ -13,6 +14,7 @@ namespace galaxy {
 
 class JobDescriptor;
 class Resource;
+class AgentInfo;
 
 class MasterUtil {
 public:
@@ -24,6 +26,11 @@ public:
     static bool FitResource(const Resource& from, const Resource& to);
     static std::string SelfEndpoint();
     static void TraceJobDesc(const JobDescriptor& job_desc);
+    static void SetDiff(const std::set<std::string>& left_set, 
+                        const std::set<std::string>& right_set, 
+                        std::set<std::string>* left_diff, 
+                        std::set<std::string>* right_diff);
+    static void ResetLabels(AgentInfo* agent, const std::set<std::string>& labels);
 private:
     static std::string UUID();
 };

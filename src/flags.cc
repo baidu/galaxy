@@ -19,6 +19,7 @@ DEFINE_int32(master_query_period, 30000, "Query period");
 DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
 DEFINE_string(master_path, "/master", "master path on nexus");
 DEFINE_string(jobs_store_path, "/jobs", "");
+DEFINE_string(labels_store_path, "/labels", "");
 
 // scheduler
 

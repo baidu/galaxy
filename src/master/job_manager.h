@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 
+#include <boost/unordered_map.hpp>
 //#include <mutex.h>
 #include <thread_pool.h>
 
@@ -56,6 +57,7 @@ public:
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
     void KillPod(PodStatus* pod);
+    Status LabelAgents(const LabelCell& label_cell);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
@@ -74,8 +76,8 @@ private:
     void QueryAgent(AgentInfo* agent);
     void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
                             QueryResponse* response, bool failed, int error);
-    void UpdateAgentVersion(const AgentInfo* old_agent_info, 
-                            AgentInfo* new_agent_info);
+    void UpdateAgentVersion(AgentInfo* old_agent_info, 
+                            const AgentInfo& new_agent_info);
     
     bool CompareAgentInfo(const AgentInfo* old_agent_info, const AgentInfo* new_agent_info);
 
@@ -102,6 +104,13 @@ private:
     int64_t on_query_num_;
     std::set<AgentAddr> queried_agents_;
     bool safe_mode_;
+
+    // for label on agent 
+    typedef std::string LabelName;
+    typedef std::set<std::string> AgentSet;
+    typedef std::set<std::string> LabelSet;
+    std::map<LabelName, AgentSet> labels_;
+    boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
 };
 
 }
