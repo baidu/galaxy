@@ -654,12 +654,8 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     LOG(INFO, "query agent [%s] success", endpoint.c_str());
     
     AgentInfo* agent = it->second;
-    AgentInfo* new_agent_info = response->mutable_agent();
-    UpdateAgentVersion(agent, new_agent_info);
-    LOG(INFO, "old agent info version is %d, the new is %d",
-        agent->version(),
-        new_agent_info->version());
     const AgentInfo& report_agent_info = response->agent();
+    UpdateAgentVersion(agent, report_agent_info);
     // copy only needed 
     agent->mutable_total()->CopyFrom(report_agent_info.total()); 
     agent->mutable_assigned()->CopyFrom(report_agent_info.assigned());
@@ -725,35 +721,44 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     }
 }
 
-void JobManager::UpdateAgentVersion(const AgentInfo* old_agent_info,
-                        AgentInfo* new_agent_info) {
+void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
+                        const AgentInfo& new_agent_info) {
   
+    int old_version = old_agent_info->version();
     // check assigned
-    int32_t check_assigned = ResourceUtils::Compare(
-                    old_agent_info->assigned(),
-                    new_agent_info->assigned());
-    if (check_assigned != 0) {
-        new_agent_info->set_version(old_agent_info->version() + 1);
-        return;
-    }
+    do {
+        int32_t check_assigned = ResourceUtils::Compare(
+                        old_agent_info->assigned(),
+                        new_agent_info.assigned());
+        if (check_assigned != 0) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
 
-    // check used
-    int32_t check_used = ResourceUtils::Compare(
-                    old_agent_info->used(),
-                    new_agent_info->used());
-    if (check_used != 0) {
-        new_agent_info->set_version(old_agent_info->version() + 1);
-        return;
-    }
+        // check used
+        int32_t check_used = ResourceUtils::Compare(
+                        old_agent_info->used(),
+                        new_agent_info.used());
+        if (check_used != 0) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
 
-    // check total resource 
-    int32_t check_total = ResourceUtils::Compare(
-                    old_agent_info->total(), 
-                    new_agent_info->total());
-    if (check_total != 0) {
-        new_agent_info->set_version(old_agent_info->version() + 1);
-    }
-    
+        // check total resource 
+        int32_t check_total = ResourceUtils::Compare(
+                        old_agent_info->total(), 
+                        new_agent_info.total());
+        if (check_total != 0) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        } 
+    } while(0);
+
+    LOG(INFO, "agent %s change version from %d to %d", 
+              old_agent_info->endpoint().c_str(), 
+              old_version,
+              old_agent_info->version());
+    return; 
 }
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
