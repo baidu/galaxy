@@ -44,9 +44,9 @@ AGENT_HEADER = $(wildcard src/agent/*.h) src/agent/pod_manager.h src/agent/initd
 TEST_AGENT_SRC = src/agent/test_agent.cc
 TEST_AGENT_OBJ = $(patsubst %.cc, %.o, $(TEST_AGENT_SRC))
 
-INITD_SRC = $(wildcard src/gce/initd*.cc) src/gce/utils.cc src/flags.cc src/gce/task_manager.cc
+INITD_SRC = $(wildcard src/gce/initd*.cc) src/gce/utils.cc src/flags.cc 
 INITD_OBJ = $(patsubst %.cc, %.o, $(INITD_SRC))
-INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h src/gce/task_manager.h
+INITD_HEADER = $(wildcard src/gce/*.h) src/gce/utils.h 
 
 TEST_INITD_SRC = src/gce/test_initd.cc
 TEST_INITD_OBJ = $(patsubst %.cc, %.o, $(TEST_INITD_SRC))
