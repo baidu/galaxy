@@ -11,7 +11,6 @@
 #include "sofa/pbrpc/pbrpc.h"
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
-#include "proto/gced.pb.h"
 
 #include "mutex.h"
 #include "thread_pool.h"
@@ -48,8 +47,6 @@ private:
     void KeepHeartBeat();
     
     bool RegistToMaster();
-    bool CheckGcedConnection();
-
     bool PingMaster();
 
     struct ResourceCapacity {
@@ -69,7 +66,6 @@ private:
     RpcClient* rpc_client_;
     std::string endpoint_;
     Master_Stub* master_;
-    Gced_Stub* gced_;
     ResourceCapacity resource_capacity_;
 
     MasterWatcher* master_watcher_;

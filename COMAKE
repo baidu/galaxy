@@ -69,7 +69,6 @@ agent_src='src/agent/agent_impl.cc\
            src/proto/master.proto\
            src/master/master_watcher.cc\
            src/proto/galaxy.proto\
-           src/proto/gced.proto\
            src/proto/initd.proto'
 
 initd_src='src/gce/initd_main.cc\
@@ -80,15 +79,6 @@ initd_src='src/gce/initd_main.cc\
            src/flags.cc\
            src/proto/initd.proto'
 
-gced_src='src/gce/gced_impl.cc\
-          src/gce/gced_main.cc\
-          src/flags.cc\
-          src/gce/utils.cc\
-          src/proto/gced.proto\
-          src/proto/agent.proto\
-          src/proto/master.proto\
-          src/proto/galaxy.proto\
-          src/proto/initd.proto'
 sdk_src='src/sdk/galaxy.cc\
          src/proto/galaxy.proto\
          src/proto/master.proto'
@@ -101,6 +91,5 @@ Application('scheduler',Sources(scheduler_src))
 Application('master',Sources(master_src))
 Application('agent',Sources(agent_src))
 Application('initd',Sources(initd_src))
-Application('gced',Sources(gced_src))
 StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
 Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))
