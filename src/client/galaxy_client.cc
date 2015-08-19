@@ -72,7 +72,6 @@ int LabelAgent(int argc, char* argv[]) {
     if (argc == 2 && LoadAgentEndpointsFromFile(argv[1], &agent_endpoints)) {
         return -1;     
     }
-    fprintf(stdout, "label %s agent %u\n", label.c_str(), agent_endpoints.size());
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     if (!galaxy->LabelAgents(label, agent_endpoints)) {
         return -1; 
