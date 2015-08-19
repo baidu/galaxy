@@ -22,6 +22,7 @@ struct JobDescription {
     int32_t cpu_required;
     int64_t mem_required;
     int32_t deploy_step;
+    std::string label;
 };
 
 struct JobInformation {

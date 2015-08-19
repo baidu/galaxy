@@ -65,6 +65,7 @@ message PodDescriptor {
     // that user required
     optional Resource requirement = 2;
     optional bool pin_on_agent = 3 [default = false];
+    repeated string labels = 4;
 }
 
 message TaskStatus {
