@@ -17,7 +17,7 @@ DECLARE_string(master_host);
 DECLARE_string(master_port);
 DECLARE_string(flagfile);
 
-const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd> <batch>\n" 
+const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd> <batch> <deploy_step>\n" 
                                  "./galaxy_client list\n"
                                  "./galaxy_client listagent\n"
                                  "./galaxy_client kill <jobid>";
@@ -50,9 +50,9 @@ int AddJob(int argc, char* argv[]) {
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
     job.deploy_step = 0;
-		job.cmd_line = argv[5];
-		job.is_batch = (argc > 6 && 0 == strcmp(argv[6], "batch"));
-
+    job.cmd_line = argv[5];
+    job.is_batch = (argc > 6 && 0 == strcmp(argv[6], "batch"));
+    job.deploy_step = argc > 7 ? job.replica : atoi(argv[7]);
     std::string jobid = galaxy->SubmitJob(job);
     if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");
@@ -69,15 +69,15 @@ int ListAgent(int argc, char* argv[]) {
     if (galaxy->ListAgents(&agents)) {
         for (uint32_t i = 0; i < agents.size(); i++) {
             std::vector<std::string> vs;
-						vs.push_back(baidu::common::NumToString(i + 1));
-						vs.push_back(agents[i].addr);
-						vs.push_back(baidu::common::NumToString(agents[i].task_num));
-						vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
-						vs.push_back(baidu::common::NumToString(agents[i].cpu_assigned));
-						vs.push_back(baidu::common::NumToString(agents[i].cpu_share));
-						vs.push_back(baidu::common::NumToString(agents[i].mem_used));
-						vs.push_back(baidu::common::NumToString(agents[i].mem_assigned));
-						vs.push_back(baidu::common::NumToString(agents[i].mem_share));
+            vs.push_back(baidu::common::NumToString(i + 1));
+            vs.push_back(agents[i].addr);
+            vs.push_back(baidu::common::NumToString(agents[i].task_num));
+            vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
+            vs.push_back(baidu::common::NumToString(agents[i].cpu_assigned));
+            vs.push_back(baidu::common::NumToString(agents[i].cpu_share));
+            vs.push_back(baidu::common::NumToString(agents[i].mem_used));
+            vs.push_back(baidu::common::NumToString(agents[i].mem_assigned));
+            vs.push_back(baidu::common::NumToString(agents[i].mem_share));
             tp.AddRow(vs);
 				}
         printf("%s\n", tp.ToString().c_str());
