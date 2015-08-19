@@ -73,7 +73,9 @@ public:
       void OnLockChange(std::string lock_session_id);
 private:
       void AcquireMasterLock();
+      // TODO should return value
       void ReloadJobInfo();
+      void ReloadLabelInfo();
 private:
       JobManager job_manager_;
       InsSDK* nexus_;

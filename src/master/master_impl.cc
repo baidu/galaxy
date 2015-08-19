@@ -11,6 +11,7 @@ DECLARE_string(nexus_root_path);
 DECLARE_string(master_lock_path);
 DECLARE_string(master_path);
 DECLARE_string(jobs_store_path);
+DECLARE_string(labels_store_path);
 
 namespace baidu {
 namespace galaxy {
@@ -53,6 +54,31 @@ void MasterImpl::Init() {
     AcquireMasterLock();
     LOG(INFO, "begin to reload job descriptor from nexus");
     ReloadJobInfo();
+    ReloadLabelInfo();
+}
+
+void MasterImpl::ReloadLabelInfo() {
+    std::string start_key = FLAGS_nexus_root_path + FLAGS_labels_store_path + "/";
+    std::string end_key = start_key + "~";
+    ::galaxy::ins::sdk::ScanResult* result = nexus_->Scan(start_key, end_key);
+    int label_amount = 0;
+    while (!result->Done()) {
+        assert(result->Error() == ::galaxy::ins::sdk::kOK);
+        std::string key = result->Key();
+        std::string label_raw_data = result->Value();
+        LabelCell label;
+        bool ok = label.ParseFromString(label_raw_data);
+        if (ok) {
+            LOG(INFO, "reload label: %s", label.label().c_str()); 
+            job_manager_.LabelAgents(label);
+        } else {
+            LOG(WARNING, "faild to parse label: %s", key.c_str());
+        }
+        result->Next();
+        label_amount ++;
+    }
+    LOG(INFO, "reload label info %d", label_amount);
+    return;
 }
 
 void MasterImpl::ReloadJobInfo() {
@@ -272,7 +298,8 @@ void MasterImpl::LabelAgents(::google::protobuf::RpcController* controller,
                              const ::baidu::galaxy::LabelAgentRequest* request,
                              ::baidu::galaxy::LabelAgentResponse* response,
                              ::google::protobuf::Closure* done) {
-    std::string label_key = LABEL_PREFIX + request->labels().label();
+    std::string label_key = FLAGS_nexus_root_path + FLAGS_labels_store_path 
+                            + "/" + request->labels().label();
     std::string label_value;
     if (!request->labels().SerializeToString(&label_value)) {
         LOG(WARNING, "label %s serialize failed", 
