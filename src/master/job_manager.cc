@@ -95,7 +95,11 @@ void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     MutexLock lock(&mutex_);
     jobs_[job_id] = job;
     FillPodsToJob(job);
-    LOG(INFO, "job[%s] submitted by user: %s, ", job_id.c_str(), job_desc.user().c_str());
+    LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d ",
+      job_id.c_str(), 
+      job_desc.user().c_str(),
+      job_desc.deploy_step(),
+      job_desc.replica());
 }
 
 Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
