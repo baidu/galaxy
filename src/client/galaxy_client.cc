@@ -114,7 +114,7 @@ int AddJob(int argc, char* argv[]) {
     } else {
         job.is_batch = false; 
     }
-    if (argc >= 7) {
+    if (argc >= 7 && argv[7] != NULL) {
         job.label = argv[7]; 
     }
         
