@@ -13,6 +13,7 @@ enum Status {
     kJobUpdateFail = 7;
     kNotFound = 16;
     kInputError = 17;
+    kPersistenceError = 18;
 
     kRpcError = 20;
 }
@@ -91,4 +92,6 @@ message AgentInfo {
     repeated PodStatus pods = 7;
     optional AgentState state = 8;
     optional int32 version = 9;
+
+    repeated string tags = 10;
 }

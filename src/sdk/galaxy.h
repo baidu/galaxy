@@ -46,6 +46,7 @@ struct NodeDescription {
     int64_t mem_used;
     int64_t cpu_assigned;
     int64_t mem_assigned;
+    std::string labels;
 };
 
 class Galaxy {
@@ -61,6 +62,8 @@ public:
     virtual bool TerminateJob(const std::string& job_id) = 0;
     //list all nodes of cluster
     virtual bool ListAgents(std::vector<NodeDescription>* nodes) = 0;
+    virtual bool LabelAgents(const std::string& label, 
+                             const std::vector<std::string>& agents) = 0;
 };
 
 } // namespace galaxy

@@ -193,6 +193,20 @@ message ListAgentsResponse {
     repeated AgentInfo agents = 2;
 }
 
+// for persistence
+message LabelCell {
+    optional string label = 1;
+    repeated string agents_endpoint = 2;
+}
+
+message LabelAgentRequest {
+    optional LabelCell labels = 1;
+}
+
+message LabelAgentResponse {
+    optional Status status = 1;
+}
+
 service Master {
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
@@ -214,4 +228,5 @@ service Master {
     rpc Propose(ProposeRequest) returns (ProposeResponse);
 
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+    rpc LabelAgents(LabelAgentRequest) returns (LabelAgentResponse);
 }

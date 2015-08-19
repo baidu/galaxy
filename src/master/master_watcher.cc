@@ -32,7 +32,7 @@ std::string MasterWatcher::GetMasterEndpoint() {
 }
 
 static void EventMasterChange(const ::galaxy::ins::sdk::WatchParam& param, 
-                             ::galaxy::ins::sdk::SDKError error) {
+                             ::galaxy::ins::sdk::SDKError /*error*/) {
     MasterWatcher* watcher = static_cast<MasterWatcher*>(param.context);
     bool ok = watcher->IssueNewWatch();
     if (!ok) {

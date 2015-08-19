@@ -65,14 +65,20 @@ public:
                               const ::baidu::galaxy::ListAgentsRequest* request,
                               ::baidu::galaxy::ListAgentsResponse* response,
                               ::google::protobuf::Closure* done);
+      virtual void LabelAgents(::google::protobuf::RpcController* controller,
+                               const ::baidu::galaxy::LabelAgentRequest* request,
+                               ::baidu::galaxy::LabelAgentResponse* response,
+                               ::google::protobuf::Closure* done);
       void OnSessionTimeout();
       void OnLockChange(std::string lock_session_id);
 private:
       void AcquireMasterLock();
+      // TODO should return value
       void ReloadJobInfo();
       bool SaveJobInfo(const JobId& job_id,
                        const JobDescriptor* desc,
                        const JobState* state);
+      void ReloadLabelInfo();
 private:
       JobManager job_manager_;
       InsSDK* nexus_;
