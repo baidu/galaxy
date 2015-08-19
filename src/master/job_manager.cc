@@ -235,7 +235,7 @@ void JobManager::KillPod(PodStatus* pod) {
 
 void JobManager::KillPodCallback(PodStatus* pod, std::string agent_addr,
                                  const KillPodRequest* request, KillPodResponse* response, 
-                                 bool failed, int error) {
+                                 bool failed, int /*error*/) {
     boost::scoped_ptr<const KillPodRequest> request_ptr(request);
     boost::scoped_ptr<KillPodResponse> response_ptr(response);
     MutexLock lock(&mutex_);
@@ -551,7 +551,7 @@ void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
 void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
                                 const RunPodRequest* request,
                                 RunPodResponse* response,
-                                bool failed, int error) {
+                                bool failed, int /*error*/) {
     boost::scoped_ptr<const RunPodRequest> request_ptr(request);
     boost::scoped_ptr<RunPodResponse> response_ptr(response);
     MutexLock lock(&mutex_);
@@ -623,7 +623,7 @@ void JobManager::QueryAgent(AgentInfo* agent) {
 }
 
 void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
-                                    QueryResponse* response, bool failed, int error) {
+                                    QueryResponse* response, bool failed, int /*error*/) {
     boost::scoped_ptr<const QueryRequest> request_ptr(request);
     boost::scoped_ptr<QueryResponse> response_ptr(response);
     MutexLock lock(&mutex_);

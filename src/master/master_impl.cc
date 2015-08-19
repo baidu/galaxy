@@ -27,7 +27,7 @@ MasterImpl::~MasterImpl() {
 }
 
 static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param, 
-                               ::galaxy::ins::sdk::SDKError error) {
+                               ::galaxy::ins::sdk::SDKError /*error*/) {
     MasterImpl* master = static_cast<MasterImpl*>(param.context);
     master->OnLockChange(param.value);
 }
@@ -120,7 +120,7 @@ void MasterImpl::AcquireMasterLock() {
         master_path_key.c_str(), master_endpoint.c_str());
 }
 
-void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
+void MasterImpl::SubmitJob(::google::protobuf::RpcController* /*controller*/,
                            const ::baidu::galaxy::SubmitJobRequest* request,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
@@ -154,7 +154,7 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
+void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                            const ::baidu::galaxy::UpdateJobRequest* request,
                            ::baidu::galaxy::UpdateJobResponse* response,
                            ::google::protobuf::Closure* done) {
@@ -196,7 +196,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::SuspendJob(::google::protobuf::RpcController* controller,
+void MasterImpl::SuspendJob(::google::protobuf::RpcController* /*controller*/,
                             const ::baidu::galaxy::SuspendJobRequest* request,
                             ::baidu::galaxy::SuspendJobResponse* response,
                             ::google::protobuf::Closure* done) {
@@ -204,7 +204,7 @@ void MasterImpl::SuspendJob(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::ResumeJob(::google::protobuf::RpcController* controller,
+void MasterImpl::ResumeJob(::google::protobuf::RpcController* /*controller*/,
                            const ::baidu::galaxy::ResumeJobRequest* request,
                            ::baidu::galaxy::ResumeJobResponse* response,
                            ::google::protobuf::Closure* done) {
@@ -220,7 +220,7 @@ void MasterImpl::TerminateJob(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::ShowJob(::google::protobuf::RpcController* controller,
+void MasterImpl::ShowJob(::google::protobuf::RpcController* /*controller*/,
                          const ::baidu::galaxy::ShowJobRequest* request,
                          ::baidu::galaxy::ShowJobResponse* response,
                          ::google::protobuf::Closure* done) {
@@ -234,8 +234,8 @@ void MasterImpl::ShowJob(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::ListJobs(::google::protobuf::RpcController* controller,
-                          const ::baidu::galaxy::ListJobsRequest* request,
+void MasterImpl::ListJobs(::google::protobuf::RpcController* /*controller*/,
+                          const ::baidu::galaxy::ListJobsRequest* /*request*/,
                           ::baidu::galaxy::ListJobsResponse* response,
                           ::google::protobuf::Closure* done) {
     job_manager_.GetJobsOverview(response->mutable_jobs());
@@ -243,7 +243,7 @@ void MasterImpl::ListJobs(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
+void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                           const ::baidu::galaxy::HeartBeatRequest* request,
                           ::baidu::galaxy::HeartBeatResponse*,
                           ::google::protobuf::Closure* done) {
@@ -252,7 +252,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* controller,
+void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* /*controller*/,
                                 const ::baidu::galaxy::GetPendingJobsRequest*,
                                 ::baidu::galaxy::GetPendingJobsResponse* response,
                                 ::google::protobuf::Closure* done) {
@@ -261,7 +261,7 @@ void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
-void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* controller,
+void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* /*controller*/,
                          const ::baidu::galaxy::GetResourceSnapshotRequest* request,
                          ::baidu::galaxy::GetResourceSnapshotResponse* response,
                          ::google::protobuf::Closure* done) {
@@ -273,7 +273,7 @@ void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* controll
     done->Run();
 }
 
-void MasterImpl::Propose(::google::protobuf::RpcController* controller,
+void MasterImpl::Propose(::google::protobuf::RpcController* /*controller*/,
                          const ::baidu::galaxy::ProposeRequest* request,
                          ::baidu::galaxy::ProposeResponse* response,
                          ::google::protobuf::Closure* done) {
@@ -285,8 +285,8 @@ void MasterImpl::Propose(::google::protobuf::RpcController* controller,
     job_manager_.DeployPod();
 }
 
-void MasterImpl::ListAgents(::google::protobuf::RpcController* controller,
-                            const ::baidu::galaxy::ListAgentsRequest* request,
+void MasterImpl::ListAgents(::google::protobuf::RpcController* /*controller*/,
+                            const ::baidu::galaxy::ListAgentsRequest* /*request*/,
                             ::baidu::galaxy::ListAgentsResponse* response,
                             ::google::protobuf::Closure* done) {
     job_manager_.GetAgentsInfo(response->mutable_agents());
