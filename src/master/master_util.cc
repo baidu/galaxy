@@ -134,7 +134,8 @@ void MasterUtil::SetDiff(const std::set<std::string>& left_set,
     return;
 }
 
-void MasterUtil::ResetLabels(AgentInfo* agent, const std::set<std::string>& labels) {
+void MasterUtil::ResetLabels(AgentInfo* agent, 
+                             const std::set<std::string>& labels) {
     if (agent == NULL) {
         return; 
     }

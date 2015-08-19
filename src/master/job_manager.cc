@@ -43,7 +43,12 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     AgentSet to_add;
     MasterUtil::SetDiff(old_label_set, 
                         new_label_set, &to_remove, &to_add);
-    
+    LOG(INFO, "label %s old label %u, new label %u, to_remove %u, to_add %u",
+            label_cell.label().c_str(), 
+            old_label_set.size(), 
+            new_label_set.size(), 
+            to_remove.size(), 
+            to_add.size()); 
     // TODO may use internal AgentInfo with set 
     for (AgentSet::iterator it = to_remove.begin(); 
                                 it != to_remove.end(); ++it) {
@@ -52,6 +57,7 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
         if (lab_it == agent_labels_.end()) {
             continue; 
         }
+        LOG(DEBUG, "%s remove label %s", (*it).c_str(), label_cell.label().c_str());
         lab_it->second.erase(label_cell.label());
         agent_labels_[*it].erase(label_cell.label()); 
         // update Version
@@ -61,18 +67,23 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
             AgentInfo* agent_ptr = agent_it->second;
             agent_ptr->set_version(agent_ptr->version() + 1);
             MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
+        } else {
+            LOG(WARNING, "agent %s not exists", (*it).c_str()); 
         }
     }
     for (AgentSet::iterator it = to_add.begin();
                                 it != to_add.end(); ++it) {
         agent_labels_[*it].insert(label_cell.label()); 
         // update Version
+        LOG(DEBUG, "%s add label %s", (*it).c_str(), label_cell.label().c_str());
         std::map<AgentAddr, AgentInfo*>::iterator agent_it 
                                             = agents_.find(*it);
         if (agent_it != agents_.end()) {
             AgentInfo* agent_ptr = agent_it->second;
             agent_ptr->set_version(agent_ptr->version() + 1);
             MasterUtil::ResetLabels(agent_ptr, agent_labels_[*it]);
+        } else {
+            LOG(WARNING, "agent %s not exists", (*it).c_str()); 
         }
     }
 
@@ -649,7 +660,14 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         agent->version(),
         new_agent_info->version());
     const AgentInfo& report_agent_info = response->agent();
-    agent->CopyFrom(report_agent_info);
+    // copy only needed 
+    agent->mutable_total()->CopyFrom(report_agent_info.total()); 
+    agent->mutable_assigned()->CopyFrom(report_agent_info.assigned());
+    agent->mutable_used()->CopyFrom(report_agent_info.used());
+    agent->mutable_pods()->CopyFrom(report_agent_info.pods());
+    agent->set_state(report_agent_info.state());
+    //agent->CopyFrom(report_agent_info);
+    
     PodMap agent_running_pods = running_pods_[endpoint]; // this is a copy
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
         const PodStatus& report_pod_info = report_agent_info.pods(i);
