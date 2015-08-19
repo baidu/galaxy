@@ -49,10 +49,12 @@ int AddJob(int argc, char* argv[]) {
     job.replica = atoi(argv[2]);
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
-    job.deploy_step = 0;
     job.cmd_line = argv[5];
     job.is_batch = (argc > 6 && 0 == strcmp(argv[6], "batch"));
-    job.deploy_step = argc > 7 ? job.replica : atoi(argv[7]);
+    job.deploy_step = job.replica;
+    if (argc > 7) {
+        job.deploy_step = atoi(argv[7]);
+    }
     std::string jobid = galaxy->SubmitJob(job);
     if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");
@@ -126,7 +128,7 @@ int main(int argc, char* argv[]) {
     } else if (strcmp(argv[1], "list") == 0) {
         return ListJob(argc - 2, argv + 2);
     } else if (strcmp(argv[1], "listagent") == 0) {
-				return ListAgent(argc - 2, argv + 2);
+        return ListAgent(argc - 2, argv + 2);
     } else {
         fprintf(stderr,"Usage:%s\n", kGalaxyUsage.c_str());
         return -1;
