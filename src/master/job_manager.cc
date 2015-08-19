@@ -48,7 +48,7 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     for (AgentSet::iterator it = to_remove.begin(); 
                                 it != to_remove.end(); ++it) {
         boost::unordered_map<AgentAddr, LabelSet>::iterator 
-                lab_it = agent_labels_.find(label_cell.label());
+                lab_it = agent_labels_.find(*it);
         if (lab_it == agent_labels_.end()) {
             continue; 
         }
@@ -427,6 +427,7 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
             AgentInfo* agent = new AgentInfo();
             agent->set_version(0);
             agents_[agent_addr] = agent;
+            MasterUtil::ResetLabels(agent, agent_labels_[agent_addr]);
         }
         AgentInfo* agent = agents_[agent_addr];
         agent->set_state(kAlive);
