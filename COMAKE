@@ -73,7 +73,7 @@ agent_src='src/agent/agent_impl.cc\
 
 initd_src='src/gce/initd_main.cc\
            src/gce/initd_impl.cc\
-           src/gce/utils.cc\
+           src/agent/utils.cc \
            src/proto/agent.proto\
            src/proto/galaxy.proto\
            src/flags.cc\

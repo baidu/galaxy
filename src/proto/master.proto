@@ -24,13 +24,6 @@ enum JobState {
     kJobTerminated = 2;
 }
 
-enum TaskState {
-    kRunning = 0;
-    kPending = 1;
-    kDeploying = 2;
-    kTerminated = 3;
-}
-
 enum ScheduleAction {
    kLaunch = 0;
    kTerminate = 1;

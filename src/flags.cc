@@ -31,6 +31,7 @@ DEFINE_string(agent_ip, "127.0.0.1", "agent host ip");
 DEFINE_int32(agent_millicores, 123123, "agent millicores");
 DEFINE_int32(agent_memory, 123123, "agent memory");
 DEFINE_string(agent_initd_bin, "./initd", "initd bin path");
+DEFINE_string(agent_work_dir, "./work_dir", "the work dir for storaging job package and runtime dir");
 
 DEFINE_int32(agent_monitor_pods_interval, 10, "agent monitor pods interval, unit seconds");
 DEFINE_int32(agent_rpc_initd_timeout, 2, "agent monitor initd interval, unit seconds");
