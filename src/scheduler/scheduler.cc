@@ -320,7 +320,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
     if (pod->labels_size() > 0) {
         std::string label = pod->labels(0);
         if (agent_info_extend->labels_set.find(label) 
-                != agent_info_extend->labels_set.end()) {
+                == agent_info_extend->labels_set.end()) {
             LOG(INFO, "agent %s does not fit job %s label check", 
                       agent_info_extend->agent_info->endpoint().c_str(),
                       job->jobid().c_str());         
