@@ -93,7 +93,8 @@ private:
     PodMap suspend_pods_;
     PodMap pending_pods_;
     PodMap deploy_pods_;
-    std::map<AgentAddr, PodMap> running_pods_;
+    // it include pods whose state is kPodDeploying, kPodRunning, kPodTerminate 
+    std::map<AgentAddr, PodMap> pods_on_agent_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
     ThreadPool death_checker_;
@@ -111,6 +112,7 @@ private:
     typedef std::set<std::string> LabelSet;
     std::map<LabelName, AgentSet> labels_;
     boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
+ 
 };
 
 }

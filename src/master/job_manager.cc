@@ -219,6 +219,7 @@ void JobManager::KillPod(PodStatus* pod) {
     mutex_.AssertHeld();
     assert(pod);
     PodState state = pod->state();
+    if (state != kPodPending )
     if (state == kPodRunning) {
         std::string agent_addr = pod->endpoint();
         KillPodRequest* request = new KillPodRequest;
@@ -567,6 +568,18 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
         ReschedulePod(pod);
         return;
     } else {
+        std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+        if (job_it == jobs_.end()) {
+            LOG(WARNING, "job %s does not exist in master", jobid.c_str());
+            return;
+        }
+        std::map<PodId, PodStatus*>::iterator pod_it = job_it->second->pods_.find(podid);
+        if (pod_it == job_it->second->pods_.end()) {
+            LOG(WARNING, "pod %s does not exist in master", podid.c_str());
+            return;
+        }
+        PodStatus* pod_status = pod_it->second;
+        pods_on_agent_[pod->endpoint()][podid] = pod_status;
         LOG(INFO, "run pod [%s %s] on [%s] success", jobid.c_str(),
         podid.c_str(), endpoint.c_str());
     }
@@ -647,12 +660,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     agent->mutable_assigned()->CopyFrom(report_agent_info.assigned());
     agent->mutable_used()->CopyFrom(report_agent_info.used());
     agent->mutable_pods()->CopyFrom(report_agent_info.pods());
-    agent->set_state(report_agent_info.state());
-    //agent->CopyFrom(report_agent_info);
-    // currently pods_need_reschedule records pod 
-    // whoes state was changed from running to terminated 
-    // or which does not exist on agent
-    PodMap pods_need_reschedule = running_pods_[endpoint]; // this is a copy
+    PodMap pods_not_on_agent = pods_on_agent_[endpoint]; // this is a copy
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
@@ -663,14 +671,13 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
                   report_agent_info.endpoint().c_str(),
                   PodState_Name(report_pod_info.state()).c_str());
         // for recovering
-        if (first_query_on_agent && jobs_.find(jobid) != jobs_.end() && 
-            jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
+        if (first_query_on_agent 
+            && jobs_.find(jobid) != jobs_.end()
+            && jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
             jobs_[jobid]->pods_[podid] = pod;
-            if(pod->state() == kPodRunning) {
-                pods_need_reschedule[jobid][podid] = pod;
-            }
+            pods_not_on_agent[jobid][podid] = pod;
         }
         // validate job 
         std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
@@ -688,52 +695,41 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             LOG(WARNING, "the pod %s from agent %s does not exist in master",
                podid.c_str(), report_agent_info.endpoint().c_str());
             continue;
-        }
-        // ignore it until it's state changes
-        if (report_pod_info.state() == kPodDeploying) {
-            continue;
-        }
+        } 
         // update pod in master
         PodStatus* pod = jobs_[jobid]->pods_[podid];
         pod->mutable_status()->CopyFrom(report_pod_info.status());
         pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
         // pod state in master has difference with pod in agent
-        if (pod->state() == kPodDeploying 
-            && report_pod_info.state() == kPodRunning) {
-            pod->set_state(kPodRunning);
-            running_pods_[endpoint][jobid].insert(std::make_pair(podid, pod));
-        } else if ( pod->state() == kPodDeploying 
-            && report_pod_info.state() == kPodTerminate) {
-            LOG(WARNING, "pod %s 's state changes from deploying to terminated, reschedule it", podid.c_str());
-            ReschedulePod(pod);
-        } else if (pod->state() == kPodRunning
-            && report_pod_info.state() == kPodTerminate) {
-            LOG(WARNING, "pod %s 's state changes from running to termintaed, reschedule it ", podid.c_str()); 
-        } else if (pod->state() == kPodRunning 
-            && report_pod_info.state() == kPodRunning) {
-            pods_need_reschedule[jobid].erase(podid);
-            if (pods_need_reschedule[jobid].size() == 0) {
-                pods_need_reschedule.erase(jobid);
-            } 
-        }
-
+        if (report_pod_info.state() != kPodTerminate) {
+            pods_not_on_agent[jobid].erase(podid);
+            if (pods_not_on_agent[jobid].size() == 0) {
+                pods_not_on_agent.erase(jobid);
+            }
+        }  
     }
 
-    // reschedule un-report pods
-    PodMap::iterator pod_it = pods_need_reschedule.begin();
-    for (; pod_it != pods_need_reschedule.end(); ++pod_it) {
+    PodMap::iterator pod_it = pods_not_on_agent.begin();
+    for (; pod_it != pods_not_on_agent.end(); ++pod_it) {
         const JobId& jobid = pod_it->first;
         std::map<PodId, PodStatus*>& pods = pod_it->second;
         std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
         for (; pod_it != pods.end(); ++pod_it) {
             const PodId& podid = pod_it->first;
-            LOG(WARNING, "dead pod [%s %s]", jobid.c_str(), podid.c_str());
             PodStatus* pod = pod_it->second;
-            running_pods_[endpoint][jobid].erase(podid);
-            ReschedulePod(pod);
+            if (pod->state() != kPodTerminate) {
+                LOG(WARNING, "found dead pod %s of job %s , reschedule it ", 
+                    podid.c_str(), 
+                    jobid.c_str());
+                ReschedulePod(pod);
+            } else {
+                // make a clean
+                pods_on_agent_[endpoint][jobid].erase(podid);
+                jobs_[jobid]->pods_.erase(podid);
+                delete pod;
+            }
         }
-    }
-    
+    } 
     if (queried_agents_.size() == agents_.size() && safe_mode_) {
         FillAllJobs();
         safe_mode_ = false;
