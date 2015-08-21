@@ -45,7 +45,7 @@ public:
     Status Resume(const JobId& jobid);
     JobManager();
     ~JobManager();
-    void GetPendingPods(JobInfoList* pending_pods);
+    void GetPendingPods(JobInfoList* pending_pods, JobInfoList* scale_down_pods);
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
@@ -73,6 +73,7 @@ private:
     void RunPodCallback(PodStatus* pod, AgentAddr endpoint, const RunPodRequest* request,
                         RunPodResponse* response, bool failed, int error);
 
+    void SendKillToAgent(PodStatus* pod);
     void Query();
     void QueryAgent(AgentInfo* agent);
     void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
@@ -90,27 +91,24 @@ private:
                          bool failed, int error);
 
     bool BuildPodFsm(PodStatus* pod, Job* job);
-    void HandlePendingToTerminated(PodStatus* pod, Job* job);
-    void HandlePendingToDeploying(PodStatus* pod, Job* job);
-    void HandleDeployingToRunning(PodStatus* pod, Job* job);
-    void HandleRunningToRunning(PodStatus* pod, Job* job);
-    void HandlePodOnAgentToTerminated(const StateChangeReason& reason,
-      PodStatus* pod, Job* job);
-    void HandlePodLost(PodStatus* pod, Job* job);
-    void HandleDoNothing();
-//    void HandleTerminatedToRunning(PodStatus* pod, Job* job);
-    std::string BuildHandlerKey(const StateChangeReason& reason,
-                                const PodState& from,
-                                const PodState& to);
+    bool HandlePendingToRemoved(PodStatus* pod, Job* job);
+    bool HandlePendingToRunning(PodStatus* pod, Job* job);
+    bool HandleRunningToDeath(PodStatus* pod, Job* job);
+    bool HandleRunningToRemoved(PodStatus* pod, Job* job);
+    bool HandleDeathToPending(PodStatus* pod, Job* job);
+    bool HandleDoNothing();
+    std::string BuildHandlerKey(const PodStage& from,
+                                const PodStage& to);
 
-    void ChangeState(const PodState& to,
-                     const StateChangeReason& reason,
+    void ChangeStage(const PodStage& to,
                      PodStatus* pod);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
     PodMap pending_pods_;
-    // it include pods whose state is kPodDeploying, kPodRunning, kPodTerminate 
+    // all jobs that needs scale down
+    std::set<JobId> scale_down_jobs_;
+
     std::map<AgentAddr, PodMap> pods_on_agent_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
@@ -129,8 +127,10 @@ private:
     typedef std::set<std::string> LabelSet;
     std::map<LabelName, AgentSet> labels_;
     boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
-    typedef boost::function<void ()> Handler;
-    typedef std::map<PodId, std::map<std::string, Handler> > FSM; 
+
+    // pod fsm
+    typedef boost::function<bool ()> Handle;
+    typedef std::map<PodId, std::map<std::string, Handle> > FSM; 
     FSM fsm_;
 };
 

@@ -81,17 +81,12 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     return response.jobid();
 }
 
-bool GalaxyImpl::UpdateJob(const std::string& /*jobid*/, const JobDescription& job) {
+bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) {
     UpdateJobRequest request;
     UpdateJobResponse response;
+    request.set_jobid(jobid);
     request.mutable_job()->set_name(job.job_name);
-    TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
-    task->set_binary(job.binary);
-    task->set_start_command(job.cmd_line);
-    task->mutable_requirement()->set_millicores(job.cpu_required);
-    task->mutable_requirement()->set_memory(job.mem_required);
     request.mutable_job()->set_replica(job.replica);
-
     rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
                              &request, &response, 5, 1);
     if (response.status() != kOk) {

@@ -22,6 +22,7 @@ const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_packa
                                  "./galaxy_client list\n"
                                  "./galaxy_client listagent\n"
                                  "./galaxy_client kill <jobid>\n"
+                                 "./galaxy_client update <jobid> <replica>\n"
                                  "./galaxy_client label <label_name> <agent_endpoints_file>";
 
 bool LoadAgentEndpointsFromFile(
@@ -119,7 +120,27 @@ int AddJob(int argc, char* argv[]) {
     printf("Submit job %s\n", jobid.c_str());
     return 0;
 }
-int ListAgent(int argc, char* argv[]) {
+
+int UpdateJob(int argc, char* argv[]) {
+    if (argc < 2) {
+        return 1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
+    baidu::galaxy::JobDescription desc;
+    std::string jobid(argv[0]);
+    desc.replica = atoi(argv[1]);
+    bool ok = galaxy->UpdateJob(jobid, desc);
+    if (ok) {
+        printf("Update job %s ok", jobid.c_str());
+        return 0;
+    }else {
+        printf("Fail to update job %s", jobid.c_str());
+        return 1;
+    }
+}
+
+
+int ListAgent(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::NodeDescription> agents;
     baidu::common::TPrinter tp(11);
@@ -147,7 +168,7 @@ int ListAgent(int argc, char* argv[]) {
 		return 1;
 }
  
-int ListJob(int argc, char* argv[]) {
+int ListJob(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
     baidu::common::TPrinter tp(8);
@@ -189,6 +210,8 @@ int main(int argc, char* argv[]) {
 		return ListAgent(argc - 2, argv + 2);
     } else if (strcmp(argv[1], "label") == 0) {
         return LabelAgent(argc - 2, argv + 2);
+    } else if (strcmp(argv[1], "update") == 0) {
+        return UpdateJob(argc - 2, argv + 2);
     } else {
         fprintf(stderr,"Usage:%s\n", kGalaxyUsage.c_str());
         return -1;

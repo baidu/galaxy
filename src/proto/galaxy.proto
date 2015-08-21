@@ -18,13 +18,6 @@ enum Status {
     kRpcError = 20;
 }
 
-enum StateChangeReason {
-    kMasterScaleDown= 0;
-    kMasterScaleUp = 1;
-    kAgentReport = 2;
-    kAgentLost = 3;
-}
-
 enum PodState {
     kPodPending = 0;
     kPodDeploying = 1;
@@ -33,6 +26,12 @@ enum PodState {
     kPodSuspend = 4;
 }
 
+enum PodStage {
+    kStagePending = 0;
+    kStageRunning = 1;
+    kStageDeath = 2;
+    kStageRemoved = 3;
+}
 
 enum AgentState {
     kAlive = 0;
@@ -89,6 +88,7 @@ message PodStatus {
     optional string endpoint = 5;
     optional string version = 6;
     optional PodState state = 7;
+    optional PodStage stage = 8;
 }
 
 message AgentInfo {
