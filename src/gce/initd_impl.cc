@@ -274,6 +274,20 @@ bool InitdImpl::AttachCgroup(const std::string& cgroup_path,
     return true;
 }
 
+
+void InitdImpl::CreatePod(::google::protobuf::RpcController* controller,
+                      const ::baidu::galaxy::CreatePodRequest* request,
+                      ::baidu::galaxy::CreatePodResponse* response,
+                      ::google::protobuf::Closure* done) {
+}
+
+
+void InitdImpl::GetPodStatus(::google::protobuf::RpcController* controller,
+                         const ::baidu::galaxy::GetPodStatusRequest* request,
+                         ::baidu::galaxy::GetPodStatusResponse* response,
+                         ::google::protobuf::Closure* done) {
+}
+
 bool InitdImpl::LoadProcessInfoCheckPoint(const ProcessInfoCheckpoint& checkpoint) {
     MutexLock scope_lock(&lock_);
     for (int i = 0; i < checkpoint.process_infos_size(); i++) {
