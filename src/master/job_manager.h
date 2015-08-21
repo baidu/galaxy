@@ -36,6 +36,7 @@ struct Job {
     JobId id_;
 };
 
+
 class JobManager {
 public:
     void Add(const JobId& job_id, const JobDescriptor& job_desc);
@@ -84,15 +85,31 @@ private:
     void ScheduleNextQuery();
     void FillPodsToJob(Job* job);
     void FillAllJobs();
-    void KillPodCallback(PodStatus* pod, std::string agent_addr,
-                         const KillPodRequest* request, KillPodResponse* response, 
+    void KillPodCallback(PodStatus* pod, const KillPodRequest* request, 
+                         KillPodResponse* response, 
                          bool failed, int error);
+
+    bool BuildPodFsm(PodStatus* pod, Job* job);
+    void HandlePendingToTerminated(PodStatus* pod, Job* job);
+    void HandlePendingToDeploying(PodStatus* pod, Job* job);
+    void HandleDeployingToRunning(PodStatus* pod, Job* job);
+    void HandleRunningToRunning(PodStatus* pod, Job* job);
+    void HandlePodOnAgentToTerminated(const StateChangeReason& reason,
+      PodStatus* pod, Job* job);
+    void HandlePodLost(PodStatus* pod, Job* job);
+    void HandleDoNothing();
+//    void HandleTerminatedToRunning(PodStatus* pod, Job* job);
+    std::string BuildHandlerKey(const StateChangeReason& reason,
+                                const PodState& from,
+                                const PodState& to);
+
+    void ChangeState(const PodState& to,
+                     const StateChangeReason& reason,
+                     PodStatus* pod);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
-    PodMap suspend_pods_;
     PodMap pending_pods_;
-    PodMap deploy_pods_;
     // it include pods whose state is kPodDeploying, kPodRunning, kPodTerminate 
     std::map<AgentAddr, PodMap> pods_on_agent_;
     std::map<AgentAddr, AgentInfo*> agents_;
@@ -112,7 +129,9 @@ private:
     typedef std::set<std::string> LabelSet;
     std::map<LabelName, AgentSet> labels_;
     boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
- 
+    typedef boost::function<void ()> Handler;
+    typedef std::map<PodId, std::map<std::string, Handler> > FSM; 
+    FSM fsm_;
 };
 
 }

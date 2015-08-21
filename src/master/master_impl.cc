@@ -176,33 +176,19 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-void MasterImpl::SuspendJob(::google::protobuf::RpcController* /*controller*/,
-                            const ::baidu::galaxy::SuspendJobRequest* request,
-                            ::baidu::galaxy::SuspendJobResponse* response,
+void MasterImpl::SuspendJob(::google::protobuf::RpcController* controller,
+                            const ::baidu::galaxy::SuspendJobRequest* /*request*/,
+                            ::baidu::galaxy::SuspendJobResponse* /*response*/,
                             ::google::protobuf::Closure* done) {
-    JobState state = kJobSuspend;
-    bool save_ok = SaveJobInfo(request->jobid(), NULL, &state);
-    if (!save_ok) {
-        response->set_status(kJobUpdateFail);
-        done->Run();
-        return;
-    }
-    response->set_status(job_manager_.Suspend(request->jobid()));
+    controller->SetFailed("Method TerminateJob() not implemented.");
     done->Run();
 }
 
-void MasterImpl::ResumeJob(::google::protobuf::RpcController* /*controller*/,
-                           const ::baidu::galaxy::ResumeJobRequest* request,
-                           ::baidu::galaxy::ResumeJobResponse* response,
-                           ::google::protobuf::Closure* done) {
-    JobState state = kJobNormal;
-    bool save_ok = SaveJobInfo(request->jobid(), NULL, &state);
-    if (!save_ok) {
-        response->set_status(kJobUpdateFail);
-        done->Run();
-        return;
-    }
-    response->set_status(job_manager_.Resume(request->jobid()));
+void MasterImpl::ResumeJob(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::ResumeJobRequest* /*request*/,
+                           ::baidu::galaxy::ResumeJobResponse* /*response*/,
+                           ::google::protobuf::Closure* done) { 
+    controller->SetFailed("Method TerminateJob() not implemented.");
     done->Run();
 }
 
@@ -276,8 +262,8 @@ void MasterImpl::Propose(::google::protobuf::RpcController* /*controller*/,
         response->set_status(job_manager_.Propose(sche_info));
     }
     done->Run();
-    job_manager_.DeployPod();
 }
+
 
 void MasterImpl::ListAgents(::google::protobuf::RpcController* /*controller*/,
                             const ::baidu::galaxy::ListAgentsRequest* /*request*/,

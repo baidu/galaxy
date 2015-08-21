@@ -18,6 +18,13 @@ enum Status {
     kRpcError = 20;
 }
 
+enum StateChangeReason {
+    kMasterScaleDown= 0;
+    kMasterScaleUp = 1;
+    kAgentReport = 2;
+    kAgentLost = 3;
+}
+
 enum PodState {
     kPodPending = 0;
     kPodDeploying = 1;
