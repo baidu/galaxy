@@ -22,7 +22,7 @@ public:
     int DeleteTask(const std::string& task_id);
     int QueryTask(TaskInfo* task);
 protected:
-    int QueryProcessInfo(const std::string& initd_endpoint,
+    int QueryProcessInfo(Initd_Stub* stub,
                          ProcessInfo* process_info);
 
     // env prepare and clean

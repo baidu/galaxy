@@ -98,6 +98,7 @@ int TaskManager::DeleteTask(const std::string& task_id) {
 }
 
 int TaskManager::RunTask(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     if (task_info == NULL) {
         return -1; 
     }
@@ -117,15 +118,14 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     std::string* task_id = initd_request.add_envs();
     task_id->append("TASK_ID=");
     task_id->append(task_info->task_id);
-    Initd_Stub* initd;
-    if (!rpc_client_->GetStub(
-                task_info->initd_endpoint, &initd)) {
-        LOG(WARNING, "get initd stub failed for %s",
-                task_info->task_id.c_str()); 
+    if (task_info->initd_stub == NULL 
+            && !rpc_client_->GetStub(task_info->initd_endpoint, 
+                                     &(task_info->initd_stub))) {
+        LOG(WARNING, "get stub failed"); 
         return -1;
     }
 
-    bool ret = rpc_client_->SendRequest(initd,
+    bool ret = rpc_client_->SendRequest(task_info->initd_stub,
                                         &Initd_Stub::Execute, 
                                         &initd_request, 
                                         &initd_response, 5, 1);
@@ -165,6 +165,7 @@ int TaskManager::QueryTask(TaskInfo* task_info) {
 }
 
 int TaskManager::TerminateTask(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     if (task_info == NULL) {
         return -1; 
     }
@@ -178,13 +179,14 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     initd_request.set_commands(stop_command);
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
-    Initd_Stub* initd;
-    if (!rpc_client_->GetStub(task_info->initd_endpoint, &initd)) {
+    if (task_info->initd_stub == NULL 
+            && !rpc_client_->GetStub(task_info->initd_endpoint, 
+                                     &(task_info->initd_stub))) {
         LOG(WARNING, "get stub failed"); 
         return -1;
     }
 
-    bool ret = rpc_client_->SendRequest(initd,
+    bool ret = rpc_client_->SendRequest(task_info->initd_stub,
                                         &Initd_Stub::Execute,
                                         &initd_request,
                                         &initd_response,
@@ -212,6 +214,7 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
 }
 
 int TaskManager::CleanProcess(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     if (task_info->deploy_process.has_status() 
             && task_info->deploy_process.status() 
                                 == kProcessRunning) {
@@ -232,6 +235,7 @@ int TaskManager::CleanProcess(TaskInfo* task_info) {
 }
 
 int TaskManager::CleanTask(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     if (CleanProcess(task_info) != 0) {
         LOG(WARNING, "task %s clean process failed",
                 task_info->task_id.c_str()); 
@@ -247,6 +251,7 @@ int TaskManager::CleanTask(TaskInfo* task_info) {
 }
 
 int TaskManager::DeployTask(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     if (task_info == NULL) {
         return -1; 
     }
@@ -287,15 +292,16 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     initd_request.set_commands(deploy_command);
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
-    Initd_Stub* initd;
-    if (!rpc_client_->GetStub(
-                task_info->initd_endpoint, &initd)) {
-        LOG(WARNING, "get initd stub failed for %s",
-                task_info->task_id.c_str()); 
+
+    if (task_info->initd_stub == NULL 
+            && !rpc_client_->GetStub(task_info->initd_endpoint, 
+                                     &(task_info->initd_stub))) {
+        LOG(WARNING, "get stub failed"); 
         return -1;
     }
     bool ret = rpc_client_->SendRequest(
-                    initd, &Initd_Stub::Execute,
+                    task_info->initd_stub, 
+                    &Initd_Stub::Execute,
                     &initd_request,
                     &initd_response,
                     5, 1);
@@ -320,8 +326,9 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     return 0;
 }
 
-int TaskManager::QueryProcessInfo(const std::string& initd_endpoint, 
+int TaskManager::QueryProcessInfo(Initd_Stub* initd_stub, 
                                   ProcessInfo* info) {
+    tasks_mutex_.AssertHeld();
     if (info == NULL) {
         return -1; 
     }
@@ -332,25 +339,20 @@ int TaskManager::QueryProcessInfo(const std::string& initd_endpoint,
     GetProcessStatusRequest initd_request; 
     GetProcessStatusResponse initd_response;
     initd_request.set_key(info->key());
-    Initd_Stub* initd;
-    if (!rpc_client_->GetStub(initd_endpoint, &initd)) {
-        LOG(WARNING, "get rpc stub failed"); 
-        return -1;
-    }
 
-    bool ret = rpc_client_->SendRequest(initd,
+    bool ret = rpc_client_->SendRequest(initd_stub,
                                         &Initd_Stub::GetProcessStatus,
                                         &initd_request,
                                         &initd_response,
                                         5, 1);
     if (!ret) {
-        LOG(WARNING, "query key %s to %s rpc failed",
-                info->key().c_str(), initd_endpoint.c_str()); 
+        LOG(WARNING, "query key %s rpc failed",
+                info->key().c_str()); 
         return -1;
     } else if (initd_response.has_status() 
             && initd_response.status() != kOk) {
-        LOG(WARNING, "query key %s to %s failed %s",
-                info->key().c_str(), initd_endpoint.c_str(),
+        LOG(WARNING, "query key %s failed %s",
+                info->key().c_str(),
                 Status_Name(initd_response.status()).c_str()); 
         return -1;
     }
@@ -360,6 +362,7 @@ int TaskManager::QueryProcessInfo(const std::string& initd_endpoint,
 }
 
 int TaskManager::PrepareWorkspace(TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
     std::string workspace_root = FLAGS_agent_work_dir;
     workspace_root.append("/");
     workspace_root.append(task->pod_id);
@@ -382,6 +385,7 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
 }
 
 int TaskManager::CleanWorkspace(TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
     if (file::IsExists(task->task_workspace)
             && !file::Remove(task->task_workspace)) {
         LOG(WARNING, "Remove task %s workspace failed",
@@ -399,8 +403,9 @@ int TaskManager::CleanWorkspace(TaskInfo* task) {
 }
 
 int TaskManager::TerminateProcessCheck(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     // check stop process       
-    if (QueryProcessInfo(task_info->initd_endpoint,
+    if (QueryProcessInfo(task_info->initd_stub,
                 &(task_info->stop_process)) != 0) {
         LOG(WARNING, "task %s query stop process failed",
                 task_info->task_id.c_str()); 
@@ -422,8 +427,9 @@ int TaskManager::TerminateProcessCheck(TaskInfo* task_info) {
 }
 
 int TaskManager::DeployProcessCheck(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     // 1. query deploy process status 
-    if (QueryProcessInfo(task_info->initd_endpoint, 
+    if (QueryProcessInfo(task_info->initd_stub, 
                 &(task_info->deploy_process)) != 0) {
         LOG(WARNING, "task %s check deploy state failed",
                 task_info->task_id.c_str());
@@ -449,6 +455,7 @@ int TaskManager::DeployProcessCheck(TaskInfo* task_info) {
 }
 
 int TaskManager::InitdProcessCheck(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     const int MAX_INITD_CHECK_TIME = 10;
     if (task_info == NULL) {
         return -1; 
@@ -457,13 +464,14 @@ int TaskManager::InitdProcessCheck(TaskInfo* task_info) {
     // only use to check rpc connected
     GetProcessStatusRequest initd_request; 
     GetProcessStatusResponse initd_response;
-    Initd_Stub* initd;
-    if (!rpc_client_->GetStub(initd_endpoint, &initd)) {
-        LOG(WARNING, "get rpc stub failed"); 
+    if (task_info->initd_stub == NULL 
+            && !rpc_client_->GetStub(task_info->initd_endpoint, 
+                                     &(task_info->initd_stub))) {
+        LOG(WARNING, "get stub failed"); 
         return -1;
     }
 
-    bool ret = rpc_client_->SendRequest(initd,
+    bool ret = rpc_client_->SendRequest(task_info->initd_stub,
                                         &Initd_Stub::GetProcessStatus,
                                         &initd_request,
                                         &initd_response,
@@ -482,8 +490,9 @@ int TaskManager::InitdProcessCheck(TaskInfo* task_info) {
 }
 
 int TaskManager::RunProcessCheck(TaskInfo* task_info) {
+    tasks_mutex_.AssertHeld();
     // 1. query main_process status
-    if (QueryProcessInfo(task_info->initd_endpoint, 
+    if (QueryProcessInfo(task_info->initd_stub, 
                 &(task_info->main_process)) != 0) {
         LOG(WARNING, "task %s check deploy state failed",
                 task_info->task_id.c_str());
@@ -559,6 +568,9 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
         int chk_res = TerminateProcessCheck(task_info);
         if (chk_res != 0) {
             if (0 == CleanTask(task_info)) {
+                if (task_info->initd_stub != NULL) {
+                    delete task_info->initd_stub; 
+                }
                 delete task_info;
                 task_info = NULL;
                 tasks_.erase(it);     
