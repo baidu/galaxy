@@ -5,6 +5,7 @@
 #include "galaxy.h"
 
 #include "proto/master.pb.h"
+#include "proto/galaxy.pb.h"
 #include "rpc/rpc_client.h"
 
 namespace baidu {
@@ -150,7 +151,8 @@ bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
                 labels.append(",");
             }
         }
-        node_desc.labels = labels; 
+        node_desc.labels = labels;
+        node_desc.state = AgentState_Name(node.state());
         nodes->push_back(node_desc);
     }
     return true;

@@ -122,13 +122,14 @@ int AddJob(int argc, char* argv[]) {
 int ListAgent(int argc, char* argv[]) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::NodeDescription> agents;
-    baidu::common::TPrinter tp(10);
-    tp.AddRow(10, "", "addr", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
+    baidu::common::TPrinter tp(11);
+    tp.AddRow(11, "", "addr","state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
     if (galaxy->ListAgents(&agents)) {
         for (uint32_t i = 0; i < agents.size(); i++) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString(i + 1));
             vs.push_back(agents[i].addr);
+            vs.push_back(agents[i].state);
             vs.push_back(baidu::common::NumToString(agents[i].task_num));
             vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
             vs.push_back(baidu::common::NumToString(agents[i].cpu_assigned));

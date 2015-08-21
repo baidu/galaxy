@@ -22,8 +22,6 @@ DECLARE_int32(master_query_period);
 
 namespace baidu {
 namespace galaxy {
-static const std::string FSM_MASTER="M";
-static const std::string FSM_AGENT="A";
 JobManager::JobManager()
     : on_query_num_(0) {
     safe_mode_ = true;
@@ -440,6 +438,9 @@ void JobManager::Query() {
     std::map<AgentAddr, AgentInfo*>::iterator it;
     for (it = agents_.begin(); it != agents_.end(); ++it) {
         AgentInfo* agent = it->second;
+        if (agent->state() == kDead) {
+            continue;
+        }
         QueryAgent(agent);
     }
     LOG(INFO, "query %lld agents", on_query_num_);
