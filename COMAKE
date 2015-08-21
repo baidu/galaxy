@@ -73,7 +73,7 @@ agent_src='src/agent/agent_impl.cc\
 
 initd_src='src/gce/initd_main.cc\
            src/gce/initd_impl.cc\
-           src/gce/utils.cc\
+           src/agent/utils.cc \
            src/proto/agent.proto\
            src/proto/galaxy.proto\
            src/flags.cc\
@@ -87,9 +87,14 @@ sdk_headers='src/sdk/galaxy.h'
 client_src='src/client/galaxy_client.cc \
             src/flags.cc'
 
+test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
+                       src/agent/task_manager.cc src/agent/utils.cc src/flags.cc \
+                       src/agent/test_task_manager.cc'
+
 Application('scheduler',Sources(scheduler_src))
 Application('master',Sources(master_src))
 Application('agent',Sources(agent_src))
 Application('initd',Sources(initd_src))
 StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
 Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))
+Application('test_task_manager', Sources(test_task_manager_src))
