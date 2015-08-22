@@ -24,6 +24,7 @@ enum PodState {
     kPodRunning = 2;
     kPodTerminate = 3;
     kPodSuspend = 4;
+    kPodError = 5;
 }
 
 enum PodStage {
@@ -31,6 +32,21 @@ enum PodStage {
     kStageRunning = 1;
     kStageDeath = 2;
     kStageRemoved = 3;
+}
+
+enum TaskState {
+    kTaskPending = 0;
+    kTaskDeploy = 1;
+    kTaskRunning = 2;
+    kTaskTerminate = 3;
+    kTaskSuspend = 4;
+    kTaskError = 5;
+}
+
+
+enum SourceType {
+    kSourceTypeBinary = 0;
+    kSourceTypeFTP = 1;
 }
 
 enum AgentState {
@@ -62,6 +78,7 @@ message TaskDescriptor {
     repeated string env = 6;
     // generate it automatically when create job
     optional int32 offset = 7;
+    optional SourceType source_type = 8;
 }
 
 message PodDescriptor {
@@ -78,6 +95,7 @@ message TaskStatus {
     optional int32 exit_code = 2;
     optional Resource resource_used = 3;
     optional string version = 4;
+    optional TaskState state = 5;
 }
 
 message PodStatus {
