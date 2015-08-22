@@ -526,7 +526,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     const AgentInfo& report_agent_info = response->agent();
-    LOG(INFO, "agent stat: mt %ld, ct %d, ma %ld, ca %d, mu %ld , cu %d ",
+    LOG(INFO, "agent %s stat: mt %ld, ct %d, ma %ld, ca %d, mu %ld , cu %d ", report_agent_info.endpoint().c_str(),
         report_agent_info.total().memory(), report_agent_info.total().millicores(),
         report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
         report_agent_info.used().memory(), report_agent_info.used().millicores());
