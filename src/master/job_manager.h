@@ -90,7 +90,7 @@ private:
                          bool failed, int error);
 
     bool BuildPodFsm(PodStatus* pod, Job* job);
-    bool HandlePendingToRemoved(PodStatus* pod, Job* job);
+    bool HandleCleanPod(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);
     bool HandleRunningToDeath(PodStatus* pod, Job* job);
     bool HandleRunningToRemoved(PodStatus* pod, Job* job);
@@ -130,7 +130,7 @@ private:
     // pod fsm
     std::map<PodState, PodStage> state_to_stage_;
     typedef boost::function<bool ()> Handle;
-    typedef std::map<PodId, std::map<std::string, Handle> > FSM; 
+    typedef boost::unordered_map<PodId, std::map<std::string, Handle> > FSM; 
     FSM fsm_;
 };
 

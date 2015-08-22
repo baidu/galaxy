@@ -765,7 +765,7 @@ bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
         LOG(WARNING, "invalidate pod input");
         return false;
     }
-    std::map<PodId, std::map<std::string, Handle> >::iterator it = fsm_.find(pod->podid());
+    FSM::iterator it = fsm_.find(pod->podid());
     if (it != fsm_.end()) {
         LOG(WARNING, "fsm has been built for pod %s", pod->podid().c_str());
         return true;
@@ -773,7 +773,7 @@ bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
     std::map<std::string, Handle>& handler_map = fsm_[pod->podid()];
     LOG(INFO, "build fsm for pod %s", pod->podid().c_str());
     handler_map.insert(std::make_pair(BuildHandlerKey(kStagePending, kStageRemoved), 
-          boost::bind(&JobManager::HandlePendingToRemoved, this, pod, job)));
+          boost::bind(&JobManager::HandleCleanPod, this, pod, job)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStagePending, kStageRunning), 
           boost::bind(&JobManager::HandlePendingToRunning, this, pod, job)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageDeath), 
@@ -788,7 +788,7 @@ bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
           boost::bind(&JobManager::HandleDeathToPending, this, pod, job)));
     
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageRemoved), 
-          boost::bind(&JobManager::HandlePendingToRemoved, this, pod, job)));
+          boost::bind(&JobManager::HandleCleanPod, this, pod, job)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageRemoved), 
           boost::bind(&JobManager::HandleDoNothing, this)));
 
@@ -828,7 +828,7 @@ void JobManager::ChangeStage(const PodStage& to,
     h_it->second();
 }
 
-bool JobManager::HandlePendingToRemoved(PodStatus* pod, Job* job) {
+bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
     mutex_.AssertHeld();
     if (pod == NULL || job == NULL) {
         LOG(WARNING, "fsm the input is invalidate");
