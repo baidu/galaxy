@@ -125,7 +125,7 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* /*controller*/,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
     const JobDescriptor& job_desc = request->job();
-    JobId job_id = MasterUtil::GenerateJobId(job_desc);
+    JobId job_id = MasterUtil::UUID();
     JobState state = kJobNormal;
     bool save_ok = SaveJobInfo(job_id, &job_desc, &state);
     if (!save_ok) {
@@ -142,36 +142,26 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                            const ::baidu::galaxy::UpdateJobRequest* request,
                            ::baidu::galaxy::UpdateJobResponse* response,
                            ::google::protobuf::Closure* done) {
-    const JobDescriptor& job_desc = request->job();
     JobId job_id = request->jobid();
-    LOG(INFO, "update job desc: %s", job_desc.name().c_str());
-    MasterUtil::TraceJobDesc(job_desc);
-    std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
-                          + "/" + job_id;
-    ::galaxy::ins::sdk::SDKError err;
-    std::string job_raw_data;
-    bool get_ok = nexus_->Get(job_key, &job_raw_data, &err);
-    if (!get_ok) {
-        LOG(WARNING, "no such job: %s", job_key.c_str());
-        response->set_status(kJobNotFound);
-        done->Run();
-        return;
-    }
-    JobInfo job_info;
-    bool parse_ok = job_info.ParseFromString(job_raw_data);
-    if (!parse_ok) {
-        LOG(WARNING, "parse old jobinfo failed, %s", job_id.c_str());
+    LOG(INFO, "update job %s replica %d", job_id.c_str(), request->job().replica());
+    // TODO make a conncurent control
+    // read modify and write
+    JobInfo new_job_info;
+    Status status = job_manager_.GetJobInfo(job_id, &new_job_info);
+    if (status == kJobNotFound) {
         response->set_status(kJobUpdateFail);
         done->Run();
         return;
     }
-    bool save_ok = SaveJobInfo(job_id, &job_desc, NULL);
+    new_job_info.mutable_desc()->set_replica(request->job().replica());
+    MasterUtil::TraceJobDesc(new_job_info.desc());
+    bool save_ok = SaveJobInfo(job_id, &new_job_info.desc(), NULL);
     if (!save_ok) {
         response->set_status(kJobUpdateFail);
         done->Run();
         return;
     }
-    Status status = job_manager_.Update(job_id, job_desc);
+    status = job_manager_.Update(job_id, new_job_info.desc());
     response->set_status(status);
     done->Run();
 }

@@ -26,6 +26,10 @@ JobManager::JobManager()
     : on_query_num_(0) {
     safe_mode_ = true;
     ScheduleNextQuery();
+    state_to_stage_[kPodPending] = kStageRunning;
+    state_to_stage_[kPodDeploying] = kStageRunning;
+    state_to_stage_[kPodRunning] = kStageRunning;
+    state_to_stage_[kPodTerminate] =kStageDeath;
 }
 
 JobManager::~JobManager() {
@@ -109,7 +113,14 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
         return kJobNotFound;
     }
-    jobs_[job_id]->desc_.CopyFrom(job_desc);
+    int old_replica = it->second->desc_.replica();
+    it->second->desc_.set_replica(job_desc.replica());
+    if (old_replica < job_desc.replica()) {
+        FillPodsToJob(it->second);
+    } else if (old_replica > job_desc.replica()) {
+        scale_down_jobs_.insert(it->second->id_);
+    }
+    //it->second->desc_.CopyFrom(job_desc);
     LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
     return kOk;
 }
@@ -117,7 +128,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
 void JobManager::FillPodsToJob(Job* job) {
     mutex_.AssertHeld();
     for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
-        PodId pod_id = MasterUtil::GeneratePodId(job->desc_);
+        PodId pod_id = MasterUtil::UUID();
         PodStatus* pod_status = new PodStatus();
         pod_status->set_podid(pod_id);
         pod_status->set_jobid(job->id_);
@@ -149,14 +160,6 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     jobs_[job_id] = job;
 }
 
-void JobManager::KillPod(PodStatus* pod) {
-    mutex_.AssertHeld();
-    if (pod == NULL) {
-        LOG(WARNING, "kill pod invalidate input");
-        return;
-    }
-    ChangeStage(kStageRemoved, pod);
-}
 
 void JobManager::KillPodCallback(PodStatus* pod,
                                  const KillPodRequest* request, KillPodResponse* response, 
@@ -213,6 +216,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
         if (scale_down_count > 0) {
             JobInfo* job_info = scale_down_pods->Add();
             job_info->mutable_desc()->CopyFrom(job_it->second->desc_);
+            job_info->set_jobid(job_it->second->id_);
             std::map<PodId, PodStatus*>::const_iterator jt;
             for (jt = job_it->second->pods_.begin();
                  jt != job_it->second->pods_.end(); ++jt) {
@@ -225,12 +229,10 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
     for (size_t i = 0; i < should_rm.size(); ++i) {
         scale_down_jobs_.erase(should_rm[i]);
     }
-
     for (it = pending_pods_.begin(); it != pending_pods_.end(); ++it) {
         JobInfo* job_info = pending_pods->Add();
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
-        LOG(DEBUG, "pending job: %s", job_id.c_str());
         const JobDescriptor& job_desc = jobs_[job_id]->desc_;
         job_info->mutable_desc()->CopyFrom(job_desc);
         const std::map<PodId, PodStatus*> & job_pending_pods = it->second;
@@ -248,11 +250,24 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     const std::string& jobid = sche_info.jobid();
     const std::string& podid = sche_info.podid();
     const std::string& endpoint = sche_info.endpoint();
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) { 
+        LOG(INFO, "propose fail, no such job: %s", jobid.c_str());
+        return kJobNotFound;
+    }
+    if (sche_info.action() == kTerminate) {
+        std::map<PodId, PodStatus*>::iterator p_it = job_it->second->pods_.find(sche_info.podid());
+        if (p_it == job_it->second->pods_.end()) {
+            LOG(WARNING, "propose fail, no such pod: %s", sche_info.podid().c_str());
+            return kPodNotFound;
+        }
+        ChangeStage(kStageRemoved, p_it->second);
+        return kOk;
+    }
 
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     it = pending_pods_.find(jobid);
     if (it == pending_pods_.end()) {
-        LOG(INFO, "propose fail, no such job: %s", jobid.c_str());
         return kJobNotFound;
     }
     std::map<PodId, PodStatus*>& job_pending_pods = it->second;
@@ -267,11 +282,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         return kAgentNotFound;
     }
 
-    if (sche_info.action() == kTerminate) {
-        KillPod(jt->second);
-        return kOk;
-    }
-
+    
     PodStatus* pod = jt->second;
     AgentInfo* agent = at->second;
     Status feasible_status = AcquireResource(*pod, agent);
@@ -395,24 +406,6 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
     LOG(INFO, "agent is dead: %s", agent_addr.c_str());
 }
 
-
-void JobManager::ReschedulePod(PodStatus* pod_status) {
-    assert(pod_status);
-    mutex_.AssertHeld();
-    pod_status->set_state(kPodPending);
-    // record last deploy agent endpoint
-    pod_status->mutable_resource_used()->Clear();
-    for (int i = 0; i < pod_status->status_size(); i++) {
-        pod_status->mutable_status(i)->Clear();
-    }
-
-    const JobId& job_id = pod_status->jobid();
-    const PodId& pod_id = pod_status->podid();
-    pending_pods_[job_id][pod_id] = pod_status;
-    LOG(INFO, "pod state rescheuled to pending, pod id:%s", pod_id.c_str());
-}
-
-
 void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
     mutex_.AssertHeld();
     RunPodRequest* request = new RunPodRequest;
@@ -445,7 +438,7 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
     if (failed || status != kOk) {
         LOG(WARNING, "run pod [%s %s] on [%s] fail: %d", jobid.c_str(),
             podid.c_str(), endpoint.c_str(), status);
-        ReschedulePod(pod);
+        ChangeStage(kStageDeath, pod);
     } else {
         std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
         if (job_it == jobs_.end()) {
@@ -501,8 +494,6 @@ void JobManager::QueryAgent(AgentInfo* agent) {
     boost::function<void (const QueryRequest*, QueryResponse*, bool, int)> query_callback;
     query_callback = boost::bind(&JobManager::QueryAgentCallback, this,
                                  endpoint, _1, _2, _3, _4);
-
-    LOG(INFO, "query agent [%s]", endpoint.c_str());
     rpc_client_.AsyncRequest(stub, &Agent_Stub::Query, request, response,
                              query_callback, FLAGS_master_agent_rpc_timeout, 0);
     delete stub;
@@ -534,10 +525,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         LOG(INFO, "query agent [%s] fail: %d", endpoint.c_str(), status);
         return;
     }
-    LOG(INFO, "query agent [%s] success", endpoint.c_str());
-    
-    AgentInfo* agent = it->second;
     const AgentInfo& report_agent_info = response->agent();
+    LOG(INFO, "agent stat: mt %ld, ct %d, ma %ld, ca %d, mu %ld , cu %d ",
+        report_agent_info.total().memory(), report_agent_info.total().millicores(),
+        report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
+        report_agent_info.used().memory(), report_agent_info.used().millicores());
+    AgentInfo* agent = it->second;
     UpdateAgentVersion(agent, report_agent_info);
     // copy only needed 
     agent->mutable_total()->CopyFrom(report_agent_info.total()); 
@@ -570,6 +563,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             BuildPodFsm(pod, jobs_[jobid]);
             jobs_[jobid]->pods_[podid] = pod;
             pods_not_on_agent[jobid][podid] = pod;
+            pods_on_agent_[endpoint][jobid][podid] = pod;
         }
         // validate pod
         Job* job = job_it->second;
@@ -584,11 +578,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         PodStatus* pod = jobs_[jobid]->pods_[podid];
         pod->mutable_status()->CopyFrom(report_pod_info.status());
         pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
+        pod->set_state(report_pod_info.state());
         pods_not_on_agent[jobid].erase(podid);
         if (pods_not_on_agent[jobid].size() == 0) {
             pods_not_on_agent.erase(jobid);
         }
-        ChangeStage(report_pod_info.stage(), pod);
+        ChangeStage(state_to_stage_[pod->state()], pod);
     }
 
     PodMap::iterator j_it = pods_not_on_agent.begin();
@@ -599,6 +594,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         }
         std::map<PodId, PodStatus*>::iterator p_it = j_it->second.begin();
         for (; p_it != j_it->second.end(); ++p_it) {
+            LOG(INFO, "pod %s in master but not in agent ", p_it->second->podid().c_str());
             ChangeStage(kStageDeath, p_it->second);
         }
     }
@@ -793,6 +789,9 @@ bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
     
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageRemoved), 
           boost::bind(&JobManager::HandlePendingToRemoved, this, pod, job)));
+    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageRemoved), 
+          boost::bind(&JobManager::HandleDoNothing, this)));
+
     return true;
 }
 
@@ -813,6 +812,10 @@ void JobManager::ChangeStage(const PodStage& to,
         LOG(WARNING,"pod %s have no fsm to manage it's state",pod->podid().c_str());
         return;
     }
+    LOG(INFO, "pod %s change stage from %s to %s",
+      pod->podid().c_str(),
+      PodStage_Name(pod->stage()).c_str(),
+      PodStage_Name(to).c_str());
     std::string handler_key = BuildHandlerKey(pod->stage(), to);
     std::map<std::string, Handle>::iterator h_it = it->second.find(handler_key);
     if (h_it == it->second.end()) {
@@ -825,7 +828,6 @@ void JobManager::ChangeStage(const PodStage& to,
     h_it->second();
 }
 
-// master kills pod being pending stage 
 bool JobManager::HandlePendingToRemoved(PodStatus* pod, Job* job) {
     mutex_.AssertHeld();
     if (pod == NULL || job == NULL) {
@@ -841,6 +843,14 @@ bool JobManager::HandlePendingToRemoved(PodStatus* pod, Job* job) {
             pending_pods_.erase(pod->jobid());
         }
     }
+    std::map<AgentAddr, PodMap>::iterator a_it = pods_on_agent_.find(pod->endpoint());
+    if (a_it != pods_on_agent_.end()) {
+        PodMap::iterator p_it = a_it->second.find(pod->jobid());
+        if (p_it != a_it->second.end()) {
+            p_it->second.erase(pod->podid());
+        }
+    }
+    fsm_.erase(pod->podid());
     job->pods_.erase(pod->podid());
     delete pod;
     return true;
@@ -853,6 +863,7 @@ bool JobManager::HandlePendingToRunning(PodStatus* pod, Job* job) {
         return false;
     }
     pod->set_stage(kStageRunning);
+    pod->set_state(kPodDeploying);
     RunPod(job->desc_.pod(), pod);
     return true;
 }
@@ -875,6 +886,8 @@ bool JobManager::HandleDeathToPending(PodStatus* pod, Job* job) {
         return false;
     }
     pod->set_stage(kStagePending);
+    pod->set_state(kPodPending);
+    LOG(INFO, "reschedule pod %s of job %s", pod->podid().c_str(), job->id_.c_str());
     pending_pods_[job->id_][pod->podid()] = pod;
     return true;
 }

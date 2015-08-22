@@ -173,7 +173,9 @@ int32_t Scheduler::ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
 
     int32_t total_reducing_count = ChooseReducingPod(reducing_jobs, &reducing_pods);
 
-    assert(total_reducing_count >= 0);
+    if (total_reducing_count < 0) {
+        return 0;
+    }
 
     // 对减少实例任务进行优先级计算
     for (std::vector<PodScaleDownCell*>::iterator pod_it = reducing_pods.begin();
@@ -209,6 +211,7 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
            AgentInfo* agent = new AgentInfo();
            agent->CopyFrom(response->agents(i));
            AgentInfoExtend* extend = new AgentInfoExtend(agent);
+           extend->CalcExtend();
            resources_.insert(std::make_pair(agent->endpoint(), extend));
        }else {
            it->second->agent_info->CopyFrom(response->agents(i));
@@ -246,7 +249,9 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo*>& pending_jobs,
             }
             JobOverview* job_overview = jo_it->second;
             deploying_num = job_overview->deploying_num();
-            deploy_step = job->desc().deploy_step();
+            if (pending_size > job->desc().deploy_step()) {
+                deploy_step = job->desc().deploy_step();
+            }
         }
         std::vector<std::string> need_schedule;
         std::map<std::string, std::string> no_need_schedule;
@@ -340,13 +345,12 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
                 agent_info_extend->agent_info->endpoint().c_str(), 
                 job->jobid().c_str());
         } else {
-            LOG(INFO, "agent %s does not fit job %s resource requirement, agent unassigned cpu %d, mem %d M, resource require cpu %d, mem %d m",
-              agent_info_extend->agent_info->endpoint().c_str(),
-              job->jobid().c_str(),
-              agent_info_extend->unassigned.millicores(),
-              agent_info_extend->unassigned.memory(),
-              resource.millicores(),
-              resource.memory());
+            LOG(INFO, "agent %s does not fit job %s require:mr %ld, cr %d , agent stat:mt %ld, ct %d, ma %ld, ca %d, mu %ld, cu %d",
+              agent_info_extend->agent_info->endpoint().c_str(),job->jobid().c_str(),
+              resource.millicores(), resource.memory(),
+              agent_info_extend->agent_info->total().memory(), agent_info_extend->agent_info->total().millicores(),
+              agent_info_extend->agent_info->assigned().memory(), agent_info_extend->agent_info->assigned().millicores(),
+              agent_info_extend->agent_info->used().memory(), agent_info_extend->agent_info->used().millicores());
         }
         return fit;
     }
@@ -470,7 +474,7 @@ int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
             sched->set_jobid(job->jobid());
             sched->set_action(kTerminate);
             propose->push_back(sched);
-            LOG(DEBUG, "propose[%d] %s:%s on %s", propose_count,
+            LOG(INFO, "scale down propose[%d] %s:%s on %s", propose_count,
                     sched->jobid().c_str(),
                     sched->podid().c_str(),
                     sched->endpoint().c_str());

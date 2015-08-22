@@ -127,14 +127,15 @@ int UpdateJob(int argc, char* argv[]) {
     }
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     baidu::galaxy::JobDescription desc;
-    std::string jobid(argv[0]);
+    std::string jobid;
+    jobid.assign(argv[0]);
     desc.replica = atoi(argv[1]);
     bool ok = galaxy->UpdateJob(jobid, desc);
     if (ok) {
-        printf("Update job %s ok", jobid.c_str());
+        printf("Update job %s ok\n", jobid.c_str());
         return 0;
     }else {
-        printf("Fail to update job %s", jobid.c_str());
+        printf("Fail to update job %s\n", jobid.c_str());
         return 1;
     }
 }

@@ -57,7 +57,6 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
-    void KillPod(PodStatus* pod);
     Status LabelAgents(const LabelCell& label_cell);
 private:
     void SuspendPod(PodStatus* pod);
@@ -129,6 +128,7 @@ private:
     boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
 
     // pod fsm
+    std::map<PodState, PodStage> state_to_stage_;
     typedef boost::function<bool ()> Handle;
     typedef std::map<PodId, std::map<std::string, Handle> > FSM; 
     FSM fsm_;
