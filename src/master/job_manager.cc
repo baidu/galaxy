@@ -134,6 +134,7 @@ void JobManager::FillPodsToJob(Job* job) {
         PodStatus* pod_status = new PodStatus();
         pod_status->set_podid(pod_id);
         pod_status->set_jobid(job->id_);
+        pod_status->set_state(kPodPending);
         pod_status->set_stage(kStagePending);
         job->pods_[pod_id] = pod_status;
         pending_pods_[job->id_][pod_id] = pod_status;
