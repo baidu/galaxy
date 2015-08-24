@@ -34,6 +34,7 @@ struct JobInformation {
     int32_t cpu_used;
     int32_t mem_used;
     int32_t pending_num;
+    int32_t deploying_num;
 };
 
 struct NodeDescription {
@@ -45,6 +46,7 @@ struct NodeDescription {
     int64_t mem_used;
     int64_t cpu_assigned;
     int64_t mem_assigned;
+    std::string state;
     std::string labels;
 };
 

@@ -173,7 +173,9 @@ int32_t Scheduler::ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
 
     int32_t total_reducing_count = ChooseReducingPod(reducing_jobs, &reducing_pods);
 
-    assert(total_reducing_count >= 0);
+    if (total_reducing_count < 0) {
+        return 0;
+    }
 
     // 对减少实例任务进行优先级计算
     for (std::vector<PodScaleDownCell*>::iterator pod_it = reducing_pods.begin();
@@ -209,6 +211,7 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
            AgentInfo* agent = new AgentInfo();
            agent->CopyFrom(response->agents(i));
            AgentInfoExtend* extend = new AgentInfoExtend(agent);
+           extend->CalcExtend();
            resources_.insert(std::make_pair(agent->endpoint(), extend));
        }else {
            it->second->agent_info->CopyFrom(response->agents(i));
@@ -230,13 +233,31 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo*>& pending_jobs,
     std::vector<JobInfo*>::iterator job_it = pending_jobs.begin();
     for (; job_it != pending_jobs.end(); ++job_it) {
         JobInfo* job = *job_it;
-        if (job->pods_size() <= 0) {
+        int32_t pending_size = job->pods_size();
+        if (pending_size <= 0) {
             LOG(WARNING, "job %s has no pending pod but it is in master pending queue", job->jobid().c_str());
             continue;
         }
+        int32_t deploying_num = 0;
+        int32_t deploy_step = pending_size;
+        if (job->desc().deploy_step() > 0) {
+            std::map<std::string, JobOverview*>::iterator jo_it = job_overview_.find(job->jobid());
+            if (jo_it == job_overview_.end()) {
+                LOG(WARNING, "job %s does not exist in master jobs ,scheduler skips it",
+                  job->jobid().c_str());
+                continue;
+            }
+            JobOverview* job_overview = jo_it->second;
+            deploying_num = job_overview->deploying_num();
+            if (pending_size > job->desc().deploy_step()) {
+                deploy_step = job->desc().deploy_step();
+            }
+        }
         std::vector<std::string> need_schedule;
         std::map<std::string, std::string> no_need_schedule;
-        for (int i = 0; i < job->pods_size(); ++i) {
+        LOG(INFO, "job %s deploy stat: pending_size %d, deploying_num %d, deploy_step %d",
+          job->jobid().c_str(), pending_size, deploying_num, deploy_step);
+        for (int i = deploying_num; i < deploy_step; ++i) {
             //TODO handle dead agent
             if (job->desc().pod().pin_on_agent() &&
                 !job->pods(i).endpoint().empty() ){
@@ -324,13 +345,12 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
                 agent_info_extend->agent_info->endpoint().c_str(), 
                 job->jobid().c_str());
         } else {
-            LOG(INFO, "agent %s does not fit job %s resource requirement, agent unassigned cpu %d, mem %d M, resource require cpu %d, mem %d m",
-              agent_info_extend->agent_info->endpoint().c_str(),
-              job->jobid().c_str(),
-              agent_info_extend->unassigned.millicores(),
-              agent_info_extend->unassigned.memory(),
-              resource.millicores(),
-              resource.memory());
+            LOG(INFO, "agent %s does not fit job %s require:mem require %ld, cpu require %d , agent stat:mem total %ld, cpu total %d, mem assigned %ld, cpu assinged %d, mem used %ld, cpu used %d",
+              agent_info_extend->agent_info->endpoint().c_str(),job->jobid().c_str(),
+              resource.millicores(), resource.memory(),
+              agent_info_extend->agent_info->total().memory(), agent_info_extend->agent_info->total().millicores(),
+              agent_info_extend->agent_info->assigned().memory(), agent_info_extend->agent_info->assigned().millicores(),
+              agent_info_extend->agent_info->used().memory(), agent_info_extend->agent_info->used().millicores());
         }
         return fit;
     }
@@ -409,7 +429,7 @@ int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
 }
 
 double PodScaleUpCell::ScoreAgent(const AgentInfo* agent_info,
-                   const PodDescriptor* desc) {
+                                  const PodDescriptor* /*desc*/) {
     // 计算机器当前使用率打分
     double score = Scheduler::CalcLoad(agent_info);
     LOG(DEBUG, "score %s %lf", agent_info->endpoint().c_str(), score);
@@ -454,7 +474,7 @@ int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
             sched->set_jobid(job->jobid());
             sched->set_action(kTerminate);
             propose->push_back(sched);
-            LOG(DEBUG, "propose[%d] %s:%s on %s", propose_count,
+            LOG(INFO, "scale down propose[%d] %s:%s on %s", propose_count,
                     sched->jobid().c_str(),
                     sched->podid().c_str(),
                     sched->endpoint().c_str());

@@ -5,6 +5,7 @@
 #include "galaxy.h"
 
 #include "proto/master.pb.h"
+#include "proto/galaxy.pb.h"
 #include "rpc/rpc_client.h"
 
 namespace baidu {
@@ -65,6 +66,7 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     if (job.is_batch) {
         request.mutable_job()->set_type(kBatch);
     }
+    request.mutable_job()->set_deploy_step(job.deploy_step);
     Resource* pod_resource = request.mutable_job()->mutable_pod()->mutable_requirement();
     pod_resource->set_millicores(job.cpu_required);
     pod_resource->set_memory(job.mem_required);
@@ -79,17 +81,12 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     return response.jobid();
 }
 
-bool GalaxyImpl::UpdateJob(const std::string& /*jobid*/, const JobDescription& job) {
+bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) {
     UpdateJobRequest request;
     UpdateJobResponse response;
+    request.set_jobid(jobid);
     request.mutable_job()->set_name(job.job_name);
-    TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
-    task->set_binary(job.binary);
-    task->set_start_command(job.cmd_line);
-    task->mutable_requirement()->set_millicores(job.cpu_required);
-    task->mutable_requirement()->set_memory(job.mem_required);
     request.mutable_job()->set_replica(job.replica);
-
     rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
                              &request, &response, 5, 1);
     if (response.status() != kOk) {
@@ -116,6 +113,7 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.priority = job.desc().priority();
         job_info.running_num = job.running_num();
         job_info.pending_num = job.pending_num();
+        job_info.deploying_num = job.deploying_num();
         job_info.cpu_used = job.resource_used().millicores();
         job_info.mem_used = job.resource_used().memory();
 				job_info.is_batch = (job.desc().type() == kBatch);
@@ -148,7 +146,8 @@ bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
                 labels.append(",");
             }
         }
-        node_desc.labels = labels; 
+        node_desc.labels = labels;
+        node_desc.state = AgentState_Name(node.state());
         nodes->push_back(node_desc);
     }
     return true;

@@ -20,11 +20,18 @@ enum Status {
 
 enum PodState {
     kPodPending = 0;
-    kPodDeploy = 1;
+    kPodDeploying = 1;
     kPodRunning = 2;
     kPodTerminate = 3;
     kPodSuspend = 4;
     kPodError = 5;
+}
+
+enum PodStage {
+    kStagePending = 0;
+    kStageRunning = 1;
+    kStageDeath = 2;
+    kStageRemoved = 3;
 }
 
 enum TaskState {
@@ -99,6 +106,7 @@ message PodStatus {
     optional string endpoint = 5;
     optional string version = 6;
     optional PodState state = 7;
+    optional PodStage stage = 8;
 }
 
 message AgentInfo {

@@ -18,8 +18,6 @@ class AgentInfo;
 
 class MasterUtil {
 public:
-    static std::string GenerateJobId(const JobDescriptor& job_desc);
-    static std::string GeneratePodId(const JobDescriptor& job_desc);
 
     static void AddResource(const Resource& from, Resource* to);
     static void SubstractResource(const Resource& from, Resource* to);
@@ -31,7 +29,6 @@ public:
                         std::set<std::string>* left_diff, 
                         std::set<std::string>* right_diff);
     static void ResetLabels(AgentInfo* agent, const std::set<std::string>& labels);
-private:
     static std::string UUID();
 };
 
