@@ -90,6 +90,7 @@ client_src='src/client/galaxy_client.cc \
 test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/task_manager.cc src/agent/utils.cc src/flags.cc \
                        src/agent/test_task_manager.cc'
+test_cgroup_src='src/agent/cgroups.cc src/agent/test_cgroups.cc'
 
 Application('scheduler',Sources(scheduler_src))
 Application('master',Sources(master_src))
@@ -98,3 +99,4 @@ Application('initd',Sources(initd_src))
 StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
 Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))
 Application('test_task_manager', Sources(test_task_manager_src))
+Application('test_cgroup', Sources(test_cgroup_src))
