@@ -416,7 +416,6 @@ void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
     Agent_Stub* stub;
     const AgentAddr& endpoint = pod->endpoint();
     rpc_client_.GetStub(endpoint, &stub);
-    agent_sequence_ids_[endpoint]++;
     boost::function<void (const RunPodRequest*, RunPodResponse*, bool, int)> run_pod_callback;
     run_pod_callback = boost::bind(&JobManager::RunPodCallback, this, pod, endpoint,
                                    _1, _2, _3, _4);
@@ -934,7 +933,6 @@ void JobManager::SendKillToAgent(PodStatus* pod) {
     if (agent_info->state() == kDead) {
         return;
     }
-    agent_sequence_ids_[pod->endpoint()]++;
     // tell agent to clean pod
     KillPodRequest* request = new KillPodRequest;
     KillPodResponse* response = new KillPodResponse;
