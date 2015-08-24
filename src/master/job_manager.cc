@@ -30,6 +30,7 @@ JobManager::JobManager()
     state_to_stage_[kPodDeploying] = kStageRunning;
     state_to_stage_[kPodRunning] = kStageRunning;
     state_to_stage_[kPodTerminate] = kStageDeath;
+    state_to_stage_[kPodError] = kStageDeath;
     BuildPodFsm();
 }
 
