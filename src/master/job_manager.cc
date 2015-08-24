@@ -563,7 +563,8 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     const AgentInfo& report_agent_info = response->agent();
-    LOG(INFO, "agent %s stat: mt %ld, ct %d, ma %ld, ca %d, mu %ld , cu %d ", report_agent_info.endpoint().c_str(),
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d ",
+        report_agent_info.endpoint().c_str(),
         report_agent_info.total().memory(), report_agent_info.total().millicores(),
         report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
         report_agent_info.used().memory(), report_agent_info.used().millicores());

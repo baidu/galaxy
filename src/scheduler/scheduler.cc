@@ -345,7 +345,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
                 agent_info_extend->agent_info->endpoint().c_str(), 
                 job->jobid().c_str());
         } else {
-            LOG(INFO, "agent %s does not fit job %s require:mr %ld, cr %d , agent stat:mt %ld, ct %d, ma %ld, ca %d, mu %ld, cu %d",
+            LOG(INFO, "agent %s does not fit job %s require:mem require %ld, cpu require %d , agent stat:mem total %ld, cpu total %d, mem assigned %ld, cpu assinged %d, mem used %ld, cpu used %d",
               agent_info_extend->agent_info->endpoint().c_str(),job->jobid().c_str(),
               resource.millicores(), resource.memory(),
               agent_info_extend->agent_info->total().memory(), agent_info_extend->agent_info->total().millicores(),
