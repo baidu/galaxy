@@ -76,7 +76,8 @@ private:
     void Query();
     void QueryAgent(AgentInfo* agent);
     void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
-                            QueryResponse* response, bool failed, int error);
+                            QueryResponse* response, bool failed, int error, 
+                            int64_t seq_id_at_query);
     void UpdateAgentVersion(AgentInfo* old_agent_info, 
                             const AgentInfo& new_agent_info);
     
@@ -132,6 +133,7 @@ private:
     typedef boost::function<bool ()> Handle;
     typedef boost::unordered_map<PodId, std::map<std::string, Handle> > FSM; 
     FSM fsm_;
+    std::map<AgentAddr, int64_t> agent_sequence_ids_;
 };
 
 }
