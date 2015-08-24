@@ -97,18 +97,19 @@ private:
                           int32_t max_scale_down_size);
     void ProcessScaleUp(JobInfoList* scale_up_pods,
                         int32_t max_scale_up_size);
-    bool BuildPodFsm(PodStatus* pod, Job* job);
+    void BuildPodFsm();
     bool HandleCleanPod(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);
     bool HandleRunningToDeath(PodStatus* pod, Job* job);
     bool HandleRunningToRemoved(PodStatus* pod, Job* job);
     bool HandleDeathToPending(PodStatus* pod, Job* job);
-    bool HandleDoNothing();
+    bool HandleDoNothing(PodStatus* pod, Job* job);
     std::string BuildHandlerKey(const PodStage& from,
                                 const PodStage& to);
 
     void ChangeStage(const PodStage& to,
-                     PodStatus* pod);
+                     PodStatus* pod,
+                     Job* job);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
@@ -137,8 +138,8 @@ private:
 
     // pod fsm
     std::map<PodState, PodStage> state_to_stage_;
-    typedef boost::function<bool ()> Handle;
-    typedef boost::unordered_map<PodId, std::map<std::string, Handle> > FSM; 
+    typedef boost::function<bool (PodStatus* pod, Job* job)> Handle;
+    typedef std::map<std::string, Handle>  FSM; 
     FSM fsm_;
     std::map<AgentAddr, int64_t> agent_sequence_ids_;
 };

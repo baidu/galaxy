@@ -30,6 +30,7 @@ JobManager::JobManager()
     state_to_stage_[kPodDeploying] = kStageRunning;
     state_to_stage_[kPodRunning] = kStageRunning;
     state_to_stage_[kPodTerminate] = kStageDeath;
+    BuildPodFsm();
 }
 
 JobManager::~JobManager() {
@@ -134,7 +135,6 @@ void JobManager::FillPodsToJob(Job* job) {
         pod_status->set_jobid(job->id_);
         pod_status->set_stage(kStagePending);
         job->pods_[pod_id] = pod_status;
-        BuildPodFsm(pod_status, job);
         pending_pods_[job->id_][pod_id] = pod_status;
         LOG(INFO, "move pod to pendings: %s", pod_id.c_str());
     }
@@ -223,7 +223,7 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
                 will_rm_pods.push_back(jt->second);
             }
             for (size_t i = 0; i < will_rm_pods.size(); ++i) {
-                ChangeStage(kStageRemoved, will_rm_pods[i]);
+                ChangeStage(kStageRemoved, will_rm_pods[i], job_it->second);
             }
         }
         if (scale_down_count > 0) {
@@ -286,7 +286,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
             LOG(WARNING, "propose fail, no such pod: %s", sche_info.podid().c_str());
             return kPodNotFound;
         }
-        ChangeStage(kStageRemoved, p_it->second);
+        ChangeStage(kStageRemoved, p_it->second, job_it->second);
         return kOk;
     }
 
@@ -322,7 +322,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     if (job_pending_pods.size() == 0) {
         pending_pods_.erase(it);
     }
-    ChangeStage(kStageRunning, pod);
+    ChangeStage(kStageRunning, pod, job_it->second);
     LOG(INFO, "propose success, %s will be run on %s",
         podid.c_str(), endpoint.c_str());
     return kOk;
@@ -420,12 +420,12 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
     for (; it != agent_pods.end(); ++it) {
         std::map<PodId, PodStatus*>::iterator jt = it->second.begin();
         for (; jt != it->second.end(); ++jt) {
-            PodStatus* pod = jt->second;
-            // add fsm support
-            if (pod->state() == kPodTerminate){
+            PodStatus* pod = jt->second; 
+            std::map<JobId, Job*>::iterator job_it = jobs_.find(pod->jobid());
+            if (job_it ==  jobs_.end()) {
                 continue;
             }
-            ChangeStage(kStagePending, pod);
+            ChangeStage(kStagePending, pod, job_it->second);
         }
     }
     LOG(INFO, "agent is dead: %s", agent_addr.c_str());
@@ -460,16 +460,16 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
     const std::string& jobid = pod->jobid();
     const std::string& podid = pod->podid();
     Status status = response->status();
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        LOG(WARNING, "job %s does not exist in master", jobid.c_str());
+        return;
+    }
     if (failed || status != kOk) {
         LOG(WARNING, "run pod [%s %s] on [%s] fail: %d", jobid.c_str(),
             podid.c_str(), endpoint.c_str(), status);
-        ChangeStage(kStageDeath, pod);
+        ChangeStage(kStageDeath, pod, job_it->second);
     } else {
-        std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
-        if (job_it == jobs_.end()) {
-            LOG(WARNING, "job %s does not exist in master", jobid.c_str());
-            return;
-        }
         std::map<PodId, PodStatus*>::iterator pod_it = job_it->second->pods_.find(podid);
         if (pod_it == job_it->second->pods_.end()) {
             LOG(WARNING, "pod %s does not exist in master", podid.c_str());
@@ -595,7 +595,6 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             && jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
-            BuildPodFsm(pod, jobs_[jobid]);
             jobs_[jobid]->pods_[podid] = pod;
             pods_not_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
@@ -618,7 +617,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         if (pods_not_on_agent[jobid].size() == 0) {
             pods_not_on_agent.erase(jobid);
         }
-        ChangeStage(state_to_stage_[pod->state()], pod);
+        ChangeStage(state_to_stage_[pod->state()], pod, job);
     }
 
     PodMap::iterator j_it = pods_not_on_agent.begin();
@@ -632,7 +631,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             LOG(INFO, "pod %s in master but not in agent, stage in master is %s ", 
               p_it->second->podid().c_str(),
               PodStage_Name(p_it->second->stage()).c_str());
-            ChangeStage(kStageDeath, p_it->second);
+            ChangeStage(kStageDeath, p_it->second, job_it->second);
         }
     }
 
@@ -796,40 +795,28 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
     return kOk;
 }
 
-bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
-    mutex_.AssertHeld();
-    if (pod == NULL || job == NULL) {
-        LOG(WARNING, "invalidate pod input");
-        return false;
-    }
-    FSM::iterator it = fsm_.find(pod->podid());
-    if (it != fsm_.end()) {
-        LOG(WARNING, "fsm has been built for pod %s", pod->podid().c_str());
-        return true;
-    }
-    std::map<std::string, Handle>& handler_map = fsm_[pod->podid()];
-    LOG(INFO, "build fsm for pod %s", pod->podid().c_str());
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStagePending, kStageRemoved), 
-          boost::bind(&JobManager::HandleCleanPod, this, pod, job)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStagePending, kStageRunning), 
-          boost::bind(&JobManager::HandlePendingToRunning, this, pod, job)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageDeath), 
-          boost::bind(&JobManager::HandleRunningToDeath, this, pod, job)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRemoved), 
-          boost::bind(&JobManager::HandleRunningToRemoved, this, pod, job)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
-          boost::bind(&JobManager::HandleDoNothing, this)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageDeath), 
-          boost::bind(&JobManager::HandleDoNothing, this)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStagePending), 
-          boost::bind(&JobManager::HandleDeathToPending, this, pod, job)));
-    
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageDeath), 
-          boost::bind(&JobManager::HandleCleanPod, this, pod, job)));
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageRemoved), 
-          boost::bind(&JobManager::HandleDoNothing, this)));
+void JobManager::BuildPodFsm() {
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStagePending, kStageRemoved), 
+          boost::bind(&JobManager::HandleCleanPod, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStagePending, kStageRunning), 
+          boost::bind(&JobManager::HandlePendingToRunning, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageDeath), 
+          boost::bind(&JobManager::HandleRunningToDeath, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRemoved), 
+          boost::bind(&JobManager::HandleRunningToRemoved, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
+          boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageDeath), 
+          boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStagePending), 
+          boost::bind(&JobManager::HandleDeathToPending, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageDeath), 
+          boost::bind(&JobManager::HandleCleanPod, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStagePending), 
+          boost::bind(&JobManager::HandleCleanPod, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageRemoved), 
+          boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
 
-    return true;
 }
 
 std::string JobManager::BuildHandlerKey(const PodStage& from,
@@ -838,15 +825,11 @@ std::string JobManager::BuildHandlerKey(const PodStage& from,
 }
 
 void JobManager::ChangeStage(const PodStage& to,
-                             PodStatus* pod) {
+                             PodStatus* pod,
+                             Job* job) {
     mutex_.AssertHeld();
-    if (pod == NULL) {
+    if (pod == NULL || job == NULL) {
         LOG(WARNING, "change pod invalidate input");
-        return;
-    }
-    FSM::iterator it = fsm_.find(pod->podid());
-    if (it == fsm_.end()) {
-        LOG(WARNING,"pod %s have no fsm to manage it's state",pod->podid().c_str());
         return;
     }
     LOG(INFO, "pod %s change stage from %s to %s",
@@ -854,15 +837,15 @@ void JobManager::ChangeStage(const PodStage& to,
       PodStage_Name(pod->stage()).c_str(),
       PodStage_Name(to).c_str());
     std::string handler_key = BuildHandlerKey(pod->stage(), to);
-    std::map<std::string, Handle>::iterator h_it = it->second.find(handler_key);
-    if (h_it == it->second.end()) {
+    std::map<std::string, Handle>::iterator h_it = fsm_.find(handler_key);
+    if (h_it == fsm_.end()) {
         LOG(WARNING, "pod %s can not change stage from %s to %s",
         pod->podid().c_str(),
         PodStage_Name(pod->stage()).c_str(),
         PodStage_Name(to).c_str());
         return;
     }
-    h_it->second();
+    h_it->second(pod, job);
 }
 
 bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
@@ -941,11 +924,11 @@ bool JobManager::HandleRunningToRemoved(PodStatus* pod, Job* job) {
 }
 
 
-bool JobManager::HandleDoNothing() {
+bool JobManager::HandleDoNothing(PodStatus*, Job*) {
     return true;
 }
 
-void JobManager::SendKillToAgent(PodStatus* pod) {
+void JobManager::SendKillToAgent(PodStatus*  pod) {
     mutex_.AssertHeld();
     if (pod == NULL) {
         return;
