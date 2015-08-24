@@ -29,7 +29,7 @@ JobManager::JobManager()
     state_to_stage_[kPodPending] = kStageRunning;
     state_to_stage_[kPodDeploying] = kStageRunning;
     state_to_stage_[kPodRunning] = kStageRunning;
-    state_to_stage_[kPodTerminate] =kStageDeath;
+    state_to_stage_[kPodTerminate] = kStageDeath;
 }
 
 JobManager::~JobManager() {
@@ -594,7 +594,9 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         }
         std::map<PodId, PodStatus*>::iterator p_it = j_it->second.begin();
         for (; p_it != j_it->second.end(); ++p_it) {
-            LOG(INFO, "pod %s in master but not in agent ", p_it->second->podid().c_str());
+            LOG(INFO, "pod %s in master but not in agent, stage in master is %s ", 
+              p_it->second->podid().c_str(),
+              PodStage_Name(p_it->second->stage()).c_str());
             ChangeStage(kStageDeath, p_it->second);
         }
     }
@@ -779,7 +781,7 @@ bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageDeath), 
           boost::bind(&JobManager::HandleRunningToDeath, this, pod, job)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRemoved), 
-          boost::bind(&JobManager::HandleRunningToDeath, this, pod, job)));
+          boost::bind(&JobManager::HandleRunningToRemoved, this, pod, job)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
           boost::bind(&JobManager::HandleDoNothing, this)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageDeath), 
@@ -787,7 +789,7 @@ bool JobManager::BuildPodFsm(PodStatus* pod, Job* job) {
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStagePending), 
           boost::bind(&JobManager::HandleDeathToPending, this, pod, job)));
     
-    handler_map.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageRemoved), 
+    handler_map.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageDeath), 
           boost::bind(&JobManager::HandleCleanPod, this, pod, job)));
     handler_map.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageRemoved), 
           boost::bind(&JobManager::HandleDoNothing, this)));
