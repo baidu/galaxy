@@ -170,9 +170,10 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
         return;
     }
 
-    pod_manager_.DeletePod(req->podid());
     resp->set_status(kOk); 
     done->Run();
+
+    pod_manager_.DeletePod(req->podid());
     return;
 }
 
