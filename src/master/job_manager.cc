@@ -416,6 +416,7 @@ void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
     Agent_Stub* stub;
     const AgentAddr& endpoint = pod->endpoint();
     rpc_client_.GetStub(endpoint, &stub);
+    agent_sequence_ids_[endpoint]++;
     boost::function<void (const RunPodRequest*, RunPodResponse*, bool, int)> run_pod_callback;
     run_pod_callback = boost::bind(&JobManager::RunPodCallback, this, pod, endpoint,
                                    _1, _2, _3, _4);
@@ -451,6 +452,7 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
             return;
         }
         PodStatus* pod_status = pod_it->second;
+        agent_sequence_ids_[pod->endpoint()]++;
         pods_on_agent_[pod->endpoint()][jobid].insert(std::make_pair(pod_status->podid(),pod_status));
         LOG(INFO, "run pod [%s %s] on [%s] success", jobid.c_str(),
           podid.c_str(), 
@@ -481,7 +483,9 @@ void JobManager::Query() {
 }
 
 void JobManager::QueryAgent(AgentInfo* agent) {
+    mutex_.AssertHeld();
     const AgentAddr& endpoint = agent->endpoint();
+    int64_t seq_id = agent_sequence_ids_[endpoint];
     if (agent->state() != kAlive) {
         LOG(DEBUG, "ignore dead agent [%s]", endpoint.c_str());
         return;
@@ -493,7 +497,7 @@ void JobManager::QueryAgent(AgentInfo* agent) {
     rpc_client_.GetStub(endpoint, &stub);
     boost::function<void (const QueryRequest*, QueryResponse*, bool, int)> query_callback;
     query_callback = boost::bind(&JobManager::QueryAgentCallback, this,
-                                 endpoint, _1, _2, _3, _4);
+                                 endpoint, _1, _2, _3, _4, seq_id);
     rpc_client_.AsyncRequest(stub, &Agent_Stub::Query, request, response,
                              query_callback, FLAGS_master_agent_rpc_timeout, 0);
     delete stub;
@@ -501,7 +505,8 @@ void JobManager::QueryAgent(AgentInfo* agent) {
 }
 
 void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
-                                    QueryResponse* response, bool failed, int /*error*/) {
+                                    QueryResponse* response, bool failed, int /*error*/,
+                                    int64_t seq_id_at_query) {
     boost::scoped_ptr<const QueryRequest> request_ptr(request);
     boost::scoped_ptr<QueryResponse> response_ptr(response);
     MutexLock lock(&mutex_);
@@ -518,6 +523,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     std::map<AgentAddr, AgentInfo*>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
         LOG(FATAL, "query agent [%s] not exist", endpoint.c_str());
+        return;
+    }
+    int64_t current_seq_id = agent_sequence_ids_[endpoint];
+    if (seq_id_at_query < current_seq_id) {
+        LOG(FATAL, "outdated query callback, just ignore it. %ld < %ld, %s", 
+            seq_id_at_query, current_seq_id, endpoint.c_str());
         return;
     }
     Status status = response->status();
@@ -923,6 +934,7 @@ void JobManager::SendKillToAgent(PodStatus* pod) {
     if (agent_info->state() == kDead) {
         return;
     }
+    agent_sequence_ids_[pod->endpoint()]++;
     // tell agent to clean pod
     KillPodRequest* request = new KillPodRequest;
     KillPodResponse* response = new KillPodResponse;
