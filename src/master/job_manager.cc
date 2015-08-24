@@ -185,6 +185,12 @@ void JobManager::KillPodCallback(PodStatus* pod,
 void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 JobInfoList* scale_down_pods) {
     MutexLock lock(&mutex_);
+    ProcessScaleDown(scale_down_pods);
+    ProcessScaleUp(pending_pods);
+}
+
+void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods) {
+    mutex_.AssertHeld();
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     std::vector<JobId> should_rm;
     std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin(); 
@@ -229,8 +235,13 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
     for (size_t i = 0; i < should_rm.size(); ++i) {
         scale_down_jobs_.erase(should_rm[i]);
     }
+}
+
+void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods) {
+    mutex_.AssertHeld();
+    std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     for (it = pending_pods_.begin(); it != pending_pods_.end(); ++it) {
-        JobInfo* job_info = pending_pods->Add();
+        JobInfo* job_info = scale_up_pods->Add();
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
         const JobDescriptor& job_desc = jobs_[job_id]->desc_;

@@ -90,6 +90,8 @@ private:
                          KillPodResponse* response, 
                          bool failed, int error);
 
+    void ProcessScaleDown(JobInfoList* scale_down_pods);
+    void ProcessScaleUp(JobInfoList* scale_up_pods);
     bool BuildPodFsm(PodStatus* pod, Job* job);
     bool HandleCleanPod(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);
