@@ -62,7 +62,7 @@ master_src='src/master/master_impl.cc\
 agent_src='src/agent/agent_impl.cc\
            src/agent/agent_main.cc\
            src/agent/pod_manager.cc\
-           src/agent/initd_handler.cc\
+           src/agent/task_manager.cc \
            src/agent/utils.cc\
            src/flags.cc\
            src/proto/agent.proto\
