@@ -12,6 +12,8 @@ DECLARE_string(master_lock_path);
 DECLARE_string(master_path);
 DECLARE_string(jobs_store_path);
 DECLARE_string(labels_store_path);
+DECLARE_int32(max_scale_down_size);
+DECLARE_int32(max_scale_up_size);
 
 namespace baidu {
 namespace galaxy {
@@ -223,11 +225,23 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
 }
 
 void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* /*controller*/,
-                                const ::baidu::galaxy::GetPendingJobsRequest*,
+                                const ::baidu::galaxy::GetPendingJobsRequest* request,
                                 ::baidu::galaxy::GetPendingJobsResponse* response,
                                 ::google::protobuf::Closure* done) {
+    int32_t max_scale_up_size = FLAGS_max_scale_up_size;
+    int32_t max_scale_down_size = FLAGS_max_scale_down_size;
+    if (request->has_max_scale_up_size() 
+        && request->max_scale_up_size() > 0) {
+        max_scale_up_size = request->max_scale_up_size();
+    }
+    if (request->has_max_scale_down_size()
+        && request->max_scale_down_size() > 0) {
+        max_scale_down_size = request->max_scale_down_size();
+    }
     job_manager_.GetPendingPods(response->mutable_scale_up_jobs(),
-                                response->mutable_scale_down_jobs());
+                                max_scale_up_size,
+                                response->mutable_scale_down_jobs(),
+                                max_scale_down_size);
     response->set_status(kOk);
     done->Run();
 }

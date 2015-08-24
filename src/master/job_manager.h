@@ -45,7 +45,10 @@ public:
     Status Resume(const JobId& jobid);
     JobManager();
     ~JobManager();
-    void GetPendingPods(JobInfoList* pending_pods, JobInfoList* scale_down_pods);
+    void GetPendingPods(JobInfoList* pending_pods,
+                        int32_t max_scale_up_size,
+                        JobInfoList* scale_down_pods,
+                        int32_t max_scale_down_size);
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
@@ -90,8 +93,10 @@ private:
                          KillPodResponse* response, 
                          bool failed, int error);
 
-    void ProcessScaleDown(JobInfoList* scale_down_pods);
-    void ProcessScaleUp(JobInfoList* scale_up_pods);
+    void ProcessScaleDown(JobInfoList* scale_down_pods, 
+                          int32_t max_scale_down_size);
+    void ProcessScaleUp(JobInfoList* scale_up_pods,
+                        int32_t max_scale_up_size);
     bool BuildPodFsm(PodStatus* pod, Job* job);
     bool HandleCleanPod(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);

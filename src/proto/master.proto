@@ -142,6 +142,9 @@ message HeartBeatResponse {
 }
 
 message GetPendingJobsRequest {
+    optional int32 max_scale_down_size = 4;
+    optional int32 max_scale_up_size = 5;
+
 }
 
 message GetPendingJobsResponse {

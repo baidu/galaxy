@@ -20,7 +20,8 @@ DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
 DEFINE_string(master_path, "/master", "master path on nexus");
 DEFINE_string(jobs_store_path, "/jobs", "");
 DEFINE_string(labels_store_path, "/labels", "");
-
+DEFINE_int32(max_scale_down_size, 10, "the max size of scale down jobs that schedule fetches");
+DEFINE_int32(max_scale_up_size, 10, "the max size of scale up jobs that schedule fetches");
 // scheduler
 
 // agent

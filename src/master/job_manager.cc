@@ -183,18 +183,25 @@ void JobManager::KillPodCallback(PodStatus* pod,
 }
 
 void JobManager::GetPendingPods(JobInfoList* pending_pods,
-                                JobInfoList* scale_down_pods) {
+                                int32_t max_scale_up_size,
+                                JobInfoList* scale_down_pods,
+                                int32_t max_scale_down_size) {
     MutexLock lock(&mutex_);
-    ProcessScaleDown(scale_down_pods);
-    ProcessScaleUp(pending_pods);
+    ProcessScaleDown(scale_down_pods, max_scale_down_size);
+    ProcessScaleUp(pending_pods, max_scale_up_size);
 }
 
-void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods) {
+void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
+                                  int32_t max_scale_down_size) {
     mutex_.AssertHeld();
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     std::vector<JobId> should_rm;
-    std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin(); 
+    std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin();
+    int32_t job_count = 0;
     for (;jobid_it != scale_down_jobs_.end(); ++jobid_it) {
+        if (job_count >= max_scale_down_size) {
+            return;
+        }
         std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
         if (job_it == jobs_.end()) {
             continue;
@@ -220,6 +227,7 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods) {
             }
         }
         if (scale_down_count > 0) {
+            job_count++;
             JobInfo* job_info = scale_down_pods->Add();
             job_info->mutable_desc()->CopyFrom(job_it->second->desc_);
             job_info->set_jobid(job_it->second->id_);
@@ -237,10 +245,15 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods) {
     }
 }
 
-void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods) {
+void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
+                                int32_t max_scale_up_size) {
     mutex_.AssertHeld();
+    int job_count = 0;
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     for (it = pending_pods_.begin(); it != pending_pods_.end(); ++it) {
+        if (job_count >= max_scale_up_size) {
+            return;
+        }
         JobInfo* job_info = scale_up_pods->Add();
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
@@ -253,6 +266,7 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods) {
             PodStatus* new_pod_status = job_info->add_pods();
             new_pod_status->CopyFrom(*pod_status);
         }
+        job_count++;
     }
 }
 

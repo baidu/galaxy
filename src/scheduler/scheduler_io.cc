@@ -4,7 +4,11 @@
 
 #include "scheduler/scheduler_io.h"
 
+#include <gflags/gflags.h>
 #include "logging.h"
+
+DECLARE_int32(max_scale_down_size);
+DECLARE_int32(max_scale_up_size);
 
 namespace baidu {
 namespace galaxy {
@@ -54,6 +58,8 @@ void SchedulerIO::Loop() {
     LOG(INFO, "sync resource from master successfully, agent count %d",
              agent_count);
     GetPendingJobsRequest get_jobs_request;
+    get_jobs_request.set_max_scale_up_size(FLAGS_max_scale_up_size);
+    get_jobs_request.set_max_scale_down_size(FLAGS_max_scale_down_size);
     GetPendingJobsResponse get_jobs_response;
 
     ListJobsRequest list_jobs_request;
