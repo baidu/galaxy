@@ -72,7 +72,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
     agent_info.mutable_assigned()->set_millicores(
             FLAGS_agent_millicores - resource_capacity_.millicores); 
     agent_info.mutable_assigned()->set_memory(
-            FLAGS_agent_millicores - resource_capacity_.memory);
+            FLAGS_agent_memory- resource_capacity_.memory);
 
     std::vector<PodInfo> pods;
     pod_manager_.ShowPods(&pods);
@@ -279,8 +279,9 @@ bool AgentImpl::RegistToMaster() {
 }
 
 int AgentImpl::AllocResource(const Resource& requirement) {
-    if (resource_capacity_.millicores > requirement.millicores()
-            && resource_capacity_.memory > requirement.memory()) {
+    lock_.AssertHeld();
+    if (resource_capacity_.millicores >= requirement.millicores()
+            && resource_capacity_.memory >= requirement.memory()) {
         resource_capacity_.millicores -= requirement.millicores(); 
         resource_capacity_.memory -= requirement.memory();
         return 0;
@@ -289,6 +290,7 @@ int AgentImpl::AllocResource(const Resource& requirement) {
 }
 
 void AgentImpl::ReleaseResource(const Resource& requirement) {
+    lock_.AssertHeld();
     resource_capacity_.millicores += requirement.millicores();
     resource_capacity_.memory += requirement.memory();
 }
