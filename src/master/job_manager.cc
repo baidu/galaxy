@@ -189,6 +189,9 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 JobInfoList* scale_down_pods,
                                 int32_t max_scale_down_size) {
     MutexLock lock(&mutex_);
+    if (safe_mode_) {
+        return;
+    }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
 }
@@ -568,11 +571,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     const AgentInfo& report_agent_info = response->agent();
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d ",
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d ",
         report_agent_info.endpoint().c_str(),
         report_agent_info.total().memory(), report_agent_info.total().millicores(),
         report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
-        report_agent_info.used().memory(), report_agent_info.used().millicores());
+        report_agent_info.used().memory(), report_agent_info.used().millicores(),
+        report_agent_info.pods_size());
     AgentInfo* agent = it->second;
     UpdateAgentVersion(agent, report_agent_info);
     // copy only needed 
@@ -603,6 +607,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             && jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
+            pod->set_stage(state_to_stage_[pod->state()]);
             jobs_[jobid]->pods_[podid] = pod;
             pods_not_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
@@ -692,6 +697,9 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     MutexLock lock(&mutex_);
+    if (safe_mode_) {
+        return;
+    }
     std::map<AgentAddr, AgentInfo*>::iterator it;
     for (it = agents_.begin(); it != agents_.end(); ++it) {
         AgentInfo* agent = it->second;
