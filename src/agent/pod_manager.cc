@@ -240,7 +240,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
         pod_info.pod_status.set_state(kPodPending);
         break;
         case kTaskDeploy :
-        pod_info.pod_status.set_state(kPodDeploy);
+        pod_info.pod_status.set_state(kPodDeploying);
         break;
         case kTaskRunning :
         pod_info.pod_status.set_state(kPodRunning);
