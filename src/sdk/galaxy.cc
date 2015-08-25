@@ -70,7 +70,9 @@ std::string GalaxyImpl::SubmitJob(const JobDescription& job){
     Resource* pod_resource = request.mutable_job()->mutable_pod()->mutable_requirement();
     pod_resource->set_millicores(job.cpu_required);
     pod_resource->set_memory(job.mem_required);
-    request.mutable_job()->mutable_pod()->add_labels(job.label);
+    if (!job.label.empty()) {
+        request.mutable_job()->mutable_pod()->add_labels(job.label);
+    }
     TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
     task->set_binary(job.binary);
     task->set_start_command(job.cmd_line);
