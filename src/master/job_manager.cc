@@ -401,6 +401,11 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         bool cancel_ok = death_checker_.CancelTask(timer_id);
         if (!cancel_ok) {
             LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
+            {
+                MutexLock g_lock(&mutex_);
+                AgentInfo* agent = agents_[agent_addr];
+                agent->set_state(kDead);
+            }
         }
     }
     timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
@@ -634,7 +639,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             LOG(INFO, "pod %s in master but not in agent, stage in master is %s ", 
               p_it->second->podid().c_str(),
               PodStage_Name(p_it->second->stage()).c_str());
-            ChangeStage(kStageDeath, p_it->second, job_it->second);
+            ChangeStage(kStagePending, p_it->second, job_it->second);
         }
     }
 
@@ -912,6 +917,13 @@ bool JobManager::HandleDeathToPending(PodStatus* pod, Job* job) {
     pod->set_state(kPodPending);
     LOG(INFO, "reschedule pod %s of job %s", pod->podid().c_str(), job->id_.c_str());
     pending_pods_[job->id_][pod->podid()] = pod;
+    std::map<AgentAddr, PodMap>::iterator a_it = pods_on_agent_.find(pod->endpoint());
+    if (a_it != pods_on_agent_.end()) {
+        PodMap::iterator p_it = a_it->second.find(pod->jobid());
+        if (p_it != a_it->second.end()) {
+            p_it->second.erase(pod->podid());
+        }
+    }
     return true;
 }
 
