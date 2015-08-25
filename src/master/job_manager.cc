@@ -823,7 +823,7 @@ void JobManager::BuildPodFsm() {
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
           boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageDeath), 
-          boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
+          boost::bind(&JobManager::HandleRunningToDeath, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStagePending), 
           boost::bind(&JobManager::HandleDeathToPending, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageDeath), 
