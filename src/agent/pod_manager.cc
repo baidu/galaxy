@@ -352,6 +352,21 @@ int PodManager::AddPod(const PodInfo& info) {
     return 0; 
 }
 
+int PodManager::ShowPod(const std::string& pod_id, PodInfo* pod) {
+    if (pod == NULL) {
+        return -1; 
+    }    
+    std::map<std::string, PodInfo>::iterator pod_it = 
+                        pods_.find(pod_id);
+    if (pod_it == pods_.end()) {
+        return -1; 
+    }
+
+    PodInfo& pod_info = pod_it->second;
+    pod->CopyFrom(pod_info);
+    return 0;
+}
+
 int PodManager::AllocPortForInitd(int& port) {
     if (initd_free_ports_.size() == 0) {
         LOG(WARNING, "no free ports for alloc");

@@ -60,7 +60,7 @@ struct TaskInfo {
           initd_stub(NULL) {
     }
 
-    TaskInfo(const TaskInfo& task) {
+    void CopyFrom(const TaskInfo& task) {
         task_id = task.task_id; 
         pod_id = task.pod_id;
         desc.CopyFrom(task.desc);
@@ -77,6 +77,15 @@ struct TaskInfo {
         stop_timeout_point = task.stop_timeout_point;
         initd_check_failed = task.initd_check_failed;
         initd_stub = task.initd_stub;
+    }
+
+    TaskInfo& operator=(const TaskInfo& task) {
+        CopyFrom(task);
+        return *this; 
+    }
+
+    TaskInfo(const TaskInfo& task) {
+        CopyFrom(task);
     }
 };
 
@@ -98,7 +107,7 @@ struct PodInfo {
           tasks() {
     }
 
-    PodInfo(const PodInfo& pod_info) {
+    void CopyFrom(const PodInfo& pod_info) {
         pod_id = pod_info.pod_id;     
         job_id = pod_info.job_id;
         pod_desc.CopyFrom(pod_info.pod_desc);
@@ -106,6 +115,15 @@ struct PodInfo {
         initd_port = pod_info.initd_port;
         initd_pid = pod_info.initd_pid;
         tasks = pod_info.tasks;
+    }
+
+    PodInfo(const PodInfo& pod_info) {
+        CopyFrom(pod_info);
+    }
+
+    PodInfo& operator=(const PodInfo& from) {
+        CopyFrom(from);
+        return *this;
     }
 };
 

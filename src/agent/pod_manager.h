@@ -31,6 +31,7 @@ public:
     int DeletePod(const std::string& pod_id);
     int UpdatePod(const std::string& pod_id, const PodInfo& info);
     int ShowPods(std::vector<PodInfo>* pods);
+    int ShowPod(const std::string& pod_id, PodInfo* pod);
     int CheckPod(const std::string& pod_id);
 
 protected:
