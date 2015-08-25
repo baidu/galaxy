@@ -18,10 +18,11 @@ DECLARE_string(master_host);
 DECLARE_string(master_port);
 DECLARE_string(flagfile);
 
-const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd> <is_batch> <label>\n" 
+const std::string kGalaxyUsage = "\n./galaxy_client submit <job_name> <job_package> <replica> <cpu> <mem> <start_cmd> <batch> <deploy_step> <label>\n" 
                                  "./galaxy_client list\n"
                                  "./galaxy_client listagent\n"
                                  "./galaxy_client kill <jobid>\n"
+                                 "./galaxy_client update <jobid> <replica>\n"
                                  "./galaxy_client label <label_name> <agent_endpoints_file>";
 
 bool LoadAgentEndpointsFromFile(
@@ -106,18 +107,16 @@ int AddJob(int argc, char* argv[]) {
     job.cpu_required = atoi(argv[3]);
     job.mem_required = atoi(argv[4]);
     job.deploy_step = 0;
-    job.cmd_line = argv[5];
-    fprintf(stdout, "cmd line %s", job.cmd_line.c_str());
-    if (0 == strcmp(argv[6], "true")) {
-        fprintf(stdout, "job is batch\n");
-        job.is_batch = true; 
-    } else {
-        job.is_batch = false; 
-    }
-    if (argc >= 7 && argv[7] != NULL) {
-        job.label = argv[7]; 
-    }
         
+    job.cmd_line = argv[5];
+    job.is_batch = (argc > 6 && 0 == strcmp(argv[6], "batch"));
+    job.deploy_step = job.replica;
+    if (argc > 7) {
+        job.deploy_step = atoi(argv[7]);
+    }
+    if (argc > 8) {
+        job.label = argv[8]; 
+    }
     std::string jobid = galaxy->SubmitJob(job);
     if (jobid.empty()) {
         fprintf(stderr, "Submit job fail\n");
@@ -126,26 +125,48 @@ int AddJob(int argc, char* argv[]) {
     printf("Submit job %s\n", jobid.c_str());
     return 0;
 }
-int ListAgent(int argc, char* argv[]) {
+
+int UpdateJob(int argc, char* argv[]) {
+    if (argc < 2) {
+        return 1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
+    baidu::galaxy::JobDescription desc;
+    std::string jobid;
+    jobid.assign(argv[0]);
+    desc.replica = atoi(argv[1]);
+    bool ok = galaxy->UpdateJob(jobid, desc);
+    if (ok) {
+        printf("Update job %s ok\n", jobid.c_str());
+        return 0;
+    }else {
+        printf("Fail to update job %s\n", jobid.c_str());
+        return 1;
+    }
+}
+
+
+int ListAgent(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::NodeDescription> agents;
-    baidu::common::TPrinter tp(10);
-    tp.AddRow(10, "", "addr", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
+    baidu::common::TPrinter tp(11);
+    tp.AddRow(11, "", "addr","state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
     if (galaxy->ListAgents(&agents)) {
         for (uint32_t i = 0; i < agents.size(); i++) {
             std::vector<std::string> vs;
-						vs.push_back(baidu::common::NumToString(i + 1));
-						vs.push_back(agents[i].addr);
-						vs.push_back(baidu::common::NumToString(agents[i].task_num));
-						vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
-						vs.push_back(baidu::common::NumToString(agents[i].cpu_assigned));
-						vs.push_back(baidu::common::NumToString(agents[i].cpu_share));
-						vs.push_back(baidu::common::NumToString(agents[i].mem_used));
-						vs.push_back(baidu::common::NumToString(agents[i].mem_assigned));
-						vs.push_back(baidu::common::NumToString(agents[i].mem_share));
-                        vs.push_back(agents[i].labels);
+            vs.push_back(baidu::common::NumToString(i + 1));
+            vs.push_back(agents[i].addr);
+            vs.push_back(agents[i].state);
+            vs.push_back(baidu::common::NumToString(agents[i].task_num));
+            vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
+            vs.push_back(baidu::common::NumToString(agents[i].cpu_assigned));
+            vs.push_back(baidu::common::NumToString(agents[i].cpu_share));
+            vs.push_back(baidu::common::NumToString(agents[i].mem_used));
+            vs.push_back(baidu::common::NumToString(agents[i].mem_assigned));
+            vs.push_back(baidu::common::NumToString(agents[i].mem_share));
+            vs.push_back(agents[i].labels);
             tp.AddRow(vs);
-				}
+		}
         printf("%s\n", tp.ToString().c_str());
 				return 0;
 		}
@@ -153,11 +174,11 @@ int ListAgent(int argc, char* argv[]) {
 		return 1;
 }
  
-int ListJob(int argc, char* argv[]) {
+int ListJob(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
     baidu::common::TPrinter tp(8);
-    tp.AddRow(8, "", "id", "name", "stat(r/p)", "replica", "batch", "cpu", "memory");
+    tp.AddRow(8, "", "id", "name", "stat(r/p/d)", "replica", "batch", "cpu", "memory");
     if (galaxy->ListJobs(&infos)) {
         for (uint32_t i = 0; i < infos.size(); i++) {
             std::vector<std::string> vs;
@@ -165,7 +186,8 @@ int ListJob(int argc, char* argv[]) {
             vs.push_back(infos[i].job_id);
             vs.push_back(infos[i].job_name);
             vs.push_back(baidu::common::NumToString(infos[i].running_num) + "/" + 
-                         baidu::common::NumToString(infos[i].pending_num));
+                         baidu::common::NumToString(infos[i].pending_num) + "/" +
+                         baidu::common::NumToString(infos[i].deploying_num));
             vs.push_back(baidu::common::NumToString(infos[i].replica));
 						vs.push_back(infos[i].is_batch ? "batch" : "");
             vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
@@ -194,6 +216,8 @@ int main(int argc, char* argv[]) {
 		return ListAgent(argc - 2, argv + 2);
     } else if (strcmp(argv[1], "label") == 0) {
         return LabelAgent(argc - 2, argv + 2);
+    } else if (strcmp(argv[1], "update") == 0) {
+        return UpdateJob(argc - 2, argv + 2);
     } else {
         fprintf(stderr,"Usage:%s\n", kGalaxyUsage.c_str());
         return -1;
