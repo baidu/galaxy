@@ -690,7 +690,8 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
             pod->set_stage(state_to_stage_[pod->state()]);
-            jobs_[jobid]->pods_[podid] = pod;
+            pod->set_endpoint(report_agent_info.endpoint());
+            jobs_[jobid]->pods_[podid] = pod; 
             pods_not_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
         }
