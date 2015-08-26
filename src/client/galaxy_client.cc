@@ -102,7 +102,7 @@ int AddJob(int argc, char* argv[]) {
     baidu::galaxy::JobDescription job;
     job.job_name = argv[0];
     std::string binary(argv[1]);
-    if (binary.substr(0, 6) == "ftp:://") {
+    if (binary.substr(0, 6) == "ftp://") {
         job.binary = binary;
     }else {
         ReadBinary(argv[1], &job.binary);
