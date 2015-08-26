@@ -102,7 +102,7 @@ int AddJob(int argc, char* argv[]) {
     baidu::galaxy::JobDescription job;
     job.job_name = argv[0];
     std::string binary(argv[1]);
-    if (binary.substr(0, 6) == "ftp:://") {
+    if (binary.substr(0,6) == "ftp://") {
         job.binary = binary;
     }else {
         ReadBinary(argv[1], &job.binary);
@@ -182,15 +182,14 @@ int ListAgent(int /*argc*/, char*[] /*argv*/) {
 int ListJob(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
-    baidu::common::TPrinter tp(9);
-    tp.AddRow(9, "", "id", "name","state","stat(r/p/d)", "replica", "batch", "cpu", "memory");
+    baidu::common::TPrinter tp(8);
+    tp.AddRow(8, "", "id", "name", "stat(r/p/d)", "replica", "batch", "cpu", "memory");
     if (galaxy->ListJobs(&infos)) {
         for (uint32_t i = 0; i < infos.size(); i++) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString(i + 1));
             vs.push_back(infos[i].job_id);
             vs.push_back(infos[i].job_name);
-            vs.push_back(infos[i].state);
             vs.push_back(baidu::common::NumToString(infos[i].running_num) + "/" + 
                          baidu::common::NumToString(infos[i].pending_num) + "/" +
                          baidu::common::NumToString(infos[i].deploying_num));
@@ -206,23 +205,6 @@ int ListJob(int /*argc*/, char*[] /*argv*/) {
     fprintf(stderr, "List fail\n");
     return 1;
 }
-
-int KillJob(int argc, char* argv[]) {
-    if (argc < 1) {
-        return 1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
-    std::string jobid(argv[0]);
-    if (jobid.empty()) {
-        return 1;
-    }
-    if (galaxy->TerminateJob(jobid)) {
-        printf("terminate job %s successfully\n", argv[0]);
-        return 0;
-    }
-    return 1;
-}
-
 int main(int argc, char* argv[]) {
     FLAGS_flagfile = "./galaxy.flag";
     ::google::SetUsageMessage(kGalaxyUsage);
@@ -241,8 +223,6 @@ int main(int argc, char* argv[]) {
         return LabelAgent(argc - 2, argv + 2);
     } else if (strcmp(argv[1], "update") == 0) {
         return UpdateJob(argc - 2, argv + 2);
-    }else if (strcmp(argv[1], "kill")== 0){
-        return KillJob(argc - 2 , argv + 2);
     } else {
         fprintf(stderr,"Usage:%s\n", kGalaxyUsage.c_str());
         return -1;
