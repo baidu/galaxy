@@ -142,10 +142,9 @@ int TaskManager::RunTask(TaskInfo* task_info) {
                 task_info->task_id.c_str()); 
         return -1;
     }
-    LOG(INFO, "start command [%s] execute success for %s in dir %s",
+    LOG(INFO, "start command [%s] execute success for %s",
             task_info->desc.start_command().c_str(),
-            task_info->task_id.c_str(),
-            task_info->task_workspace.c_str());
+            task_info->task_id.c_str());
     return 0;
 }
 
@@ -282,6 +281,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command.append(task_info->desc.binary());
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
     }
+
     task_info->stage = kStageDEPLOYING;
     task_info->deploy_process.set_key(task_info->task_id + "_deploy");
     task_info->status.set_state(kTaskDeploy);
@@ -320,10 +320,9 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
                 task_info->task_id.c_str()); 
         return -1;
     }
-    LOG(INFO, "deploy command [%s] execute success for %s in dir %s",
+    LOG(INFO, "deploy command [%s] execute success for %s",
             deploy_command.c_str(),
-            task_info->task_id.c_str(),
-            task_info->task_workspace.c_str());
+            task_info->task_id.c_str());
     return 0;
 }
 

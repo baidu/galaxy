@@ -11,7 +11,7 @@
 #include <boost/unordered_map.hpp>
 //#include <mutex.h>
 #include <thread_pool.h>
-#include "ins_sdk.h"
+
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
@@ -39,11 +39,10 @@ struct Job {
 
 class JobManager {
 public:
-    Status Add(const JobId& job_id, const JobDescriptor& job_desc);
+    void Add(const JobId& job_id, const JobDescriptor& job_desc);
     Status Update(const JobId& job_id, const JobDescriptor& job_desc);
     Status Suspend(const JobId& jobid);
     Status Resume(const JobId& jobid);
-    Status Terminte(const JobId& jobid);
     JobManager();
     ~JobManager();
     void GetPendingPods(JobInfoList* pending_pods,
@@ -111,11 +110,6 @@ private:
     void ChangeStage(const PodStage& to,
                      PodStatus* pod,
                      Job* job);
-
-    void CleanJob(const JobId& jobid);
-    bool SaveToNexus(const Job* job);
-    bool SaveLabelToNexus(const LabelCell& label_cell);
-    bool DeleteFromNexus(const JobId& jobid);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
@@ -148,9 +142,6 @@ private:
     typedef std::map<std::string, Handle>  FSM; 
     FSM fsm_;
     std::map<AgentAddr, int64_t> agent_sequence_ids_;
-
-    // nexus
-    ::galaxy::ins::sdk::InsSDK* nexus_;
 };
 
 }
