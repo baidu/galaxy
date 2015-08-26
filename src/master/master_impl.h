@@ -75,11 +75,7 @@ private:
       void AcquireMasterLock();
       // TODO should return value
       void ReloadJobInfo();
-      bool SaveJobInfo(const JobId& job_id,
-                       const JobDescriptor* desc,
-                       const JobState* state);
-      void ReloadLabelInfo();
-private:
+      void ReloadLabelInfo(); private:
       JobManager job_manager_;
       InsSDK* nexus_;
 };

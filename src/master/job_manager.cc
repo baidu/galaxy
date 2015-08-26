@@ -19,6 +19,10 @@
 DECLARE_int32(master_agent_timeout);
 DECLARE_int32(master_agent_rpc_timeout);
 DECLARE_int32(master_query_period);
+DECLARE_string(nexus_servers);
+DECLARE_string(nexus_root_path);
+DECLARE_string(labels_store_path);
+DECLARE_string(jobs_store_path);
 
 namespace baidu {
 namespace galaxy {
@@ -32,9 +36,11 @@ JobManager::JobManager()
     state_to_stage_[kPodTerminate] = kStageDeath;
     state_to_stage_[kPodError] = kStageDeath;
     BuildPodFsm();
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
 }
 
 JobManager::~JobManager() {
+    delete nexus_;
 }
 
 Status JobManager::LabelAgents(const LabelCell& label_cell) {
@@ -42,7 +48,11 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     for (int i = 0; i < label_cell.agents_endpoint_size(); ++i) {
         new_label_set.insert(label_cell.agents_endpoint(i)); 
     }
-    MutexLock lock(&mutex_);
+    bool save_ok = SaveLabelToNexus(label_cell);
+    if (!save_ok) {
+        return kLabelAgentFail;
+    }
+    MutexLock lock(&mutex_); 
     AgentSet& old_label_set = labels_[label_cell.label()];
     AgentSet to_remove;
     AgentSet to_add;
@@ -92,12 +102,16 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     return kOk;
 }
 
-void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
+Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
-    MutexLock lock(&mutex_);
+    bool save_ok = SaveToNexus(job);
+    if (!save_ok) {
+        return kJobSubmitFail;
+    }
+    MutexLock lock(&mutex_); 
     jobs_[job_id] = job;
     FillPodsToJob(job);
     LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d ",
@@ -105,9 +119,26 @@ void JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
       job_desc.user().c_str(),
       job_desc.deploy_step(),
       job_desc.replica());
+    return kOk;
 }
 
 Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
+    Job job;
+    {
+        MutexLock lock(&mutex_);
+        std::map<JobId, Job*>::iterator it;
+        it = jobs_.find(job_id);
+        if (it == jobs_.end()) {
+            LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
+            return kJobNotFound;
+        }
+        job = *(it->second);
+    }
+    job.desc_.set_replica(job_desc.replica());
+    bool save_ok = SaveToNexus(&job);
+    if (!save_ok) {
+        return kJobUpdateFail;
+    }
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator it;
     it = jobs_.find(job_id);
@@ -115,7 +146,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
         return kJobNotFound;
     }
-    int old_replica = it->second->desc_.replica();
+    int32_t old_replica = it->second->desc_.replica();
     it->second->desc_.set_replica(job_desc.replica());
     if (old_replica < job_desc.replica()) {
         FillPodsToJob(it->second);
@@ -123,6 +154,33 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         scale_down_jobs_.insert(it->second->id_);
     }
     LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
+    return kOk;
+}
+
+Status JobManager::Terminte(const JobId& jobid) {
+    Job job;
+    {
+        MutexLock lock(&mutex_);
+        std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
+        if (it == jobs_.end()) {
+            return kJobNotFound;
+        }
+        job = *(it->second);
+        job.state_ = kJobTerminated;
+    }
+    bool save_ok = SaveToNexus(&job);
+    if (!save_ok) {
+        return kJobTerminateFail;
+    }
+    std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
+    if (it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    it->second->desc_.set_replica(0);
+    if (it->second->pods_.size() > 0) { 
+        scale_down_jobs_.insert(it->second->id_);
+    }
+    it->second->state_ = kJobTerminated;
     return kOk;
 }
 
@@ -203,7 +261,8 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
                                   int32_t max_scale_down_size) {
     mutex_.AssertHeld();
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
-    std::vector<JobId> should_rm;
+    std::vector<JobId> should_rm_from_scale_down;
+    std::vector<JobId> should_been_cleaned;
     std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin();
     int32_t job_count = 0;
     for (;jobid_it != scale_down_jobs_.end(); ++jobid_it) {
@@ -216,7 +275,11 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
         }
         size_t replica = job_it->second->desc_.replica();
         if (replica >= job_it->second->pods_.size()) {
-            should_rm.push_back(*jobid_it);
+            if (replica == 0 && job_it->second->state_ == kJobTerminated) {
+                should_been_cleaned.push_back(*jobid_it);
+            }else {
+                should_rm_from_scale_down.push_back(*jobid_it);
+            }
             continue;
         }
         int32_t scale_down_count = job_it->second->pods_.size() \
@@ -248,8 +311,24 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             }
         }
     }
-    for (size_t i = 0; i < should_rm.size(); ++i) {
-        scale_down_jobs_.erase(should_rm[i]);
+    for (size_t i = 0; i < should_rm_from_scale_down.size(); ++i) {
+        scale_down_jobs_.erase(should_rm_from_scale_down[i]);
+    }
+
+    for (size_t i = 0; i < should_been_cleaned.size(); ++i) {
+        CleanJob(should_been_cleaned[i]);
+    }
+}
+
+void JobManager::CleanJob(const JobId& jobid) {
+    mutex_.AssertHeld();
+    LOG(INFO, "clean job %s from master", jobid.c_str());
+    std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
+    if (it != jobs_.end()) {
+        Job* job = it->second;
+        jobs_.erase(jobid);
+        thread_pool_.AddTask(boost::bind(&JobManager::DeleteFromNexus, this, jobid));
+        delete job;
     }
 }
 
@@ -605,6 +684,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
                report_agent_info.endpoint().c_str());
             PodStatus fake_pod;
             fake_pod.CopyFrom(report_pod_info);
+            fake_pod.set_endpoint(report_agent_info.endpoint());
             fake_pod.set_stage(state_to_stage_[fake_pod.state()]);
             ChangeStage(kStageRemoved, &fake_pod, NULL);
             continue;
@@ -615,8 +695,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
             pod->set_stage(state_to_stage_[pod->state()]);
-            pod->set_endpoint(report_agent_info.endpoint());
-            jobs_[jobid]->pods_[podid] = pod; 
+            jobs_[jobid]->pods_[podid] = pod;
             pods_not_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
         }
@@ -629,6 +708,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
                podid.c_str(), report_agent_info.endpoint().c_str());
             PodStatus fake_pod;
             fake_pod.CopyFrom(report_pod_info);
+            fake_pod.set_endpoint(report_agent_info.endpoint());
             fake_pod.set_stage(state_to_stage_[fake_pod.state()]);
             ChangeStage(kStageRemoved, &fake_pod, NULL);
             continue;
@@ -860,14 +940,11 @@ void JobManager::ChangeStage(const PodStage& to,
         LOG(WARNING, "master does not support stage change in safe mode");
         return;
     }
-    if (pod == NULL || job == NULL) {
+    if (pod == NULL) {
         LOG(WARNING, "change pod invalidate input");
         return;
     }
-    LOG(INFO, "pod %s change stage from %s to %s",
-      pod->podid().c_str(),
-      PodStage_Name(pod->stage()).c_str(),
-      PodStage_Name(to).c_str());
+    PodStage old_stage = pod->stage();
     std::string handler_key = BuildHandlerKey(pod->stage(), to);
     std::map<std::string, Handle>::iterator h_it = fsm_.find(handler_key);
     if (h_it == fsm_.end()) {
@@ -878,6 +955,10 @@ void JobManager::ChangeStage(const PodStage& to,
         return;
     }
     h_it->second(pod, job);
+    LOG(INFO, "pod %s change stage from %s to %s",
+      pod->podid().c_str(),
+      PodStage_Name(old_stage).c_str(),
+      PodStage_Name(pod->stage()).c_str());
 }
 
 bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
@@ -920,9 +1001,9 @@ bool JobManager::HandlePendingToRunning(PodStatus* pod, Job* job) {
     return true;
 }
 
-bool JobManager::HandleRunningToDeath(PodStatus* pod, Job* job) { 
+bool JobManager::HandleRunningToDeath(PodStatus* pod, Job*) { 
     mutex_.AssertHeld();
-    if (pod == NULL || job == NULL) {
+    if (pod == NULL) {
         LOG(WARNING, "fsm the input is invalidate");
         return false;
     }
@@ -951,9 +1032,9 @@ bool JobManager::HandleDeathToPending(PodStatus* pod, Job* job) {
     return true;
 }
 
-bool JobManager::HandleRunningToRemoved(PodStatus* pod, Job* job) {
+bool JobManager::HandleRunningToRemoved(PodStatus* pod, Job*) {
     mutex_.AssertHeld();
-    if (pod == NULL || job == NULL) {
+    if (pod == NULL) {
         LOG(WARNING, "fsm the input is invalidate");
         return false;
     }
@@ -994,6 +1075,62 @@ void JobManager::SendKillToAgent(PodStatus*  pod) {
     rpc_client_.AsyncRequest(stub, &Agent_Stub::KillPod, request, response,
                                  kill_pod_callback, FLAGS_master_agent_rpc_timeout, 0);
     delete stub;
+}
+
+bool JobManager::SaveToNexus(const Job* job) {
+    if (job == NULL) {
+        return false;
+    }
+    JobInfo job_info;
+    job_info.set_jobid(job->id_);
+    job_info.set_state(job->state_);
+    job_info.mutable_desc()->CopyFrom(job->desc_);
+    std::string job_raw_data;
+    std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
+                          + "/" + job->id_;
+    job_info.SerializeToString(&job_raw_data);
+    ::galaxy::ins::sdk::SDKError err;
+    bool put_ok = nexus_->Put(job_key, job_raw_data, &err);
+    if (!put_ok) {
+        LOG(WARNING, "fail to put job[%s] %s to nexus err msg %s", 
+          job_info.desc().name().c_str(),
+          job_info.jobid().c_str(),
+          ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+
+    }
+    return put_ok; 
+}
+
+bool JobManager::DeleteFromNexus(const JobId& job_id) {
+    std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
+                          + "/" + job_id;
+    ::galaxy::ins::sdk::SDKError err;
+    bool delete_ok = nexus_->Delete(job_key, &err);
+    if (!delete_ok) {
+        LOG(WARNING, "fail to delete job %s from nexus err msg %s", 
+          job_id.c_str(),
+          ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+    }
+    return delete_ok;
+}
+
+bool JobManager::SaveLabelToNexus(const LabelCell& label_cell) {
+    std::string label_key = FLAGS_nexus_root_path + FLAGS_labels_store_path 
+                            + "/" + label_cell.label();
+    std::string label_value;
+    if (label_cell.SerializeToString(&label_value)) {
+        LOG(WARNING, "label %s serialize failed", 
+                label_cell.label().c_str()); 
+        return false;
+    }
+    ::galaxy::ins::sdk::SDKError err;
+    bool put_ok = nexus_->Put(label_key, label_value, &err);    
+    if (!put_ok) {
+        LOG(WARNING, "fail save label %s to nexus for %s",
+          label_cell.label().c_str(),
+          ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+    }
+    return put_ok;
 }
 
 }
