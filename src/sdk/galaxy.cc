@@ -4,6 +4,7 @@
 
 #include "galaxy.h"
 
+#include <stdio.h>
 #include "proto/master.pb.h"
 #include "proto/galaxy.pb.h"
 #include "rpc/rpc_client.h"
@@ -55,8 +56,10 @@ bool GalaxyImpl::TerminateJob(const std::string& job_id) {
     request.set_jobid(job_id);
     rpc_client_->SendRequest(master_, &Master_Stub::TerminateJob,
                              &request,&response,5,1);
-
-    return true;
+    if (response.status() == kOk) {
+        return true;
+    }
+    return false;
 }
 
 std::string GalaxyImpl::SubmitJob(const JobDescription& job){
@@ -125,6 +128,7 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.cpu_used = job.resource_used().millicores();
         job_info.mem_used = job.resource_used().memory();
 				job_info.is_batch = (job.desc().type() == kBatch);
+        job_info.state = JobState_Name(job.state());
         jobs->push_back(job_info);
     }
     return true;

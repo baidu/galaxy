@@ -11,9 +11,9 @@ DECLARE_string(nexus_root_path);
 DECLARE_string(master_lock_path);
 DECLARE_string(master_path);
 DECLARE_string(jobs_store_path);
-DECLARE_string(labels_store_path);
 DECLARE_int32(max_scale_down_size);
 DECLARE_int32(max_scale_up_size);
+DECLARE_string(labels_store_path);
 
 namespace baidu {
 namespace galaxy {
@@ -21,7 +21,7 @@ namespace galaxy {
 const std::string LABEL_PREFIX = "LABEL_";
 
 MasterImpl::MasterImpl() : nexus_(NULL) {
-    nexus_ = new InsSDK(FLAGS_nexus_servers);
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
 }
 
 MasterImpl::~MasterImpl() {
@@ -127,16 +127,13 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* /*controller*/,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
     const JobDescriptor& job_desc = request->job();
+    MasterUtil::TraceJobDesc(job_desc);
     JobId job_id = MasterUtil::UUID();
-    JobState state = kJobNormal;
-    bool save_ok = SaveJobInfo(job_id, &job_desc, &state);
-    if (!save_ok) {
-        response->set_status(kJobSubmitFail);
-        done->Run();
-        return;
+    Status status = job_manager_.Add(job_id, job_desc);
+    response->set_status(status);
+    if (status == kOk) {
+        response->set_jobid(job_id);
     }
-    job_manager_.Add(job_id, job_desc);
-    response->set_jobid(job_id);
     done->Run();
 }
 
@@ -146,24 +143,7 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                            ::google::protobuf::Closure* done) {
     JobId job_id = request->jobid();
     LOG(INFO, "update job %s replica %d", job_id.c_str(), request->job().replica());
-    // TODO make a conncurent control
-    // read modify and write
-    JobInfo new_job_info;
-    Status status = job_manager_.GetJobInfo(job_id, &new_job_info);
-    if (status == kJobNotFound) {
-        response->set_status(kJobUpdateFail);
-        done->Run();
-        return;
-    }
-    new_job_info.mutable_desc()->set_replica(request->job().replica());
-    MasterUtil::TraceJobDesc(new_job_info.desc());
-    bool save_ok = SaveJobInfo(job_id, &new_job_info.desc(), NULL);
-    if (!save_ok) {
-        response->set_status(kJobUpdateFail);
-        done->Run();
-        return;
-    }
-    status = job_manager_.Update(job_id, new_job_info.desc());
+    Status status = job_manager_.Update(job_id, request->job());
     response->set_status(status);
     done->Run();
 }
@@ -185,10 +165,13 @@ void MasterImpl::ResumeJob(::google::protobuf::RpcController* controller,
 }
 
 void MasterImpl::TerminateJob(::google::protobuf::RpcController* controller,
-                              const ::baidu::galaxy::TerminateJobRequest*,
-                              ::baidu::galaxy::TerminateJobResponse*,
+                              const ::baidu::galaxy::TerminateJobRequest* request,
+                              ::baidu::galaxy::TerminateJobResponse* response,
                               ::google::protobuf::Closure* done) {
-    controller->SetFailed("Method TerminateJob() not implemented.");
+    JobId job_id = request->jobid();
+    LOG(INFO, "terminate job %s", job_id.c_str());
+    Status status= job_manager_.Terminte(job_id);
+    response->set_status(status);
     done->Run();
 }
 
@@ -279,59 +262,11 @@ void MasterImpl::ListAgents(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-bool MasterImpl::SaveJobInfo(const JobId& job_id,
-                             const JobDescriptor* desc,
-                             const JobState* state) {
-    JobInfo job_info;
-    Status status = job_manager_.GetJobInfo(job_id, &job_info);
-    if (status == kJobNotFound) {
-        job_info.set_state(kJobNormal);
-        job_info.set_jobid(job_id);
-    }
-    if (desc != NULL) {
-        job_info.mutable_desc()->CopyFrom(*desc);
-    }
-    if (state != NULL) {
-        job_info.set_state(*state);
-    }
-    std::string job_raw_data;
-    job_info.SerializeToString(&job_raw_data);
-    std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
-                          + "/" + job_id;
-    ::galaxy::ins::sdk::SDKError err;
-    bool put_ok = nexus_->Put(job_key, job_raw_data, &err);
-    if (!put_ok) {
-        LOG(FATAL, "fail to save job %s for %s", job_id.c_str(),
-          ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
-    }
-    return put_ok;
-}
 
 void MasterImpl::LabelAgents(::google::protobuf::RpcController* controller,
                              const ::baidu::galaxy::LabelAgentRequest* request,
                              ::baidu::galaxy::LabelAgentResponse* response,
-                             ::google::protobuf::Closure* done) {
-    std::string label_key = FLAGS_nexus_root_path + FLAGS_labels_store_path 
-                            + "/" + request->labels().label();
-    std::string label_value;
-    if (!request->labels().SerializeToString(&label_value)) {
-        LOG(WARNING, "label %s serialize failed", 
-                request->labels().label().c_str()); 
-        response->set_status(kUnknown);
-        done->Run();
-        return;
-    }
-    // TODO lock ?
-    ::galaxy::ins::sdk::SDKError err;
-    bool put_ok = nexus_->Put(label_key, label_value, &err);    
-    if (!put_ok) {
-        response->set_status(kPersistenceError); 
-        LOG(WARNING, "persisten label info to nexus fail, reason: %s",
-                ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
-        done->Run();
-        return;
-    }
-
+                             ::google::protobuf::Closure* done) { 
     Status status = job_manager_.LabelAgents(request->labels());
     response->set_status(status);
     done->Run();

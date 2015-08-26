@@ -14,8 +14,9 @@ enum Status {
     kNotFound = 16;
     kInputError = 17;
     kPersistenceError = 18;
-
+    kJobTerminateFail = 19;
     kRpcError = 20;
+    kLabelAgentFail = 21;
 }
 
 enum PodState {
@@ -32,6 +33,7 @@ enum PodStage {
     kStageRunning = 1;
     kStageDeath = 2;
     kStageRemoved = 3;
+    kStageLost = 4;
 }
 
 enum TaskState {
