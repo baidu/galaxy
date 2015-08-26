@@ -206,8 +206,9 @@ void JobManager::FillAllJobs() {
         JobId job_id = it->first;
         Job* job = it->second;
         FillPodsToJob(job);
-        if (job->desc_.replica() < job->pods_.size()) {
-            scale_down_jobs_.push_back(job_id);
+        size_t replica = job->desc_.replica();
+        if (replica < job->pods_.size()) {
+            scale_down_jobs_.insert(job_id);
         }
     }
 }
@@ -681,7 +682,10 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             LOG(WARNING, "the job %s from agent %s does not exist in master",
                jobid.c_str(), 
                report_agent_info.endpoint().c_str());
-            HandleRunningToRemoved(&report_pod_info, NULL);
+            PodStatus fake_pod;
+            fake_pod.CopyFrom(report_pod_info);
+            fake_pod.set_stage(state_to_stage_[fake_pod.state()]);
+            ChangeStage(kStageRemoved, &fake_pod, NULL);
             continue;
         }
         // for recovering
@@ -701,6 +705,10 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             // TODO should kill this pod
             LOG(WARNING, "the pod %s from agent %s does not exist in master",
                podid.c_str(), report_agent_info.endpoint().c_str());
+            PodStatus fake_pod;
+            fake_pod.CopyFrom(report_pod_info);
+            fake_pod.set_stage(state_to_stage_[fake_pod.state()]);
+            ChangeStage(kStageRemoved, &fake_pod, NULL);
             continue;
         } 
         // update pod in master
