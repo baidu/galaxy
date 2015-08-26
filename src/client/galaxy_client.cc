@@ -101,12 +101,7 @@ int AddJob(int argc, char* argv[]) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     baidu::galaxy::JobDescription job;
     job.job_name = argv[0];
-    std::string binary(argv[1]);
-    if (binary.substr(0, 6) == "ftp:://") {
-        job.binary = binary;
-    }else {
-        ReadBinary(argv[1], &job.binary);
-    }
+    ReadBinary(argv[1], &job.binary);
     printf("binary size %lu\n", job.binary.size());
     job.replica = atoi(argv[2]);
     job.cpu_required = atoi(argv[3]);
