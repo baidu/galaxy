@@ -53,6 +53,80 @@ int TaskManager::Init() {
     return 0;
 }
 
+int TaskManager::ReloadTask(const TaskInfo& task) {
+    MutexLock scope_lock(&tasks_mutex_);
+    std::map<std::string, TaskInfo*>::iterator it = 
+        tasks_.find(task.task_id);
+    if (it != tasks_.end()) {
+        LOG(WARNING, "task %s already added",
+                task.task_id.c_str()); 
+        return 0;
+    }
+
+    TaskInfo* task_info = new TaskInfo(task);
+    tasks_[task.task_id] = task_info;
+    if (PrepareWorkspace(task_info) != 0) {
+        LOG(WARNING, "task %s prepare workspace failed in reload",
+                task_info->task_id.c_str()); 
+        // TODO  should do some other prepare such as cgroups
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+
+    SetupDeployProcessKey(task_info);
+    SetupRunProcessKey(task_info);
+    SetupTerminateProcessKey(task_info);
+
+    if (task_info->initd_stub == NULL 
+            && !rpc_client_->GetStub(task_info->initd_endpoint,
+                                     &(task_info->initd_stub))) {
+        LOG(WARNING, "get stub failed");     
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+    // check if in deploy stage
+    do {
+        task_info->stage = kTaskStageDEPLOYING; 
+        int ret = DeployProcessCheck(task_info);
+        if (ret == -1) {
+            LOG(WARNING, "task %s check deploy failed",
+                    task_info->task_id.c_str());
+            break;
+        } else if (ret == 0) {
+            task_info->status.set_state(kTaskDeploy);
+            break;
+        }
+        task_info->stage = kTaskStageRUNNING; 
+        ret = RunProcessCheck(task_info);
+        if (ret == -1) {
+            LOG(WARNING, "task %s check run failed",
+                    task_info->task_id.c_str()); 
+            break;
+        } else if (ret == 0) {
+            task_info->status.set_state(kTaskRunning);
+            break;
+        } 
+        ret = TerminateProcessCheck(task_info);
+        if (ret == -1) {
+            LOG(WARNING, "task %s check stop failed",
+                    task_info->task_id.c_str()); 
+            break;
+        } else if (ret == 0) {
+            task_info->status.set_state(kTaskTerminate);
+            break;
+        }
+        task_info->status.set_state(kTaskFinish);
+    } while (0);
+
+    LOG(INFO, "task %s is reload", task_info->task_id.c_str());
+    background_thread_.DelayTask(
+                    50, 
+                    boost::bind(
+                        &TaskManager::DelayCheckTaskStageChange,
+                        this, task_info->task_id));
+    return 0;
+}
+
 int TaskManager::CreateTask(const TaskInfo& task) {
     MutexLock scope_lock(&tasks_mutex_);    
     std::map<std::string, TaskInfo*>::iterator it = 
@@ -63,7 +137,7 @@ int TaskManager::CreateTask(const TaskInfo& task) {
         return 0;
     }
     TaskInfo* task_info = new TaskInfo(task);     
-    task_info->stage = kStagePENDING;
+    task_info->stage = kTaskStagePENDING;
     task_info->status.set_state(kTaskPending);
     tasks_[task_info->task_id] = task_info;
     // 1. prepare workspace
@@ -102,9 +176,9 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     if (task_info == NULL) {
         return -1; 
     }
-    task_info->stage = kStageRUNNING;
+    task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
-    task_info->main_process.set_key(task_info->task_id + "_main");
+    SetupRunProcessKey(task_info);
     // send rpc to initd to execute main process
     ExecuteRequest initd_request; 
     ExecuteResponse initd_response;
@@ -170,8 +244,8 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
         return -1; 
     }
     std::string stop_command = task_info->desc.stop_command();
-    task_info->stage = kStageSTOPPING;
-    task_info->stop_process.set_key(task_info->task_id + "_stop");
+    task_info->stage = kTaskStageSTOPPING;
+    SetupTerminateProcessKey(task_info);
     // send rpc to initd to execute stop process
     ExecuteRequest initd_request; 
     ExecuteResponse initd_response;
@@ -256,7 +330,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         return -1; 
     }
     std::string deploy_command;
-    task_info->stage = kStageDEPLOYING;
+    task_info->stage = kTaskStageDEPLOYING;
     task_info->status.set_state(kTaskDeploy);
     if (task_info->desc.source_type() == kSourceTypeBinary) {
         // TODO write binary directly
@@ -282,8 +356,8 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
     }
 
-    task_info->stage = kStageDEPLOYING;
-    task_info->deploy_process.set_key(task_info->task_id + "_deploy");
+    task_info->stage = kTaskStageDEPLOYING;
+    SetupDeployProcessKey(task_info);
     task_info->status.set_state(kTaskDeploy);
     // send rpc to initd to execute deploy process; 
     ExecuteRequest initd_request;      
@@ -530,7 +604,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
 
     TaskInfo* task_info = it->second;
     // switch task stage
-    if (task_info->stage == kStagePENDING 
+    if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
         int chk_res = InitdProcessCheck(task_info);
         if (chk_res == 1 && DeployTask(task_info) != 0) {
@@ -542,7 +616,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
                     task_info->task_id.c_str()); 
             task_info->status.set_state(kTaskError);
         }
-    } else if (task_info->stage == kStageDEPLOYING
+    } else if (task_info->stage == kTaskStageDEPLOYING
             && task_info->status.state() != kTaskError) {
         int chk_res = DeployProcessCheck(task_info);
         // deploy success and run
@@ -555,7 +629,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
                     task_info->task_id.c_str()); 
             task_info->status.set_state(kTaskError);
         }
-    } else if (task_info->stage == kStageRUNNING
+    } else if (task_info->stage == kTaskStageRUNNING
             && task_info->status.state() != kTaskError) {
         int chk_res = RunProcessCheck(task_info);
         if (chk_res == -1 && 
@@ -564,7 +638,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
             task_info->fail_retry_times++;
             RunTask(task_info);         
         }
-    } else if (task_info->stage == kStageSTOPPING) {
+    } else if (task_info->stage == kTaskStageSTOPPING) {
         int chk_res = TerminateProcessCheck(task_info);
         if (chk_res != 0) {
             if (0 == CleanTask(task_info)) {

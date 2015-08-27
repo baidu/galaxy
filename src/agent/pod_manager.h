@@ -9,7 +9,7 @@
 
 #include <string>
 #include <vector>
-#include <deque>
+#include <set>
 
 #include "proto/galaxy.pb.h"
 #include "mutex.h"
@@ -34,7 +34,9 @@ public:
     int ShowPod(const std::string& pod_id, PodInfo* pod);
     int CheckPod(const std::string& pod_id);
 
+    int ReloadPod(const PodInfo& info);
 protected:
+    void ReloadInitdPort(int port);
     int AllocPortForInitd(int& port);
     void ReleasePortFromInitd(int port);
 
@@ -45,7 +47,7 @@ protected:
     std::map<std::string, PodInfo> pods_;
     TaskManager* task_manager_;
 
-    std::deque<int> initd_free_ports_;   
+    std::set<int> initd_free_ports_;   
 };
 
 }   // ending namespace galaxy

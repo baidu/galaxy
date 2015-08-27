@@ -85,7 +85,7 @@ int PodManager::Init() {
     int initd_port_begin = FLAGS_agent_initd_port_begin; 
     int initd_port_end = FLAGS_agent_initd_port_end;
     for (int i = initd_port_begin; i < initd_port_end; i++) {
-        initd_free_ports_.push_back(i); 
+        initd_free_ports_.insert(i); 
     }
     task_manager_ = new TaskManager();
     return task_manager_->Init();
@@ -254,6 +254,9 @@ int PodManager::CheckPod(const std::string& pod_id) {
         case kTaskError : 
         pod_info.pod_status.set_state(kPodError);
         break;
+        case kTaskFinish :
+        pod_info.pod_status.set_state(kPodFinish);
+        break;
     }
 
     for (size_t i = 0; i < to_del_task.size(); i++) {
@@ -367,18 +370,53 @@ int PodManager::ShowPod(const std::string& pod_id, PodInfo* pod) {
     return 0;
 }
 
+int PodManager::ReloadPod(const PodInfo& info) {
+    std::map<std::string, PodInfo>::iterator pods_it = 
+        pods_.find(info.pod_id);
+    if (pods_it != pods_.end()) {
+        LOG(WARNING, "pod %s already loaded", info.pod_id.c_str()); 
+        return 0;
+    }
+    pods_[info.pod_id] = info;
+    PodInfo& internal_info = pods_[info.pod_id];
+    // TODO check if not in free ports
+    ReloadInitdPort(internal_info.initd_port);
+    std::map<std::string, TaskInfo>::iterator task_it =
+        internal_info.tasks.begin();
+    for (; task_it != internal_info.tasks.end(); ++task_it) {
+        task_it->second.pod_id = info.pod_id;     
+        task_it->second.initd_endpoint = "127.0.0.1:";
+        task_it->second.initd_endpoint.append(
+                boost::lexical_cast<std::string>(
+                    internal_info.initd_port));
+        int ret = task_manager_->ReloadTask(task_it->second);
+        if (ret != 0) {
+            LOG(WARNING, "reload task ind %s for pods %s failed",
+                    task_it->first.c_str(), 
+                    internal_info.pod_id.c_str()); 
+            return -1;
+        }
+    }
+    return 0;
+}
+
 int PodManager::AllocPortForInitd(int& port) {
     if (initd_free_ports_.size() == 0) {
         LOG(WARNING, "no free ports for alloc");
         return -1; 
     }
-    port = initd_free_ports_.front();
-    initd_free_ports_.pop_front();
+    std::set<int>::iterator it = initd_free_ports_.begin();
+    initd_free_ports_.erase(it);
+    port = *it;
     return 0;
 }
 
 void PodManager::ReleasePortFromInitd(int port) {
-    initd_free_ports_.push_back(port);
+    initd_free_ports_.insert(port);
+}
+
+void PodManager::ReloadInitdPort(int port) {
+    initd_free_ports_.erase(port);
 }
 
 }   // ending namespace galaxy

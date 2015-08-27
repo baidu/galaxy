@@ -70,6 +70,7 @@ agent_src='src/agent/agent_impl.cc\
            src/proto/master.proto\
            src/master/master_watcher.cc\
            src/proto/galaxy.proto\
+           src/agent/persistence_handler.cc\
            src/proto/initd.proto'
 
 initd_src='src/gce/initd_main.cc\

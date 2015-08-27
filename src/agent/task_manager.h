@@ -21,6 +21,7 @@ public:
     int CreateTask(const TaskInfo& task);
     int DeleteTask(const std::string& task_id);
     int QueryTask(TaskInfo* task);
+    int ReloadTask(const TaskInfo& task);
 protected:
     int QueryProcessInfo(Initd_Stub* stub,
                          ProcessInfo* process_info);
@@ -52,6 +53,20 @@ protected:
     int InitdProcessCheck(TaskInfo* task_info);
 
     void DelayCheckTaskStageChange(const std::string& task_id);
+
+    inline void SetupDeployProcessKey(TaskInfo* task_info) {
+        task_info->deploy_process.set_key(task_info->task_id 
+                                          + "_deploy"); 
+    }
+
+    inline void SetupRunProcessKey(TaskInfo* task_info) {
+        task_info->main_process.set_key(task_info->task_id);
+    }
+
+    inline void SetupTerminateProcessKey(TaskInfo* task_info) {
+        task_info->stop_process.set_key(task_info->task_id  
+                                        + "_stop"); 
+    }
 protected:
     Mutex tasks_mutex_;
     std::map<std::string, TaskInfo*> tasks_;
