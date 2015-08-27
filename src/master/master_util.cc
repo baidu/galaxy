@@ -9,6 +9,7 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
 #include <gflags/gflags.h>
 #include <logging.h>
 
@@ -20,20 +21,9 @@ DECLARE_string(master_port);
 namespace baidu {
 namespace galaxy {
 
-std::string MasterUtil::GenerateJobId(const JobDescriptor& job_desc) {
-    return "job_" + job_desc.name() + "_" + UUID();
-}
-
-std::string MasterUtil::GeneratePodId(const JobDescriptor& job_desc) {
-    return "pod_" + job_desc.name() + "_" + UUID();
-}
-
 std::string MasterUtil::UUID() {
     boost::uuids::uuid uuid = boost::uuids::random_generator()();
-    std::stringstream sm_uuid;
-    sm_uuid << uuid;
-    std::string str_uuid= sm_uuid.str();
-    return str_uuid;
+    return boost::lexical_cast<std::string>(uuid); 
 }
 
 

@@ -38,6 +38,7 @@ CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('thirdsrc/protobuf@2.6.2.0')
 CONFIGS('third-64/boost@1.63.0.101')
 CONFIGS('third-64/gflags@gflags_2-0-0-100_PD_BL')
+CONFIGS('third-64/leveldb@base')
 
 scheduler_src='src/scheduler/scheduler.cc\
                src/proto/galaxy.proto\
@@ -62,7 +63,7 @@ master_src='src/master/master_impl.cc\
 agent_src='src/agent/agent_impl.cc\
            src/agent/agent_main.cc\
            src/agent/pod_manager.cc\
-           src/agent/initd_handler.cc\
+           src/agent/task_manager.cc \
            src/agent/utils.cc\
            src/flags.cc\
            src/proto/agent.proto\
@@ -92,6 +93,10 @@ test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/test_task_manager.cc'
 test_cgroup_src='src/agent/cgroups.cc src/agent/test_cgroups.cc'
 
+test_persistence_handler_src='src/proto/agent.proto src/proto/galaxy.proto  \
+                              src/proto/initd.proto \
+                              src/agent/persistence_handler.cc src/agent/test_persistence_handler.cc'
+
 Application('scheduler',Sources(scheduler_src))
 Application('master',Sources(master_src))
 Application('agent',Sources(agent_src))
@@ -100,3 +105,4 @@ StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
 Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))
 Application('test_task_manager', Sources(test_task_manager_src))
 Application('test_cgroup', Sources(test_cgroup_src))
+Application('test_persistence_handler', Sources(test_persistence_handler_src))
