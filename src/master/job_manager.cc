@@ -189,6 +189,9 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 JobInfoList* scale_down_pods,
                                 int32_t max_scale_down_size) {
     MutexLock lock(&mutex_);
+    if (safe_mode_) {
+        return;
+    }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
 }
@@ -401,6 +404,11 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         bool cancel_ok = death_checker_.CancelTask(timer_id);
         if (!cancel_ok) {
             LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
+            {
+                MutexLock g_lock(&mutex_);
+                AgentInfo* agent = agents_[agent_addr];
+                agent->set_state(kDead);
+            }
         }
     }
     timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
@@ -563,11 +571,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     const AgentInfo& report_agent_info = response->agent();
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d ",
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d ",
         report_agent_info.endpoint().c_str(),
         report_agent_info.total().memory(), report_agent_info.total().millicores(),
         report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
-        report_agent_info.used().memory(), report_agent_info.used().millicores());
+        report_agent_info.used().memory(), report_agent_info.used().millicores(),
+        report_agent_info.pods_size());
     AgentInfo* agent = it->second;
     UpdateAgentVersion(agent, report_agent_info);
     // copy only needed 
@@ -598,7 +607,9 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             && jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
-            jobs_[jobid]->pods_[podid] = pod;
+            pod->set_stage(state_to_stage_[pod->state()]);
+            pod->set_endpoint(report_agent_info.endpoint());
+            jobs_[jobid]->pods_[podid] = pod; 
             pods_not_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
         }
@@ -634,7 +645,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             LOG(INFO, "pod %s in master but not in agent, stage in master is %s ", 
               p_it->second->podid().c_str(),
               PodStage_Name(p_it->second->stage()).c_str());
-            ChangeStage(kStageDeath, p_it->second, job_it->second);
+            ChangeStage(kStagePending, p_it->second, job_it->second);
         }
     }
 
@@ -687,6 +698,9 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
 
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     MutexLock lock(&mutex_);
+    if (safe_mode_) {
+        return;
+    }
     std::map<AgentAddr, AgentInfo*>::iterator it;
     for (it = agents_.begin(); it != agents_.end(); ++it) {
         AgentInfo* agent = it->second;
@@ -810,7 +824,7 @@ void JobManager::BuildPodFsm() {
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
           boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageDeath), 
-          boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
+          boost::bind(&JobManager::HandleRunningToDeath, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStagePending), 
           boost::bind(&JobManager::HandleDeathToPending, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageDeath), 
@@ -831,6 +845,10 @@ void JobManager::ChangeStage(const PodStage& to,
                              PodStatus* pod,
                              Job* job) {
     mutex_.AssertHeld();
+    if (safe_mode_) { 
+        LOG(WARNING, "master does not support stage change in safe mode");
+        return;
+    }
     if (pod == NULL || job == NULL) {
         LOG(WARNING, "change pod invalidate input");
         return;
@@ -912,6 +930,13 @@ bool JobManager::HandleDeathToPending(PodStatus* pod, Job* job) {
     pod->set_state(kPodPending);
     LOG(INFO, "reschedule pod %s of job %s", pod->podid().c_str(), job->id_.c_str());
     pending_pods_[job->id_][pod->podid()] = pod;
+    std::map<AgentAddr, PodMap>::iterator a_it = pods_on_agent_.find(pod->endpoint());
+    if (a_it != pods_on_agent_.end()) {
+        PodMap::iterator p_it = a_it->second.find(pod->jobid());
+        if (p_it != a_it->second.end()) {
+            p_it->second.erase(pod->podid());
+        }
+    }
     return true;
 }
 
