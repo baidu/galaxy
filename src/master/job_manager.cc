@@ -172,6 +172,7 @@ Status JobManager::Terminte(const JobId& jobid) {
     if (!save_ok) {
         return kJobTerminateFail;
     }
+    MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
     if (it == jobs_.end()) {
         return kJobNotFound;
@@ -261,8 +262,8 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
                                   int32_t max_scale_down_size) {
     mutex_.AssertHeld();
     std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
-    std::vector<JobId> should_rm_from_scale_down;
-    std::vector<JobId> should_been_cleaned;
+    std::set<JobId> should_rm_from_scale_down;
+    std::set<JobId> should_been_cleaned;
     std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin();
     int32_t job_count = 0;
     for (;jobid_it != scale_down_jobs_.end(); ++jobid_it) {
@@ -276,9 +277,9 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
         size_t replica = job_it->second->desc_.replica();
         if (replica >= job_it->second->pods_.size()) {
             if (replica == 0 && job_it->second->state_ == kJobTerminated) {
-                should_been_cleaned.push_back(*jobid_it);
+                should_been_cleaned.insert(*jobid_it);
             }else {
-                should_rm_from_scale_down.push_back(*jobid_it);
+                should_rm_from_scale_down.insert(*jobid_it);
             }
             continue;
         }
@@ -311,12 +312,14 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             }
         }
     }
-    for (size_t i = 0; i < should_rm_from_scale_down.size(); ++i) {
-        scale_down_jobs_.erase(should_rm_from_scale_down[i]);
+    for (std::set<JobId>::iterator it = should_rm_from_scale_down.begin();
+         it != should_rm_from_scale_down.end(); ++it) {
+        scale_down_jobs_.erase(*it);
     }
-
-    for (size_t i = 0; i < should_been_cleaned.size(); ++i) {
-        CleanJob(should_been_cleaned[i]);
+    for (std::set<JobId>::iterator it = should_been_cleaned.begin();
+         it != should_been_cleaned.end(); ++it) {
+        scale_down_jobs_.erase(*it);
+        CleanJob(*it);
     }
 }
 
