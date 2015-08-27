@@ -167,6 +167,7 @@ Status JobManager::Terminte(const JobId& jobid) {
         }
         job = *(it->second);
         job.state_ = kJobTerminated;
+        job.desc_.set_replica(0);
     }
     bool save_ok = SaveToNexus(&job);
     if (!save_ok) {
@@ -206,11 +207,11 @@ void JobManager::FillAllJobs() {
     for (it = jobs_.begin(); it != jobs_.end(); ++it) {
         JobId job_id = it->first;
         Job* job = it->second;
-        FillPodsToJob(job);
-        size_t replica = job->desc_.replica();
-        if (replica < job->pods_.size()) {
+        if (it->second->state_ == kJobTerminated) {
             scale_down_jobs_.insert(job_id);
+            continue;
         }
+        FillPodsToJob(job);
     }
 }
 
@@ -274,6 +275,10 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
         if (job_it == jobs_.end()) {
             continue;
         }
+        LOG(INFO, "process scale down job %s, replica %d, pods size %u",
+            job_it->second->id_.c_str(),
+            job_it->second->desc_.replica(),
+            job_it->second->pods_.size());
         size_t replica = job_it->second->desc_.replica();
         if (replica >= job_it->second->pods_.size()) {
             if (replica == 0 && job_it->second->state_ == kJobTerminated) {
@@ -563,7 +568,8 @@ void JobManager::RunPodCallback(PodStatus* pod, AgentAddr endpoint,
     if (failed || status != kOk) {
         LOG(WARNING, "run pod [%s %s] on [%s] fail: %d", jobid.c_str(),
             podid.c_str(), endpoint.c_str(), status);
-        ChangeStage(kStageDeath, pod, job_it->second);
+        pod->set_stage(kStageDeath);
+        ChangeStage(kStagePending, pod, job_it->second);
     } else {
         std::map<PodId, PodStatus*>::iterator pod_it = job_it->second->pods_.find(podid);
         if (pod_it == job_it->second->pods_.end()) {
@@ -698,6 +704,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
             pod->set_stage(state_to_stage_[pod->state()]);
+            pod->set_endpoint(report_agent_info.endpoint());
             jobs_[jobid]->pods_[podid] = pod;
             pods_not_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
@@ -721,6 +728,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         pod->mutable_status()->CopyFrom(report_pod_info.status());
         pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
         pod->set_state(report_pod_info.state());
+        pod->set_endpoint(report_agent_info.endpoint());
         pods_not_on_agent[jobid].erase(podid);
         if (pods_not_on_agent[jobid].size() == 0) {
             pods_not_on_agent.erase(jobid);
