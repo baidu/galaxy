@@ -36,6 +36,7 @@ struct Job {
     JobId id_;
 };
 
+
 class JobManager {
 public:
     void Add(const JobId& job_id, const JobDescriptor& job_desc);
@@ -44,7 +45,10 @@ public:
     Status Resume(const JobId& jobid);
     JobManager();
     ~JobManager();
-    void GetPendingPods(JobInfoList* pending_pods);
+    void GetPendingPods(JobInfoList* pending_pods,
+                        int32_t max_scale_up_size,
+                        JobInfoList* scale_down_pods,
+                        int32_t max_scale_down_size);
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
@@ -56,7 +60,6 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
-    void KillPod(PodStatus* pod);
     Status LabelAgents(const LabelCell& label_cell);
 private:
     void SuspendPod(PodStatus* pod);
@@ -72,10 +75,12 @@ private:
     void RunPodCallback(PodStatus* pod, AgentAddr endpoint, const RunPodRequest* request,
                         RunPodResponse* response, bool failed, int error);
 
+    void SendKillToAgent(PodStatus* pod);
     void Query();
     void QueryAgent(AgentInfo* agent);
     void QueryAgentCallback(AgentAddr endpoint, const QueryRequest* request,
-                            QueryResponse* response, bool failed, int error);
+                            QueryResponse* response, bool failed, int error, 
+                            int64_t seq_id_at_query);
     void UpdateAgentVersion(AgentInfo* old_agent_info, 
                             const AgentInfo& new_agent_info);
     
@@ -84,16 +89,35 @@ private:
     void ScheduleNextQuery();
     void FillPodsToJob(Job* job);
     void FillAllJobs();
-    void KillPodCallback(PodStatus* pod, std::string agent_addr,
-                         const KillPodRequest* request, KillPodResponse* response, 
+    void KillPodCallback(PodStatus* pod, const KillPodRequest* request, 
+                         KillPodResponse* response, 
                          bool failed, int error);
+
+    void ProcessScaleDown(JobInfoList* scale_down_pods, 
+                          int32_t max_scale_down_size);
+    void ProcessScaleUp(JobInfoList* scale_up_pods,
+                        int32_t max_scale_up_size);
+    void BuildPodFsm();
+    bool HandleCleanPod(PodStatus* pod, Job* job);
+    bool HandlePendingToRunning(PodStatus* pod, Job* job);
+    bool HandleRunningToDeath(PodStatus* pod, Job* job);
+    bool HandleRunningToRemoved(PodStatus* pod, Job* job);
+    bool HandleDeathToPending(PodStatus* pod, Job* job);
+    bool HandleDoNothing(PodStatus* pod, Job* job);
+    std::string BuildHandlerKey(const PodStage& from,
+                                const PodStage& to);
+
+    void ChangeStage(const PodStage& to,
+                     PodStatus* pod,
+                     Job* job);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
-    PodMap suspend_pods_;
     PodMap pending_pods_;
-    PodMap deploy_pods_;
-    std::map<AgentAddr, PodMap> running_pods_;
+    // all jobs that needs scale down
+    std::set<JobId> scale_down_jobs_;
+
+    std::map<AgentAddr, PodMap> pods_on_agent_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
     ThreadPool death_checker_;
@@ -111,6 +135,13 @@ private:
     typedef std::set<std::string> LabelSet;
     std::map<LabelName, AgentSet> labels_;
     boost::unordered_map<AgentAddr, LabelSet> agent_labels_;
+
+    // pod fsm
+    std::map<PodState, PodStage> state_to_stage_;
+    typedef boost::function<bool (PodStatus* pod, Job* job)> Handle;
+    typedef std::map<std::string, Handle>  FSM; 
+    FSM fsm_;
+    std::map<AgentAddr, int64_t> agent_sequence_ids_;
 };
 
 }

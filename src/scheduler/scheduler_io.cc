@@ -4,7 +4,11 @@
 
 #include "scheduler/scheduler_io.h"
 
+#include <gflags/gflags.h>
 #include "logging.h"
+
+DECLARE_int32(max_scale_down_size);
+DECLARE_int32(max_scale_up_size);
 
 namespace baidu {
 namespace galaxy {
@@ -54,6 +58,8 @@ void SchedulerIO::Loop() {
     LOG(INFO, "sync resource from master successfully, agent count %d",
              agent_count);
     GetPendingJobsRequest get_jobs_request;
+    get_jobs_request.set_max_scale_up_size(FLAGS_max_scale_up_size);
+    get_jobs_request.set_max_scale_down_size(FLAGS_max_scale_down_size);
     GetPendingJobsResponse get_jobs_response;
 
     ListJobsRequest list_jobs_request;
@@ -82,8 +88,8 @@ void SchedulerIO::Loop() {
     if (!ret) {
         LOG(WARNING, "fail to get list jobs from master");
     }
-    LOG(INFO, "list jobs from master , #job %d", list_jobs_response.jobs_size());
-
+    int32_t jobs_size = scheduler_.SyncJobOverview(&list_jobs_response);
+    LOG(INFO, "list jobs from master , #job %d", jobs_size);
     std::vector<JobInfo*> pending_jobs;
     for (int i = 0; i < get_jobs_response.scale_up_jobs_size(); i++) {
         pending_jobs.push_back(get_jobs_response.mutable_scale_up_jobs(i));

@@ -16,7 +16,7 @@
 #include "thread_pool.h"
 #include "rpc/rpc_client.h"
 
-#include "pod_manager.h"
+#include "agent/pod_manager.h"
 #include "master/master_watcher.h"
 
 namespace baidu {
@@ -47,7 +47,18 @@ private:
     void KeepHeartBeat();
     
     bool RegistToMaster();
+    bool CheckGcedConnection();
+
     bool PingMaster();
+
+    void LoopCheckPods();
+    // ret ==  0 alloc success
+    //        -1 alloc failed
+    int AllocResource(const Resource& requirement);
+    void ReleaseResource(const Resource& requirement);
+
+    void CreatePodInfo(const ::baidu::galaxy::RunPodRequest* req, 
+                       PodInfo* pod_info);
 
     struct ResourceCapacity {
         int64_t millicores; 
@@ -59,7 +70,6 @@ private:
     };
 private:
     std::string master_endpoint_;
-    std::string gce_endpoint_; 
     
     Mutex lock_;
     ThreadPool background_threads_;
@@ -72,6 +82,7 @@ private:
     Mutex mutex_master_endpoint_;
 
     PodManager pod_manager_;
+    std::map<std::string, PodDescriptor> pods_descs_; 
 };
 
 }   // ending namespace galaxy

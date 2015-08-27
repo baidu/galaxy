@@ -117,6 +117,7 @@ message JobOverview {
     optional int32 running_num = 4;
     optional Resource resource_used = 5;
     optional int32 pending_num = 6;
+    optional int32 deploying_num = 7;
 }
 
 message ListJobsResponse {
@@ -141,6 +142,9 @@ message HeartBeatResponse {
 }
 
 message GetPendingJobsRequest {
+    optional int32 max_scale_down_size = 4;
+    optional int32 max_scale_up_size = 5;
+
 }
 
 message GetPendingJobsResponse {
