@@ -90,7 +90,9 @@ private:
     void ScheduleNextQuery();
     void FillPodsToJob(Job* job);
     void FillAllJobs();
-    void KillPodCallback(PodStatus* pod, const KillPodRequest* request, 
+    void KillPodCallback(const std::string& podid, const std::string& jobid,
+                         const std::string& endpoint,
+                         const KillPodRequest* request, 
                          KillPodResponse* response, 
                          bool failed, int error);
 

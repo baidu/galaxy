@@ -226,25 +226,20 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
 }
 
 
-void JobManager::KillPodCallback(PodStatus* pod,
+void JobManager::KillPodCallback(const std::string& podid, const std::string& jobid,
+                                 const std::string& endpoint,
                                  const KillPodRequest* request, KillPodResponse* response, 
                                  bool failed, int /*error*/) {
     boost::scoped_ptr<const KillPodRequest> request_ptr(request);
     boost::scoped_ptr<KillPodResponse> response_ptr(response);
-    MutexLock lock(&mutex_);
-    if (pod == NULL) {
-        return;
-    }
-    const std::string& jobid = pod->jobid();
-    const std::string& podid = pod->podid();
     Status status = response->status();
     if (failed || status != kOk) {
         LOG(INFO, "Kill pod [%s %s] on [%s] fail: %d", jobid.c_str(),
-            podid.c_str(), pod->endpoint().c_str(), status);
+            podid.c_str(), endpoint.c_str(), status);
         return;
     }
     LOG(INFO, "send kill cmd for pod [%s %s] on [%s] success", jobid.c_str(),
-        podid.c_str(), pod->endpoint().c_str());
+        podid.c_str(), endpoint.c_str());
 }
 
 void JobManager::GetPendingPods(JobInfoList* pending_pods,
@@ -680,7 +675,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid(); 
-        LOG(INFO, "the pod %s  of job %s on agent %s state %s",
+        LOG(INFO, "the pod %s of job %s on agent %s state %s",
                   podid.c_str(), 
                   jobid.c_str(), 
                   report_agent_info.endpoint().c_str(),
@@ -965,11 +960,11 @@ void JobManager::ChangeStage(const PodStage& to,
         PodStage_Name(to).c_str());
         return;
     }
-    h_it->second(pod, job);
     LOG(INFO, "pod %s change stage from %s to %s",
       pod->podid().c_str(),
       PodStage_Name(old_stage).c_str(),
-      PodStage_Name(pod->stage()).c_str());
+      PodStage_Name(to).c_str());
+    h_it->second(pod, job);
 }
 
 bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
@@ -1081,8 +1076,9 @@ void JobManager::SendKillToAgent(PodStatus*  pod) {
     Agent_Stub* stub;
     rpc_client_.GetStub(pod->endpoint(), &stub);
     boost::function<void (const KillPodRequest*, KillPodResponse*, bool, int)> kill_pod_callback;
-    kill_pod_callback = boost::bind(&JobManager::KillPodCallback, this, pod,
-                                       _1, _2, _3, _4);
+    kill_pod_callback = boost::bind(&JobManager::KillPodCallback, this, pod->podid(),
+                                    pod->jobid(),pod->endpoint(),
+                                    _1, _2, _3, _4);
     rpc_client_.AsyncRequest(stub, &Agent_Stub::KillPod, request, response,
                                  kill_pod_callback, FLAGS_master_agent_rpc_timeout, 0);
     delete stub;
