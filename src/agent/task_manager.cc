@@ -69,6 +69,10 @@ int TaskManager::Init() {
             LOG(WARNING, "hierarchy %s not exists", hierarchy.c_str()); 
             return -1;
         }
+        if (!file::Mkdir(hierarchy + "/" + GLOBAL_CGROUP_PATH)) {
+            LOG(WARNING, "mkdir global cgroup path failed"); 
+            return -1;
+        }
 
         LOG(INFO, "support cgroups hierarchy %s", hierarchy.c_str());
         hierarchies_.push_back(hierarchy);
