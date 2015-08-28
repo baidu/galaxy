@@ -3,6 +3,20 @@ package baidu.galaxy;
 
 option cc_generic_services = true;
 
+message TaskInfoPersistence {
+    optional string task_id = 1;
+    optional TaskDescriptor task_desc = 2;
+}
+
+message PodInfoPersistence {
+    optional string pod_id = 1;
+    optional string job_id = 2;
+    optional PodDescriptor pod_desc = 3;
+    optional int32 initd_port = 5;
+    optional int32 initd_pid = 6;
+    repeated TaskInfoPersistence tasks = 7;
+}
+
 message QueryRequest {
 }
 
