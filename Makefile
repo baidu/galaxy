@@ -20,7 +20,7 @@ LDFLAGS = -L$(PROTOBUF_PATH)/lib \
           -L$(GFLAGS_PATH)/lib  \
           -Lcommon/ -lcommon \
           -L$(INS_PATH)/lib \
-          -lgflags -lpthread -lz
+          -lgflags -lleveldb -lpthread -lz
 
 CXXFLAGS += $(OPT)
 
