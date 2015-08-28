@@ -71,6 +71,7 @@ agent_src='src/agent/agent_impl.cc\
            src/master/master_watcher.cc\
            src/proto/galaxy.proto\
            src/agent/persistence_handler.cc\
+           src/agent/cgroups.cc\
            src/proto/initd.proto'
 
 initd_src='src/gce/initd_main.cc\
@@ -91,7 +92,7 @@ client_src='src/client/galaxy_client.cc \
 
 test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/task_manager.cc src/agent/utils.cc src/flags.cc \
-                       src/agent/test_task_manager.cc'
+                       src/agent/test_task_manager.cc src/agent/cgroups.cc'
 test_cgroup_src='src/agent/cgroups.cc src/agent/test_cgroups.cc'
 
 test_resource_collector_src='src/agent/test_resource_collector.cc src/agent/resource_collector.cc'

@@ -34,6 +34,8 @@ DECLARE_string(agent_work_dir);
 DECLARE_int32(agent_initd_port_begin);
 DECLARE_int32(agent_initd_port_end);
 DECLARE_bool(agent_namespace_isolation_switch);
+DECLARE_string(gce_cgroup_root);
+DECLARE_string(gce_support_subsystems);
 
 namespace baidu {
 namespace galaxy {
@@ -162,6 +164,14 @@ int PodManager::LanuchInitd(PodInfo* info) {
     context.start_command = FLAGS_agent_initd_bin;
     context.start_command.append(" --gce_initd_port=");
     context.start_command.append(boost::lexical_cast<std::string>(info->initd_port));
+    if (!FLAGS_gce_cgroup_root.empty()) {
+        context.start_command.append(" --gce_cgroup_root=");
+        context.start_command.append(FLAGS_gce_cgroup_root);
+    }
+    if (!FLAGS_gce_support_subsystems.empty()) {
+        context.start_command.append(" --gce_support_subsystems=");
+        context.start_command.append(FLAGS_gce_support_subsystems);
+    }
     context.path = FLAGS_agent_work_dir + "/" + info->pod_id;
     if (!file::Mkdir(context.path)) {
         LOG(WARNING, "mkdir %s failed", context.path.c_str()); 
@@ -212,6 +222,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
         // TODO check initd exits
         ::kill(pod_info.initd_pid, SIGTERM);
         ReleasePortFromInitd(pod_info.initd_port);
+        LOG(INFO, "remove pod %s", pod_info.pod_id.c_str());
         pods_.erase(pod_it);
         return -1;
     }
@@ -300,6 +311,7 @@ int PodManager::DeletePod(const std::string& pod_id) {
             return -1;
         }
     }
+    LOG(INFO, "pod %s to delete", pods_it->first.c_str());
     return 0;
 }
 
@@ -379,6 +391,8 @@ int PodManager::ReloadPod(const PodInfo& info) {
     }
     pods_[info.pod_id] = info;
     PodInfo& internal_info = pods_[info.pod_id];
+    internal_info.pod_status.set_podid(internal_info.pod_id);
+    internal_info.pod_status.set_jobid(internal_info.job_id);
     // TODO check if not in free ports
     ReloadInitdPort(internal_info.initd_port);
     std::map<std::string, TaskInfo>::iterator task_it =
@@ -397,6 +411,10 @@ int PodManager::ReloadPod(const PodInfo& info) {
             return -1;
         }
     }
+    LOG(INFO, "reload pod %s job %s initd pid %d success ", 
+            internal_info.pod_id.c_str(), 
+            internal_info.job_id.c_str(),
+            internal_info.initd_pid);
     return 0;
 }
 

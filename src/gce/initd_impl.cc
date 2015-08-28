@@ -17,7 +17,8 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/bind.hpp>
 #include "gflags/gflags.h"
-#include "gce/utils.h"
+#include "agent/utils.h"
+#include "agent/cgroups.h"
 #include "logging.h"
 
 DECLARE_string(gce_cgroup_root);
@@ -107,7 +108,9 @@ void InitdImpl::Execute(::google::protobuf::RpcController* controller,
         return;
     }
 
-    LOG(INFO, "run command %s at %s", request->commands().c_str(), request->path().c_str());
+    LOG(INFO, "run command %s at %s in cgroup %s", 
+            request->commands().c_str(), request->path().c_str(),
+            request->cgroup_path().c_str());
 
     // 1. collect initd fds
     std::vector<int> fd_vector;
@@ -254,21 +257,12 @@ bool InitdImpl::AttachCgroup(const std::string& cgroup_path,
     }
     
     std::string task_file_prefix = cgroup_root_ + "/";
-    std::string task_file_suffix = cgroup_path + "/tasks";
     for (size_t i = 0; i < cgroup_subsystems_.size(); i++) {
-        std::string task_file_path = task_file_prefix + 
-            cgroup_subsystems_[i] + "/" + task_file_suffix;
-        // write to tasks   
-        int fd = ::open(task_file_path.c_str(),
-                O_WRONLY);
-        if (fd == -1) {
-            return false; 
-        }
-        int write_len = ::write(fd, 
-                (void*)(&child_pid), sizeof(child_pid));
-        ::close(fd);
-        if (write_len == -1 || write_len != sizeof(child_pid)) {
-            return false; 
+        std::string hierarchy = task_file_prefix + cgroup_subsystems_[i];
+        if (!cgroups::AttachPid(hierarchy, 
+                                cgroup_path, 
+                                child_pid)) {
+            return false;     
         }
     }
     return true;

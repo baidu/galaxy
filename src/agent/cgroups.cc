@@ -64,12 +64,14 @@ int Write(const std::string& hierarchy,
         + cgroup + "/" + control_file;
     FILE* fd = ::fopen(file_path.c_str(), "we");
     if (fd == NULL) {
+        LOG(WARNING, "open %s failed", file_path.c_str());
         return -1;
     }
 
     int ret = ::fprintf(fd, "%s", value.c_str()); 
     ::fclose(fd);
     if (ret <= 0) {
+        LOG(WARNING, "write %s failed", file_path.c_str());
         return -1; 
     }
     return 0;

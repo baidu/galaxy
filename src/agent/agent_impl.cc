@@ -78,10 +78,15 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
 
     std::vector<PodInfo> pods;
     pod_manager_.ShowPods(&pods);
+    LOG(INFO, "query pods size %u", pods.size());
     std::vector<PodInfo>::iterator it = pods.begin();
     for (; it != pods.end(); ++it) {
         PodStatus* pod_status = agent_info.add_pods();         
         pod_status->CopyFrom(it->pod_status);
+        LOG(DEBUG, "query pod %s job %s state %s", 
+                pod_status->podid().c_str(), 
+                pod_status->jobid().c_str(),
+                PodState_Name(pod_status->state()).c_str());
     }
     resp->mutable_agent()->CopyFrom(agent_info);
     done->Run();
@@ -154,6 +159,7 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
             // NOTE if persistence failed, need delete pod
             pod_manager_.DeletePod(req->podid());
         }
+        LOG(INFO, "run pod %s", req->podid().c_str());
         resp->set_status(kOk); 
     } while (0);
     done->Run();
@@ -174,6 +180,7 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
     std::map<std::string, PodDescriptor>::iterator it = 
         pods_descs_.find(req->podid());
     if (it == pods_descs_.end()) {
+        LOG(WARNING, "pod %s not exists", req->podid().c_str());
         resp->set_status(kOk); 
         done->Run();
         return;
@@ -184,6 +191,7 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
     done->Run();
 
     pod_manager_.DeletePod(pod_id);
+    LOG(INFO, "pod %s add to delete", pod_id.c_str());
     return;
 }
 
@@ -216,6 +224,8 @@ bool AgentImpl::RestorePods() {
                     pod.pod_desc.requirement().memory());
             return false;
         }
+        pods_descs_[pod.pod_id] = pod.pod_desc;
+
         if (pod_manager_.ReloadPod(pod) != 0) {
             LOG(WARNING, "reload pod %s failed",
                     pod.pod_id.c_str()); 
