@@ -92,6 +92,7 @@ test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/task_manager.cc src/agent/utils.cc src/flags.cc \
                        src/agent/test_task_manager.cc'
 
+test_resource_collector_src='src/agent/test_resource_collector.cc src/agent/resource_collector.cc'
 test_persistence_handler_src='src/proto/agent.proto src/proto/galaxy.proto  \
                               src/proto/initd.proto \
                               src/agent/persistence_handler.cc src/agent/test_persistence_handler.cc'
@@ -103,4 +104,5 @@ Application('initd',Sources(initd_src))
 StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
 Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))
 Application('test_task_manager', Sources(test_task_manager_src))
+Application('test_resource_collector', Sources(test_resource_collector_src))
 Application('test_persistence_handler', Sources(test_persistence_handler_src))
