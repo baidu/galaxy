@@ -13,6 +13,7 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "logging.h"
+#include "agent/cgroups.h"
 
 namespace baidu {
 namespace galaxy {
@@ -25,6 +26,12 @@ static const std::string PROC_MOUNT_PATH = "/proc";
 static const size_t PROC_STAT_FILE_SPLIT_SIZE = 44;
 static const size_t PROC_STATUS_FILE_SPLIT_SIZE = 3;
 static const int MIN_COLLECT_TIME = 2;
+
+static bool GetCgroupCpuUsage(const std::string& cgroup_path, 
+                              CgroupResourceStatistics* statistics);
+
+static bool GetCgroupMemoryUsage(const std::string& cgroup_path, 
+                                 CgroupResourceStatistics* statistics);
 
 // get total cpu usage from /proc/stat
 static bool GetGlobalCpuUsage(ResourceStatistics* statistics);
@@ -76,6 +83,46 @@ double ProcResourceCollector::GetCpuCoresUsage() {
 
 long ProcResourceCollector::GetMemoryUsage() {
     return process_statistics_cur_.memory_rss_in_bytes;
+}
+
+CGroupResourceCollector::CGroupResourceCollector(const std::string& cgroup_name) : 
+    global_statistics_prev_(),
+    global_statistics_cur_(),
+    cgroup_statistics_prev_(),
+    cgroup_statistics_cur_(),
+    cgroup_name_(cgroup_name),
+    timestamp_prev_(0.0),
+    timestamp_cur_(0.0) 
+    collector_times_(0) {
+}
+
+CGroupResourceCollector::~CGroupResourceCollector() {
+}
+
+void CGroupResourceCollector::ResetCgroupName(
+                            const std::string& cgroup_name) {
+    cgroup_name_ = cgroup_name;
+    collector_times_ = 0;
+}
+
+void CGroupResourceCollector::Clear() {
+    collector_times_ = 0;
+}
+
+double CGroupResourceCollector::GetCpuUsage() {
+    return 0.0; 
+}
+
+long CGroupResourceCollector::GetMemoryUsage() {
+    return cgroup_statistics_cur_.memory_rss_in_bytes;
+}
+
+double CGroupResourceCollector::GetCpuCoresUsage() {
+    return GetCpuUsage() * CPU_CORES;
+}
+
+bool CGroupResourceCollector::CollectStatistics() {
+
 }
 
 double ProcResourceCollector::GetCpuUsage() {
@@ -212,6 +259,18 @@ bool GetProcPidUsage(int pid, ResourceStatistics* statistics) {
             statistics->cpu_system_time, 
             statistics->memory_rss_in_bytes);
     return true;
+}
+
+bool GetCgroupCpuUsage(const std::string& group_path, 
+                       CgroupResourceStatistics* statistics) {
+    bool ret = false;
+    return ret;
+}
+
+bool GetCgroupMemoryUsage(const std::string& group_path,
+                          CgroupResourceStatistics* statistics) {
+    bool ret = false;
+    return ret;
 }
 
 
