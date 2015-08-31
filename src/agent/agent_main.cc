@@ -9,10 +9,12 @@
 #include "sofa/pbrpc/pbrpc.h"
 
 #include "agent/agent_impl.h"
+#include "utils/build_info.h"
 #include "logging.h"
 
 volatile static bool s_is_stop = false;
 
+DECLARE_bool(v);
 DECLARE_string(agent_port);
 
 void StopSigHandler(int /*sig*/) {
@@ -27,6 +29,11 @@ int main (int argc, char* argv[]) {
     using baidu::common::WARNING;
 
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    if (FLAGS_v) {
+        fprintf(stdout, "build version : %s\n", baidu::galaxy::GetVersion());
+        fprintf(stdout, "build time : %s\n", baidu::galaxy::GetBuildTime());
+        return 0;
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 

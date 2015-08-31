@@ -4,6 +4,8 @@
 
 #include <gflags/gflags.h>
 
+DEFINE_bool(v, false, "show version string");
+
 // nexus
 DEFINE_string(nexus_servers, "", "server list of nexus, e.g abc.com:1234,def.com:5342");
 DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on nexus, e.g /ps/galaxy");
