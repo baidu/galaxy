@@ -489,11 +489,7 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         bool cancel_ok = death_checker_.CancelTask(timer_id);
         if (!cancel_ok) {
             LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
-            {
-                MutexLock g_lock(&mutex_);
-                AgentInfo* agent = agents_[agent_addr];
-                agent->set_state(kDead);
-            }
+            
         }
     }
     timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
@@ -506,10 +502,12 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
 void JobManager::HandleAgentOffline(const std::string agent_addr) {
     LOG(WARNING, "agent is offline: %s", agent_addr.c_str());
     MutexLock lock(&mutex_);
-    if (agents_.find(agent_addr) == agents_.end()) {
+    std::map<AgentAddr, AgentInfo*>::iterator a_it = agents_.find(agent_addr);
+    if (a_it == agents_.end()) {
         LOG(INFO, "no such agent %s", agent_addr.c_str());
         return;
     }
+    a_it->second->set_state(kDead);
     PodMap& agent_pods = pods_on_agent_[agent_addr];
     PodMap::iterator it = agent_pods.begin();
     for (; it != agent_pods.end(); ++it) {
@@ -520,6 +518,7 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
             if (job_it ==  jobs_.end()) {
                 continue;
             }
+            pod->set_stage(kStageDeath);
             ChangeStage(kStagePending, pod, job_it->second);
         }
     }
@@ -917,6 +916,8 @@ void JobManager::BuildPodFsm() {
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageDeath), 
           boost::bind(&JobManager::HandleRunningToDeath, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRemoved), 
+          boost::bind(&JobManager::HandleRunningToRemoved, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageRemoved), 
           boost::bind(&JobManager::HandleRunningToRemoved, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
           boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
