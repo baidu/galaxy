@@ -27,9 +27,6 @@ enum JobState {
 enum ScheduleAction {
    kLaunch = 0;
    kTerminate = 1;
-   // keep running task on previous agent
-   // the type means that agent just restarts task with reusing workspace
-   kKeepRunning = 2;
 }
 
 

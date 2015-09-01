@@ -123,8 +123,9 @@ private:
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
-    PodMap pending_pods_;
-    // all jobs that needs scale down
+    // all jobs that need scale up
+    std::set<JobId> scale_up_jobs_;
+    // all jobs that need scale down
     std::set<JobId> scale_down_jobs_;
 
     std::map<AgentAddr, PodMap> pods_on_agent_;
