@@ -152,7 +152,6 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
     }
     int32_t old_replica = it->second->desc_.replica();
     it->second->desc_.set_replica(job_desc.replica());
-    CondVar cond(&mutex_);
     if (old_replica < job_desc.replica()) {
         FillPodsToJob(it->second);
         pod_cv_.Signal();
