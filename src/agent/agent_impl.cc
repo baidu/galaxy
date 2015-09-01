@@ -24,6 +24,8 @@ DECLARE_string(agent_port);
 DECLARE_int32(agent_millicores);
 DECLARE_int32(agent_memory);
 
+DECLARE_string(agent_persistence_path);
+
 namespace baidu {
 namespace galaxy {
 
@@ -76,10 +78,15 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
 
     std::vector<PodInfo> pods;
     pod_manager_.ShowPods(&pods);
+    LOG(INFO, "query pods size %u", pods.size());
     std::vector<PodInfo>::iterator it = pods.begin();
     for (; it != pods.end(); ++it) {
         PodStatus* pod_status = agent_info.add_pods();         
         pod_status->CopyFrom(it->pod_status);
+        LOG(DEBUG, "query pod %s job %s state %s", 
+                pod_status->podid().c_str(), 
+                pod_status->jobid().c_str(),
+                PodState_Name(pod_status->state()).c_str());
     }
     resp->mutable_agent()->CopyFrom(agent_info);
     done->Run();
@@ -108,7 +115,7 @@ void AgentImpl::CreatePodInfo(
         task_info.desc.CopyFrom(pod_info->pod_desc.tasks(i));
         task_info.status.set_state(kTaskPending);
         task_info.initd_endpoint = "";
-        task_info.stage = kStagePENDING;
+        task_info.stage = kTaskStagePENDING;
         task_info.fail_retry_times = 0;
         task_info.max_retry_times = 10;
         pod_info->tasks[task_info.task_id] = task_info;
@@ -145,6 +152,14 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
         CreatePodInfo(req, &info);
         // if add failed, clean by master?
         pod_manager_.AddPod(info);
+        if (0 != pod_manager_.ShowPod(req->podid(), &info) 
+                || !persistence_handler_.SavePodInfo(info)) {
+            LOG(WARNING, "pod %s persistence failed",
+                         req->podid().c_str());
+            // NOTE if persistence failed, need delete pod
+            pod_manager_.DeletePod(req->podid());
+        }
+        LOG(INFO, "run pod %s", req->podid().c_str());
         resp->set_status(kOk); 
     } while (0);
     done->Run();
@@ -165,6 +180,7 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
     std::map<std::string, PodDescriptor>::iterator it = 
         pods_descs_.find(req->podid());
     if (it == pods_descs_.end()) {
+        LOG(WARNING, "pod %s not exists", req->podid().c_str());
         resp->set_status(kOk); 
         done->Run();
         return;
@@ -175,6 +191,7 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
     done->Run();
 
     pod_manager_.DeletePod(pod_id);
+    LOG(INFO, "pod %s add to delete", pod_id.c_str());
     return;
 }
 
@@ -189,14 +206,55 @@ void AgentImpl::KeepHeartBeat() {
     return;
 }
 
+bool AgentImpl::RestorePods() {
+    MutexLock scope_lock(&lock_);
+    std::vector<PodInfo> pods;
+    if (!persistence_handler_.ScanPodInfo(&pods)) {
+        LOG(WARNING, "scan pods failed");
+        return false;
+    }
+
+    std::vector<PodInfo>::iterator it = pods.begin();
+    for (; it != pods.end(); ++it) {
+        PodInfo& pod = *it; 
+        if (AllocResource(pod.pod_desc.requirement()) != 0) {
+            LOG(WARNING, "alloc for pod %s failed require %ld %ld",
+                    pod.pod_id.c_str(),
+                    pod.pod_desc.requirement().millicores(),
+                    pod.pod_desc.requirement().memory());
+            return false;
+        }
+        pods_descs_[pod.pod_id] = pod.pod_desc;
+
+        if (pod_manager_.ReloadPod(pod) != 0) {
+            LOG(WARNING, "reload pod %s failed",
+                    pod.pod_id.c_str()); 
+            return false;
+        }
+    }
+    return true;
+}
+
 bool AgentImpl::Init() {
 
     resource_capacity_.millicores = FLAGS_agent_millicores;
     resource_capacity_.memory = FLAGS_agent_memory;
     
+    if (!persistence_handler_.Init(FLAGS_agent_persistence_path)) {
+        LOG(WARNING, "init persistence handler failed");
+        return false;  
+    }
+
     if (pod_manager_.Init() != 0) {
+        LOG(WARNING, "init pod manager failed");
         return false; 
     }
+
+    if (!RestorePods()) {
+        LOG(WARNING, "restore pods failed"); 
+        return false;
+    }
+
     if (!RegistToMaster()) {
         return false; 
     }
@@ -227,6 +285,11 @@ void AgentImpl::LoopCheckPods() {
     std::vector<std::string> to_del_pod;
     for (; it != pods_descs_.end(); ++it) {
         if (pod_manager_.CheckPod(it->first) != 0) {
+            if (!persistence_handler_.DeletePodInfo(it->first)) {
+                LOG(WARNING, "delete persistence pod %s failed",
+                        it->first.c_str());
+                continue;
+            }
             to_del_pod.push_back(it->first);
             ReleaseResource(it->second.requirement()); 
         }  

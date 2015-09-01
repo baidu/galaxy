@@ -8,19 +8,14 @@
 #include <string>
 #include <vector>
 
+#include "boost/lexical_cast.hpp"
+#include "google/protobuf/text_format.h"
 #include "proto/galaxy.pb.h"
 #include "proto/initd.pb.h"
+#include "proto/agent.pb.h"
 
 namespace baidu {
 namespace galaxy {
-
-enum TaskStage {
-    kStagePENDING = 0,      // use to check initd ready
-    kStageDEPLOYING = 1,       // use to check deploy process ready
-    kStageRUNNING = 2,          // use to check main process running
-    kStageSTOPPING = 3,         // use to check stop process ready
-    kStageENDING = 4          // end stage
-};
 
 struct TaskInfo {
     std::string task_id;    
@@ -41,13 +36,54 @@ struct TaskInfo {
     int stop_timeout_point;
     int initd_check_failed;
     Initd_Stub* initd_stub;
+
+    std::string ToString() {
+        std::string pb_str;
+        std::string str_format;     
+        str_format.append("task_id : " + task_id + "\n");
+        str_format.append("pod_id : "+ pod_id + "\n");
+        str_format.append("task desc : {\n");
+    
+        google::protobuf::TextFormat::PrintToString(desc, &pb_str);      
+
+        str_format.append(pb_str);
+        str_format.append("}\n");
+         
+        str_format.append("task status : {\n");
+        pb_str.clear(); 
+        google::protobuf::TextFormat::PrintToString(status, &pb_str);
+
+        str_format.append(pb_str);
+        str_format.append("}\n");
+        str_format.append("stage : " + TaskStage_Name(stage) + "\n"); 
+
+        str_format.append("main_process : {\n");
+        pb_str.clear();
+        google::protobuf::TextFormat::PrintToString(main_process, &pb_str);
+        str_format.append(pb_str);
+        str_format.append("}\n");
+        str_format.append("deploy_process : {\n");
+        pb_str.clear();
+        google::protobuf::TextFormat::PrintToString(deploy_process, &pb_str);
+        str_format.append(pb_str);
+        str_format.append("}\n");
+        str_format.append("stop_process : {\n");
+        pb_str.clear();
+        google::protobuf::TextFormat::PrintToString(stop_process, &pb_str);
+        str_format.append(pb_str);
+        str_format.append("}\n");
+        str_format.append("cgroup_path : " + cgroup_path + "\n");
+        str_format.append("task_workspace : " + task_workspace + "\n");
+        return str_format;
+    }
+
     TaskInfo() 
         : task_id(), 
           pod_id(), 
           desc(), 
           status(),
           initd_endpoint(),
-          stage(),
+          stage(kTaskStagePENDING),
           main_process(),
           deploy_process(),
           stop_process(),
@@ -60,7 +96,7 @@ struct TaskInfo {
           initd_stub(NULL) {
     }
 
-    TaskInfo(const TaskInfo& task) {
+    void CopyFrom(const TaskInfo& task) {
         task_id = task.task_id; 
         pod_id = task.pod_id;
         desc.CopyFrom(task.desc);
@@ -78,6 +114,15 @@ struct TaskInfo {
         initd_check_failed = task.initd_check_failed;
         initd_stub = task.initd_stub;
     }
+
+    TaskInfo& operator=(const TaskInfo& task) {
+        CopyFrom(task);
+        return *this; 
+    }
+
+    TaskInfo(const TaskInfo& task) {
+        CopyFrom(task);
+    }
 };
 
 struct PodInfo {
@@ -88,6 +133,36 @@ struct PodInfo {
     int initd_port;
     int initd_pid;
     std::map<std::string, TaskInfo> tasks;
+
+    std::string ToString() {
+        std::string str_format; 
+        std::string pb_str;
+
+        str_format.append("pod_id : " + pod_id + "\n");
+        str_format.append("job_id : " + job_id + "\n");
+        str_format.append("pod_desc : {\n");
+        pb_str.clear(); 
+        google::protobuf::TextFormat::PrintToString(pod_desc, &pb_str);
+        str_format.append(pb_str); 
+        str_format.append("}\n");
+        str_format.append("pod_status : {\n");
+        pb_str.clear();
+        google::protobuf::TextFormat::PrintToString(pod_status, &pb_str);
+        str_format.append(pb_str);
+        str_format.append("}\n");
+
+        str_format.append("initd port : " + boost::lexical_cast<std::string>(initd_port) + "\n"); 
+        str_format.append("initd pid : " + boost::lexical_cast<std::string>(initd_pid) + "\n");
+        str_format.append("tasks : [\n");
+        std::map<std::string, TaskInfo>::iterator task_it = tasks.begin();
+        for (; task_it != tasks.end(); ++task_it) {
+            str_format.append(task_it->second.ToString());     
+            str_format.append(",\n");
+        }
+        str_format.append("]\n");
+        return str_format;
+    }
+
     PodInfo() 
         : pod_id(), 
           job_id(),
@@ -98,7 +173,7 @@ struct PodInfo {
           tasks() {
     }
 
-    PodInfo(const PodInfo& pod_info) {
+    void CopyFrom(const PodInfo& pod_info) {
         pod_id = pod_info.pod_id;     
         job_id = pod_info.job_id;
         pod_desc.CopyFrom(pod_info.pod_desc);
@@ -106,6 +181,15 @@ struct PodInfo {
         initd_port = pod_info.initd_port;
         initd_pid = pod_info.initd_pid;
         tasks = pod_info.tasks;
+    }
+
+    PodInfo(const PodInfo& pod_info) {
+        CopyFrom(pod_info);
+    }
+
+    PodInfo& operator=(const PodInfo& from) {
+        CopyFrom(from);
+        return *this;
     }
 };
 
