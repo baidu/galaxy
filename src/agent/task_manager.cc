@@ -22,6 +22,7 @@
 
 #include "gflags/gflags.h"
 #include "agent/utils.h"
+#include "agent/cgroups.h"
 #include "logging.h"
 #include "timer.h"
 
@@ -31,6 +32,8 @@ DECLARE_string(agent_work_dir);
 
 namespace baidu {
 namespace galaxy {
+
+static const std::string GLOBAL_CGROUP_PATH = "galaxy"; 
 
 TaskManager::TaskManager() : 
     tasks_mutex_(),
@@ -50,6 +53,112 @@ TaskManager::~TaskManager() {
 }
 
 int TaskManager::Init() {
+    std::vector<std::string> sub_systems; 
+    boost::split(sub_systems,
+            FLAGS_gce_support_subsystems,
+            boost::is_any_of(","),
+            boost::token_compress_on);
+    for (size_t i = 0; i < sub_systems.size(); i++) {
+        if (sub_systems[i].empty()) {
+            continue; 
+        }
+        std::string hierarchy =
+            FLAGS_gce_cgroup_root + "/" 
+            + sub_systems[i];
+        if (!file::IsExists(hierarchy)) {
+            LOG(WARNING, "hierarchy %s not exists", hierarchy.c_str()); 
+            return -1;
+        }
+        if (!file::Mkdir(hierarchy + "/" + GLOBAL_CGROUP_PATH)) {
+            LOG(WARNING, "mkdir global cgroup path failed"); 
+            return -1;
+        }
+
+        LOG(INFO, "support cgroups hierarchy %s", hierarchy.c_str());
+        hierarchies_.push_back(hierarchy);
+    }
+    LOG(INFO, "support cgroups types %u", sub_systems.size());
+    return 0;
+}
+
+int TaskManager::ReloadTask(const TaskInfo& task) {
+    MutexLock scope_lock(&tasks_mutex_);
+    std::map<std::string, TaskInfo*>::iterator it = 
+        tasks_.find(task.task_id);
+    if (it != tasks_.end()) {
+        LOG(WARNING, "task %s already added",
+                task.task_id.c_str()); 
+        return 0;
+    }
+
+    TaskInfo* task_info = new TaskInfo(task);
+    tasks_[task.task_id] = task_info;
+    task_info->status.set_state(kTaskPending);
+    if (PrepareWorkspace(task_info) != 0) {
+        LOG(WARNING, "task %s prepare workspace failed in reload",
+                task_info->task_id.c_str()); 
+        // TODO  should do some other prepare such as cgroups
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+    if (PrepareCgroupEnv(task_info) != 0) {
+        LOG(WARNING, "task %s prepare cgroup failed in reload",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+
+    SetupDeployProcessKey(task_info);
+    SetupRunProcessKey(task_info);
+    SetupTerminateProcessKey(task_info);
+
+    if (task_info->initd_stub == NULL 
+            && !rpc_client_->GetStub(task_info->initd_endpoint,
+                                     &(task_info->initd_stub))) {
+        LOG(WARNING, "get stub failed");     
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+    // check if in deploy stage
+    do {
+        task_info->stage = kTaskStageDEPLOYING; 
+        int ret = DeployProcessCheck(task_info);
+        if (ret == -1) {
+            LOG(WARNING, "task %s check deploy failed",
+                    task_info->task_id.c_str());
+            break;
+        } else if (ret == 0) {
+            task_info->status.set_state(kTaskDeploy);
+            break;
+        }
+        task_info->stage = kTaskStageRUNNING; 
+        ret = RunProcessCheck(task_info);
+        if (ret == -1) {
+            LOG(WARNING, "task %s check run failed",
+                    task_info->task_id.c_str()); 
+            break;
+        } else if (ret == 0) {
+            task_info->status.set_state(kTaskRunning);
+            break;
+        } 
+        ret = TerminateProcessCheck(task_info);
+        if (ret == -1) {
+            LOG(WARNING, "task %s check stop failed",
+                    task_info->task_id.c_str()); 
+            break;
+        } else if (ret == 0) {
+            task_info->status.set_state(kTaskTerminate);
+            break;
+        }
+        task_info->status.set_state(kTaskFinish);
+    } while (0);
+
+    LOG(INFO, "task %s is reload", task_info->task_id.c_str());
+    background_thread_.DelayTask(
+                    50, 
+                    boost::bind(
+                        &TaskManager::DelayCheckTaskStageChange,
+                        this, task_info->task_id));
     return 0;
 }
 
@@ -63,13 +172,20 @@ int TaskManager::CreateTask(const TaskInfo& task) {
         return 0;
     }
     TaskInfo* task_info = new TaskInfo(task);     
-    task_info->stage = kStagePENDING;
+    task_info->stage = kTaskStagePENDING;
     task_info->status.set_state(kTaskPending);
     tasks_[task_info->task_id] = task_info;
     // 1. prepare workspace
     if (PrepareWorkspace(task_info) != 0) {
         LOG(WARNING, "task %s prepare workspace failed",
                 task_info->task_id.c_str());
+        task_info->status.set_state(kTaskError);
+        return -1;
+    }
+    if (PrepareCgroupEnv(task_info) != 0) {
+        LOG(WARNING, "task %s prepare cgroup failed",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
         return -1;
     }
     LOG(INFO, "task %s is add", task.task_id.c_str());
@@ -102,9 +218,9 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     if (task_info == NULL) {
         return -1; 
     }
-    task_info->stage = kStageRUNNING;
+    task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
-    task_info->main_process.set_key(task_info->task_id + "_main");
+    SetupRunProcessKey(task_info);
     // send rpc to initd to execute main process
     ExecuteRequest initd_request; 
     ExecuteResponse initd_response;
@@ -170,8 +286,8 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
         return -1; 
     }
     std::string stop_command = task_info->desc.stop_command();
-    task_info->stage = kStageSTOPPING;
-    task_info->stop_process.set_key(task_info->task_id + "_stop");
+    task_info->stage = kTaskStageSTOPPING;
+    SetupTerminateProcessKey(task_info);
     // send rpc to initd to execute stop process
     ExecuteRequest initd_request; 
     ExecuteResponse initd_response;
@@ -239,11 +355,19 @@ int TaskManager::CleanTask(TaskInfo* task_info) {
     if (CleanProcess(task_info) != 0) {
         LOG(WARNING, "task %s clean process failed",
                 task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
         return -1;
     }
     if (CleanWorkspace(task_info) != 0) {
         LOG(WARNING, "task %s clean workspace failed",
                 task_info->task_id.c_str());
+        task_info->status.set_state(kTaskError);
+        return -1;
+    }
+    if (CleanCgroupEnv(task_info) != 0) {
+        LOG(WARNING, "task %s clean cgroup failed",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
         return -1;
     }
     LOG(INFO, "task %s clean success", task_info->task_id.c_str());
@@ -256,7 +380,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         return -1; 
     }
     std::string deploy_command;
-    task_info->stage = kStageDEPLOYING;
+    task_info->stage = kTaskStageDEPLOYING;
     task_info->status.set_state(kTaskDeploy);
     if (task_info->desc.source_type() == kSourceTypeBinary) {
         // TODO write binary directly
@@ -282,8 +406,8 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
     }
 
-    task_info->stage = kStageDEPLOYING;
-    task_info->deploy_process.set_key(task_info->task_id + "_deploy");
+    task_info->stage = kTaskStageDEPLOYING;
+    SetupDeployProcessKey(task_info);
     task_info->status.set_state(kTaskDeploy);
     // send rpc to initd to execute deploy process; 
     ExecuteRequest initd_request;      
@@ -530,7 +654,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
 
     TaskInfo* task_info = it->second;
     // switch task stage
-    if (task_info->stage == kStagePENDING 
+    if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
         int chk_res = InitdProcessCheck(task_info);
         if (chk_res == 1 && DeployTask(task_info) != 0) {
@@ -542,7 +666,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
                     task_info->task_id.c_str()); 
             task_info->status.set_state(kTaskError);
         }
-    } else if (task_info->stage == kStageDEPLOYING
+    } else if (task_info->stage == kTaskStageDEPLOYING
             && task_info->status.state() != kTaskError) {
         int chk_res = DeployProcessCheck(task_info);
         // deploy success and run
@@ -555,7 +679,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
                     task_info->task_id.c_str()); 
             task_info->status.set_state(kTaskError);
         }
-    } else if (task_info->stage == kStageRUNNING
+    } else if (task_info->stage == kTaskStageRUNNING
             && task_info->status.state() != kTaskError) {
         int chk_res = RunProcessCheck(task_info);
         if (chk_res == -1 && 
@@ -564,7 +688,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
             task_info->fail_retry_times++;
             RunTask(task_info);         
         }
-    } else if (task_info->stage == kStageSTOPPING) {
+    } else if (task_info->stage == kTaskStageSTOPPING) {
         int chk_res = TerminateProcessCheck(task_info);
         if (chk_res != 0) {
             if (0 == CleanTask(task_info)) {
@@ -581,12 +705,122 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
             }
         }
     }
+    if (task_info != NULL) {
+        LOG(DEBUG, "task %s pod %s state %s", 
+                task_info->task_id.c_str(),
+                task_info->pod_id.c_str(),
+                TaskState_Name(task_info->status.state()).c_str());
+    }
     background_thread_.DelayTask(
                     500, 
                     boost::bind(
                         &TaskManager::DelayCheckTaskStageChange,
                         this, task_id));
     return; 
+}
+
+int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
+    if (task == NULL) {
+        return -1; 
+    }
+
+    std::string cgroup_name = GLOBAL_CGROUP_PATH + "/" 
+        + task->task_id;
+    task->cgroup_path = cgroup_name;
+    std::vector<std::string>::iterator hier_it = 
+        hierarchies_.begin();
+    for (; hier_it != hierarchies_.end(); ++hier_it) {
+        std::string cgroup_dir = *hier_it;     
+        cgroup_dir.append("/");
+        cgroup_dir.append(cgroup_name);
+        if (!file::Mkdir(cgroup_dir)) {
+            LOG(WARNING, "create dir %s failed for %s",
+                    cgroup_dir.c_str(), task->task_id.c_str());
+            return -1;
+        }
+        LOG(INFO, "create cgroup %s success",
+                  cgroup_dir.c_str(), task->task_id.c_str());
+    }
+
+    std::string cpu_hierarchy = FLAGS_gce_cgroup_root + "/cpu/";
+    std::string mem_hierarchy = FLAGS_gce_cgroup_root + "/memory/";
+
+    int32_t cpu_share = task->desc.requirement().millicores() * 512;
+    if (cgroups::Write(cpu_hierarchy,
+                cgroup_name,
+                "cpu.shares",
+                boost::lexical_cast<std::string>(cpu_share)
+                ) != 0) {
+        LOG(WARNING, "set cpu share %d failed for %s",
+                cpu_share, cgroup_name.c_str()); 
+        return -1;
+    }
+    int64_t memory_limit = 1024L * 1024 
+        * task->desc.requirement().memory();
+    if (cgroups::Write(mem_hierarchy,
+                cgroup_name,
+                "memory.limit_in_bytes",
+                boost::lexical_cast<std::string>(memory_limit)
+                ) != 0) {
+        LOG(WARNING, "set memory limit %ld failed for %s",
+                memory_limit, cgroup_name.c_str()); 
+        return -1;
+    }
+
+    const int GROUP_KILL_MODE = 1;
+    if (file::IsExists(mem_hierarchy + "/" + cgroup_name 
+                + "/memory.kill_mode") 
+            && cgroups::Write(mem_hierarchy, cgroup_name, 
+                "memory.kill_mode", 
+                boost::lexical_cast<std::string>(GROUP_KILL_MODE)
+                ) != 0) {
+        LOG(WARNING, "set memory kill mode failed for %s", 
+                cgroup_name.c_str()); 
+        return -1;
+    }
+    
+    return 0;    
+}
+
+int TaskManager::CleanCgroupEnv(TaskInfo* task) {
+    if (task == NULL) {
+        return -1; 
+    }
+
+    std::vector<std::string>::iterator hier_it = 
+        hierarchies_.begin();
+    std::string cgroup = GLOBAL_CGROUP_PATH + "/" 
+        + task->task_id;
+    for (; hier_it != hierarchies_.end(); ++hier_it) {
+        std::string cgroup_dir = *hier_it; 
+        cgroup_dir.append("/");
+        cgroup_dir.append(cgroup);
+        if (!file::IsExists(cgroup_dir)) {
+            LOG(INFO, "%s %s not exists",
+                    (*hier_it).c_str(), cgroup.c_str()); 
+            continue;
+        }
+        std::vector<int> pids;
+        if (!cgroups::GetPidsFromCgroup(*hier_it, cgroup, &pids)) {
+            LOG(WARNING, "get pids from %s failed",
+                    cgroup.c_str());  
+            return -1;
+        }
+        std::vector<int>::iterator pid_it = pids.begin();
+        for (; pid_it != pids.end(); ++pid_it) {
+            int pid = *pid_it;
+            if (pid != 0) {
+                ::kill(pid, SIGKILL); 
+            }
+        }
+        if (::rmdir(cgroup_dir.c_str()) != 0
+                && errno != ENOENT) {
+            LOG(WARNING, "rmdir %s failed err[%d: %s]",
+                    cgroup_dir.c_str(), errno, strerror(errno));
+            return -1;
+        }
+    }
+    return 0;
 }
 
 }   // ending namespace galaxy

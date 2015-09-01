@@ -8,6 +8,14 @@ message TaskInfoPersistence {
     optional TaskDescriptor task_desc = 2;
 }
 
+enum TaskStage {
+    kTaskStagePENDING = 0;
+    kTaskStageDEPLOYING = 1;
+    kTaskStageRUNNING = 2;
+    kTaskStageSTOPPING = 3;
+    kTaskStageENDING = 4;
+}
+
 message PodInfoPersistence {
     optional string pod_id = 1;
     optional string job_id = 2;
