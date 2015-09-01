@@ -75,14 +75,7 @@ public:
     double GetCpuCoresUsage();
     virtual bool CollectStatistics();
 private:
-    ResourceStatistics global_statistics_prev_;
-    ResourceStatistics global_statistics_cur_;
-    CgroupResourceStatistics cgroup_statistics_prev_;
-    CgroupResourceStatistics cgroup_statistics_cur_;
     std::string cgroup_name_;
-    double timestamp_prev_; 
-    double timestamp_cur_;
-    int collector_times_;
 };
 
 class ProcResourceCollector : public ResourceCollector {
