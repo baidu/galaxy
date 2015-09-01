@@ -519,13 +519,13 @@ int TaskManager::CleanWorkspace(TaskInfo* task) {
                 task->task_id.c_str());
         return -1;
     }
-    std::string workspace_root = FLAGS_agent_work_dir;
-    workspace_root.append("/");
-    workspace_root.append(task->pod_id);
-    if (file::IsExists(workspace_root)
-            && !file::Remove(workspace_root)) {
-        return -1;     
-    }
+    //std::string workspace_root = FLAGS_agent_work_dir;
+    //workspace_root.append("/");
+    //workspace_root.append(task->pod_id);
+    //if (file::IsExists(workspace_root)
+    //        && !file::Remove(workspace_root)) {
+    //    return -1;     
+    //}
     return 0;
 }
 

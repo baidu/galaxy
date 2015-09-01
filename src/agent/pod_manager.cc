@@ -231,6 +231,17 @@ int PodManager::CheckPod(const std::string& pod_id) {
         // TODO check initd exits
         ::kill(pod_info.initd_pid, SIGTERM);
         ReleasePortFromInitd(pod_info.initd_port);
+        std::string workspace_pod = FLAGS_agent_work_dir;
+        workspace_pod.append("/");
+        workspace_pod.append(pod_id);
+        // NOTE if initd not killed, 
+        // remove may failed, need try again
+        if (file::IsExists(workspace_pod)
+                && !file::Remove(workspace_pod)) {
+            LOG(WARNING, "remove pod workspace failed %s", 
+                         pod_id.c_str());
+            return 0; 
+        }
         LOG(INFO, "remove pod %s", pod_info.pod_id.c_str());
         pods_.erase(pod_it);
         return -1;
