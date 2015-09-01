@@ -80,6 +80,7 @@ initd_src='src/gce/initd_main.cc\
            src/proto/agent.proto\
            src/proto/galaxy.proto\
            src/flags.cc\
+           src/agent/cgroups.cc\
            src/proto/initd.proto'
 
 sdk_src='src/sdk/galaxy.cc\
