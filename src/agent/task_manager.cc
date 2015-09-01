@@ -258,9 +258,10 @@ int TaskManager::RunTask(TaskInfo* task_info) {
                 task_info->task_id.c_str()); 
         return -1;
     }
-    LOG(INFO, "start command [%s] execute success for %s",
+    LOG(INFO, "start command [%s] execute success for %s in dir %s",
             task_info->desc.start_command().c_str(),
-            task_info->task_id.c_str());
+            task_info->task_id.c_str(),
+            task_info->task_workspace.c_str());
     return 0;
 }
 
@@ -444,9 +445,10 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
                 task_info->task_id.c_str()); 
         return -1;
     }
-    LOG(INFO, "deploy command [%s] execute success for %s",
+    LOG(INFO, "deploy command [%s] execute success for %s in dir %s",
             deploy_command.c_str(),
-            task_info->task_id.c_str());
+            task_info->task_id.c_str(),
+            task_info->task_workspace.c_str());
     return 0;
 }
 
