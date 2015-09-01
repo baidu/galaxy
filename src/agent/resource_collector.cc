@@ -13,7 +13,6 @@
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "logging.h"
-#include "agent/cgroups.h"
 
 namespace baidu {
 namespace galaxy {
