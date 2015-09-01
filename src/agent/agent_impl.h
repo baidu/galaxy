@@ -18,6 +18,7 @@
 
 #include "agent/pod_manager.h"
 #include "master/master_watcher.h"
+#include "agent/persistence_handler.h"
 
 namespace baidu {
 namespace galaxy {
@@ -51,6 +52,8 @@ private:
 
     bool PingMaster();
 
+    bool RestorePods();
+    
     void LoopCheckPods();
     // ret ==  0 alloc success
     //        -1 alloc failed
@@ -83,6 +86,7 @@ private:
 
     PodManager pod_manager_;
     std::map<std::string, PodDescriptor> pods_descs_; 
+    PersistenceHandler persistence_handler_;    
 };
 
 }   // ending namespace galaxy

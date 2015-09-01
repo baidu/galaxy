@@ -42,7 +42,8 @@ enum TaskState {
     kTaskRunning = 2;
     kTaskTerminate = 3;
     kTaskSuspend = 4;
-    kTaskError = 5;
+    kTaskFinish = 5;
+    kTaskError = 6;
 }
 
 

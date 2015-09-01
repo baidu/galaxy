@@ -50,6 +50,7 @@ DEFINE_int32(agent_monitor_pods_interval, 10, "agent monitor pods interval, unit
 DEFINE_int32(agent_rpc_initd_timeout, 2, "agent monitor initd interval, unit seconds");
 DEFINE_int32(agent_initd_port_begin, 9000, "agent initd port used begin");
 DEFINE_int32(agent_initd_port_end, 9500, "agent initd port used end");
+DEFINE_string(agent_persistence_path, "./data", "agent persistence path");
 
 // gce
 DEFINE_string(gce_cgroup_root, "/cgroups/", "Cgroup root mount path");

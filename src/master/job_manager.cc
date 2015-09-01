@@ -49,6 +49,7 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     for (int i = 0; i < label_cell.agents_endpoint_size(); ++i) {
         new_label_set.insert(label_cell.agents_endpoint(i)); 
     }
+    // TODO add nexus lock
     bool save_ok = SaveLabelToNexus(label_cell);
     if (!save_ok) {
         return kLabelAgentFail;
@@ -108,6 +109,7 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
+    // TODO add nexus lock
     bool save_ok = SaveToNexus(job);
     if (!save_ok) {
         return kJobSubmitFail;
@@ -136,6 +138,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         job = *(it->second);
     }
     job.desc_.set_replica(job_desc.replica());
+    // TODO add nexus lock
     bool save_ok = SaveToNexus(&job);
     if (!save_ok) {
         return kJobUpdateFail;
@@ -173,6 +176,7 @@ Status JobManager::Terminte(const JobId& jobid) {
         job.state_ = kJobTerminated;
         job.desc_.set_replica(0);
     }
+    // TODO add nexus lock
     bool save_ok = SaveToNexus(&job);
     if (!save_ok) {
         return kJobTerminateFail;
