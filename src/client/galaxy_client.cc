@@ -155,7 +155,7 @@ int ListAgent(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::NodeDescription> agents;
     baidu::common::TPrinter tp(11);
-    tp.AddRow(11, "", "addr","state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
+    tp.AddRow(11, "", "addr", "state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
     if (galaxy->ListAgents(&agents)) {
         for (uint32_t i = 0; i < agents.size(); i++) {
             std::vector<std::string> vs;
@@ -183,7 +183,7 @@ int ListJob(int /*argc*/, char*[] /*argv*/) {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_master_host + ":" + FLAGS_master_port);
     std::vector<baidu::galaxy::JobInformation> infos;
     baidu::common::TPrinter tp(9);
-    tp.AddRow(9, "", "id", "name","state","stat(r/p/d)", "replica", "batch", "cpu", "memory");
+    tp.AddRow(9, "", "id", "name", "state", "stat(r/p/d)", "replica", "batch", "cpu", "memory");
     if (galaxy->ListJobs(&infos)) {
         for (uint32_t i = 0; i < infos.size(); i++) {
             std::vector<std::string> vs;
@@ -241,7 +241,7 @@ int main(int argc, char* argv[]) {
         return LabelAgent(argc - 2, argv + 2);
     } else if (strcmp(argv[1], "update") == 0) {
         return UpdateJob(argc - 2, argv + 2);
-    }else if (strcmp(argv[1], "kill")== 0){
+    }else if (strcmp(argv[1], "kill") == 0){
         return KillJob(argc - 2 , argv + 2);
     } else {
         fprintf(stderr,"Usage:%s\n", kGalaxyUsage.c_str());
