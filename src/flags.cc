@@ -22,6 +22,7 @@ DEFINE_string(jobs_store_path, "/jobs", "");
 DEFINE_string(labels_store_path, "/labels", "");
 DEFINE_int32(max_scale_down_size, 10, "the max size of scale down jobs that schedule fetches");
 DEFINE_int32(max_scale_up_size, 10, "the max size of scale up jobs that schedule fetches");
+DEFINE_int32(master_pending_job_wait_timeout, 1000, "the timeout that master pending scheduler request");
 // scheduler
 DEFINE_int32(scheduler_get_pending_job_timeout, 2000, "the timeout that scheduler get pending job from master");
 DEFINE_int32(scheduler_get_pending_job_period, 2000, "the period that scheduler get pending job from master");

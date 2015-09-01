@@ -23,6 +23,7 @@ DECLARE_string(nexus_servers);
 DECLARE_string(nexus_root_path);
 DECLARE_string(labels_store_path);
 DECLARE_string(jobs_store_path);
+DECLARE_int32(master_pending_job_wait_timeout);
 
 namespace baidu {
 namespace galaxy {
@@ -261,7 +262,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
         return;
     }
     if (scale_down_jobs_.size() <= 0 || pending_pods_.size() <= 0) {
-        pod_cv_.TimeWait(1000);
+        pod_cv_.TimeWait(FLAGS_master_pending_job_wait_timeout);
     }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
@@ -290,7 +291,8 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             job_it->second->pods_.size());
         size_t replica = job_it->second->desc_.replica();
         if (replica >= job_it->second->pods_.size()) {
-            if (replica == 0 && job_it->second->state_ == kJobTerminated) {
+            if (job_it->second->pods_.size() == 0 
+                && job_it->second->state_ == kJobTerminated) {
                 should_been_cleaned.insert(*jobid_it);
             }else {
                 should_rm_from_scale_down.insert(*jobid_it);
@@ -767,7 +769,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
 }
 
 void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
-                        const AgentInfo& new_agent_info) {
+                                    const AgentInfo& new_agent_info) {
   
     int old_version = old_agent_info->version();
     // check assigned
