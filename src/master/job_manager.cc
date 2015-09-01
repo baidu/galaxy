@@ -137,6 +137,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         job = *(it->second);
     }
     job.desc_.set_replica(job_desc.replica());
+    // TODO add nexus lock
     bool save_ok = SaveToNexus(&job);
     if (!save_ok) {
         return kJobUpdateFail;
