@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include <signal.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -19,6 +24,16 @@ DECLARE_string(agent_port);
 
 void StopSigHandler(int /*sig*/) {
     s_is_stop = true;
+}
+
+void SigChldHandler(int /*sig*/) {
+    int status = 0;
+    while (true) {
+        pid_t pid = ::waitpid(-1, &status, WNOHANG);    
+        if (pid == -1 || pid == 0) {
+            return; 
+        }
+    }    
 }
 
 int main (int argc, char* argv[]) {
@@ -56,6 +71,9 @@ int main (int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    signal(SIGINT, StopSigHandler);
+    signal(SIGTERM, StopSigHandler);
+    signal(SIGCHLD, SigChldHandler);
     while (!s_is_stop) {
         sleep(5); 
     }
