@@ -118,6 +118,7 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     MutexLock lock(&mutex_); 
     jobs_[job_id] = job;
     FillPodsToJob(job);
+    pod_cv_.Signal();
     LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d ",
       job_id.c_str(), 
       job_desc.user().c_str(),
