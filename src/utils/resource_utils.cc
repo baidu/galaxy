@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "utils/resource_utils.h"
+#include "logging.h"
 
 namespace baidu {
 namespace galaxy {
@@ -77,9 +78,9 @@ int32_t ResourceUtils::Compare(const Resource& left,
     }
 
     int32_t mem_check = 0;
-    if (left.millicores() > right.millicores()) {
+    if (left.memory() > right.memory()) {
         mem_check = 1;
-    }else if (left.millicores() < right.millicores()) {
+    }else if (left.memory() < right.memory()) {
         return -1;
     }
 

@@ -27,7 +27,8 @@ DECLARE_string(jobs_store_path);
 namespace baidu {
 namespace galaxy {
 JobManager::JobManager()
-    : on_query_num_(0) {
+    : on_query_num_(0),
+    pod_cv_(&mutex_){
     safe_mode_ = true;
     ScheduleNextQuery();
     state_to_stage_[kPodPending] = kStageRunning;
@@ -148,10 +149,13 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
     }
     int32_t old_replica = it->second->desc_.replica();
     it->second->desc_.set_replica(job_desc.replica());
+    CondVar cond(&mutex_);
     if (old_replica < job_desc.replica()) {
         FillPodsToJob(it->second);
+        pod_cv_.Signal();
     } else if (old_replica > job_desc.replica()) {
         scale_down_jobs_.insert(it->second->id_);
+        pod_cv_.Signal();
     }
     LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
     return kOk;
@@ -183,6 +187,7 @@ Status JobManager::Terminte(const JobId& jobid) {
         scale_down_jobs_.insert(it->second->id_);
     }
     it->second->state_ = kJobTerminated;
+    pod_cv_.Signal();
     return kOk;
 }
 
@@ -245,13 +250,19 @@ void JobManager::KillPodCallback(const std::string& podid, const std::string& jo
 void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 int32_t max_scale_up_size,
                                 JobInfoList* scale_down_pods,
-                                int32_t max_scale_down_size) {
+                                int32_t max_scale_down_size,
+                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mutex_);
     if (safe_mode_) {
+        done->Run();
         return;
+    }
+    if (scale_down_jobs_.size() <= 0 || pending_pods_.size() <= 0) {
+        pod_cv_.TimeWait(1000);
     }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
+    done->Run();
 }
 
 void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
@@ -293,10 +304,10 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
                 ++jt) { 
                 --scale_down_count;
                 will_rm_pods.push_back(jt->second);
-            }
-            for (size_t i = 0; i < will_rm_pods.size(); ++i) {
-                ChangeStage(kStageRemoved, will_rm_pods[i], job_it->second);
-            }
+            } 
+        }
+        for (size_t i = 0; i < will_rm_pods.size(); ++i) {
+            ChangeStage(kStageRemoved, will_rm_pods[i], job_it->second);
         }
         if (scale_down_count > 0) {
             job_count++;
@@ -347,11 +358,11 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
         JobInfo* job_info = scale_up_pods->Add();
         JobId job_id = it->first;
         job_info->set_jobid(job_id);
-        const JobDescriptor& job_desc = jobs_[job_id]->desc_;
-        job_info->mutable_desc()->CopyFrom(job_desc);
-        const std::map<PodId, PodStatus*> & job_pending_pods = it->second;
-        std::map<PodId, PodStatus*>::const_iterator jt;
-        for (jt = job_pending_pods.begin(); jt != job_pending_pods.end(); ++jt) {
+        Job* job = jobs_[job_id];
+        job_info->mutable_desc()->CopyFrom(job->desc_);
+        std::map<PodId, PodStatus*>::iterator jt;
+        // copy all pod
+        for (jt = job->pods_.begin(); jt != job->pods_.end(); ++jt) {
             PodStatus* pod_status = jt->second;
             PodStatus* new_pod_status = job_info->add_pods();
             new_pod_status->CopyFrom(*pod_status);
@@ -797,6 +808,7 @@ void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     if (safe_mode_) {
         return;
     }
+
     std::map<AgentAddr, AgentInfo*>::iterator it;
     for (it = agents_.begin(); it != agents_.end(); ++it) {
         AgentInfo* agent = it->second;
@@ -818,7 +830,8 @@ void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
 
 void JobManager::GetAliveAgentsByDiff(const DiffVersionList& versions,
                                       AgentInfoList* agents_info,
-                                      StringList* deleted_agents) {
+                                      StringList* deleted_agents,
+                                      ::google::protobuf::Closure* done) {
     MutexLock lock(&mutex_);
     LOG(INFO, "get alive agents by diff , diff count %u", versions.size());
     // ms
@@ -852,6 +865,7 @@ void JobManager::GetAliveAgentsByDiff(const DiffVersionList& versions,
     LOG(INFO, "process diff with time consumed %ld, agents count %d ", 
                used_time,
                agents_info->size());
+    done->Run();
 }
 void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
     MutexLock lock(&mutex_);

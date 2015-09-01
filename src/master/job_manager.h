@@ -49,13 +49,15 @@ public:
     void GetPendingPods(JobInfoList* pending_pods,
                         int32_t max_scale_up_size,
                         JobInfoList* scale_down_pods,
-                        int32_t max_scale_down_size);
+                        int32_t max_scale_down_size,
+                        ::google::protobuf::Closure* done);
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsByDiff(const DiffVersionList& versions,
                               AgentInfoList* agents_info,
-                              StringList* deleted_agents);
+                              StringList* deleted_agents,
+                              ::google::protobuf::Closure* done);
     void GetJobsOverview(JobOverviewList* jobs_overview);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
     void KeepAlive(const std::string& agent_addr);
@@ -153,6 +155,8 @@ private:
 
     // nexus
     ::galaxy::ins::sdk::InsSDK* nexus_;
+
+    CondVar pod_cv_;
 };
 
 }

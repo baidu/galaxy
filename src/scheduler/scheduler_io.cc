@@ -4,11 +4,18 @@
 
 #include "scheduler/scheduler_io.h"
 
+#include <boost/bind.hpp>
+#include <boost/scoped_ptr.hpp>
+#include <boost/function.hpp>
 #include <gflags/gflags.h>
 #include "logging.h"
 
 DECLARE_int32(max_scale_down_size);
 DECLARE_int32(max_scale_up_size);
+DECLARE_int32(scheduler_get_pending_job_timeout);
+DECLARE_int32(scheduler_get_pending_job_period);
+DECLARE_int32(scheduler_sync_resource_timeout);
+DECLARE_int32(scheduler_sync_resource_period);
 
 namespace baidu {
 namespace galaxy {
@@ -42,95 +49,114 @@ bool SchedulerIO::Init() {
     return ok;
 }
 
-void SchedulerIO::Loop() {
+void SchedulerIO::Sync() {
+    SyncResources();
+    SyncPendingJob();
+}
+
+void SchedulerIO::SyncPendingJob() {
     MutexLock lock(&master_mutex_);
-    GetResourceSnapshotRequest sync_request;
-    scheduler_.BuildSyncRequest(&sync_request);
-    GetResourceSnapshotResponse sync_response;
-    bool ret = rpc_client_.SendRequest(master_stub_,
-                                      &Master_Stub::GetResourceSnapshot,
-                                      &sync_request, &sync_response, 5, 1);
-    if (!ret) {
-        LOG(WARNING, "fail to get master resource snapshot");
+    GetPendingJobsRequest* req = new GetPendingJobsRequest();
+    req->set_max_scale_up_size(FLAGS_max_scale_up_size);
+    req->set_max_scale_down_size(FLAGS_max_scale_down_size);
+    GetPendingJobsResponse* response = new GetPendingJobsResponse();
+    boost::function<void (const GetPendingJobsRequest*, GetPendingJobsResponse*, bool, int)> call_back;
+    call_back = boost::bind(&SchedulerIO::SyncPendingJobCallBack, this, _1, _2, _3, _4);
+    rpc_client_.AsyncRequest(master_stub_,
+                             &Master_Stub::GetPendingJobs,
+                             req, response,
+                             call_back,
+                             FLAGS_scheduler_get_pending_job_timeout, 0);
+}
+
+void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
+                                   GetPendingJobsResponse* response,
+                                   bool failed, int) {
+    MutexLock lock(&master_mutex_);
+    boost::scoped_ptr<const GetPendingJobsRequest> request_ptr(request);
+    boost::scoped_ptr<GetPendingJobsResponse> response_ptr(response);
+    if (failed) {
+        LOG(WARNING, "query master failed ");
+        thread_pool_.DelayTask(FLAGS_scheduler_get_pending_job_period, boost::bind(&SchedulerIO::SyncPendingJob, this));
         return;
     }
-    int32_t agent_count = scheduler_.SyncResources(&sync_response);
-    LOG(INFO, "sync resource from master successfully, agent count %d",
-             agent_count);
-    GetPendingJobsRequest get_jobs_request;
-    get_jobs_request.set_max_scale_up_size(FLAGS_max_scale_up_size);
-    get_jobs_request.set_max_scale_down_size(FLAGS_max_scale_down_size);
-    GetPendingJobsResponse get_jobs_response;
-
-    ListJobsRequest list_jobs_request;
-    ListJobsResponse list_jobs_response;
-
-    ProposeRequest pro_request;
-    ProposeResponse pro_response;
-
-    ret = rpc_client_.SendRequest(master_stub_,
-                                 &Master_Stub::GetPendingJobs,
-                                 &get_jobs_request,
-                                 &get_jobs_response,
-                                 5, 1);
-    if (!ret) {
-        LOG(WARNING, "fail to get pending jobs from master");
+    LOG(INFO, "get pending jobs from master , pending_size %d, scale_down_size %d", response_ptr->scale_up_jobs_size(),
+         response_ptr->scale_down_jobs_size());
+    std::vector<JobInfo*> scale_up_jobs;
+    for (int i = 0; i < response_ptr->scale_up_jobs_size(); i++) {
+        scale_up_jobs.push_back(response_ptr->mutable_scale_up_jobs(i));
     }
-    LOG(INFO, "get pending jobs from master , pending_size %d, scale_down_size %d",
-            get_jobs_response.scale_up_jobs_size(),
-            get_jobs_response.scale_down_jobs_size());
-
-    ret = rpc_client_.SendRequest(master_stub_,
-                            &Master_Stub::ListJobs,
-                            &list_jobs_request,
-                            &list_jobs_response,
-                            5, 1);
-    if (!ret) {
-        LOG(WARNING, "fail to get list jobs from master");
-    }
-    int32_t jobs_size = scheduler_.SyncJobOverview(&list_jobs_response);
-    LOG(INFO, "list jobs from master , #job %d", jobs_size);
-    std::vector<JobInfo*> pending_jobs;
-    for (int i = 0; i < get_jobs_response.scale_up_jobs_size(); i++) {
-        pending_jobs.push_back(get_jobs_response.mutable_scale_up_jobs(i));
-    }
-    std::vector<JobInfo*> reducing_jobs;
-    for (int i = 0; i < get_jobs_response.scale_down_jobs_size(); i++) {
-        reducing_jobs.push_back(get_jobs_response.mutable_scale_down_jobs(i));
+    std::vector<JobInfo*> scale_down_jobs;
+    for (int i = 0; i < response_ptr->scale_down_jobs_size(); i++) {
+        scale_down_jobs.push_back(response_ptr->mutable_scale_down_jobs(i));
     }
     std::vector<ScheduleInfo*> propose;
-    int32_t status = scheduler_.ScheduleScaleUp(pending_jobs, &propose);
+    int32_t status = scheduler_.ScheduleScaleUp(scale_up_jobs, &propose);
     if (status < 0) {
-        LOG(INFO, "fail to schedule scale up ");
-        goto END;
+        LOG(WARNING, "fail to schedule scale up ");
+        CleanPropse(propose);
     }
-    status = scheduler_.ScheduleScaleDown(reducing_jobs, &propose);
+    
+    status = scheduler_.ScheduleScaleDown(scale_down_jobs, &propose);
     if (status < 0) {
-        LOG(INFO, "fail to schedule scale down ");
-        goto END;
-    }
-    status = scheduler_.ScheduleAgentOverLoad(&propose);
-    if (status < 0) {
-        LOG(INFO, "fail to schedule agent overload");
-        goto END;
-    }
-
-    for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
-            it != propose.end(); ++it) {
-        ScheduleInfo* sched = pro_request.add_schedule();
-        sched->CopyFrom(*(*it));
-    }
-    ret = rpc_client_.SendRequest(master_stub_,
-                                      &Master_Stub::Propose,
+        LOG(WARNING, "fail to schedule scale down ");
+        CleanPropse(propose);
+    } 
+    if (propose.size() > 0) {
+        ProposeRequest pro_request;
+        ProposeResponse pro_response;
+        for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
+              it != propose.end(); ++it) {
+            ScheduleInfo* sched = pro_request.add_schedule();
+            sched->CopyFrom(*(*it));
+        }
+        bool ret = rpc_client_.SendRequest(master_stub_,
+                                  &Master_Stub::Propose,
                                   &pro_request,
                                   &pro_response,
                                   5, 1);
-    if (!ret) {
-        LOG(INFO, "fail to propose");
+        if (!ret) {
+            LOG(WARNING,"fail to propse");
+        }
+        CleanPropse(propose);
     }
-END:
+    thread_pool_.DelayTask(FLAGS_scheduler_get_pending_job_period, boost::bind(&SchedulerIO::SyncPendingJob, this));
+}
+
+void SchedulerIO::SyncResources() {
+    MutexLock lock(&master_mutex_);
+    LOG(INFO, "sync resource from master %s", master_addr_.c_str());
+    GetResourceSnapshotRequest* request = new GetResourceSnapshotRequest();
+    scheduler_.BuildSyncRequest(request);
+    GetResourceSnapshotResponse* response = new GetResourceSnapshotResponse();
+    boost::function<void (const GetResourceSnapshotRequest*, GetResourceSnapshotResponse*, bool, int)> call_back;
+    call_back = boost::bind(&SchedulerIO::SyncResourcesCallBack, this, _1, _2, _3, _4);
+    rpc_client_.AsyncRequest(master_stub_,
+                             &Master_Stub::GetResourceSnapshot,
+                             request, response,
+                             call_back,
+                             FLAGS_scheduler_sync_resource_timeout, 0);
+
+}
+
+void SchedulerIO::SyncResourcesCallBack(const GetResourceSnapshotRequest* request,
+                                        GetResourceSnapshotResponse* response,
+                                        bool failed, int) {
+    MutexLock lock(&master_mutex_);
+    if (!failed) {
+        int32_t agent_count = scheduler_.SyncResources(response);
+        LOG(INFO, "sync resource from master successfully, agent count %d",
+             agent_count);
+
+    }
+    delete request;
+    delete response;
+    thread_pool_.DelayTask(FLAGS_scheduler_sync_resource_period, boost::bind(&SchedulerIO::SyncResources, this));
+}
+
+void SchedulerIO::CleanPropse(std::vector<ScheduleInfo*>& propose) {
     for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
-                it != propose.end(); ++it) {
+         it != propose.end(); ++it) {
         delete *it;
     }
     propose.clear();

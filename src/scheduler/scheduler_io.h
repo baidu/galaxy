@@ -14,7 +14,7 @@
 #include "master/master_watcher.h"
 #include "rpc/rpc_client.h"
 #include <mutex.h>
-
+#include <thread_pool.h>
 namespace baidu {
 namespace galaxy {
 class SchedulerIO {
@@ -22,12 +22,25 @@ class SchedulerIO {
 public:
     SchedulerIO() : rpc_client_(),
                     master_stub_(NULL),
-                    scheduler_() {
+                    scheduler_(),
+                    thread_pool_(4){
     }
     ~SchedulerIO(){}
     void HandleMasterChange(const std::string& new_master_endpoint);
     bool Init();
-    void Loop();
+    void Sync();
+private:
+    void SyncPendingJob();
+    void SyncPendingJobCallBack(const GetPendingJobsRequest* req,
+                          GetPendingJobsResponse* response,
+                          bool failed, int);
+
+    void SyncResources();
+    void SyncResourcesCallBack(const GetResourceSnapshotRequest* request,
+                               GetResourceSnapshotResponse* response,
+                               bool failed, int);
+ 
+    void CleanPropse(std::vector<ScheduleInfo*>& propose);
 private:
     std::string master_addr_;
     RpcClient rpc_client_;
@@ -35,6 +48,7 @@ private:
     Scheduler scheduler_;
     MasterWatcher master_watcher_;
     Mutex master_mutex_;
+    ThreadPool thread_pool_;
 };
 
 } // galaxy

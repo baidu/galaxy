@@ -4,10 +4,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <gflags/gflags.h>
-//#include "logging.h"
 #include "scheduler/scheduler_io.h"
-DECLARE_string(master_host);
-DECLARE_string(master_port);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/) {
@@ -16,17 +13,14 @@ static void SignalIntHandler(int /*sig*/) {
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    //LOG(INFO, "start scheduler....")
     ::baidu::galaxy::SchedulerIO io;
     io.Init();
+    io.Sync();
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
     while (!s_quit) {
-        //LOG(INFO, "scheduler loop");
-        io.Loop();
         sleep(5);
     }
-    //LOG(INFO, "scheduler stopped");
     return 0;
 }
 

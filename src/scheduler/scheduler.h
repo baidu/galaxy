@@ -11,7 +11,6 @@
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
 #include "proto/master.pb.h"
-#include "mutex.h"
 
 namespace baidu {
 namespace galaxy {
@@ -37,17 +36,12 @@ struct AgentInfoExtend {
     }
 };
 
-struct PodKeepRunningCell {
-    std::map<std::string, std::string> keep_running_pods;
-    JobInfo* job;
-};
 
 struct PodScaleUpCell {
     PodDescriptor* pod;
     JobInfo* job;
     uint32_t schedule_count;
     uint32_t feasible_limit;
-    Resource resource;
     std::vector<std::string> pod_ids;
     std::vector<AgentInfoExtend*> feasible;
     std::map<double, AgentInfo*> sorted;
@@ -86,104 +80,42 @@ struct PodScaleDownCell {
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
 };
 
-class AgentHistory {
-public:
-    // 返回此Agent连续处于OverLoad的轮数
-    int32_t PushOverloadAgent(const AgentInfo* agent);
-
-    int32_t CleanOverloadAgent(const AgentInfo* agent);
-
-    // 返回此Agent连续处于OverLoad的轮数
-    int32_t CheckOverloadAgent(const AgentInfo* agent);
-
-private:
-    std::map<std::string, int32_t> agent_overload_map_;
-};
-
 class Scheduler {
 
 public:
     static double CalcLoad(const AgentInfo* agent);
 
-    // 检查agent是否处于超载
-    static bool CheckOverLoad(const AgentInfo* agent);
-
     Scheduler() : schedule_turns_(0){}
     ~Scheduler() {}
 
-    /*
-     * @brief 调度算入口: scale up
-     * @param
-     *  pending_jobs [IN] : 待调度任务，scale up
-     *  propose [OUT] : 调度结果
-     * @return
-     *   返回propose数量
-     * @note
-     *  调用者负责销毁 propose
-     *
-     */
+    // @brief 调度算入口: scale u
+    // @note 调用者负责销毁 propose
     int32_t ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                      std::vector<ScheduleInfo*>* propose);
 
-    /*
-     * @brief 调度算入口: scale down
-     * @param
-     *  pending_jobs [IN] : 待调度任务，scale down
-     *  propose [OUT] : 调度结果,
-     * @return
-     *   返回propose数量
-     * @note
-     *  调用者负责销毁 propose
-     *
-     */
+    // 调度算入口: scale down
+    // @note 调用者负责销毁 propose
     int32_t ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
                      std::vector<ScheduleInfo*>* propose);
 
-    /*
-     * @brief 从master同步资源数据
-     * @param
-     *     response [IN] : Agent全量状态
-     *
-     */
+    // 从master同步资源数据
     int32_t SyncResources(const GetResourceSnapshotResponse* response);
 
-    /**
-     * @brief master通知AgentInfo信息过期，需要更新
-     *
-     */
+    // master通知AgentInfo信息过期，需要更新
     int32_t UpdateAgent(const AgentInfo* agent_info);
 
-    /**
-     *
-     */
-    int32_t SyncJobOverview(const ListJobsResponse* response);
-
-    int32_t ScheduleAgentOverLoad(std::vector<ScheduleInfo*>* propose);
-
-    /*
-     * @return
-     *   0 for found
-     *  -1 for not found
-     */
-    int32_t GetPodCountForAgent(const AgentInfo* agent,
-                    int32_t* prod_count, int32_t* non_prod_count);
-
-    int32_t ScaleDownOverloadAgent(const AgentInfo* agent,
-                    std::vector<ScheduleInfo*>* propose);
-
     void BuildSyncRequest(GetResourceSnapshotRequest* request);
+
 private:
 
     int32_t ChoosePods(std::vector<JobInfo*>& pending_jobs,
-                       std::vector<PodScaleUpCell*>* pending_pods,
-                       std::vector<PodKeepRunningCell*>* keep_running_pods);
+                       std::vector<PodScaleUpCell*>* pending_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
     int32_t ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
 
-    int32_t CalcSources(const PodDescriptor& pod, Resource* resource);
 
     template<class T>
     void Shuffle(std::vector<T>& list) {
@@ -196,12 +128,8 @@ private:
     }
 
 private:
-
     boost::unordered_map<std::string, AgentInfoExtend*> resources_;
-    std::map<std::string, JobOverview*> job_overview_;
     int64_t schedule_turns_;    // 当前调度轮数
-    AgentHistory agent_his_;
-    Mutex mutex_;
 };
 
 
