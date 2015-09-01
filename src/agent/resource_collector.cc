@@ -8,11 +8,15 @@
 #include <errno.h>
 #include <string.h>
 #include <string>
+#include <iostream>
 #include "gflags/gflags.h"
 #include "boost/lexical_cast.hpp"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "logging.h"
+#include "agent/cgroups.h"
+
+DECLARE_string(gce_cgroup_root);
 
 namespace baidu {
 namespace galaxy {
@@ -25,6 +29,12 @@ static const std::string PROC_MOUNT_PATH = "/proc";
 static const size_t PROC_STAT_FILE_SPLIT_SIZE = 44;
 static const size_t PROC_STATUS_FILE_SPLIT_SIZE = 3;
 static const int MIN_COLLECT_TIME = 2;
+
+static bool GetCgroupCpuUsage(const std::string& cgroup_path, 
+                              CgroupResourceStatistics* statistics);
+
+static bool GetCgroupMemoryUsage(const std::string& cgroup_path, 
+                                 CgroupResourceStatistics* statistics);
 
 // get total cpu usage from /proc/stat
 static bool GetGlobalCpuUsage(ResourceStatistics* statistics);
@@ -76,6 +86,112 @@ double ProcResourceCollector::GetCpuCoresUsage() {
 
 long ProcResourceCollector::GetMemoryUsage() {
     return process_statistics_cur_.memory_rss_in_bytes;
+}
+
+CGroupResourceCollector::CGroupResourceCollector(const std::string& cgroup_name) : 
+    global_statistics_prev_(),
+    global_statistics_cur_(),
+    cgroup_statistics_prev_(),
+    cgroup_statistics_cur_(),
+    cgroup_name_(cgroup_name),
+    timestamp_prev_(0.0),
+    timestamp_cur_(0.0),
+    collector_times_(0) {
+}
+
+CGroupResourceCollector::~CGroupResourceCollector() {
+}
+
+void CGroupResourceCollector::ResetCgroupName(
+                            const std::string& cgroup_name) {
+    cgroup_name_ = cgroup_name;
+    collector_times_ = 0;
+}
+
+void CGroupResourceCollector::Clear() {
+    collector_times_ = 0;
+}
+
+double CGroupResourceCollector::GetCpuUsage() {
+    if (collector_times_ < 2) {
+        return 0.0; 
+    } 
+    long global_cpu_before = 
+        global_statistics_prev_.cpu_user_time
+        + global_statistics_prev_.cpu_nice_time
+        + global_statistics_prev_.cpu_system_time
+        + global_statistics_prev_.cpu_idle_time
+        + global_statistics_prev_.cpu_iowait_time
+        + global_statistics_prev_.cpu_irq_time
+        + global_statistics_prev_.cpu_softirq_time
+        + global_statistics_prev_.cpu_stealstolen
+        + global_statistics_prev_.cpu_guest;
+
+    long global_cpu_after =
+        global_statistics_cur_.cpu_user_time
+        + global_statistics_cur_.cpu_nice_time
+        + global_statistics_cur_.cpu_system_time
+        + global_statistics_cur_.cpu_idle_time
+        + global_statistics_cur_.cpu_iowait_time
+        + global_statistics_cur_.cpu_irq_time
+        + global_statistics_cur_.cpu_softirq_time
+        + global_statistics_cur_.cpu_stealstolen
+        + global_statistics_cur_.cpu_guest;
+
+    long cgroup_cpu_before = cgroup_statistics_prev_.cpu_user_time
+        + cgroup_statistics_prev_.cpu_system_time;
+    long cgroup_cpu_after = cgroup_statistics_cur_.cpu_user_time
+        + cgroup_statistics_cur_.cpu_system_time;
+
+    if (global_cpu_after - global_cpu_before <= 0
+            || cgroup_cpu_after - cgroup_cpu_before < 0) {
+        return 0.0; 
+    }
+    double rs = (cgroup_cpu_after - cgroup_cpu_before) 
+                / (double) (global_cpu_after - global_cpu_before);
+    return rs;
+}
+
+long CGroupResourceCollector::GetMemoryUsage() {
+    if (collector_times_ < 1) {
+        return 0L; 
+    }
+    return cgroup_statistics_cur_.memory_rss_in_bytes;
+}
+
+double CGroupResourceCollector::GetCpuCoresUsage() {
+    return GetCpuUsage() * CPU_CORES;
+}
+
+bool CGroupResourceCollector::CollectStatistics() {
+    ResourceStatistics temp_global_statistics;
+    CgroupResourceStatistics temp_cgroup_statistics;
+    timestamp_prev_ = timestamp_cur_;
+    timestamp_cur_ = ::time(NULL);
+
+    if (!GetCgroupCpuUsage(cgroup_name_, 
+                           &temp_cgroup_statistics)) {
+        LOG(WARNING, "cgroup collector collect cpu usage failed %s", 
+                     cgroup_name_.c_str());
+        return false;
+    }
+
+    if (!GetGlobalCpuUsage(&temp_global_statistics)) {
+        LOG(WARNING, "cgroup collector collect global cpu usage failed %s",
+                     cgroup_name_.c_str()); 
+    }
+
+    if (!GetCgroupMemoryUsage(cgroup_name_, &temp_cgroup_statistics)) {
+        LOG(WARNING, "cgroup collector collect memory failed %s",
+                     cgroup_name_.c_str()); 
+        return false;
+    }
+    global_statistics_prev_ = global_statistics_cur_;
+    cgroup_statistics_prev_ = cgroup_statistics_cur_;
+    global_statistics_cur_ = temp_global_statistics;
+    cgroup_statistics_cur_ = temp_cgroup_statistics;
+    collector_times_ ++;
+    return true;
 }
 
 double ProcResourceCollector::GetCpuUsage() {
@@ -212,6 +328,103 @@ bool GetProcPidUsage(int pid, ResourceStatistics* statistics) {
             statistics->cpu_system_time, 
             statistics->memory_rss_in_bytes);
     return true;
+}
+
+bool GetCgroupCpuUsage(const std::string& group_path, 
+                       CgroupResourceStatistics* statistics) {
+    if (statistics == NULL) {
+        return false; 
+    }
+    std::string hierarchy = FLAGS_gce_cgroup_root + "/cpuacct/";
+    std::string value;
+    if (0 != cgroups::Read(hierarchy, 
+                           group_path, 
+                           "cpuacct.stat", 
+                           &value)) {
+        LOG(WARNING, "get cpuacct stat failed %s", 
+                     group_path.c_str()); 
+        return false;
+    }
+    std::vector<std::string> lines;
+    boost::split(lines, value, boost::is_any_of("\n"));
+    int param_count = 0;
+    for (size_t i = 0; i < lines.size(); i++) {
+        std::string& line = lines[i]; 
+        if (line.empty()) {
+            continue; 
+        }
+        std::istringstream ss(line);
+        std::string name;
+        uint64_t use_time;
+        ss >> name >> use_time;
+        if (ss.fail()) {
+            LOG(WARNING, "line format err %s", line.c_str()); 
+            return false;
+        }
+        if (name == "user") {
+            param_count ++;
+            statistics->cpu_user_time = use_time; 
+        } else if (name == "system") {
+            param_count ++;
+            statistics->cpu_system_time = use_time; 
+        } else {
+            LOG(WARNING, "invalid name %s %s", 
+                         name.c_str(), line.c_str());
+            return false; 
+        }
+    }
+    if (param_count != 2) {
+        return false; 
+    }
+    
+    return true;
+}
+
+bool GetCgroupMemoryUsage(const std::string& group_path,
+                          CgroupResourceStatistics* statistics) {
+    if (statistics == NULL) {
+        return false; 
+    }
+
+    std::string hierarchy = FLAGS_gce_cgroup_root + "/memory/";
+    std::string value;
+    if (0 != cgroups::Read(hierarchy, 
+                           group_path, 
+                           "memory.stat", 
+                           &value)) {
+        LOG(WARNING, "get memory.stat falied %s",
+                     group_path.c_str()); 
+        return false;
+    }
+    std::vector<std::string> lines;
+    boost::split(lines, value, boost::is_any_of("\n"));
+    if (lines.size() <= 2) {
+        LOG(WARNING, "read contents format err %s %s", 
+                      group_path.c_str(), value.c_str()); 
+        return false;
+    }
+    bool ret = false;
+    for (size_t i = 0; i < lines.size(); i++) {
+        std::string& line = lines[i]; 
+        if (line.empty()) {
+            continue; 
+        }
+        std::istringstream ss(line);
+        std::string name;
+        uint64_t val;
+        ss >> name >> val;
+        if (ss.fail()) {
+            LOG(WARNING, "line format err %s", line.c_str()); 
+            return false;
+        }
+
+        if (name == "rss") {
+            ret = true;
+            statistics->memory_rss_in_bytes = val; 
+            break;
+        }
+    }
+    return ret;
 }
 
 

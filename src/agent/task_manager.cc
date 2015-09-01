@@ -29,11 +29,10 @@
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
+DECLARE_string(agent_global_cgroup_path);
 
 namespace baidu {
 namespace galaxy {
-
-static const std::string GLOBAL_CGROUP_PATH = "galaxy"; 
 
 TaskManager::TaskManager() : 
     tasks_mutex_(),
@@ -69,7 +68,7 @@ int TaskManager::Init() {
             LOG(WARNING, "hierarchy %s not exists", hierarchy.c_str()); 
             return -1;
         }
-        if (!file::Mkdir(hierarchy + "/" + GLOBAL_CGROUP_PATH)) {
+        if (!file::Mkdir(hierarchy + "/" + FLAGS_agent_global_cgroup_path)) {
             LOG(WARNING, "mkdir global cgroup path failed"); 
             return -1;
         }
@@ -726,7 +725,7 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
         return -1; 
     }
 
-    std::string cgroup_name = GLOBAL_CGROUP_PATH + "/" 
+    std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
     task->cgroup_path = cgroup_name;
     std::vector<std::string>::iterator hier_it = 
@@ -791,7 +790,7 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
 
     std::vector<std::string>::iterator hier_it = 
         hierarchies_.begin();
-    std::string cgroup = GLOBAL_CGROUP_PATH + "/" 
+    std::string cgroup = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
     for (; hier_it != hierarchies_.end(); ++hier_it) {
         std::string cgroup_dir = *hier_it; 

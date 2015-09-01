@@ -79,6 +79,7 @@ initd_src='src/gce/initd_main.cc\
            src/agent/utils.cc \
            src/proto/agent.proto\
            src/proto/galaxy.proto\
+           src/agent/cgroups.cc\
            src/flags.cc\
            src/proto/initd.proto'
 
@@ -95,7 +96,13 @@ test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/test_task_manager.cc src/agent/cgroups.cc'
 test_cgroup_src='src/agent/cgroups.cc src/agent/test_cgroups.cc'
 
-test_resource_collector_src='src/agent/test_resource_collector.cc src/agent/resource_collector.cc'
+test_resource_collector_src='src/agent/test_resource_collector.cc\
+                            src/agent/resource_collector.cc src/flags.cc\
+                            src/agent/cgroups.cc'
+test_cgroup_resource_collector_src='src/agent/test_cgroup_resource_collector.cc\
+                                   src/agent/resource_collector.cc src/flags.cc\
+                                   src/agent/cgroups.cc'
+
 test_persistence_handler_src='src/proto/agent.proto src/proto/galaxy.proto  \
                               src/proto/initd.proto \
                               src/agent/persistence_handler.cc src/agent/test_persistence_handler.cc'
@@ -110,3 +117,4 @@ Application('test_task_manager', Sources(test_task_manager_src))
 Application('test_cgroup', Sources(test_cgroup_src))
 Application('test_resource_collector', Sources(test_resource_collector_src))
 Application('test_persistence_handler', Sources(test_persistence_handler_src))
+Application('test_cgroup_resource_collector', Sources(test_cgroup_resource_collector_src))
