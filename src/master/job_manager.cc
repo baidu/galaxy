@@ -110,6 +110,15 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
+    // add default version
+    if (job->desc_.pod().has_version()
+       || job->desc_.pod().version().empty()) {
+        job->desc_.mutable_pod()->set_version("1.0.0");
+    }
+    job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod();
+    job->latest_version = job->desc_.pod().version();
+    // disable update default
+    job->update_state_ = kUpdateSuspend;
     // TODO add nexus lock
     bool save_ok = SaveToNexus(job);
     if (!save_ok) {
@@ -119,11 +128,12 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     jobs_[job_id] = job;
     FillPodsToJob(job);
     pod_cv_.Signal();
-    LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d ",
+    LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d , pod version %s",
       job_id.c_str(), 
       job_desc.user().c_str(),
       job_desc.deploy_step(),
-      job_desc.replica());
+      job_desc.replica(),
+      job->latest_version.c_str());
     return kOk;
 }
 
@@ -138,14 +148,20 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
             return kJobNotFound;
         }
         job = *(it->second);
+        if (job_desc.pod().version() != job.latest_version) {
+            job.latest_version = job_desc.pod().version();
+            job.desc_.mutable_pod()->CopyFrom(job_desc.pod());
+            job.pod_desc_[job_desc.pod().version()] = job_desc.pod();
+        }
+        job.desc_.set_replica(job_desc.replica());
     }
-    job.desc_.set_replica(job_desc.replica());
     // TODO add nexus lock
     bool save_ok = SaveToNexus(&job);
     if (!save_ok) {
         return kJobUpdateFail;
     }
     MutexLock lock(&mutex_);
+    bool need_notify = false;
     std::map<JobId, Job*>::iterator it;
     it = jobs_.find(job_id);
     if (it == jobs_.end()) {
@@ -199,6 +215,7 @@ Status JobManager::Terminte(const JobId& jobid) {
 void JobManager::FillPodsToJob(Job* job) {
     mutex_.AssertHeld();
     bool need_scale_up = false;
+    job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod().version();
     for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
         PodId pod_id = MasterUtil::UUID();
         PodStatus* pod_status = new PodStatus();
@@ -206,6 +223,7 @@ void JobManager::FillPodsToJob(Job* job) {
         pod_status->set_jobid(job->id_);
         pod_status->set_state(kPodPending);
         pod_status->set_stage(kStagePending);
+        pod_status->set_version(job->latest_version);
         job->pods_[pod_id] = pod_status;
         need_scale_up = true;
     }
@@ -260,6 +278,8 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 int32_t max_scale_up_size,
                                 JobInfoList* scale_down_pods,
                                 int32_t max_scale_down_size,
+                                JobInfoList* need_update_jobs,
+                                int32_t max_need_update_job_size,
                                 ::google::protobuf::Closure* done) {
     MutexLock lock(&mutex_);
     if (safe_mode_) {
@@ -1037,9 +1057,14 @@ bool JobManager::HandlePendingToRunning(PodStatus* pod, Job* job) {
         LOG(WARNING, "fsm the input is invalidate");
         return false;
     }
+    std::map<Version, PodDescriptor>::iterator it = job->pod_desc_.find(pod->version());
+    if (it == job->pod_desc_.end()) {
+        LOG(WARNING, "fail to find pod %d description with version %s", pod->podid().c_str(), pod->version().c_str());
+        return false;
+    }
     pod->set_stage(kStageRunning);
-    pod->set_state(kPodDeploying);
-    RunPod(job->desc_.pod(), pod);
+    pod->set_state(kPodDeploying); 
+    RunPod(it->second, pod);
     return true;
 }
 
@@ -1128,7 +1153,19 @@ bool JobManager::SaveToNexus(const Job* job) {
     JobInfo job_info;
     job_info.set_jobid(job->id_);
     job_info.set_state(job->state_);
+    job_info.set_update_state(job->update_state_);
     job_info.mutable_desc()->CopyFrom(job->desc_);
+    // delete pod 
+    if (job_info.desc().has_pod()) { 
+        job_info.mutable_desc()->release_pod();
+    }
+    job_info.set_latest_version(job->latest_version);
+    std::map<Version, PodDescriptor>::iterator it = job->pod_desc_.begin();
+    for(; it != job->pod_desc_.end(); ++it) {
+        PodDescriptor* pod_desc = job_info.add_pod_descs();
+        pod_desc->CopyFrom(it->second);
+    }
+
     std::string job_raw_data;
     std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
                           + "/" + job->id_;

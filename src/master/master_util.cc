@@ -62,11 +62,10 @@ std::string MasterUtil::SelfEndpoint() {
 void MasterUtil::TraceJobDesc(const JobDescriptor& job_desc) {
     LOG(INFO, "job descriptor: \"%s\", "
               "replica:%d, "
-              "deploy_step:%d, version:\"%s\"",
+              "deploy_step:%d",
               job_desc.name().c_str(),
               job_desc.replica(),
-              job_desc.deploy_step(),
-              job_desc.version().c_str()
+              job_desc.deploy_step()
     );
     for (int i = 0; i < job_desc.pod().tasks_size(); i++) {
         const TaskDescriptor& task_desc = job_desc.pod().tasks(i);

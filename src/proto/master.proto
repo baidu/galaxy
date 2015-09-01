@@ -20,8 +20,12 @@ enum JobPriority {
 
 enum JobState {
     kJobNormal = 0;
-    kJobSuspend = 1;
     kJobTerminated = 2;
+}
+
+enum JobUpdateState {
+    kUpdateNormal = 0;
+    kUpdateSuspend = 1;
 }
 
 enum ScheduleAction {
@@ -39,7 +43,6 @@ message JobDescriptor {
     repeated string labels = 6;
     optional int32 replica = 7;
     optional int32 deploy_step = 8;
-    optional string version = 9;
 }
 
 message JobInfo {
@@ -47,6 +50,11 @@ message JobInfo {
     optional JobDescriptor desc = 2;
     repeated PodStatus pods = 3;
     optional JobState state = 4;
+    optional JobUpdateState update_state = 5;
+    // per version per PodDescriptor
+    repeated PodDescriptor pod_descs = 6;
+    // pod latest pod descriptor
+    optional string latest_version = 7;
 }
 
 message ScheduleInfo {
@@ -147,7 +155,8 @@ message GetPendingJobsRequest {
 message GetPendingJobsResponse {
     repeated JobInfo scale_up_jobs = 1;
     repeated JobInfo scale_down_jobs = 2;
-    optional Status status = 3;
+    repeated JobInfo need_update_jobs = 3;
+    optional Status status = 4;
 }
 
 message DiffVersion {
