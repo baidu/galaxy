@@ -11,7 +11,7 @@ CopyUsingHardLink(True)
 #ENABLE_MULTI_LIBS(True)
 
 #C预处理器参数.
-CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"1.9.8.7\\\" -D_BD_KERNEL_')
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"_TEST_VERSION_\\\" -D_BD_KERNEL_')
 #为32位目标编译指定额外的预处理参数
 #CPPFLAGS_32('-D_XOPEN_SOURE=500')
 
@@ -79,7 +79,9 @@ initd_src='src/gce/initd_main.cc\
            src/agent/utils.cc \
            src/proto/agent.proto\
            src/proto/galaxy.proto\
+           src/agent/cgroups.cc\
            src/flags.cc\
+           src/agent/cgroups.cc\
            src/proto/initd.proto'
 
 sdk_src='src/sdk/galaxy.cc\

@@ -4,6 +4,8 @@
 
 #include <gflags/gflags.h>
 
+DEFINE_bool(v, false, "show version string");
+
 // nexus
 DEFINE_string(nexus_servers, "", "server list of nexus, e.g abc.com:1234,def.com:5342");
 DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on nexus, e.g /ps/galaxy");
@@ -52,6 +54,7 @@ DEFINE_int32(agent_rpc_initd_timeout, 2, "agent monitor initd interval, unit sec
 DEFINE_int32(agent_initd_port_begin, 9000, "agent initd port used begin");
 DEFINE_int32(agent_initd_port_end, 9500, "agent initd port used end");
 DEFINE_string(agent_persistence_path, "./data", "agent persistence path");
+DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
 
 // gce
 DEFINE_string(gce_cgroup_root, "/cgroups/", "Cgroup root mount path");

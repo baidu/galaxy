@@ -214,7 +214,6 @@ bool GetProcPidUsage(int pid, ResourceStatistics* statistics) {
     return true;
 }
 
-
 }   // ending namespace galaxy
 }   // ending namespace baidu
 

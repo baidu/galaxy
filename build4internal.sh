@@ -28,4 +28,3 @@ echo "build ins done"
 
 cd $BUILD_HOME && comake2 -UB && comake2
 echo "Configuration done! please run 'make -j6' to compile galaxy"
-

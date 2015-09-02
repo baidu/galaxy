@@ -45,8 +45,6 @@ AgentImpl::AgentImpl() :
     endpoint_.append(":");
     endpoint_.append(FLAGS_agent_port);
     master_watcher_ = new MasterWatcher();
-    background_threads_.DelayTask(
-            FLAGS_agent_heartbeat_interval, boost::bind(&AgentImpl::KeepHeartBeat, this));
 }
 
 AgentImpl::~AgentImpl() {
@@ -258,6 +256,8 @@ bool AgentImpl::Init() {
     if (!RegistToMaster()) {
         return false; 
     }
+    background_threads_.DelayTask(
+            FLAGS_agent_heartbeat_interval, boost::bind(&AgentImpl::KeepHeartBeat, this));
 
     background_threads_.DelayTask(
                 500, 
@@ -340,6 +340,7 @@ bool AgentImpl::RegistToMaster() {
     if (!PingMaster()) {
         LOG(WARNING, "connect master %s failed", master_endpoint_.c_str()); 
     }
+    LOG(INFO, "regist to master %s", master_endpoint_.c_str());
     return true;
 }
 

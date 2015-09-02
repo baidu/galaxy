@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/mount.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,13 +17,14 @@
 #include "gflags/gflags.h"
 #include "sofa/pbrpc/pbrpc.h"
 #include "logging.h"
-#include "gce/utils.h"
+#include "agent/utils.h"
 
 using baidu::common::Log;
 using baidu::common::FATAL;
 using baidu::common::INFO;
 using baidu::common::WARNING;
 const int RPC_START_FAIL = -3;
+const int MAX_START_TIMES = 15;
 
 DECLARE_string(gce_initd_dump_file);
 DECLARE_string(gce_initd_port);
@@ -48,9 +52,15 @@ bool LoadInitdCheckpoint(baidu::galaxy::InitdImpl* service) {
         return false;
     }
 
-    std::string pb_buffer;
-    fin >> pb_buffer;
+    fin.seekg(0, fin.end);
+    int len = fin.tellg();
+    fin.seekg(0, fin.beg);
+    char temp_read_buffer[len];
+    fin.read(temp_read_buffer, len);
     fin.close();
+    
+    std::string pb_buffer(temp_read_buffer, len);
+    LOG(INFO, "load initd checkpoint size %lu", pb_buffer.size());
 
     // TODO delete dump file
 
@@ -90,8 +100,35 @@ bool DumpInitdCheckpoint(baidu::galaxy::InitdImpl* service) {
 
     ofs << checkpoint_buffer;
     ofs.close();
+    LOG(INFO, "dump initd size %lu", checkpoint_buffer.size());
+    return true;
+}
 
-    return false;
+bool MountProc() {
+    pid_t cur_pid = ::getpid();
+    if (cur_pid != 1) {
+        // NOTE only new PID namespace need mount proc 
+        LOG(WARNING, "current pid not init pid, no need mount proc");
+        return true;
+    }
+    std::string proc_path;
+    if (!baidu::galaxy::process::GetCwd(&proc_path)) {
+        LOG(WARNING, "get cwd failed"); 
+        return false;
+    }
+
+    proc_path.append("/proc/"); 
+    if (!baidu::galaxy::file::Mkdir(proc_path)) {
+        LOG(WARNING, "mkdir proc path %s failed", proc_path.c_str()); 
+        return false;
+    }
+    
+    if (0 != ::mount("proc", proc_path.c_str(), "proc", 0, "")
+            && errno != EBUSY) {
+        LOG(WARNING, "mount proc at %s failed", proc_path.c_str()); 
+        return false;
+    }
+    return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -108,6 +145,10 @@ int main(int argc, char* argv[]) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
+    if (!MountProc()) {
+        return EXIT_FAILURE; 
+    }
+
     baidu::galaxy::InitdImpl* initd_service =
                                 new baidu::galaxy::InitdImpl();
     if (!initd_service->Init()) {
@@ -121,6 +162,8 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    baidu::galaxy::file::Remove(FLAGS_gce_initd_dump_file);
+
     if (!rpc_server.RegisterService(initd_service)) {
         LOG(WARNING, "Rpc Server Regist Service failed");
         return EXIT_FAILURE;
@@ -128,10 +171,23 @@ int main(int argc, char* argv[]) {
 
     std::string server_host = std::string("0.0.0.0:") 
         + FLAGS_gce_initd_port;
-    if (!rpc_server.Start(server_host)) {
-        LOG(WARNING, "Rpc Server Start failed");
-        return RPC_START_FAIL;
-    } 
+    int start_retry_times = MAX_START_TIMES;    
+    bool ret = false;
+    // retry when restart
+    while (start_retry_times-- > 0) {
+        if (!rpc_server.Start(server_host)) {
+            LOG(WARNING, "Rpc Server Start failed");
+            sleep(1000);
+            continue;
+        } 
+        ret = true;
+        break;
+    }
+    
+    if (!ret) {
+        return RPC_START_FAIL; 
+    }
+
     signal(SIGTERM, StopSigHandler);
     signal(SIGINT, StopSigHandler);
     signal(SIGUSR1, RestartSigHandler);

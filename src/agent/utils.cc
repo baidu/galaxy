@@ -95,6 +95,43 @@ void ReplaceEmptyChar(std::string& str) {
 
 namespace process { 
 
+bool GetCwd(std::string* dir) {
+    if (dir == NULL) {
+        return false; 
+    }
+    const int TEMP_PATH_LEN = 1024;    
+    char* path_buffer = NULL; 
+    int path_len = TEMP_PATH_LEN;
+    bool ret = false;
+    for (int i = 1; i < 10; i++) {
+        path_len = i * TEMP_PATH_LEN;
+        if (path_buffer != NULL) {
+            delete []path_buffer;
+            path_buffer = NULL;
+        }
+        path_buffer = new char[path_len];
+        char* path = ::getcwd(path_buffer, path_len);
+        if (path != NULL) {
+            ret = true; 
+            break;
+        }
+        if (errno == ERANGE) {
+            continue; 
+        }
+        LOG(WARNING, "get cwd failed err[%d: %s]", 
+                errno, strerror(errno));
+        break;
+    }
+    if (ret) {
+        dir->clear();
+        dir->append(path_buffer, strlen(path_buffer));
+    }
+    if (path_buffer != NULL) {
+        delete []path_buffer; 
+    }
+    return ret;
+}
+
 bool PrepareStdFds(const std::string& pwd, 
                    int* stdout_fd, 
                    int* stderr_fd) {
@@ -146,6 +183,7 @@ void GetProcessOpenFds(const pid_t pid,
         }
         fd_vector->push_back(::atoi(fd_files[i].c_str()));    
     }
+    LOG(DEBUG, "list pid %d fds size %u", pid, fd_vector->size());
     return;
 }
 
@@ -294,7 +332,7 @@ bool ListFiles(const std::string& dir_path,
         files->push_back(entry->d_name);
     }
 
-    closedir(dir);
+    ::closedir(dir);
     return true;
 }
 
