@@ -440,10 +440,16 @@ int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
 void AgentInfoExtend::CalcExtend() {
     unassigned.CopyFrom(agent_info->total());
     bool ret = ResourceUtils::Alloc(agent_info->assigned(), unassigned);
-    assert(ret);
+    if (!ret) {
+        LOG(WARNING, "fail to calc agent %s unassigned info extend", agent_info->endpoint().c_str());
+        unassigned.set_millicores(0);
+    }
     free.CopyFrom(agent_info->total());
     ret = ResourceUtils::Alloc(agent_info->used(), free);
-    assert(ret);
+    if (!ret) {
+         LOG(WARNING, "fail to calc agent %s free info extend", agent_info->endpoint().c_str());
+         free.set_millicores(0);
+    }
     labels_set.clear();
     for (int i = 0; i < agent_info->tags_size(); i++) {
         labels_set.insert(agent_info->tags(i)); 
