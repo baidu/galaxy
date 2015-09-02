@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include <signal.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -9,14 +14,26 @@
 #include "sofa/pbrpc/pbrpc.h"
 
 #include "agent/agent_impl.h"
+#include "utils/build_info.h"
 #include "logging.h"
 
 volatile static bool s_is_stop = false;
 
+DECLARE_bool(v);
 DECLARE_string(agent_port);
 
 void StopSigHandler(int /*sig*/) {
     s_is_stop = true;
+}
+
+void SigChldHandler(int /*sig*/) {
+    int status = 0;
+    while (true) {
+        pid_t pid = ::waitpid(-1, &status, WNOHANG);    
+        if (pid == -1 || pid == 0) {
+            return; 
+        }
+    }    
 }
 
 int main (int argc, char* argv[]) {
@@ -27,6 +44,11 @@ int main (int argc, char* argv[]) {
     using baidu::common::WARNING;
 
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    if (FLAGS_v) {
+        fprintf(stdout, "build version : %s\n", baidu::galaxy::GetVersion());
+        fprintf(stdout, "build time : %s\n", baidu::galaxy::GetBuildTime());
+        return 0;
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
@@ -49,6 +71,9 @@ int main (int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    signal(SIGINT, StopSigHandler);
+    signal(SIGTERM, StopSigHandler);
+    signal(SIGCHLD, SigChldHandler);
     while (!s_is_stop) {
         sleep(5); 
     }

@@ -36,6 +36,7 @@ DECLARE_int32(agent_initd_port_end);
 DECLARE_bool(agent_namespace_isolation_switch);
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
+DECLARE_string(flagfile);
 
 namespace baidu {
 namespace galaxy {
@@ -108,8 +109,12 @@ int PodManager::LanuchInitdByFork(PodInfo* info) {
     path.append("/");
     path.append(info->pod_id);
     std::string command = FLAGS_agent_initd_bin;
+    command.append(" --flagfile=");
+    command.append(FLAGS_flagfile);
     command.append(" --gce_initd_port=");
     command.append(boost::lexical_cast<std::string>(info->initd_port));
+    command.append(" --gce_initd_dump_file=");
+    command.append(path + "/initd_checkpoint_file");
     file::Mkdir(path);
     if (!process::PrepareStdFds(path, &stdout_fd, &stderr_fd)) {
         LOG(WARNING, "prepare std fds for pod %s failed",
@@ -162,6 +167,8 @@ int PodManager::LanuchInitd(PodInfo* info) {
     context.stdout_fd = -1; 
     context.stderr_fd = -1;
     context.start_command = FLAGS_agent_initd_bin;
+    context.start_command.append(" --flagfile=");
+    context.start_command.append(FLAGS_flagfile);
     context.start_command.append(" --gce_initd_port=");
     context.start_command.append(boost::lexical_cast<std::string>(info->initd_port));
     if (!FLAGS_gce_cgroup_root.empty()) {
@@ -173,6 +180,8 @@ int PodManager::LanuchInitd(PodInfo* info) {
         context.start_command.append(FLAGS_gce_support_subsystems);
     }
     context.path = FLAGS_agent_work_dir + "/" + info->pod_id;
+    context.start_command.append(" --gce_initd_dump_file=");
+    context.start_command.append(context.path + "/initd_checkpoint_file");
     if (!file::Mkdir(context.path)) {
         LOG(WARNING, "mkdir %s failed", context.path.c_str()); 
         return -1;
@@ -222,6 +231,17 @@ int PodManager::CheckPod(const std::string& pod_id) {
         // TODO check initd exits
         ::kill(pod_info.initd_pid, SIGTERM);
         ReleasePortFromInitd(pod_info.initd_port);
+        std::string workspace_pod = FLAGS_agent_work_dir;
+        workspace_pod.append("/");
+        workspace_pod.append(pod_id);
+        // NOTE if initd not killed, 
+        // remove may failed, need try again
+        if (file::IsExists(workspace_pod)
+                && !file::Remove(workspace_pod)) {
+            LOG(WARNING, "remove pod workspace failed %s", 
+                         pod_id.c_str());
+            return 0; 
+        }
         LOG(INFO, "remove pod %s", pod_info.pod_id.c_str());
         pods_.erase(pod_it);
         return -1;
