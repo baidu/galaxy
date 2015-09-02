@@ -37,6 +37,8 @@ void PrepareChildProcessEnvStep2(const int stdout_fd,
                                  const int stderr_fd, 
                                  const std::vector<int>& fd_vector);
 
+bool GetCwd(std::string* dir);
+
 } // ending namespace process
 
 namespace file {

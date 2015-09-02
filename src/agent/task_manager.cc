@@ -31,6 +31,7 @@ DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
 DECLARE_string(agent_global_cgroup_path);
+DECLARE_int32(agent_detect_interval);
 
 namespace baidu {
 namespace galaxy {
@@ -58,6 +59,7 @@ int TaskManager::Init() {
             FLAGS_gce_support_subsystems,
             boost::is_any_of(","),
             boost::token_compress_on);
+    hierarchies_.clear();
     for (size_t i = 0; i < sub_systems.size(); i++) {
         if (sub_systems[i].empty()) {
             continue; 
@@ -310,6 +312,7 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     initd_request.set_commands(stop_command);
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
+
     if (task_info->initd_stub == NULL 
             && !rpc_client_->GetStub(task_info->initd_endpoint, 
                                      &(task_info->initd_stub))) {
@@ -491,7 +494,7 @@ int TaskManager::QueryProcessInfo(Initd_Stub* initd_stub,
                                         &Initd_Stub::GetProcessStatus,
                                         &initd_request,
                                         &initd_response,
-                                        5, 1);
+                                        5, 3);
     if (!ret) {
         LOG(WARNING, "query key %s rpc failed",
                 info->key().c_str()); 
@@ -538,13 +541,6 @@ int TaskManager::CleanWorkspace(TaskInfo* task) {
         LOG(WARNING, "Remove task %s workspace failed",
                 task->task_id.c_str());
         return -1;
-    }
-    std::string workspace_root = FLAGS_agent_work_dir;
-    workspace_root.append("/");
-    workspace_root.append(task->pod_id);
-    if (file::IsExists(workspace_root)
-            && !file::Remove(workspace_root)) {
-        return -1;     
     }
     return 0;
 }
@@ -736,7 +732,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
                 TaskState_Name(task_info->status.state()).c_str());
     }
     background_thread_.DelayTask(
-                    500, 
+                    FLAGS_agent_detect_interval, 
                     boost::bind(
                         &TaskManager::DelayCheckTaskStageChange,
                         this, task_id));
@@ -750,9 +746,14 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
 
     if (hierarchies_.size() == 0) {
         return 0; 
+<<<<<<< HEAD
     } 
 
     std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
+=======
+    }
+    std::string cgroup_name = GLOBAL_CGROUP_PATH + "/" 
+>>>>>>> upstream/refactor
         + task->task_id;
     task->cgroup_path = cgroup_name;
     std::vector<std::string>::iterator hier_it = 

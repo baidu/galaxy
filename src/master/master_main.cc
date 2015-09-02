@@ -11,6 +11,7 @@
 #include <logging.h>
 
 #include "master_impl.h"
+#include "utils/build_info.h"
 
 using baidu::common::Log;
 using baidu::common::FATAL;
@@ -18,6 +19,7 @@ using baidu::common::INFO;
 using baidu::common::WARNING;
 
 DECLARE_string(master_port);
+DECLARE_bool(v);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
@@ -26,6 +28,11 @@ static void SignalIntHandler(int /*sig*/){
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    if (FLAGS_v) {
+        fprintf(stdout, "build version : %s\n", baidu::galaxy::GetVersion());
+        fprintf(stdout, "build time : %s\n", baidu::galaxy::GetBuildTime());
+        return 0;
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     baidu::galaxy::MasterImpl* master_impl = new baidu::galaxy::MasterImpl();
