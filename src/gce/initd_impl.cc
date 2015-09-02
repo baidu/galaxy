@@ -95,7 +95,28 @@ void InitdImpl::GetProcessStatus(::google::protobuf::RpcController* /*controller
     return;
 }
 
-void InitdImpl::Execute(::google::protobuf::RpcController* controller,
+bool InitdImpl::GetProcPath(std::string* proc_path) {
+    if (proc_path == NULL) {
+        return false; 
+    }
+    proc_path->clear();
+    // TODO no need to get each time
+    pid_t pid = ::getpid();
+    if (pid != 1) {
+        proc_path->append("/proc/");
+        return true;
+    }
+
+    if (!process::GetCwd(proc_path)) {
+        LOG(WARNING, "get cwd failed"); 
+        return false;
+    }
+
+    proc_path->append("/proc/");
+    return true;
+}
+
+void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
                        const ::baidu::galaxy::ExecuteRequest* request,
                        ::baidu::galaxy::ExecuteResponse* response,
                        ::google::protobuf::Closure* done) {
@@ -114,7 +135,27 @@ void InitdImpl::Execute(::google::protobuf::RpcController* controller,
 
     // 1. collect initd fds
     std::vector<int> fd_vector;
-    process::GetProcessOpenFds(::getpid(), &fd_vector);
+    std::string proc_path;
+    if (!GetProcPath(&proc_path)) {
+        response->set_status(kUnknown);
+        done->Run();
+        return;
+    }
+    proc_path.append(boost::lexical_cast<std::string>(::getpid())); 
+    proc_path.append("/fd/");
+    std::vector<std::string> files;
+    if (!file::ListFiles(proc_path, &files)) {
+        LOG(WARNING, "list new proc failed");
+        response->set_status(kInputError);
+        done->Run();
+        return; 
+    }
+    for (size_t i = 0; i < files.size(); i++) {
+        if (files[i] == "." || files[i] == "..") {
+            continue; 
+        } 
+        fd_vector.push_back(::atoi(files[i].c_str()));
+    }
 
     // 2. prepare std fds for child 
     int stdout_fd = 0;
@@ -268,19 +309,6 @@ bool InitdImpl::AttachCgroup(const std::string& cgroup_path,
     return true;
 }
 
-
-void InitdImpl::CreatePod(::google::protobuf::RpcController* controller,
-                      const ::baidu::galaxy::CreatePodRequest* request,
-                      ::baidu::galaxy::CreatePodResponse* response,
-                      ::google::protobuf::Closure* done) {
-}
-
-
-void InitdImpl::GetPodStatus(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::GetPodStatusRequest* request,
-                         ::baidu::galaxy::GetPodStatusResponse* response,
-                         ::google::protobuf::Closure* done) {
-}
 
 bool InitdImpl::LoadProcessInfoCheckPoint(const ProcessInfoCheckpoint& checkpoint) {
     MutexLock scope_lock(&lock_);
