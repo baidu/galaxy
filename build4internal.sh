@@ -28,7 +28,3 @@ echo "build ins done"
 
 cd $BUILD_HOME && comake2 -UB && comake2
 echo "Configuration done! please run 'make -j6' to compile galaxy"
-
-VERSION_STR=`git log -n 1 | head -1 | cut -d" " -f2`
-sed -i s/_TEST_VERSION_/$VERSION_STR/g COMAKE
-
