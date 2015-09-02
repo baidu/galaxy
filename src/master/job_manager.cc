@@ -286,6 +286,12 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     job->desc_.CopyFrom(job_info.desc());
     std::string job_id = job_info.jobid();
     job->id_ = job_id;
+    job->update_state_ = job_info.update_state();
+    job->latest_version = job_info.latest_version();
+    for (int32_t i = 0; i < job_info.pod_descs_size(); i++) {
+        const PodDescriptor& desc = job_info.pod_descs(i);
+        job->pod_desc_[desc.version()] = desc;
+    }
     MutexLock lock(&mutex_);
     jobs_[job_id] = job;
 }
@@ -364,8 +370,19 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
                 PodStatus* pod = job_info->add_pods();
                 pod->CopyFrom(*(pod_it->second));
             }
+            job_info->set_jobid(job->id_);
+            job_info->set_latest_version(job->latest_version);
+            std::map<Version, PodDescriptor>::iterator v_it = job->pod_desc_.begin();
+            for (; v_it != job->pod_desc_.end(); ++v_it) {
+                PodDescriptor* pod_desc = job_info->add_pod_descs();
+                pod_desc->CopyFrom(v_it->second);
+            }
+            job_info->set_update_state(kUpdateNormal);
+            job->update_state_ = kUpdateNormal;
         }else {
+            job->update_state_ = kUpdateSuspend;
             should_rm_from_update.insert(*jobid_it);
+            LOG(INFO, "job %s leave update state", job->id_.c_str());
         }
     }
     jobid_it = should_rm_from_update.begin();
@@ -523,10 +540,12 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         return kPodNotFound;
     }
     PodStatus* pod = pod_it->second;
-    if (sche_info.action() == kTerminate) {
+    if (sche_info.action() == kTerminate 
+        && job->state_ == kJobTerminated) {
         ChangeStage(kStageRemoved, pod, job);
         return kOk;
-    } else if (sche_info.action() == kLaunch) {
+    } else if (sche_info.action() == kLaunch
+               && job->state_ != kJobTerminated) {
         if (pod->stage() != kStagePending) {
             LOG(WARNING, "propose fails for pod been in invalide stage %s, require stage kStgePending", PodStage_Name(pod->stage()).c_str());
             return kInputError; 
@@ -553,7 +572,15 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         LOG(INFO, "propose success, %s will be run on %s",
         podid.c_str(), endpoint.c_str());
         return kOk;
-    } 
+    } else if(sche_info.action() == kTerminate
+              && job->state_ != kJobTerminated 
+              && job->update_state_ == kUpdateNormal) {
+        LOG(INFO, "update pod %s of job %s", 
+                  pod->podid().c_str(),
+                  job->id_.c_str());
+        ChangeStage(kStageDeath, pod, job);
+        return kOk;
+    }
     return kInputError;
 }
 

@@ -223,7 +223,7 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo*>& pending_jobs,
 }
 
 int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
-                                    std::vector<PodScaleDownCell*>* reducing_pods) {
+                                     std::vector<PodScaleDownCell*>* reducing_pods) {
     // 获取scale down的任务
     int reducing_count = 0;
     std::vector<JobInfo*>::iterator job_it = reducing_jobs.begin();
@@ -469,6 +469,48 @@ int32_t Scheduler::UpdateAgent(const AgentInfo* agent_info) {
     else {
         LOG(INFO, "update agent %s not exists", agent_info->endpoint().c_str());
         return 1;
+    }
+}
+
+int32_t Scheduler::ScheduleUpdate(std::vector<JobInfo*>& update_jobs,
+                                  std::vector<ScheduleInfo*>* propose) {
+    std::vector<JobInfo*>::iterator job_it = update_jobs.begin();
+    for(; job_it != update_jobs.end(); ++job_it) {
+        HandleJobUpdate(*job_it, propose);
+    }
+    return 0;
+}
+
+void Scheduler::HandleJobUpdate(JobInfo* job_info,
+                                std::vector<ScheduleInfo*>* propose) {
+    std::vector<PodStatus*> need_update_pods;
+    int32_t updating_count = 0;
+    for (int32_t i = 0; i < job_info->pods_size(); i++) {
+        PodStatus* pod = job_info->mutable_pods(i);
+        if (pod->version() != job_info->latest_version()) {
+            need_update_pods.push_back(pod);
+        }
+        if (pod->stage() == kStagePending 
+           || pod->stage() == kStageDeath
+           || pod->state() == kPodDeploying) {
+            updating_count++;
+        }
+    }
+    LOG(INFO, "job %s update stat: updating_count %d, update_step_size %d, need_update_size %u",
+        job_info->jobid().c_str(), updating_count, job_info->desc().deploy_step(), need_update_pods.size());
+    int32_t max_update_size = need_update_pods.size();
+    if (max_update_size > job_info->desc().deploy_step()) {
+        max_update_size = job_info->desc().deploy_step();
+    }
+    for (size_t i = 0; i < need_update_pods.size() && updating_count < max_update_size ; i++ ) {
+        updating_count++;
+        ScheduleInfo* sched_info = new ScheduleInfo();
+        PodStatus* pod = need_update_pods[i];
+        sched_info->set_endpoint(pod->endpoint());
+        sched_info->set_jobid(pod->jobid());
+        sched_info->set_podid(pod->podid());
+        sched_info->set_action(kTerminate);
+        propose->push_back(sched_info);
     }
 }
 
