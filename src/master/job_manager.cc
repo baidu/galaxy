@@ -326,6 +326,7 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
     }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
+    ProcessUpdateJob(need_update_jobs, max_need_update_job_size);
     done->Run();
 }
 
@@ -334,7 +335,11 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
     mutex_.AssertHeld();
     std::set<JobId> should_rm_from_update;
     std::set<JobId>::iterator jobid_it = need_update_jobs_.begin();
+    int32_t job_count = 0;
     for (; jobid_it != need_update_jobs_.end(); ++jobid_it) {
+        if (job_count >= max_need_update_job_size) {
+            return;
+        }
         std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
         if (job_it == jobs_.end()) {
             should_rm_from_update.insert(*jobid_it);
@@ -343,8 +348,30 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
         Job* job = job_it->second;
         // check if job still needs update
         std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+        bool need_update = false;
+        for (; pod_it != job->pods_.end(); ++pod_it) {
+            if (pod_it->second->version() != job->latest_version) {
+                need_update = true;
+                break;
+            }
+        }
+        if (need_update) {
+            job_count++;
+            LOG(INFO, "add job %s to update queue", job->id_.c_str());
+            pod_it = job->pods_.begin();
+            JobInfo* job_info = need_update_jobs->Add();
+            for (; pod_it != job->pods_.end(); ++pod_it) {
+                PodStatus* pod = job_info->add_pods();
+                pod->CopyFrom(*(pod_it->second));
+            }
+        }else {
+            should_rm_from_update.insert(*jobid_it);
+        }
     }
-
+    jobid_it = should_rm_from_update.begin();
+    for (; jobid_it != should_rm_from_update.end(); ++jobid_it) {
+        need_update_jobs_.erase(*jobid_it);
+    }
 }
 
 void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
@@ -1099,6 +1126,9 @@ bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
     fsm_.erase(pod->podid());
     job->pods_.erase(pod->podid());
     delete pod;
+    if (job->state_ != kJobTerminated) {
+        FillPodsToJob(job);
+    }
     return true;
 }
 
