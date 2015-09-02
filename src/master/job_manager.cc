@@ -266,8 +266,8 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
         done->Run();
         return;
     }
-    if (scale_down_jobs_.size() <= 0 
-        || scale_up_jobs_.size() <= 0) {
+    if (scale_down_jobs_.size() <= 0 && 
+        scale_up_jobs_.size() <= 0) {
         pod_cv_.TimeWait(FLAGS_master_pending_job_wait_timeout);
     }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
