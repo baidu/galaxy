@@ -198,7 +198,6 @@ bool JobManager::HandleUpdateJob(const JobDescriptor& desc, Job* job,
     if (replica_change == NULL || pod_desc_change == NULL) {
         return false;
     }
-    bool has_change = false;
     *pod_desc_change = false;
     *replica_change = false;
     if (desc.pod().version() != job->latest_version) {
@@ -338,7 +337,7 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
     for (; jobid_it != need_update_jobs_.end(); ++jobid_it) {
         std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
         if (job_it == jobs_.end()) {
-            should_rm_from_update.insert(*job_it);
+            should_rm_from_update.insert(*jobid_it);
             continue;
         }
         Job* job = job_it->second;
