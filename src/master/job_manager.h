@@ -107,6 +107,8 @@ private:
                           int32_t max_scale_down_size);
     void ProcessScaleUp(JobInfoList* scale_up_pods,
                         int32_t max_scale_up_size);
+    void ProcessUpdateJob(JobInfoList* need_update_jobs,
+                         int32_t max_need_update_job_size);
     void BuildPodFsm();
     bool HandleCleanPod(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);
@@ -125,6 +127,9 @@ private:
     bool SaveToNexus(const Job* job);
     bool SaveLabelToNexus(const LabelCell& label_cell);
     bool DeleteFromNexus(const JobId& jobid);
+
+    bool HandleUpdateJob(const JobDescriptor& desc, Job* job, 
+                         bool* replica_change, bool* pod_desc_change);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
