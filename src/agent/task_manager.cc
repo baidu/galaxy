@@ -23,6 +23,7 @@
 #include "gflags/gflags.h"
 #include "agent/utils.h"
 #include "agent/cgroups.h"
+#include "agent/resource_collector.h"
 #include "logging.h"
 #include "timer.h"
 
@@ -107,6 +108,13 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
         return 0;
     }
 
+    if (PrepareResourceCollector(task_info) != 0) {
+        LOG(WARNING, "task %s prepare resource collector failed in reload",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+
     SetupDeployProcessKey(task_info);
     SetupRunProcessKey(task_info);
     SetupTerminateProcessKey(task_info);
@@ -184,6 +192,13 @@ int TaskManager::CreateTask(const TaskInfo& task) {
     if (PrepareCgroupEnv(task_info) != 0) {
         LOG(WARNING, "task %s prepare cgroup failed",
                 task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return -1;
+    }
+
+    if (PrepareResourceCollector(task_info) != 0) {
+        LOG(WARNING, "task %s prepare resource collector failed",
+                task_info->task_id.c_str());
         task_info->status.set_state(kTaskError);
         return -1;
     }
@@ -364,12 +379,19 @@ int TaskManager::CleanTask(TaskInfo* task_info) {
         task_info->status.set_state(kTaskError);
         return -1;
     }
+    if (CleanResourceCollector(task_info) != 0) {
+        LOG(WARNING, "task  %s clean resource collector failed",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return -1;
+    }
     if (CleanCgroupEnv(task_info) != 0) {
         LOG(WARNING, "task %s clean cgroup failed",
                 task_info->task_id.c_str()); 
         task_info->status.set_state(kTaskError);
         return -1;
     }
+
     LOG(INFO, "task %s clean success", task_info->task_id.c_str());
     return 0;
 }
@@ -654,6 +676,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     }
 
     TaskInfo* task_info = it->second;
+    SetResourceUsage(task_info);
     // switch task stage
     if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
@@ -724,6 +747,10 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     if (task == NULL) {
         return -1; 
     }
+
+    if (hierarchies_.size() == 0) {
+        return 0; 
+    } 
 
     std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
@@ -822,6 +849,58 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
         }
     }
     return 0;
+}
+
+int TaskManager::PrepareResourceCollector(TaskInfo* task_info) {
+    if (task_info == NULL) {
+        return -1; 
+    }
+
+    if (hierarchies_.size() == 0) {
+        return 0; 
+    } 
+
+    if (task_info->resource_collector != NULL) {
+        delete task_info->resource_collector; 
+        task_info->resource_collector = NULL;
+    }
+    std::string cgroup_path = FLAGS_agent_global_cgroup_path + "/" 
+                              + task_info->task_id;
+    task_info->resource_collector = 
+                    new CGroupResourceCollector(cgroup_path);
+    return 0; 
+}
+
+int TaskManager::CleanResourceCollector(TaskInfo* task_info) {
+    if (task_info == NULL) {
+        return -1; 
+    }
+    if (task_info->resource_collector != NULL) {
+        delete task_info->resource_collector; 
+        task_info->resource_collector = NULL;
+    }
+    return 0;
+}
+
+void TaskManager::SetResourceUsage(TaskInfo* task_info) {
+    if (task_info == NULL) {
+        return ; 
+    }
+    
+    if (task_info->resource_collector == NULL) {
+        return ; 
+    }
+
+    task_info->resource_collector->CollectStatistics();
+    double cpu_cores_used = 
+        task_info->resource_collector->GetCpuCoresUsage();
+    long memory_used = 
+        task_info->resource_collector->GetMemoryUsage();
+    task_info->status.mutable_resource_used()->set_millicores(
+            static_cast<int32_t>(cpu_cores_used * 1000));
+    task_info->status.mutable_resource_used()->set_memory(
+            memory_used);
+    return ; 
 }
 
 }   // ending namespace galaxy

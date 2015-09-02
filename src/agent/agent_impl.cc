@@ -76,6 +76,8 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
     agent_info.mutable_assigned()->set_memory(
             FLAGS_agent_memory- resource_capacity_.memory);
 
+    int32_t millicores = 0;
+    int64_t memory_used = 0;
     std::vector<PodInfo> pods;
     pod_manager_.ShowPods(&pods);
     LOG(INFO, "query pods size %u", pods.size());
@@ -83,11 +85,15 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
     for (; it != pods.end(); ++it) {
         PodStatus* pod_status = agent_info.add_pods();         
         pod_status->CopyFrom(it->pod_status);
+        millicores += pod_status->resource_used().millicores();
+        memory_used += pod_status->resource_used().memory();
         LOG(DEBUG, "query pod %s job %s state %s", 
                 pod_status->podid().c_str(), 
                 pod_status->jobid().c_str(),
                 PodState_Name(pod_status->state()).c_str());
     }
+    agent_info.mutable_used()->set_millicores(millicores);
+    agent_info.mutable_used()->set_memory(memory_used);
     resp->mutable_agent()->CopyFrom(agent_info);
     done->Run();
     return;

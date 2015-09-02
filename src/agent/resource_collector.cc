@@ -179,6 +179,7 @@ bool CGroupResourceCollector::CollectStatistics() {
     if (!GetGlobalCpuUsage(&temp_global_statistics)) {
         LOG(WARNING, "cgroup collector collect global cpu usage failed %s",
                      cgroup_name_.c_str()); 
+        return false;
     }
 
     if (!GetCgroupMemoryUsage(cgroup_name_, &temp_cgroup_statistics)) {
