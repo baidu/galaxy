@@ -746,14 +746,9 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
 
     if (hierarchies_.size() == 0) {
         return 0; 
-<<<<<<< HEAD
     } 
 
     std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
-=======
-    }
-    std::string cgroup_name = GLOBAL_CGROUP_PATH + "/" 
->>>>>>> upstream/refactor
         + task->task_id;
     task->cgroup_path = cgroup_name;
     std::vector<std::string>::iterator hier_it = 
@@ -773,17 +768,33 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
 
     std::string cpu_hierarchy = FLAGS_gce_cgroup_root + "/cpu/";
     std::string mem_hierarchy = FLAGS_gce_cgroup_root + "/memory/";
+    const int CPU_CFS_PERIOD = 100000;
+    const int MIN_CPU_CFS_QUOTA = 1000;
 
-    int32_t cpu_share = task->desc.requirement().millicores() * 512;
+    int32_t cpu_limit = task->desc.requirement().millicores() * (CPU_CFS_PERIOD / 1000);
+    if (cpu_limit < MIN_CPU_CFS_QUOTA) {
+        cpu_limit = MIN_CPU_CFS_QUOTA; 
+    }
     if (cgroups::Write(cpu_hierarchy,
-                cgroup_name,
-                "cpu.shares",
-                boost::lexical_cast<std::string>(cpu_share)
-                ) != 0) {
-        LOG(WARNING, "set cpu share %d failed for %s",
-                cpu_share, cgroup_name.c_str()); 
+                       cgroup_name,
+                       "cpu.cfs_quota_us",
+                       boost::lexical_cast<std::string>(cpu_limit)
+                       ) != 0) {
+        LOG(WARNING, "set cpu limit %d failed for %s",
+                cpu_limit, cgroup_name.c_str()); 
         return -1;
     }
+    // use share, 
+    //int32_t cpu_share = task->desc.requirement().millicores() * 512;
+    //if (cgroups::Write(cpu_hierarchy,
+    //            cgroup_name,
+    //            "cpu.shares",
+    //            boost::lexical_cast<std::string>(cpu_share)
+    //            ) != 0) {
+    //    LOG(WARNING, "set cpu share %d failed for %s",
+    //            cpu_share, cgroup_name.c_str()); 
+    //    return -1;
+    //}
     int64_t memory_limit = 1024L * 1024 
         * task->desc.requirement().memory();
     if (cgroups::Write(mem_hierarchy,
