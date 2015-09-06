@@ -6,3 +6,4 @@ PBRPC_PATH=./thirdparty/sofa-pbrpc/output/
 BOOST_PATH=
 GFLAGS_PATH=
 INS_PATH=./ins/output/
+RAPIDJSON_PATH=./thirdparty/rapidjson
