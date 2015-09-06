@@ -95,41 +95,41 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
         need_update_jobs.push_back(response_ptr->mutable_need_update_jobs(i));
     }
     std::vector<ScheduleInfo*> propose;
-
-    int32_t status = scheduler_.ScheduleScaleUp(scale_up_jobs, &propose);
-    if (status < 0) {
-        LOG(WARNING, "fail to schedule scale up ");
-        CleanPropse(propose);
-    }
-    
-    status = scheduler_.ScheduleScaleDown(scale_down_jobs, &propose);
-    if (status < 0) {
-        LOG(WARNING, "fail to schedule scale down ");
-        CleanPropse(propose);
-    }
-    status = scheduler_.ScheduleUpdate(need_update_jobs, &propose);
-    if (status != 0) {
-        LOG(WARNING, "fail to schedule scale down ");
-        CleanPropse(propose);
-    }
-    if (propose.size() > 0) {
-        ProposeRequest pro_request;
-        ProposeResponse pro_response;
-        for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
-              it != propose.end(); ++it) {
-            ScheduleInfo* sched = pro_request.add_schedule();
-            sched->CopyFrom(*(*it));
+    do{
+        int32_t status = scheduler_.ScheduleScaleUp(scale_up_jobs, &propose);
+        if (status < 0) {
+            LOG(WARNING, "fail to schedule scale up ");
+            break;
         }
-        bool ret = rpc_client_.SendRequest(master_stub_,
-                                  &Master_Stub::Propose,
-                                  &pro_request,
-                                  &pro_response,
-                                  5, 1);
-        if (!ret) {
-            LOG(WARNING,"fail to propse");
+        status = scheduler_.ScheduleScaleDown(scale_down_jobs, &propose);
+        if (status < 0) {
+            LOG(WARNING, "fail to schedule scale down ");
+            break;
         }
-        CleanPropse(propose);
-    }
+        status = scheduler_.ScheduleUpdate(need_update_jobs, &propose);
+        if (status != 0) {
+            LOG(WARNING, "fail to schedule scale down ");
+            break;
+        }
+        if (propose.size() > 0) {
+            ProposeRequest pro_request;
+            ProposeResponse pro_response;
+            for (std::vector<ScheduleInfo*>::iterator it = propose.begin();
+                  it != propose.end(); ++it) {
+                ScheduleInfo* sched = pro_request.add_schedule();
+                sched->CopyFrom(*(*it));
+            }
+            bool ret = rpc_client_.SendRequest(master_stub_,
+                                      &Master_Stub::Propose,
+                                      &pro_request,
+                                      &pro_response,
+                                      5, 1);
+            if (!ret) {
+                LOG(WARNING,"fail to propse");
+            }
+        }
+    }while(false);
+    CleanPropse(propose);
     thread_pool_.DelayTask(FLAGS_scheduler_get_pending_job_period, boost::bind(&SchedulerIO::SyncPendingJob, this));
 }
 
