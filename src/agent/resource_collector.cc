@@ -5,6 +5,8 @@
 #include "agent/resource_collector.h"
 
 #include <time.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <string>
