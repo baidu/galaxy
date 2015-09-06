@@ -4,7 +4,7 @@
 
 #include "agent/resource_collector.h"
 
-#include <timer.h>
+#include <time.h>
 #include <errno.h>
 #include <string.h>
 #include <string>
