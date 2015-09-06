@@ -353,8 +353,6 @@ int AgentImpl::AllocResource(const Resource& requirement) {
     lock_.AssertHeld();
     if (resource_capacity_.millicores >= requirement.millicores()
             && resource_capacity_.memory >= requirement.memory()) {
-        resource_capacity_.millicores -= requirement.millicores(); 
-        resource_capacity_.memory -= requirement.memory();
         boost::unordered_set<int32_t> ports;
         for (int i = 0; i < requirement.ports_size(); i++) {
             int32_t port = requirement.ports(i);
@@ -369,6 +367,8 @@ int AgentImpl::AllocResource(const Resource& requirement) {
         for (; it != ports.end(); ++it) {
             resource_capacity_.used_port.insert(*it);
         }
+        resource_capacity_.millicores -= requirement.millicores(); 
+        resource_capacity_.memory -= requirement.memory();
 
         return 0;
     }
