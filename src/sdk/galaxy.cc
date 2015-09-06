@@ -20,13 +20,15 @@ public:
         rpc_client_->GetStub(master_addr, &master_);
     }
     virtual ~GalaxyImpl() {}
-    std::string SubmitJob(const JobDescription& job);
+    bool SubmitJob(const JobDescription& job, std::string* job_id);
     bool UpdateJob(const std::string& jobid, const JobDescription& job);
     bool ListJobs(std::vector<JobInformation>* jobs);
     bool ListAgents(std::vector<NodeDescription>* nodes);
     bool TerminateJob(const std::string& job_id);
     bool LabelAgents(const std::string& label, 
                      const std::vector<std::string>& agents);
+private:
+    bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
 private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
@@ -62,42 +64,93 @@ bool GalaxyImpl::TerminateJob(const std::string& job_id) {
     return false;
 }
 
-std::string GalaxyImpl::SubmitJob(const JobDescription& job){
+bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job, 
+                                   JobDescriptor* job) {
+    job->set_name(sdk_job.job_name);
+    // job meta
+    JobType job_type;
+    bool ok = JobType_Parse(sdk_job.type, &job_type);
+    if (!ok) {
+        return false;
+    }
+    job->set_type(job_type);
+    JobPriority priority;
+    ok = JobPriority_Parse(sdk_job.priority, &priority);
+    if (!ok) {
+        return false;
+    }
+    job->set_deploy_step(sdk_job.deploy_step);
+    job->set_replica(sdk_job.replica);
+
+    // pod meta
+    PodDescriptor* pod_pb = job->mutable_pod();
+    Resource* pod_res = pod_pb->mutable_requirement();
+    // pod res
+    pod_res->set_millicores(sdk_job.pod.requirement.millicores);
+    pod_res->set_memory(sdk_job.pod.requirement.memory);
+
+    for (size_t i = 0; i < sdk_job.pod.tasks.size(); i++) {
+        TaskDescriptor* task = pod_pb->add_tasks();
+        task->set_binary(sdk_job.pod.tasks[i].binary);
+        task->set_start_command(sdk_job.pod.tasks[i].start_cmd);
+        task->set_stop_command(sdk_job.pod.tasks[i].stop_cmd);
+        SourceType source_type;
+        ok = SourceType_Parse(sdk_job.pod.tasks[i].source_type, &source_type);
+        if (!ok) {
+            return false;
+        }
+        task->set_source_type(source_type);
+        Resource* task_res = task->mutable_requirement();
+        const ResDescription& task_res_desc = sdk_job.pod.tasks[i].requirement;
+        task_res->set_millicores(task_res_desc.millicores);
+        task_res->set_memory(task_res_desc.memory);
+        for (size_t j = 0; j < task_res_desc.ports.size(); j++) {
+            task_res->add_ports(task_res_desc.ports[j]);
+        }
+        for (size_t j = 0; j < task_res_desc.disks.size(); j++) {
+            Volume* disk = task_res->add_disks();
+            disk->set_quota(task_res_desc.disks[j].quota);
+            disk->set_path(task_res_desc.disks[j].path);
+        }
+        for (size_t j = 0; j < task_res_desc.ssds.size(); j++) {
+            Volume* ssd = task_res->add_ssds();
+            ssd->set_quota(task_res_desc.ssds[j].quota);
+            ssd->set_path(task_res_desc.ssds[j].path);
+        }
+    }
+    if (!sdk_job.label.empty()) {
+        job->mutable_pod()->add_labels(sdk_job.label);
+    }
+    return true;
+}
+
+bool GalaxyImpl::SubmitJob(const JobDescription& job, std::string* job_id){
+    if (job_id == NULL) {
+        return false;
+    }
     SubmitJobRequest request;
     SubmitJobResponse response;
-    request.mutable_job()->set_name(job.job_name);
-    if (job.is_batch) {
-        request.mutable_job()->set_type(kBatch);
+    bool ok = FillJobDescriptor(job, request.mutable_job());
+    if (!ok) {
+        return false;
     }
-    request.mutable_job()->set_deploy_step(job.deploy_step);
-    Resource* pod_resource = request.mutable_job()->mutable_pod()->mutable_requirement();
-    pod_resource->set_millicores(job.cpu_required);
-    pod_resource->set_memory(job.mem_required);
-    if (!job.label.empty()) {
-        request.mutable_job()->mutable_pod()->add_labels(job.label);
-    }
-    TaskDescriptor* task = request.mutable_job()->mutable_pod()->add_tasks();
-    if (job.binary.substr(0, 6) == "ftp://") {
-        task->set_source_type(kSourceTypeFTP);
-    }else {
-        task->set_source_type(kSourceTypeBinary);
-    }
-    task->set_binary(job.binary);
-    task->set_start_command(job.cmd_line);
-    task->mutable_requirement()->set_millicores(job.cpu_required);
-    task->mutable_requirement()->set_memory(job.mem_required);
-    request.mutable_job()->set_replica(job.replica);
     rpc_client_->SendRequest(master_, &Master_Stub::SubmitJob,
                              &request,&response,5,1);
-    return response.jobid();
+    if (response.status() != kOk) {
+        return false;
+    }
+    *job_id = response.jobid();
+    return true;
 }
 
 bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) {
     UpdateJobRequest request;
     UpdateJobResponse response;
     request.set_jobid(jobid);
-    request.mutable_job()->set_name(job.job_name);
-    request.mutable_job()->set_replica(job.replica);
+    bool ok = FillJobDescriptor(job, request.mutable_job());
+    if (!ok) {
+        return false;
+    }
     rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
                              &request, &response, 5, 1);
     if (response.status() != kOk) {

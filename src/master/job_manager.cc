@@ -237,9 +237,7 @@ Status JobManager::Terminte(const JobId& jobid) {
         return kJobNotFound;
     }
     it->second->desc_.set_replica(0);
-    if (it->second->pods_.size() > 0) { 
-        scale_down_jobs_.insert(it->second->id_);
-    }
+    scale_down_jobs_.insert(it->second->id_);
     it->second->state_ = kJobTerminated;
     pod_cv_.Signal();
     return kOk;
