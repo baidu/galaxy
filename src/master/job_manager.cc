@@ -375,6 +375,7 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
                 PodDescriptor* pod_desc = job_info->add_pod_descs();
                 pod_desc->CopyFrom(v_it->second);
             }
+            job_info->mutable_desc()->CopyFrom(job->desc_);
             job_info->set_update_state(kUpdateNormal);
             job->update_state_ = kUpdateNormal;
         }else {
@@ -838,11 +839,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid(); 
-        LOG(INFO, "the pod %s of job %s on agent %s state %s",
+        LOG(INFO, "the pod %s of job %s on agent %s state %s version %s",
                   podid.c_str(), 
                   jobid.c_str(), 
                   report_agent_info.endpoint().c_str(),
-                  PodState_Name(report_pod_info.state()).c_str()); 
+                  PodState_Name(report_pod_info.state()).c_str(),
+                  report_pod_info.version().c_str()); 
         // validate job 
         std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
         if (job_it == jobs_.end()) {

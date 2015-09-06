@@ -22,6 +22,7 @@ DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on 
 DEFINE_string(master_path, "/master", "master path on nexus");
 DEFINE_string(f, "", "specify config file ,job config file or label config file");
 DEFINE_string(j, "", "specify job id");
+DEFINE_string(l, "", "add a label to agent");
 DEFINE_int32(d, 0, "specify delay time to query");
 DECLARE_string(flagfile);
 
@@ -32,10 +33,12 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy agents\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
+                                 "    galaxy label -l <label> -f <lableconfig>\n"
                                  "Options:\n"
                                  "    -f config    Specify config file ,eg job config file , label config file.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
-                                 "    -d delay     Specify delay in second to update infomation.\n";
+                                 "    -d delay     Specify delay in second to update infomation.\n"
+                                 "    -l label     Add label to list of agents.\n";
 
 bool GetMasterAddr(std::string* master_addr) {
     if (master_addr == NULL) {
@@ -87,13 +90,9 @@ bool LoadAgentEndpointsFromFile(
     return true;
 }
 
-int LabelAgent(int argc, char* argv[]) {
-    if (argc < 1) {
-        return -1; 
-    }
-    std::string label(argv[0]);
+int LabelAgent() {
     std::vector<std::string> agent_endpoints;
-    if (argc == 2 && LoadAgentEndpointsFromFile(argv[1], &agent_endpoints)) {
+    if (LoadAgentEndpointsFromFile(FLAGS_f, &agent_endpoints)) {
         return -1;     
     }
     std::string master_endpoint;
@@ -103,7 +102,7 @@ int LabelAgent(int argc, char* argv[]) {
         return -1;
     }
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
-    if (!galaxy->LabelAgents(label, agent_endpoints)) {
+    if (!galaxy->LabelAgents(FLAGS_l, agent_endpoints)) {
         return -1; 
     }
     return 0;
@@ -398,10 +397,7 @@ int ListJob() {
     return 0;
 }
 
-int KillJob(int argc, char* argv[]) {
-    if (argc < 1) {
-        return 1;
-    }
+int KillJob() {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
     if (!ok) {
@@ -409,12 +405,11 @@ int KillJob(int argc, char* argv[]) {
         return -1;
     }
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
-    std::string jobid(argv[0]);
-    if (jobid.empty()) {
+    if (FLAGS_j.empty()) {
         return 1;
     }
-    if (galaxy->TerminateJob(jobid)) {
-        printf("terminate job %s successfully\n", argv[0]);
+    if (galaxy->TerminateJob(FLAGS_j)) {
+        printf("terminate job %s successfully\n", FLAGS_j.c_str());
         return 0;
     }
     return 1;
@@ -435,11 +430,11 @@ int main(int argc, char* argv[]) {
     } else if (strcmp(argv[1], "agents") == 0) {
 		return ListAgent();
     } else if (strcmp(argv[1], "label") == 0) {
-        return LabelAgent(argc - 2, argv + 2);
+        return LabelAgent();
     } else if (strcmp(argv[1], "update") == 0) {
         return UpdateJob();
     }else if (strcmp(argv[1], "kill") == 0){
-        return KillJob(argc - 2 , argv + 2);
+        return KillJob();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
