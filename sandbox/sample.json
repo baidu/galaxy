@@ -5,6 +5,7 @@
     "priority":"kOnline",
     "deploy_step":3,
     "pod":{
+        "version":"2.0.0",
         "requirement":{
             "millicores":1000,
             "memory":2000 

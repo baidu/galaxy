@@ -164,9 +164,23 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         fprintf(stderr, "requirement is required in pod\n");
         return -1;
     }
+    if (!pod_json.HasMember("version")) {
+        fprintf(stderr, "version is required in pod\n");
+        return -1;
+    }
+    pod.version = pod_json["version"].GetString();
     const rapidjson::Value& pod_require = pod_json["requirement"];
+    if (!pod_require.HasMember("millicores")) {
+        fprintf(stderr, "millicores is required\n");
+        return -1;
+    }
     res.millicores = pod_require["millicores"].GetInt();
+    if (!pod_require.HasMember("memory")) {
+        fprintf(stderr, "memory is required\n");
+        return -1;
+    }
     res.memory = pod_require["memory"].GetInt64();
+
     if (pod_json.HasMember("ports")) {
         const rapidjson::Value&  pod_ports = pod_require["ports"];
         for (rapidjson::SizeType i = 0; i < pod_ports.Size(); i++) {

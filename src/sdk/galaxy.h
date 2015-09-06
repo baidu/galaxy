@@ -38,6 +38,7 @@ struct TaskDescription {
 struct PodDescription {
    ResDescription requirement; 
    std::vector<TaskDescription> tasks;
+   std::string version;
 };
 
 struct JobDescription {
