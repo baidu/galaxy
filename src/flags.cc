@@ -35,6 +35,8 @@ DEFINE_int32(agent_millicores, 123123, "agent millicores");
 DEFINE_int32(agent_memory, 123123, "agent memory");
 DEFINE_string(agent_initd_bin, "./initd", "initd bin path");
 DEFINE_string(agent_work_dir, "./work_dir", "the work dir for storaging job package and runtime dir");
+DEFINE_string(agent_gc_dir, "./gc_dir", "the gc dir for pod env");
+DEFINE_int64(agent_gc_timeout, 1000 * 60 * 60 * 5, "gc timeout");
 DEFINE_bool(agent_namespace_isolation_switch, false, "agent namespace isolate");
 
 DEFINE_int32(agent_monitor_pods_interval, 10, "agent monitor pods interval, unit seconds");
