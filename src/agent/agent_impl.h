@@ -8,6 +8,8 @@
 #include <string>
 #include <map>
 
+#include "boost/unordered_set.hpp"
+
 #include "sofa/pbrpc/pbrpc.h"
 #include "proto/agent.pb.h"
 #include "proto/master.pb.h"
@@ -66,9 +68,12 @@ private:
     struct ResourceCapacity {
         int64_t millicores; 
         int64_t memory;
+        // TODO initd port not included
+        boost::unordered_set<int32_t> used_port;
         ResourceCapacity() 
             : millicores(0),
-              memory(0) {
+              memory(0),
+              used_port() {
         }
     };
 private:

@@ -21,6 +21,7 @@ struct AgentInfoExtend {
     Resource unassigned;
     AgentInfo* agent_info;
     boost::unordered_set<std::string> labels_set;
+    boost::unordered_set<int32_t> used_port_set;
 
     AgentInfoExtend(AgentInfo* p_agent_info):free(),
                                            unassigned(){
