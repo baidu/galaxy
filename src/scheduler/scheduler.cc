@@ -359,6 +359,10 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
         int32_t port = pod->requirement().ports(port_ind);
         if (agent_info_extend->used_port_set.find(port) != 
                 agent_info_extend->used_port_set.end()) {
+            LOG(INFO, "agent %s does not fit job %s port check used %d",
+                    agent_info_extend->agent_info->endpoint().c_str(),
+                    job->jobid().c_str(),
+                    port);
             return false; 
         }
     }
