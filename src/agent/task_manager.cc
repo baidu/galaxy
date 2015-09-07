@@ -339,17 +339,17 @@ int TaskManager::CleanProcess(TaskInfo* task_info) {
             && task_info->deploy_process.status() 
                                 == kProcessRunning) {
         // TODO query first?
-        ::kill(task_info->deploy_process.pid(), SIGKILL); 
+        ::killpg(task_info->deploy_process.pid(), SIGKILL); 
     }  
     if (task_info->main_process.has_status() 
             && task_info->main_process.status()
                                 == kProcessRunning) {
-        ::kill(task_info->main_process.pid(), SIGKILL); 
+        ::killpg(task_info->main_process.pid(), SIGKILL); 
     }
     if (task_info->stop_process.has_status() 
             && task_info->stop_process.status()
                                 == kProcessRunning) {
-        ::kill(task_info->stop_process.pid(), SIGKILL); 
+        ::killpg(task_info->stop_process.pid(), SIGKILL); 
     }
     return 0;
 }
