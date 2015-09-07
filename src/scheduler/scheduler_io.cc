@@ -116,7 +116,7 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
                                   &pro_response,
                                   5, 1);
             if (!ret) {
-                LOG(WARNING,"fail to propse");
+                LOG(WARNING,"fail to propse for %s", Status_Name(pro_response.status()).c_str());
             }
         } 
     }while(false);
