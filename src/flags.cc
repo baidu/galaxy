@@ -42,6 +42,7 @@ DEFINE_int32(agent_rpc_initd_timeout, 2, "agent monitor initd interval, unit sec
 DEFINE_int32(agent_initd_port_begin, 9000, "agent initd port used begin");
 DEFINE_int32(agent_initd_port_end, 9500, "agent initd port used end");
 DEFINE_string(agent_persistence_path, "./data", "agent persistence path");
+DEFINE_string(agent_global_cgroup_path, "galaxy", "agent cgroup global path");
 DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
 
 // gce

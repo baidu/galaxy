@@ -37,11 +37,10 @@ SCHEDULER_SRC = $(wildcard src/scheduler/scheduler*.cc)
 SCHEDULER_OBJ = $(patsubst %.cc, %.o, $(SCHEDULER_SRC))
 SCHEDULER_HEADER = $(wildcard src/scheduler/*.h)
 
-AGENT_SRC = $(wildcard src/agent/agent*.cc) src/agent/pod_manager.cc src/agent/task_manager.cc src/agent/utils.cc src/agent/persistence_handler.cc src/agent/cgroups.cc
+AGENT_SRC = $(wildcard src/agent/agent*.cc) src/agent/pod_manager.cc src/agent/task_manager.cc src/agent/utils.cc src/agent/persistence_handler.cc src/agent/cgroups.cc src/agent/resource_collector.cc
 AGENT_OBJ = $(patsubst %.cc, %.o, $(AGENT_SRC))
-AGENT_HEADER = $(wildcard src/agent/*.h) src/agent/pod_manager.h src/agent/task_manager.h src/agent/utils.h src/agent/persistence_handler.h
-
-TEST_AGENT_SRC = src/agent/test_agent.cc
+AGENT_HEADER = $(wildcard src/agent/*.h) 
+TEST_AGENT_SRC = src/agent/test_agent.cc src/agent/resource_collector.cc
 TEST_AGENT_OBJ = $(patsubst %.cc, %.o, $(TEST_AGENT_SRC))
 
 INITD_SRC = $(wildcard src/gce/initd*.cc) src/agent/utils.cc src/flags.cc  src/agent/cgroups.cc
