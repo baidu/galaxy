@@ -382,7 +382,6 @@ void AgentImpl::ReleaseResource(const Resource& requirement) {
     for (int i = 0; i < requirement.ports_size(); i++) {
         resource_capacity_.used_port.erase(requirement.ports(i));
     }
-    return;
 }
 
 }   // ending namespace galaxy
