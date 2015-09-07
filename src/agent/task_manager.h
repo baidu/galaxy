@@ -38,6 +38,7 @@ protected:
     int CleanVolumeEnv(TaskInfo* task_info);
     int CleanProcess(TaskInfo* task_info);
 
+    void SetResourceUsage(TaskInfo* task_info);
     // task stage run
     int DeployTask(TaskInfo* task_info);
     int RunTask(TaskInfo* task_info);

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "agent/resource_collector.h"
 #include "boost/lexical_cast.hpp"
 #include "google/protobuf/text_format.h"
 #include "proto/galaxy.pb.h"
@@ -36,6 +37,7 @@ struct TaskInfo {
     int stop_timeout_point;
     int initd_check_failed;
     Initd_Stub* initd_stub;
+    CGroupResourceCollector* resource_collector; 
 
     std::string ToString() {
         std::string pb_str;
@@ -93,7 +95,8 @@ struct TaskInfo {
           max_retry_times(3),
           stop_timeout_point(0),
           initd_check_failed(0),
-          initd_stub(NULL) {
+          initd_stub(NULL),
+          resource_collector(NULL) {
     }
 
     void CopyFrom(const TaskInfo& task) {
@@ -113,6 +116,7 @@ struct TaskInfo {
         stop_timeout_point = task.stop_timeout_point;
         initd_check_failed = task.initd_check_failed;
         initd_stub = task.initd_stub;
+        resource_collector = task.resource_collector;
     }
 
     TaskInfo& operator=(const TaskInfo& task) {

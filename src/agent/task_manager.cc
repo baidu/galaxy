@@ -23,18 +23,18 @@
 #include "gflags/gflags.h"
 #include "agent/utils.h"
 #include "agent/cgroups.h"
+#include "agent/resource_collector.h"
 #include "logging.h"
 #include "timer.h"
 
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
+DECLARE_string(agent_global_cgroup_path);
 DECLARE_int32(agent_detect_interval);
 
 namespace baidu {
 namespace galaxy {
-
-static const std::string GLOBAL_CGROUP_PATH = "galaxy"; 
 
 TaskManager::TaskManager() : 
     tasks_mutex_(),
@@ -71,7 +71,7 @@ int TaskManager::Init() {
             LOG(WARNING, "hierarchy %s not exists", hierarchy.c_str()); 
             return -1;
         }
-        if (!file::Mkdir(hierarchy + "/" + GLOBAL_CGROUP_PATH)) {
+        if (!file::Mkdir(hierarchy + "/" + FLAGS_agent_global_cgroup_path)) {
             LOG(WARNING, "mkdir global cgroup path failed"); 
             return -1;
         }
@@ -105,6 +105,13 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
     }
     if (PrepareCgroupEnv(task_info) != 0) {
         LOG(WARNING, "task %s prepare cgroup failed in reload",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return 0;
+    }
+
+    if (PrepareResourceCollector(task_info) != 0) {
+        LOG(WARNING, "task %s prepare resource collector failed in reload",
                 task_info->task_id.c_str()); 
         task_info->status.set_state(kTaskError);
         return 0;
@@ -187,6 +194,13 @@ int TaskManager::CreateTask(const TaskInfo& task) {
     if (PrepareCgroupEnv(task_info) != 0) {
         LOG(WARNING, "task %s prepare cgroup failed",
                 task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return -1;
+    }
+
+    if (PrepareResourceCollector(task_info) != 0) {
+        LOG(WARNING, "task %s prepare resource collector failed",
+                task_info->task_id.c_str());
         task_info->status.set_state(kTaskError);
         return -1;
     }
@@ -339,17 +353,17 @@ int TaskManager::CleanProcess(TaskInfo* task_info) {
             && task_info->deploy_process.status() 
                                 == kProcessRunning) {
         // TODO query first?
-        ::kill(task_info->deploy_process.pid(), SIGKILL); 
+        ::killpg(task_info->deploy_process.pid(), SIGKILL); 
     }  
     if (task_info->main_process.has_status() 
             && task_info->main_process.status()
                                 == kProcessRunning) {
-        ::kill(task_info->main_process.pid(), SIGKILL); 
+        ::killpg(task_info->main_process.pid(), SIGKILL); 
     }
     if (task_info->stop_process.has_status() 
             && task_info->stop_process.status()
                                 == kProcessRunning) {
-        ::kill(task_info->stop_process.pid(), SIGKILL); 
+        ::killpg(task_info->stop_process.pid(), SIGKILL); 
     }
     return 0;
 }
@@ -368,12 +382,19 @@ int TaskManager::CleanTask(TaskInfo* task_info) {
         task_info->status.set_state(kTaskError);
         return -1;
     }
+    if (CleanResourceCollector(task_info) != 0) {
+        LOG(WARNING, "task  %s clean resource collector failed",
+                task_info->task_id.c_str()); 
+        task_info->status.set_state(kTaskError);
+        return -1;
+    }
     if (CleanCgroupEnv(task_info) != 0) {
         LOG(WARNING, "task %s clean cgroup failed",
                 task_info->task_id.c_str()); 
         task_info->status.set_state(kTaskError);
         return -1;
     }
+
     LOG(INFO, "task %s clean success", task_info->task_id.c_str());
     return 0;
 }
@@ -651,6 +672,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     }
 
     TaskInfo* task_info = it->second;
+    SetResourceUsage(task_info);
     // switch task stage
     if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
@@ -724,8 +746,9 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
 
     if (hierarchies_.size() == 0) {
         return 0; 
-    }
-    std::string cgroup_name = GLOBAL_CGROUP_PATH + "/" 
+    } 
+
+    std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
     task->cgroup_path = cgroup_name;
     std::vector<std::string>::iterator hier_it = 
@@ -745,19 +768,34 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
 
     std::string cpu_hierarchy = FLAGS_gce_cgroup_root + "/cpu/";
     std::string mem_hierarchy = FLAGS_gce_cgroup_root + "/memory/";
+    const int CPU_CFS_PERIOD = 100000;
+    const int MIN_CPU_CFS_QUOTA = 1000;
 
-    int32_t cpu_share = task->desc.requirement().millicores() * 512;
+    int32_t cpu_limit = task->desc.requirement().millicores() * (CPU_CFS_PERIOD / 1000);
+    if (cpu_limit < MIN_CPU_CFS_QUOTA) {
+        cpu_limit = MIN_CPU_CFS_QUOTA; 
+    }
     if (cgroups::Write(cpu_hierarchy,
-                cgroup_name,
-                "cpu.shares",
-                boost::lexical_cast<std::string>(cpu_share)
-                ) != 0) {
-        LOG(WARNING, "set cpu share %d failed for %s",
-                cpu_share, cgroup_name.c_str()); 
+                       cgroup_name,
+                       "cpu.cfs_quota_us",
+                       boost::lexical_cast<std::string>(cpu_limit)
+                       ) != 0) {
+        LOG(WARNING, "set cpu limit %d failed for %s",
+                cpu_limit, cgroup_name.c_str()); 
         return -1;
     }
-    int64_t memory_limit = 1024L * 1024 
-        * task->desc.requirement().memory();
+    // use share, 
+    //int32_t cpu_share = task->desc.requirement().millicores() * 512;
+    //if (cgroups::Write(cpu_hierarchy,
+    //            cgroup_name,
+    //            "cpu.shares",
+    //            boost::lexical_cast<std::string>(cpu_share)
+    //            ) != 0) {
+    //    LOG(WARNING, "set cpu share %d failed for %s",
+    //            cpu_share, cgroup_name.c_str()); 
+    //    return -1;
+    //}
+    int64_t memory_limit = task->desc.requirement().memory();
     if (cgroups::Write(mem_hierarchy,
                 cgroup_name,
                 "memory.limit_in_bytes",
@@ -790,7 +828,7 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
 
     std::vector<std::string>::iterator hier_it = 
         hierarchies_.begin();
-    std::string cgroup = GLOBAL_CGROUP_PATH + "/" 
+    std::string cgroup = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
     for (; hier_it != hierarchies_.end(); ++hier_it) {
         std::string cgroup_dir = *hier_it; 
@@ -822,6 +860,58 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
         }
     }
     return 0;
+}
+
+int TaskManager::PrepareResourceCollector(TaskInfo* task_info) {
+    if (task_info == NULL) {
+        return -1; 
+    }
+
+    if (hierarchies_.size() == 0) {
+        return 0; 
+    } 
+
+    if (task_info->resource_collector != NULL) {
+        delete task_info->resource_collector; 
+        task_info->resource_collector = NULL;
+    }
+    std::string cgroup_path = FLAGS_agent_global_cgroup_path + "/" 
+                              + task_info->task_id;
+    task_info->resource_collector = 
+                    new CGroupResourceCollector(cgroup_path);
+    return 0; 
+}
+
+int TaskManager::CleanResourceCollector(TaskInfo* task_info) {
+    if (task_info == NULL) {
+        return -1; 
+    }
+    if (task_info->resource_collector != NULL) {
+        delete task_info->resource_collector; 
+        task_info->resource_collector = NULL;
+    }
+    return 0;
+}
+
+void TaskManager::SetResourceUsage(TaskInfo* task_info) {
+    if (task_info == NULL) {
+        return ; 
+    }
+    
+    if (task_info->resource_collector == NULL) {
+        return ; 
+    }
+
+    task_info->resource_collector->CollectStatistics();
+    double cpu_cores_used = 
+        task_info->resource_collector->GetCpuCoresUsage();
+    long memory_used = 
+        task_info->resource_collector->GetMemoryUsage();
+    task_info->status.mutable_resource_used()->set_millicores(
+            static_cast<int32_t>(cpu_cores_used * 1000));
+    task_info->status.mutable_resource_used()->set_memory(
+            memory_used);
+    return ; 
 }
 
 }   // ending namespace galaxy

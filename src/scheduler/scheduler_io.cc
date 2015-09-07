@@ -100,7 +100,8 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
         if (status < 0) {
             LOG(WARNING, "fail to schedule scale up ");
             break;
-        }
+
+        } 
         status = scheduler_.ScheduleScaleDown(scale_down_jobs, &propose);
         if (status < 0) {
             LOG(WARNING, "fail to schedule scale down ");
@@ -111,6 +112,7 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
             LOG(WARNING, "fail to schedule scale down ");
             break;
         }
+
         if (propose.size() > 0) {
             ProposeRequest pro_request;
             ProposeResponse pro_response;
@@ -120,14 +122,14 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
                 sched->CopyFrom(*(*it));
             }
             bool ret = rpc_client_.SendRequest(master_stub_,
-                                      &Master_Stub::Propose,
-                                      &pro_request,
-                                      &pro_response,
-                                      5, 1);
+                                  &Master_Stub::Propose,
+                                  &pro_request,
+                                  &pro_response,
+                                  5, 1);
             if (!ret) {
-                LOG(WARNING,"fail to propse");
+                LOG(WARNING,"fail to propse for %s", Status_Name(pro_response.status()).c_str());
             }
-        }
+        } 
     }while(false);
     CleanPropse(propose);
     thread_pool_.DelayTask(FLAGS_scheduler_get_pending_job_period, boost::bind(&SchedulerIO::SyncPendingJob, this));
