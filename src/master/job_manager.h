@@ -29,6 +29,7 @@ typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobOverview> JobOvervi
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::DiffVersion> DiffVersionList;
 typedef google::protobuf::RepeatedPtrField<std::string> StringList;
 typedef std::string Version;
+typedef google::protobuf::RepeatedPtrField<baidu::galaxy::PodOverview> PodOverviewList;
 
 struct Job {
     JobState state_;
@@ -69,6 +70,7 @@ public:
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
     Status LabelAgents(const LabelCell& label_cell);
+    Status GetPods(const std::string& jobid, PodOverviewList* pods);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);

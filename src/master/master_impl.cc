@@ -280,5 +280,15 @@ void MasterImpl::LabelAgents(::google::protobuf::RpcController* ,
     return;
 }
 
+void MasterImpl::ShowPod(::google::protobuf::RpcController* controller,
+                         const ::baidu::galaxy::ShowPodRequest* request,
+                         ::baidu::galaxy::ShowPodResponse* response,
+                         ::google::protobuf::Closure* done) {
+    Status ok = job_manager_.GetPods(request->jobid(), 
+                                     response->mutable_pods());
+    response->set_status(ok);
+    done->Run();
+}
+
 }
 }

@@ -1322,5 +1322,33 @@ bool JobManager::SaveLabelToNexus(const LabelCell& label_cell) {
     return put_ok;
 }
 
+Status JobManager::GetPods(const std::string& jobid, 
+                           PodOverviewList* pods) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    Job* job = job_it->second;
+    std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+    for (; pod_it != job->pods_.end(); ++pod_it) {
+        PodStatus* pod_status = pod_it->second;
+        std::map<Version, PodDescriptor>::iterator desc_it = job->pod_desc_.find(pod_status->version());
+        if (desc_it == job->pod_desc_.end()) {
+            continue;
+        }
+        PodOverview* pod = pods->Add();
+        pod->set_jobid(pod_status->jobid());
+        pod->set_podid(pod_status->podid());
+        pod->set_stage(pod_status->stage());
+        pod->set_state(pod_status->state());
+        pod->set_version(pod_status->version());
+        pod->set_endpoint(pod_status->endpoint());
+        pod->mutable_used()->CopyFrom(pod_status->resource_used());
+        pod->mutable_assigned()->CopyFrom(desc_it->second.requirement());
+    }
+    return kOk;
+}
+
 }
 }

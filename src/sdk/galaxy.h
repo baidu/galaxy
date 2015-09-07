@@ -78,6 +78,17 @@ struct NodeDescription {
     std::string labels;
 };
 
+struct PodInformation {
+    std::string jobid;
+    std::string podid;
+    ResDescription used;
+    ResDescription assigned;
+    std::string stage;
+    std::string state;
+    std::string version;
+    std::string endpoint;
+};
+
 class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
@@ -93,6 +104,8 @@ public:
     virtual bool ListAgents(std::vector<NodeDescription>* nodes) = 0;
     virtual bool LabelAgents(const std::string& label, 
                              const std::vector<std::string>& agents) = 0;
+    virtual bool ShowPod(const std::string& jobid,
+                         std::vector<PodInformation>* pods) = 0;
 };
 
 } // namespace galaxy

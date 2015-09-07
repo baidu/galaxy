@@ -113,6 +113,7 @@ message TerminateJobResponse {
 }
 
 message ListJobsRequest {
+
 }
 
 message JobOverview {
@@ -209,6 +210,26 @@ message LabelAgentResponse {
     optional Status status = 1;
 }
 
+message ShowPodRequest {
+    optional string jobid = 1;
+}
+
+message PodOverview {
+    optional string jobid = 1;
+    optional string podid = 2;
+    optional Resource used = 3;
+    optional Resource assigned = 4;
+    optional PodStage stage = 5;
+    optional PodState state = 6;
+    optional string version = 7;
+    optional string endpoint = 8;
+}
+
+message ShowPodResponse {
+    repeated PodOverview pods = 1;
+    optional Status status = 2;
+}
+
 service Master {
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
@@ -216,6 +237,7 @@ service Master {
     rpc ResumeJob(ResumeJobRequest) returns (ResumeJobResponse);
     rpc TerminateJob(TerminateJobRequest) returns (TerminateJobResponse);
     rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
+    rpc ShowPod(ShowPodRequest) returns (ShowPodResponse);
     rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
 
     rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);

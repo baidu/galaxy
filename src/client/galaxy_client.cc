@@ -31,6 +31,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy submit -f <jobconfig>\n" 
                                  "    galaxy jobs \n"
                                  "    galaxy agents\n"
+                                 "    galaxy pods -j <jobid>\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
@@ -352,7 +353,58 @@ int ListAgent() {
     }
     return 0;
 }
- 
+
+int ShowPod() {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    if (FLAGS_j.empty()) {
+        fprintf(stderr, "-j option is required\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    while (true) {
+        std::vector<baidu::galaxy::PodInformation> pods;
+        ok = galaxy->ShowPod(FLAGS_j, &pods);
+        if (!ok) {
+            fprintf(stderr, "Fail to get pods\n");
+            return -1;
+        }
+        baidu::common::TPrinter tp(8);
+        tp.AddRow(8, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)", "endpoint", "version");
+        for (size_t i = 0; i < pods.size(); i++) {
+            std::vector<std::string> vs;
+            vs.push_back(baidu::common::NumToString((int32_t)i + 1));
+            vs.push_back(pods[i].podid);
+            vs.push_back(pods[i].stage);
+            vs.push_back(pods[i].state);
+            std::string cpu = baidu::common::NumToString(pods[i].used.millicores) +\ 
+                              "/" +\
+                              baidu::common::NumToString(pods[i].assigned.millicores);
+            vs.push_back(cpu);
+            std::string mem = baidu::common::HumanReadableString(pods[i].used.memory) +\
+              "/" +\
+              baidu::common::HumanReadableString(pods[i].assigned.memory);
+            vs.push_back(mem);
+            vs.push_back(pods[i].endpoint);
+            vs.push_back(pods[i].version);
+            tp.AddRow(vs);
+        }
+        printf("%s\n", tp.ToString().c_str());
+        if (FLAGS_d <=0) {
+	        break;
+	    }else{
+	        ::sleep(FLAGS_d);
+	        ::system("clear");
+	    }
+
+    }
+    return 0;
+}
+
 int ListJob() {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
@@ -433,8 +485,10 @@ int main(int argc, char* argv[]) {
         return LabelAgent();
     } else if (strcmp(argv[1], "update") == 0) {
         return UpdateJob();
-    }else if (strcmp(argv[1], "kill") == 0){
+    } else if (strcmp(argv[1], "kill") == 0){
         return KillJob();
+    } else if (strcmp(argv[1], "pods") ==0){
+        return ShowPod();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;

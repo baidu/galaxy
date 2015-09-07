@@ -27,8 +27,11 @@ public:
     bool TerminateJob(const std::string& job_id);
     bool LabelAgents(const std::string& label, 
                      const std::vector<std::string>& agents);
+    bool ShowPod(const std::string& jobid,
+                 std::vector<PodInformation>* pods);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
+    void FillResource(const Resource& res, ResDescription* res_desc);
 private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
@@ -125,6 +128,27 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     return true;
 }
 
+void GalaxyImpl::FillResource(const Resource& res, ResDescription* res_desc) {
+    res_desc->millicores = res.millicores();
+    res_desc->memory = res.memory();
+    for (int j = 0; j < res.ports_size(); j++) {
+        res_desc->ports.push_back(res.ports(j));
+    }
+    for (int j = 0; j < res.ssds_size(); j++) {
+        VolumeDescription vol;
+        vol.quota = res.ssds(j).quota();
+        vol.path = res.ssds(j).path();
+        res_desc->ssds.push_back(vol);
+    }
+    for (int j = 0; j < res.disks_size(); j++) {
+        VolumeDescription vol;
+        vol.quota= res.disks(j).quota();
+        vol.path = res.disks(j).path();
+        res_desc->disks.push_back(vol);
+    }
+}
+
+
 bool GalaxyImpl::SubmitJob(const JobDescription& job, std::string* job_id){
     if (job_id == NULL) {
         return false;
@@ -187,7 +211,32 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
     }
     return true;
 }
+bool GalaxyImpl::ShowPod(const std::string& jobid,
+                         std::vector<PodInformation>* pods){
+    ShowPodRequest request;
+    request.set_jobid(jobid);
+    ShowPodResponse response;
+    bool ok = rpc_client_->SendRequest(master_, &Master_Stub::ShowPod,
+                             &request,&response, 5, 1);
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.pods_size(); i++) {
+        const PodOverview& pod_overview = response.pods(i);
+        PodInformation pod_info;
+        pod_info.jobid = pod_overview.jobid();
+        pod_info.podid = pod_overview.podid();
+        pod_info.stage = PodStage_Name(pod_overview.stage());
+        pod_info.state = PodState_Name(pod_overview.state());
+        pod_info.version = pod_overview.version();
+        pod_info.endpoint = pod_overview.endpoint();
+        FillResource(pod_overview.used(), &pod_info.used);
+        FillResource(pod_overview.assigned(), &pod_info.assigned);
+        pods->push_back(pod_info);
+    }
+    return true;
 
+}
 bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
     ListAgentsRequest request;
     ListAgentsResponse response;
