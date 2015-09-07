@@ -23,11 +23,13 @@ DECLARE_string(nexus_servers);
 DECLARE_string(nexus_root_path);
 DECLARE_string(labels_store_path);
 DECLARE_string(jobs_store_path);
+DECLARE_int32(master_pending_job_wait_timeout);
 
 namespace baidu {
 namespace galaxy {
 JobManager::JobManager()
-    : on_query_num_(0) {
+    : on_query_num_(0),
+    pod_cv_(&mutex_){
     safe_mode_ = true;
     ScheduleNextQuery();
     state_to_stage_[kPodPending] = kStageRunning;
@@ -116,6 +118,7 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     MutexLock lock(&mutex_); 
     jobs_[job_id] = job;
     FillPodsToJob(job);
+    pod_cv_.Signal();
     LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d ",
       job_id.c_str(), 
       job_desc.user().c_str(),
@@ -153,8 +156,10 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
     it->second->desc_.set_replica(job_desc.replica());
     if (old_replica < job_desc.replica()) {
         FillPodsToJob(it->second);
+        pod_cv_.Signal();
     } else if (old_replica > job_desc.replica()) {
         scale_down_jobs_.insert(it->second->id_);
+        pod_cv_.Signal();
     }
     LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
     return kOk;
@@ -187,11 +192,13 @@ Status JobManager::Terminte(const JobId& jobid) {
         scale_down_jobs_.insert(it->second->id_);
     }
     it->second->state_ = kJobTerminated;
+    pod_cv_.Signal();
     return kOk;
 }
 
 void JobManager::FillPodsToJob(Job* job) {
     mutex_.AssertHeld();
+    bool need_scale_up = false;
     for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
         PodId pod_id = MasterUtil::UUID();
         PodStatus* pod_status = new PodStatus();
@@ -200,8 +207,11 @@ void JobManager::FillPodsToJob(Job* job) {
         pod_status->set_state(kPodPending);
         pod_status->set_stage(kStagePending);
         job->pods_[pod_id] = pod_status;
-        pending_pods_[job->id_][pod_id] = pod_status;
-        LOG(INFO, "move pod to pendings: %s", pod_id.c_str());
+        need_scale_up = true;
+    }
+    if (need_scale_up) {
+        LOG(INFO, "move job %s to scale up queue", job->id_.c_str());
+        scale_up_jobs_.insert(job->id_);
     }
 }
 
@@ -249,13 +259,20 @@ void JobManager::KillPodCallback(const std::string& podid, const std::string& jo
 void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 int32_t max_scale_up_size,
                                 JobInfoList* scale_down_pods,
-                                int32_t max_scale_down_size) {
+                                int32_t max_scale_down_size,
+                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mutex_);
     if (safe_mode_) {
+        done->Run();
         return;
+    }
+    if (scale_down_jobs_.size() <= 0 && 
+        scale_up_jobs_.size() <= 0) {
+        pod_cv_.TimeWait(FLAGS_master_pending_job_wait_timeout);
     }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
+    done->Run();
 }
 
 void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
@@ -266,50 +283,56 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
     std::set<JobId> should_been_cleaned;
     std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin();
     int32_t job_count = 0;
-    for (;jobid_it != scale_down_jobs_.end(); ++jobid_it) {
-        if (job_count >= max_scale_down_size) {
-            return;
-        }
+    for (;jobid_it != scale_down_jobs_.end() && job_count < max_scale_down_size; 
+      ++jobid_it) {
         std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
         if (job_it == jobs_.end()) {
             continue;
         }
-        LOG(INFO, "process scale down job %s, replica %d, pods size %u",
-            job_it->second->id_.c_str(),
-            job_it->second->desc_.replica(),
-            job_it->second->pods_.size());
-        size_t replica = job_it->second->desc_.replica();
-        if (replica >= job_it->second->pods_.size()) {
-            if (replica == 0 && job_it->second->state_ == kJobTerminated) {
+        Job* job = job_it->second;
+        size_t replica = job->desc_.replica();
+        if (replica >= job->pods_.size()) {
+            if (job->pods_.size() == 0 
+                && job->state_ == kJobTerminated) {
                 should_been_cleaned.insert(*jobid_it);
             }else {
                 should_rm_from_scale_down.insert(*jobid_it);
             }
             continue;
-        }
-        int32_t scale_down_count = job_it->second->pods_.size() \
-                                   - job_it->second->desc_.replica();
-        it = pending_pods_.find(*jobid_it);
-        std::vector<PodStatus*> will_rm_pods;
-        if (it != pending_pods_.end()) {
-            std::map<PodId, PodStatus*>::const_iterator jt = it->second.begin();
-            for(; jt != it->second.end() && scale_down_count >0; 
-                ++jt) { 
+        } 
+        int32_t scale_down_count = job->pods_.size() - job->desc_.replica();
+        std::set<JobId>::iterator su_jobid_it  = scale_up_jobs_.find(*jobid_it);
+        // scale down pods with pending stage 
+        std::vector<PodStatus*> pods_will_been_removed;
+        if (su_jobid_it != scale_up_jobs_.end()) {
+            std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+            for (; pod_it != job->pods_.end() && scale_down_count > 0;
+              ++pod_it) {
+                if (pod_it->second->stage() != kStagePending) {
+                    continue;
+                }
                 --scale_down_count;
-                will_rm_pods.push_back(jt->second);
+                pods_will_been_removed.push_back(pod_it->second);
             }
-            for (size_t i = 0; i < will_rm_pods.size(); ++i) {
-                ChangeStage(kStageRemoved, will_rm_pods[i], job_it->second);
-            }
+        } 
+        for (size_t i = 0; i < pods_will_been_removed.size(); ++i) {
+            ChangeStage(kStageRemoved, pods_will_been_removed[i], job);
         }
+        LOG(INFO, "process scale down job %s, replica %d, pods size %u , remove pending pods count %u, scheduler scale down count %d",
+            job->id_.c_str(),
+            job->desc_.replica(),
+            job->pods_.size(),
+            pods_will_been_removed.size(),
+            scale_down_count);
+        // scale down pods with running stage or death stage
         if (scale_down_count > 0) {
             job_count++;
             JobInfo* job_info = scale_down_pods->Add();
             job_info->mutable_desc()->CopyFrom(job_it->second->desc_);
             job_info->set_jobid(job_it->second->id_);
             std::map<PodId, PodStatus*>::const_iterator jt;
-            for (jt = job_it->second->pods_.begin();
-                 jt != job_it->second->pods_.end(); ++jt) {
+            for (jt = job->pods_.begin();
+                 jt != job->pods_.end(); ++jt) {
                 PodStatus* pod_status = jt->second;
                 PodStatus* new_pod_status = job_info->add_pods();
                 new_pod_status->CopyFrom(*pod_status);
@@ -343,24 +366,42 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
                                 int32_t max_scale_up_size) {
     mutex_.AssertHeld();
     int job_count = 0;
-    std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
-    for (it = pending_pods_.begin(); it != pending_pods_.end(); ++it) {
-        if (job_count >= max_scale_up_size) {
-            return;
+    std::set<JobId>::iterator jobid_it = scale_up_jobs_.begin();
+    std::set<JobId> would_been_removed;
+    for (;jobid_it != scale_up_jobs_.end() && job_count < max_scale_up_size;
+         ++jobid_it) {
+        std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
+        if (job_it == jobs_.end()) {
+            would_been_removed.insert(*jobid_it);
+            continue;
+        }
+        Job* job = job_it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+        // check if job need scale up
+        bool need_scale_up = false;
+        for (; pod_it != job->pods_.end(); ++pod_it) {
+            if (pod_it->second->stage() == kStagePending) {
+                need_scale_up = true;
+                break;
+            }
+        }
+        if (!need_scale_up) {
+            would_been_removed.insert(*jobid_it);
+            continue;
         }
         JobInfo* job_info = scale_up_pods->Add();
-        JobId job_id = it->first;
-        job_info->set_jobid(job_id);
-        const JobDescriptor& job_desc = jobs_[job_id]->desc_;
-        job_info->mutable_desc()->CopyFrom(job_desc);
-        const std::map<PodId, PodStatus*> & job_pending_pods = it->second;
-        std::map<PodId, PodStatus*>::const_iterator jt;
-        for (jt = job_pending_pods.begin(); jt != job_pending_pods.end(); ++jt) {
-            PodStatus* pod_status = jt->second;
-            PodStatus* new_pod_status = job_info->add_pods();
-            new_pod_status->CopyFrom(*pod_status);
+        job_info->set_jobid(job->id_);
+        job_info->mutable_desc()->CopyFrom(job->desc_);
+        // copy all pod
+        for (pod_it= job->pods_.begin(); pod_it != job->pods_.end(); ++pod_it) {
+            PodStatus* pod_status = job_info->add_pods();
+            pod_status->CopyFrom(*(pod_it->second));
         }
         job_count++;
+    }
+    jobid_it = would_been_removed.begin();
+    for (; jobid_it != would_been_removed.end(); ++jobid_it) {
+        scale_up_jobs_.erase(*jobid_it);
     }
 }
 
@@ -371,55 +412,49 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     const std::string& endpoint = sche_info.endpoint();
     std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
     if (job_it == jobs_.end()) { 
-        LOG(INFO, "propose fail, no such job: %s", jobid.c_str());
+        LOG(WARNING, "propose fail, no such job: %s", jobid.c_str());
         return kJobNotFound;
     }
-    if (sche_info.action() == kTerminate) {
-        std::map<PodId, PodStatus*>::iterator p_it = job_it->second->pods_.find(sche_info.podid());
-        if (p_it == job_it->second->pods_.end()) {
-            LOG(WARNING, "propose fail, no such pod: %s", sche_info.podid().c_str());
-            return kPodNotFound;
-        }
-        ChangeStage(kStageRemoved, p_it->second, job_it->second);
-        return kOk;
-    }
-
-    std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
-    it = pending_pods_.find(jobid);
-    if (it == pending_pods_.end()) {
-        return kJobNotFound;
-    }
-    std::map<PodId, PodStatus*>& job_pending_pods = it->second;
-    std::map<PodId, PodStatus*>::iterator jt = job_pending_pods.find(podid);
-    if (jt == job_pending_pods.end()) {
-        LOG(INFO, "propse fail, no such pod: %s", podid.c_str());
+    Job* job = job_it->second;
+    std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.find(sche_info.podid());
+    if (pod_it == job->pods_.end()) {
+        LOG(WARNING, "propose fails, no such pod %s in job %s",
+          podid.c_str(), jobid.c_str());
         return kPodNotFound;
     }
-    std::map<AgentAddr, AgentInfo*>::iterator at = agents_.find(endpoint);
-    if (at == agents_.end()) {
-        LOG(INFO, "propose fail, no such agent: %s", endpoint.c_str());
-        return kAgentNotFound;
-    }
+    PodStatus* pod = pod_it->second;
+    if (sche_info.action() == kTerminate) {
+        ChangeStage(kStageRemoved, pod, job);
+        return kOk;
+    } else if (sche_info.action() == kLaunch) {
+        if (pod->stage() != kStagePending) {
+            LOG(WARNING, "propose fails for pod been in invalide stage %s, require stage kStgePending", PodStage_Name(pod->stage()).c_str());
+            return kInputError; 
+        }
+        std::map<AgentAddr, AgentInfo*>::iterator at = agents_.find(endpoint);
+        if (at == agents_.end()) {
+            LOG(WARNING, "propose fail, no such agent: %s", endpoint.c_str());
+            return kAgentNotFound;
+        }
+        AgentInfo* agent = at->second;
+        if (agent->state() == kDead) {
+            LOG(WARNING, "propose fails, agent %s been kDead state", endpoint.c_str());
+            return kInputError;
 
-    
-    PodStatus* pod = jt->second;
-    AgentInfo* agent = at->second;
-    Status feasible_status = AcquireResource(*pod, agent);
-    if (feasible_status != kOk) {
-        LOG(INFO, "propose fail, no resource, error code:[%d]", feasible_status);
-        return feasible_status;
-    }
-    // update agent version
-    agent->set_version(agent->version() + 1);
-    pod->set_endpoint(sche_info.endpoint());
-    job_pending_pods.erase(jt);
-    if (job_pending_pods.size() == 0) {
-        pending_pods_.erase(it);
-    }
-    ChangeStage(kStageRunning, pod, job_it->second);
-    LOG(INFO, "propose success, %s will be run on %s",
+        }
+        Status feasible_status = AcquireResource(*pod, agent);
+        if (feasible_status != kOk) {
+            LOG(INFO, "propose fail, no resource, error code:[%d]", feasible_status);
+            return feasible_status;
+        }
+        agent->set_version(agent->version() + 1);
+        pod->set_endpoint(sche_info.endpoint());
+        ChangeStage(kStageRunning, pod, job_it->second);
+        LOG(INFO, "propose success, %s will be run on %s",
         podid.c_str(), endpoint.c_str());
-    return kOk;
+        return kOk;
+    } 
+    return kInputError;
 }
 
 Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
@@ -757,7 +792,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
 }
 
 void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
-                        const AgentInfo& new_agent_info) {
+                                    const AgentInfo& new_agent_info) {
   
     int old_version = old_agent_info->version();
     // check assigned
@@ -801,6 +836,7 @@ void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     if (safe_mode_) {
         return;
     }
+
     std::map<AgentAddr, AgentInfo*>::iterator it;
     for (it = agents_.begin(); it != agents_.end(); ++it) {
         AgentInfo* agent = it->second;
@@ -822,7 +858,8 @@ void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
 
 void JobManager::GetAliveAgentsByDiff(const DiffVersionList& versions,
                                       AgentInfoList* agents_info,
-                                      StringList* deleted_agents) {
+                                      StringList* deleted_agents,
+                                      ::google::protobuf::Closure* done) {
     MutexLock lock(&mutex_);
     LOG(INFO, "get alive agents by diff , diff count %u", versions.size());
     // ms
@@ -856,6 +893,7 @@ void JobManager::GetAliveAgentsByDiff(const DiffVersionList& versions,
     LOG(INFO, "process diff with time consumed %ld, agents count %d ", 
                used_time,
                agents_info->size());
+    done->Run();
 }
 void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
     MutexLock lock(&mutex_);
@@ -978,15 +1016,6 @@ bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
         LOG(WARNING, "fsm the input is invalidate");
         return false;
     }
-    LOG(WARNING, "clean pod %s from job %s",
-        pod->podid().c_str(),pod->jobid().c_str());
-    PodMap::iterator job_it = pending_pods_.find(pod->jobid());
-    if (job_it != pending_pods_.end()) {
-        job_it->second.erase(pod->podid());
-        if (job_it->second.size() <= 0) {
-            pending_pods_.erase(pod->jobid());
-        }
-    }
     std::map<AgentAddr, PodMap>::iterator a_it = pods_on_agent_.find(pod->endpoint());
     if (a_it != pods_on_agent_.end()) {
         PodMap::iterator p_it = a_it->second.find(pod->jobid());
@@ -1032,7 +1061,6 @@ bool JobManager::HandleDeathToPending(PodStatus* pod, Job* job) {
     pod->set_stage(kStagePending);
     pod->set_state(kPodPending);
     LOG(INFO, "reschedule pod %s of job %s", pod->podid().c_str(), job->id_.c_str());
-    pending_pods_[job->id_][pod->podid()] = pod;
     std::map<AgentAddr, PodMap>::iterator a_it = pods_on_agent_.find(pod->endpoint());
     if (a_it != pods_on_agent_.end()) {
         PodMap::iterator p_it = a_it->second.find(pod->jobid());
@@ -1040,6 +1068,8 @@ bool JobManager::HandleDeathToPending(PodStatus* pod, Job* job) {
             p_it->second.erase(pod->podid());
         }
     }
+    scale_up_jobs_.insert(job->id_);
+    pod_cv_.Signal();
     return true;
 }
 

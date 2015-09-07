@@ -24,7 +24,19 @@ DEFINE_string(jobs_store_path, "/jobs", "");
 DEFINE_string(labels_store_path, "/labels", "");
 DEFINE_int32(max_scale_down_size, 10, "the max size of scale down jobs that schedule fetches");
 DEFINE_int32(max_scale_up_size, 10, "the max size of scale up jobs that schedule fetches");
+DEFINE_int32(master_pending_job_wait_timeout, 1000, "the timeout that master pending scheduler request");
 // scheduler
+DEFINE_int32(scheduler_get_pending_job_timeout, 2000, "the timeout that scheduler get pending job from master");
+DEFINE_int32(scheduler_get_pending_job_period, 2000, "the period that scheduler get pending job from master");
+DEFINE_int32(scheduler_sync_resource_timeout, 1000, "the timeout that scheduler sync resource from master");
+DEFINE_int32(scheduler_sync_resource_period, 2000, "the period that scheduler sync resource from master");
+DEFINE_int32(scheduler_feasibility_factor, 2, "the feasibility factor which schedulder use to calc agent for pending job");
+
+DEFINE_double(scheduler_cpu_used_factor, 10.0, "the cpu used factor for calc agent load score");
+DEFINE_double(scheduler_mem_used_factor, 1.0, "the mem used factor for calc agent load score");
+DEFINE_double(scheduler_prod_count_factor, 32.0, "the prod count factor for calc agent load score");
+DEFINE_double(scheduler_cpu_overload_threashold, 0.9, "the max cpu used");
+DEFINE_int32(scheduler_agent_overload_turns_threashold, 3, "agent overload times");
 
 // agent
 DEFINE_string(agent_port, "8080", "agent listen port");
