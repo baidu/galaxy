@@ -189,6 +189,10 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid, 
                                              request->path().c_str());
+        if (request->has_user() 
+                && !user::Su(request->user())) {
+            assert(0); 
+        }
         
         // attach cgroup 
         if (request->has_cgroup_path() 

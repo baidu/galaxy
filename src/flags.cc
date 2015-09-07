@@ -43,6 +43,7 @@ DEFINE_int32(agent_initd_port_begin, 9000, "agent initd port used begin");
 DEFINE_int32(agent_initd_port_end, 9500, "agent initd port used end");
 DEFINE_string(agent_persistence_path, "./data", "agent persistence path");
 DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
+DEFINE_string(agent_default_user, "galaxy", "agent default run task user");
 
 // gce
 DEFINE_string(gce_cgroup_root, "/cgroups/", "Cgroup root mount path");

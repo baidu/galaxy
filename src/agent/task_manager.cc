@@ -30,6 +30,7 @@ DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
 DECLARE_int32(agent_detect_interval);
+DECLARE_string(agent_default_user);
 
 namespace baidu {
 namespace galaxy {
@@ -220,6 +221,30 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     if (task_info == NULL) {
         return -1; 
     }
+
+    uid_t cur_uid = ::getuid();
+    if (cur_uid == 0) {
+        // only do in root 
+        uid_t user_uid;
+        gid_t user_gid;
+        if (!user::GetUidAndGid(FLAGS_agent_default_user, 
+                    &user_uid, &user_gid)) {
+            LOG(WARNING, "task %s user %s not exists", 
+                    task_info->task_id.c_str(),
+                    FLAGS_agent_default_user.c_str()); 
+            return -1;
+        }
+        if (user_uid != cur_uid 
+                && !file::Chown(task_info->task_workspace, 
+                    user_uid, user_gid)) {
+            LOG(WARNING, "task %s chown %s to user %s failed",
+                    task_info->task_id.c_str(),
+                    task_info->task_workspace.c_str(),
+                    FLAGS_agent_default_user.c_str());    
+            return -1;
+        }
+    }
+    
     task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
     SetupRunProcessKey(task_info);
@@ -230,6 +255,7 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     initd_request.set_commands(task_info->desc.start_command());
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
+    initd_request.set_user(FLAGS_agent_default_user);
     std::string* pod_id = initd_request.add_envs();
     pod_id->append("POD_ID=");
     pod_id->append(task_info->pod_id);
@@ -298,6 +324,7 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     initd_request.set_commands(stop_command);
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
+    initd_request.set_user(FLAGS_agent_default_user);
 
     if (task_info->initd_stub == NULL 
             && !rpc_client_->GetStub(task_info->initd_endpoint, 
