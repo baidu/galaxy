@@ -74,6 +74,11 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
     agent_info.mutable_assigned()->set_memory(
             FLAGS_agent_memory- resource_capacity_.memory);
 
+    boost::unordered_set<int32_t>::iterator port_it = resource_capacity_.used_port.begin();
+    for (; port_it != resource_capacity_.used_port.end(); ++port_it) {
+        agent_info.mutable_assigned()->add_ports(*port_it);
+    } 
+    
     int32_t millicores = 0;
     int64_t memory_used = 0;
     std::vector<PodInfo> pods;
@@ -354,8 +359,23 @@ int AgentImpl::AllocResource(const Resource& requirement) {
     lock_.AssertHeld();
     if (resource_capacity_.millicores >= requirement.millicores()
             && resource_capacity_.memory >= requirement.memory()) {
+        boost::unordered_set<int32_t> ports;
+        for (int i = 0; i < requirement.ports_size(); i++) {
+            int32_t port = requirement.ports(i);
+            if (resource_capacity_.used_port.find(port) 
+                    != resource_capacity_.used_port.end()) {
+                return -1; 
+            }
+            ports.insert(port);
+        }
+
+        boost::unordered_set<int32_t>::iterator it = ports.begin();
+        for (; it != ports.end(); ++it) {
+            resource_capacity_.used_port.insert(*it);
+        }
         resource_capacity_.millicores -= requirement.millicores(); 
         resource_capacity_.memory -= requirement.memory();
+
         return 0;
     }
     return -1;
@@ -365,6 +385,9 @@ void AgentImpl::ReleaseResource(const Resource& requirement) {
     lock_.AssertHeld();
     resource_capacity_.millicores += requirement.millicores();
     resource_capacity_.memory += requirement.memory();
+    for (int i = 0; i < requirement.ports_size(); i++) {
+        resource_capacity_.used_port.erase(requirement.ports(i));
+    }
 }
 
 }   // ending namespace galaxy

@@ -117,6 +117,9 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                     cur_feasible_count++;
                 }
                 // 此处不break，说明一个Agent尽量调度多的Pod
+                // TODO 此处需要再斟酌一下，对于新添入机器会出现负载较高的情况
+                // 但是如果直接break的话，对于符合某个pod的所有机器对其他pod不可见的问题
+                // 同样需要考虑一下
             }
         }
     }
@@ -350,6 +353,20 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
         }
     }
 
+    for (int port_ind = 0; 
+            port_ind < pod->requirement().ports_size(); 
+            port_ind++) {
+        int32_t port = pod->requirement().ports(port_ind);
+        if (agent_info_extend->used_port_set.find(port) != 
+                agent_info_extend->used_port_set.end()) {
+            LOG(INFO, "agent %s does not fit job %s port check used %d",
+                    agent_info_extend->agent_info->endpoint().c_str(),
+                    job->jobid().c_str(),
+                    port);
+            return false; 
+        }
+    }
+
     // 对于prod任务(kLongRun,kSystem)，根据unassign值check
     // 对于non-prod任务(kBatch)，根据free值check
     if (job->desc().type() == kLongRun ||
@@ -511,6 +528,10 @@ void AgentInfoExtend::CalcExtend() {
     labels_set.clear();
     for (int i = 0; i < agent_info->tags_size(); i++) {
         labels_set.insert(agent_info->tags(i)); 
+    }
+    used_port_set.clear();
+    for (int i = 0; i < agent_info->assigned().ports_size(); i++) {
+        used_port_set.insert(agent_info->assigned().ports(i)); 
     }
 }
 
