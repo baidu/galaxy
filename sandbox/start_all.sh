@@ -1,13 +1,14 @@
 echo "start nexus"
 cd ../ins/sandbox && nohup ./start_all.sh > ins_start.log 2>&1 &
 sleep 2
+galaxyflag=`pwd`/galaxy.flag
 echo "start master"
-nohup  ../master --flagfile=galaxy.flag >master.log 2>&1 &
+nohup  ../master --flagfile=$galaxyflag >master.log 2>&1 &
 
 sleep 1
 echo "start agent"
-nohup  ../agent --flagfile=galaxy.flag >agent.log 2>&1 &
+nohup  ../agent --flagfile=$galaxyflag >agent.log 2>&1 &
 
 sleep 1
 echo "start scheduler"
-nohup ../scheduler --flagfile=galaxy.flag >scheduler.log 2>&1 &
+nohup ../scheduler --flagfile=$galaxyflag >scheduler.log 2>&1 &

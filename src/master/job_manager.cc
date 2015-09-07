@@ -480,10 +480,9 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
                                 int32_t max_scale_up_size) {
     mutex_.AssertHeld();
     int job_count = 0;
-    std::set<JobId>::iterator jobid_it;
+    std::set<JobId>::iterator jobid_it = scale_up_jobs_.begin();
     std::set<JobId> would_been_removed;
-    for (jobid_it = scale_up_jobs_.begin(); 
-         jobid_it != scale_up_jobs_.end() && job_count < max_scale_up_size;
+    for (;jobid_it != scale_up_jobs_.end() && job_count < max_scale_up_size;
          ++jobid_it) {
         std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
         if (job_it == jobs_.end()) {
@@ -509,9 +508,8 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
         job_info->mutable_desc()->CopyFrom(job->desc_);
         // copy all pod
         for (pod_it= job->pods_.begin(); pod_it != job->pods_.end(); ++pod_it) {
-            PodStatus* pod_status = pod_it->second;
-            PodStatus* new_pod_status = job_info->add_pods();
-            new_pod_status->CopyFrom(*pod_status);
+            PodStatus* pod_status = job_info->add_pods();
+            pod_status->CopyFrom(*(pod_it->second));
         }
         job_count++;
     }

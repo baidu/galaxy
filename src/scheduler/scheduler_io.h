@@ -25,7 +25,9 @@ public:
                     scheduler_(),
                     thread_pool_(4){
     }
-    ~SchedulerIO(){}
+    ~SchedulerIO(){
+        thread_pool_.Stop(false);
+    }
     void HandleMasterChange(const std::string& new_master_endpoint);
     bool Init();
     void Sync();
