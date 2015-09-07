@@ -280,7 +280,7 @@ void MasterImpl::LabelAgents(::google::protobuf::RpcController* ,
     return;
 }
 
-void MasterImpl::ShowPod(::google::protobuf::RpcController* controller,
+void MasterImpl::ShowPod(::google::protobuf::RpcController* /*controller*/,
                          const ::baidu::galaxy::ShowPodRequest* request,
                          ::baidu::galaxy::ShowPodResponse* response,
                          ::google::protobuf::Closure* done) {

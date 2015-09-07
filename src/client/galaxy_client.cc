@@ -381,13 +381,11 @@ int ShowPod() {
             vs.push_back(pods[i].podid);
             vs.push_back(pods[i].stage);
             vs.push_back(pods[i].state);
-            std::string cpu = baidu::common::NumToString(pods[i].used.millicores) +\ 
-                              "/" +\
+            std::string cpu = baidu::common::NumToString(pods[i].used.millicores) + "/" +\
                               baidu::common::NumToString(pods[i].assigned.millicores);
             vs.push_back(cpu);
-            std::string mem = baidu::common::HumanReadableString(pods[i].used.memory) +\
-              "/" +\
-              baidu::common::HumanReadableString(pods[i].assigned.memory);
+            std::string mem = baidu::common::HumanReadableString(pods[i].used.memory) + "/" +\
+                              baidu::common::HumanReadableString(pods[i].assigned.memory);
             vs.push_back(mem);
             vs.push_back(pods[i].endpoint);
             vs.push_back(pods[i].version);
