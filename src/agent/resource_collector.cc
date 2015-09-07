@@ -406,7 +406,7 @@ bool GetCgroupMemoryUsage(const std::string& group_path,
                       group_path.c_str(), value.c_str()); 
         return false;
     }
-    bool ret = false;
+    int mem_count = 0;
     for (size_t i = 0; i < lines.size(); i++) {
         std::string& line = lines[i]; 
         if (line.empty()) {
@@ -422,12 +422,19 @@ bool GetCgroupMemoryUsage(const std::string& group_path,
         }
 
         if (name == "rss") {
-            ret = true;
+            mem_count++;
             statistics->memory_rss_in_bytes = val; 
-            break;
+        } else if (name == "cache") {
+            mem_count++;
+            statistics->memory_rss_in_bytes += val;
+        } else if (mem_count == 2) {
+            break; 
         }
     }
-    return ret;
+    if (mem_count == 2) {
+        return true; 
+    }
+    return false;
 }
 
 

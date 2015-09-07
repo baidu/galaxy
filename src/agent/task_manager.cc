@@ -795,8 +795,7 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     //            cpu_share, cgroup_name.c_str()); 
     //    return -1;
     //}
-    int64_t memory_limit = 1024L * 1024 
-        * task->desc.requirement().memory();
+    int64_t memory_limit = task->desc.requirement().memory();
     if (cgroups::Write(mem_hierarchy,
                 cgroup_name,
                 "memory.limit_in_bytes",
