@@ -272,6 +272,8 @@ int PodManager::CheckPod(const std::string& pod_id) {
     }
     pod_info.pod_status.mutable_resource_used()->set_millicores(millicores);
     pod_info.pod_status.mutable_resource_used()->set_memory(memory_used);
+    std::string version = pod_info.pod_desc.version();
+    pod_info.pod_status.set_version(version);
     switch (pod_state) {
         case kTaskPending : 
         pod_info.pod_status.set_state(kPodPending);
