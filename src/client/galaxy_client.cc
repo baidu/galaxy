@@ -158,7 +158,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         return -1;
     }
     ::baidu::galaxy::PodDescription& pod = job->pod;
-    ::baidu::galaxy::ResDescription& res = pod.requirement;
+    ::baidu::galaxy::ResDescription* res = &pod.requirement;
     const rapidjson::Value& pod_json = document["pod"];
     if (!pod_json.HasMember("requirement")) {
         fprintf(stderr, "requirement is required in pod\n");
@@ -174,17 +174,16 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         fprintf(stderr, "millicores is required\n");
         return -1;
     }
-    res.millicores = pod_require["millicores"].GetInt();
+    res->millicores = pod_require["millicores"].GetInt();
     if (!pod_require.HasMember("memory")) {
         fprintf(stderr, "memory is required\n");
         return -1;
     }
-    res.memory = pod_require["memory"].GetInt64();
-
+    res->memory = pod_require["memory"].GetInt64();
     if (pod_json.HasMember("ports")) {
         const rapidjson::Value&  pod_ports = pod_require["ports"];
         for (rapidjson::SizeType i = 0; i < pod_ports.Size(); i++) {
-            res.ports.push_back(pod_ports[i].GetInt());
+            res->ports.push_back(pod_ports[i].GetInt());
         }
     }
     if (pod_json.HasMember("disks")) {
@@ -193,7 +192,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             ::baidu::galaxy::VolumeDescription vol;
             vol.quota = pod_disks[i]["quota"].GetInt64();
             vol.path = pod_disks[i]["path"].GetString();
-            res.disks.push_back(vol);
+            res->disks.push_back(vol);
         } 
     }
     if (pod_json.HasMember("ssds")) {
@@ -202,7 +201,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             ::baidu::galaxy::VolumeDescription vol;
             vol.quota = pod_ssds[i]["quota"].GetInt64();
             vol.path = pod_ssds[i]["path"].GetString();
-            res.ssds.push_back(vol);
+            res->ssds.push_back(vol);
         }
     }
     std::vector< ::baidu::galaxy::TaskDescription>& tasks = pod.tasks;
@@ -221,13 +220,13 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             if (tasks_json[i].HasMember("stop_command")) {
                 task.stop_cmd = tasks_json[i]["stop_command"].GetString();
             }
-            res = task.requirement;
-            res.millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
-            res.memory = tasks_json[i]["requirement"]["memory"].GetInt64();
+            res = &task.requirement;
+            res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
+            res->memory = tasks_json[i]["requirement"]["memory"].GetInt64();
             if (tasks_json[i]["requirement"].HasMember("ports")) {
                 const rapidjson::Value& task_ports = tasks_json[i]["requirement"]["ports"];
                 for (rapidjson::SizeType i = 0; i < task_ports.Size(); i++) {
-                    res.ports.push_back(task_ports[i].GetInt());
+                    res->ports.push_back(task_ports[i].GetInt());
                 }
             }
 
@@ -237,7 +236,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     ::baidu::galaxy::VolumeDescription task_vol;
                     task_vol.quota = task_disks[i]["quota"].GetInt64();
                     task_vol.path = task_disks[i]["path"].GetString();
-                    res.disks.push_back(task_vol);
+                    res->disks.push_back(task_vol);
                 } 
             }
 
@@ -247,7 +246,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     ::baidu::galaxy::VolumeDescription task_vol;
                     task_vol.quota = task_ssds[i]["quota"].GetInt64();
                     task_vol.path = task_ssds[i]["path"].GetString();
-                    res.ssds.push_back(task_vol);
+                    res->ssds.push_back(task_vol);
                 }
             }
             tasks.push_back(task);

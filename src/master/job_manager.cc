@@ -111,7 +111,7 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
     // add default version
-    if (job->desc_.pod().has_version()
+    if (!job->desc_.pod().has_version()
        || job->desc_.pod().version().empty()) {
         job->desc_.mutable_pod()->set_version("1.0.0");
     }
@@ -575,6 +575,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         LOG(INFO, "update pod %s of job %s", 
                   pod->podid().c_str(),
                   job->id_.c_str());
+        pod->set_version(job->latest_version);
         ChangeStage(kStageDeath, pod, job);
         return kOk;
     }
