@@ -4,6 +4,8 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+#include <sys/types.h>
+#include <unistd.h>
 #include <string>
 #include <vector>
 #include <boost/function.hpp>
@@ -41,6 +43,14 @@ bool GetCwd(std::string* dir);
 
 } // ending namespace process
 
+namespace user {
+
+bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
+
+bool Su(const std::string& user_name);
+
+}
+
 namespace file {
 
 typedef boost::function<bool(const char* path)> OptFunc;
@@ -61,6 +71,8 @@ bool IsSpecialDir(const char* path);
 bool Mkdir(const std::string& dir_path);
 
 bool Remove(const std::string& path);
+
+bool Chown(const std::string& path, uid_t uid, gid_t gid);
 
 }   // ending namespace file
 }   // ending namespace galaxy

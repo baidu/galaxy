@@ -111,7 +111,8 @@ message PodStatus {
     optional string endpoint = 5;
     optional PodState state = 7;
     optional PodStage stage = 8;
-    optional string version = 9;
+    optional string pod_gc_path = 9;
+    optional string version = 10;
 }
 
 message AgentInfo {
