@@ -332,9 +332,9 @@ int ListAgent() {
                 vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
                 vs.push_back(baidu::common::NumToString(agents[i].cpu_assigned));
                 vs.push_back(baidu::common::NumToString(agents[i].cpu_share));
-                vs.push_back(baidu::common::NumToString(agents[i].mem_used));
-                vs.push_back(baidu::common::NumToString(agents[i].mem_assigned));
-                vs.push_back(baidu::common::NumToString(agents[i].mem_share));
+                vs.push_back(baidu::common::HumanReadableString(agents[i].mem_used));
+                vs.push_back(baidu::common::HumanReadableString(agents[i].mem_assigned));
+                vs.push_back(baidu::common::HumanReadableString(agents[i].mem_share));
                 vs.push_back(agents[i].labels);
                 tp.AddRow(vs);
 		    }

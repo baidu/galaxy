@@ -117,7 +117,7 @@ int32_t ResourceUtils::Compare(const Resource& left,
     if (ssd_check == -1) {
         return -1;
     }
-    int32_t port_check = 1;
+    int32_t port_check = 0;
     std::set<int32_t> left_ports;
     for (int i = 0; i < left.ports_size(); i++) {
         left_ports.insert(left.ports(i));
