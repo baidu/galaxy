@@ -13,16 +13,42 @@
 namespace baidu {
 namespace galaxy {
 
+struct VolumeDescription {
+    int64_t quota;
+    std::string path;
+};
+
+struct ResDescription {
+    int32_t millicores;
+    int64_t memory;
+    std::vector<int32_t> ports;
+    std::vector<VolumeDescription> ssds;
+    std::vector<VolumeDescription> disks;
+};
+
+struct TaskDescription {
+    int32_t offset;
+    std::string binary;
+    std::string source_type;
+    std::string start_cmd;
+    std::string stop_cmd;
+    ResDescription requirement;
+};
+
+struct PodDescription {
+   ResDescription requirement; 
+   std::vector<TaskDescription> tasks;
+   std::string version;
+};
+
 struct JobDescription {
     std::string job_name;
-    std::string cmd_line;
-    std::string binary;
-    bool is_batch;
+    std::string type;
+    std::string priority;
     int32_t replica;
-    int32_t cpu_required;
-    int64_t mem_required;
     int32_t deploy_step;
     std::string label;
+    PodDescription pod;
 };
 
 struct JobInformation {
@@ -33,7 +59,7 @@ struct JobInformation {
     int32_t priority;
     int32_t running_num;
     int32_t cpu_used;
-    int32_t mem_used;
+    int64_t mem_used;
     int32_t pending_num;
     int32_t deploying_num;
     std::string state;
@@ -52,11 +78,22 @@ struct NodeDescription {
     std::string labels;
 };
 
+struct PodInformation {
+    std::string jobid;
+    std::string podid;
+    ResDescription used;
+    ResDescription assigned;
+    std::string stage;
+    std::string state;
+    std::string version;
+    std::string endpoint;
+};
+
 class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
     //create a new job
-    virtual std::string SubmitJob(const JobDescription& job) = 0;
+    virtual bool SubmitJob(const JobDescription& job, std::string* job_id) = 0;
     //update job for example update the replicate_count
     virtual bool UpdateJob(const std::string& jobid, const JobDescription& job) = 0;
     //list all jobs in galaxys
@@ -67,6 +104,8 @@ public:
     virtual bool ListAgents(std::vector<NodeDescription>* nodes) = 0;
     virtual bool LabelAgents(const std::string& label, 
                              const std::vector<std::string>& agents) = 0;
+    virtual bool ShowPod(const std::string& jobid,
+                         std::vector<PodInformation>* pods) = 0;
 };
 
 } // namespace galaxy

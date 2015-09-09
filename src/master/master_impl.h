@@ -69,6 +69,10 @@ public:
                                const ::baidu::galaxy::LabelAgentRequest* request,
                                ::baidu::galaxy::LabelAgentResponse* response,
                                ::google::protobuf::Closure* done);
+      virtual void ShowPod(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::ShowPodRequest* request,
+                           ::baidu::galaxy::ShowPodResponse* response,
+                           ::google::protobuf::Closure* done);
       void OnSessionTimeout();
       void OnLockChange(std::string lock_session_id);
 private:

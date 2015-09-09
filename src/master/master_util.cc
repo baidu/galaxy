@@ -67,15 +67,21 @@ void MasterUtil::TraceJobDesc(const JobDescriptor& job_desc) {
               job_desc.replica(),
               job_desc.deploy_step()
     );
+    LOG(INFO, "pod descriptor mem:%ld, cpu:%d, port_size:%d",
+       job_desc.pod().requirement().memory(),
+       job_desc.pod().requirement().millicores(),
+       job_desc.pod().requirement().ports_size());
     for (int i = 0; i < job_desc.pod().tasks_size(); i++) {
         const TaskDescriptor& task_desc = job_desc.pod().tasks(i);
         LOG(INFO, "job[%s]:task[%d] descriptor: "
-            "start_cmd: \"%s\", stop_cmd: \"%s\", binary_size:%d",
+            "start_cmd: \"%s\", stop_cmd: \"%s\", binary_size:%d, mem:%ld, cpu:%d ",
             job_desc.name().c_str(),
             i, 
             task_desc.start_command().c_str(),
             task_desc.stop_command().c_str(),
-            task_desc.binary().size()
+            task_desc.binary().size(),
+            task_desc.requirement().memory(),
+            task_desc.requirement().millicores()
         );
     }
 }

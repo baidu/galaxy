@@ -239,6 +239,7 @@ int PodManager::CleanPodEnv(const PodInfo& pod_info) {
         return 0; 
     }
 
+    LOG(WARNING, "pod gc path %s", pod_info.pod_status.pod_gc_path().c_str());
     std::string new_workspace_dir = pod_info.pod_status.pod_gc_path();
     if (::access(new_workspace_dir.c_str(), F_OK) == 0) {
         LOG(WARNING, "path %s is already exists", new_workspace_dir.c_str()); 
@@ -247,8 +248,8 @@ int PodManager::CleanPodEnv(const PodInfo& pod_info) {
 
     int ret = ::rename(pod_workspace.c_str(), new_workspace_dir.c_str());
     if (ret == -1) {
-        LOG(WARNING, "rename %s failed err[%d: %s]",
-                pod_workspace.c_str(), errno, strerror(errno)); 
+        LOG(WARNING, "rename %s to %s failed err[%d: %s]",
+                pod_workspace.c_str(), new_workspace_dir.c_str(), errno, strerror(errno)); 
         return -1;
     }
     garbage_collect_thread_.DelayTask(FLAGS_agent_gc_timeout, 
@@ -413,6 +414,7 @@ int PodManager::AddPod(const PodInfo& info) {
     std::string gc_dir = FLAGS_agent_gc_dir + "/" 
         + internal_info.pod_id + "_" + time_str;
     internal_info.pod_status.set_pod_gc_path(gc_dir);
+    LOG(WARNING, "pod gc path %s", pods_[info.pod_id].pod_status.pod_gc_path().c_str());
 
     if (AllocPortForInitd(internal_info.initd_port) != 0){
         LOG(WARNING, "pod %s alloc port for initd failed",
@@ -474,6 +476,11 @@ int PodManager::ReloadPod(const PodInfo& info) {
     PodInfo& internal_info = pods_[info.pod_id];
     internal_info.pod_status.set_podid(internal_info.pod_id);
     internal_info.pod_status.set_jobid(internal_info.job_id);
+    std::string time_str;
+    GetStrFTime(&time_str);
+    std::string gc_dir = FLAGS_agent_gc_dir + "/" 
+        + internal_info.pod_id + "_" + time_str;
+    internal_info.pod_status.set_pod_gc_path(gc_dir);
     // TODO check if not in free ports
     ReloadInitdPort(internal_info.initd_port);
     std::map<std::string, TaskInfo>::iterator task_it =

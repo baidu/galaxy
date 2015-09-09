@@ -22,8 +22,8 @@ DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 DECLARE_string(agent_work_dir);
 
-DECLARE_int32(agent_millicores);
-DECLARE_int32(agent_memory);
+DECLARE_int32(agent_millicores_share);
+DECLARE_int64(agent_mem_share);
 
 DECLARE_string(agent_persistence_path);
 
@@ -67,13 +67,13 @@ void AgentImpl::Query(::google::protobuf::RpcController* /*cntl*/,
     AgentInfo agent_info; 
     agent_info.set_endpoint(endpoint_);
     agent_info.mutable_total()->set_millicores(
-            FLAGS_agent_millicores);
+            FLAGS_agent_millicores_share);
     agent_info.mutable_total()->set_memory(
-            FLAGS_agent_memory);
+            FLAGS_agent_mem_share);
     agent_info.mutable_assigned()->set_millicores(
-            FLAGS_agent_millicores - resource_capacity_.millicores); 
+            FLAGS_agent_millicores_share - resource_capacity_.millicores); 
     agent_info.mutable_assigned()->set_memory(
-            FLAGS_agent_memory- resource_capacity_.memory);
+            FLAGS_agent_mem_share - resource_capacity_.memory);
 
     boost::unordered_set<int32_t>::iterator port_it = resource_capacity_.used_port.begin();
     for (; port_it != resource_capacity_.used_port.end(); ++port_it) {
@@ -249,8 +249,8 @@ bool AgentImpl::RestorePods() {
 
 bool AgentImpl::Init() {
 
-    resource_capacity_.millicores = FLAGS_agent_millicores;
-    resource_capacity_.memory = FLAGS_agent_memory;
+    resource_capacity_.millicores = FLAGS_agent_millicores_share;
+    resource_capacity_.memory = FLAGS_agent_mem_share;
     
     if (!file::Mkdir(FLAGS_agent_work_dir)) {
         LOG(WARNING, "mkdir workdir %s falied", 

@@ -20,13 +20,10 @@ echo "--agent_work_dir=`pwd`/work_dir" >> galaxy.flag
 sleep 3
 
 tar zcf batch.tar.gz ../galaxy
-echo "yes" > longrun.sh
+echo "sleep 10000000000" > longrun.sh
 tar zcf longrun.tar.gz longrun.sh
 
-../galaxy submit job_batch batch.tar.gz 3 3 3 "./galaxy list" true
-../galaxy submit job_longrun longrun.tar.gz 3 3 3 "sh longrun.sh" false
+../galaxy submit -f sample.json
 
-#rm -rf longrun*
-#rm -rf batch.tar.gz
-../galaxy list
-../galaxy listagent
+../galaxy jobs
+../galaxy agents

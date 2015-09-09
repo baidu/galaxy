@@ -18,6 +18,8 @@ install:
     - ( cd common && make -j8 )
     - git clone https://github.com/fxsjy/ins
     - ( cd ins && PBRPC_PATH=../thirdparty/sofa-pbrpc/output/ make -j8 && make sdk )
+    - git clone https://github.com/miloyip/rapidjson.git ./thirdparty/rapidjson
+
 
 script: 
     - make -j8 && make install

@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "utils/resource_utils.h"
+
+#include <set>
 #include "logging.h"
 
 namespace baidu {
@@ -115,7 +117,6 @@ int32_t ResourceUtils::Compare(const Resource& left,
     if (ssd_check == -1) {
         return -1;
     }
-
     return cpu_check & mem_check & disk_check & ssd_check;
 }
 

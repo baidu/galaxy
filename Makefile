@@ -13,6 +13,7 @@ INCLUDE_PATH = -I./ -I./src -I$(PROTOBUF_PATH)/include \
                -Icommon/include \
                -I$(INS_PATH)/include \
                -I$(GFLAGS_PATH)/include \
+               -I$(RAPIDJSON_PATH)/include
 
 LDFLAGS = -L$(PROTOBUF_PATH)/lib \
           -L$(PBRPC_PATH)/lib -lins_sdk -lsofa-pbrpc -lprotobuf \

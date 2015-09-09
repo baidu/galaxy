@@ -111,7 +111,7 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
     // add default version
-    if (job->desc_.pod().has_version()
+    if (!job->desc_.pod().has_version()
        || job->desc_.pod().version().empty()) {
         job->desc_.mutable_pod()->set_version("1.0.0");
     }
@@ -200,6 +200,7 @@ bool JobManager::HandleUpdateJob(const JobDescriptor& desc, Job* job,
     }
     *pod_desc_change = false;
     *replica_change = false;
+    job->desc_.set_deploy_step(desc.deploy_step());
     if (desc.pod().version() != job->latest_version) {
         job->latest_version = desc.pod().version();
         job->desc_.mutable_pod()->CopyFrom(desc.pod());
@@ -237,9 +238,7 @@ Status JobManager::Terminte(const JobId& jobid) {
         return kJobNotFound;
     }
     it->second->desc_.set_replica(0);
-    if (it->second->pods_.size() > 0) { 
-        scale_down_jobs_.insert(it->second->id_);
-    }
+    scale_down_jobs_.insert(it->second->id_);
     it->second->state_ = kJobTerminated;
     pod_cv_.Signal();
     return kOk;
@@ -377,6 +376,7 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
                 PodDescriptor* pod_desc = job_info->add_pod_descs();
                 pod_desc->CopyFrom(v_it->second);
             }
+            job_info->mutable_desc()->CopyFrom(job->desc_);
             job_info->set_update_state(kUpdateNormal);
             job->update_state_ = kUpdateNormal;
         }else {
@@ -507,6 +507,12 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
         JobInfo* job_info = scale_up_pods->Add();
         job_info->set_jobid(job->id_);
         job_info->mutable_desc()->CopyFrom(job->desc_);
+        std::map<Version, PodDescriptor>::iterator v_it = job->pod_desc_.begin();
+        for (; v_it != job->pod_desc_.end(); ++v_it) {
+            PodDescriptor* pod_desc = job_info->add_pod_descs();
+            pod_desc->CopyFrom(v_it->second);
+        }
+        job_info->set_latest_version(job->latest_version);
         // copy all pod
         for (pod_it= job->pods_.begin(); pod_it != job->pods_.end(); ++pod_it) {
             PodStatus* pod_status = job_info->add_pods();
@@ -539,7 +545,8 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     }
     PodStatus* pod = pod_it->second;
     if (sche_info.action() == kTerminate 
-        && job->state_ == kJobTerminated) {
+        && (job->state_ == kJobTerminated 
+            || job->update_state_ == kUpdateSuspend)) {
         ChangeStage(kStageRemoved, pod, job);
         return kOk;
     } else if (sche_info.action() == kLaunch
@@ -576,6 +583,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         LOG(INFO, "update pod %s of job %s", 
                   pod->podid().c_str(),
                   job->id_.c_str());
+        pod->set_version(job->latest_version);
         ChangeStage(kStageDeath, pod, job);
         return kOk;
     }
@@ -820,12 +828,13 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     const AgentInfo& report_agent_info = response->agent();
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d ",
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port size %d",
         report_agent_info.endpoint().c_str(),
         report_agent_info.total().memory(), report_agent_info.total().millicores(),
         report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
         report_agent_info.used().memory(), report_agent_info.used().millicores(),
-        report_agent_info.pods_size());
+        report_agent_info.pods_size(),
+        report_agent_info.assigned().ports_size());
     AgentInfo* agent = it->second;
     UpdateAgentVersion(agent, report_agent_info);
     // copy only needed 
@@ -838,11 +847,12 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid(); 
-        LOG(INFO, "the pod %s of job %s on agent %s state %s",
+        LOG(INFO, "the pod %s of job %s on agent %s state %s version %s",
                   podid.c_str(), 
                   jobid.c_str(), 
                   report_agent_info.endpoint().c_str(),
-                  PodState_Name(report_pod_info.state()).c_str()); 
+                  PodState_Name(report_pod_info.state()).c_str(),
+                  report_pod_info.version().c_str()); 
         // validate job 
         std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
         if (job_it == jobs_.end()) {
@@ -929,16 +939,7 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
             old_agent_info->set_version(old_agent_info->version() + 1);
             break;
         }
-
-        // check used
-        int32_t check_used = ResourceUtils::Compare(
-                        old_agent_info->used(),
-                        new_agent_info.used());
-        if (check_used != 0) {
-            old_agent_info->set_version(old_agent_info->version() + 1);
-            break;
-        }
-
+        
         // check total resource 
         int32_t check_total = ResourceUtils::Compare(
                         old_agent_info->total(), 
@@ -946,7 +947,25 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
         if (check_total != 0) {
             old_agent_info->set_version(old_agent_info->version() + 1);
             break;
-        } 
+        }
+
+        if (old_agent_info->assigned().ports_size() 
+          != new_agent_info.assigned().ports_size()) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
+        std::set<int32_t> used_ports;
+        for (int i = 0; i < old_agent_info->assigned().ports_size(); i++) {
+            used_ports.insert(old_agent_info->assigned().ports(i));
+        }
+        for (int i = 0; i < new_agent_info.assigned().ports_size(); i++) {
+            if (used_ports.find(new_agent_info.assigned().ports(i))
+                != used_ports.end()) {
+                continue;
+            }
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
     } while(0);
 
     LOG(INFO, "agent %s change version from %d to %d", 
@@ -1318,6 +1337,34 @@ bool JobManager::SaveLabelToNexus(const LabelCell& label_cell) {
           ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
     }
     return put_ok;
+}
+
+Status JobManager::GetPods(const std::string& jobid, 
+                           PodOverviewList* pods) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    Job* job = job_it->second;
+    std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+    for (; pod_it != job->pods_.end(); ++pod_it) {
+        PodStatus* pod_status = pod_it->second;
+        std::map<Version, PodDescriptor>::iterator desc_it = job->pod_desc_.find(pod_status->version());
+        if (desc_it == job->pod_desc_.end()) {
+            continue;
+        }
+        PodOverview* pod = pods->Add();
+        pod->set_jobid(pod_status->jobid());
+        pod->set_podid(pod_status->podid());
+        pod->set_stage(pod_status->stage());
+        pod->set_state(pod_status->state());
+        pod->set_version(pod_status->version());
+        pod->set_endpoint(pod_status->endpoint());
+        pod->mutable_used()->CopyFrom(pod_status->resource_used());
+        pod->mutable_assigned()->CopyFrom(desc_it->second.requirement());
+    }
+    return kOk;
 }
 
 }

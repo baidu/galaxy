@@ -38,8 +38,8 @@ CONFIGS('public/sofa-pbrpc@trunk@comake')
 CONFIGS('thirdsrc/protobuf@2.6.2.0')
 CONFIGS('third-64/boost@1.63.0.101')
 CONFIGS('third-64/gflags@gflags_2-0-0-100_PD_BL')
+CONFIGS('bdg/log/build-64/libs/thirdparty/rapidjson@1.0.0.0')
 CONFIGS('third-64/leveldb@base')
-
 scheduler_src='src/scheduler/scheduler.cc\
                src/proto/galaxy.proto\
                src/proto/master.proto\
@@ -90,8 +90,7 @@ sdk_src='src/sdk/galaxy.cc\
          src/proto/master.proto'
 sdk_headers='src/sdk/galaxy.h'
 
-client_src='src/client/galaxy_client.cc \
-            src/flags.cc'
+client_src='src/client/galaxy_client.cc'
 
 test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/task_manager.cc src/agent/utils.cc src/flags.cc \
@@ -115,7 +114,7 @@ Application('master',Sources(master_src))
 Application('agent',Sources(agent_src))
 Application('initd',Sources(initd_src))
 StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
-Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a'))
+Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a ./ins/libins_sdk.a'))
 Application('test_task_manager', Sources(test_task_manager_src))
 Application('test_cgroup', Sources(test_cgroup_src))
 Application('test_resource_collector', Sources(test_resource_collector_src))

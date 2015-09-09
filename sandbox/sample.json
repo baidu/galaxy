@@ -1,0 +1,27 @@
+{
+    "name":"sample",
+    "replica":2,
+    "type":"kLongRun",
+    "priority":"kOnline",
+    "deploy_step":3,
+    "pod":{
+        "version":"2.0.0",
+        "requirement":{
+            "millicores":1000,
+            "memory":2000,
+            "ports":[8080]
+        },
+        "tasks":[
+                 {
+                     "binary":"longrun.tar.gz",
+                     "source_type":"kSourceTypeBinary",
+                     "start_command":"sh longrun.sh",
+                     "requirement":{
+                         "millicores":500,
+                         "memory":1000
+                     }
+                 }
+
+            ]
+    }
+}
