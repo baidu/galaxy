@@ -32,6 +32,7 @@ DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
 DECLARE_string(agent_global_cgroup_path);
 DECLARE_int32(agent_detect_interval);
+DECLARE_string(agent_default_user);
 
 namespace baidu {
 namespace galaxy {
@@ -234,6 +235,30 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     if (task_info == NULL) {
         return -1; 
     }
+
+    uid_t cur_uid = ::getuid();
+    if (cur_uid == 0) {
+        // only do in root 
+        uid_t user_uid;
+        gid_t user_gid;
+        if (!user::GetUidAndGid(FLAGS_agent_default_user, 
+                    &user_uid, &user_gid)) {
+            LOG(WARNING, "task %s user %s not exists", 
+                    task_info->task_id.c_str(),
+                    FLAGS_agent_default_user.c_str()); 
+            return -1;
+        }
+        if (user_uid != cur_uid 
+                && !file::Chown(task_info->task_workspace, 
+                    user_uid, user_gid)) {
+            LOG(WARNING, "task %s chown %s to user %s failed",
+                    task_info->task_id.c_str(),
+                    task_info->task_workspace.c_str(),
+                    FLAGS_agent_default_user.c_str());    
+            return -1;
+        }
+    }
+    
     task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
     SetupRunProcessKey(task_info);
@@ -244,6 +269,7 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     initd_request.set_commands(task_info->desc.start_command());
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
+    initd_request.set_user(FLAGS_agent_default_user);
     std::string* pod_id = initd_request.add_envs();
     pod_id->append("POD_ID=");
     pod_id->append(task_info->pod_id);
@@ -312,6 +338,7 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     initd_request.set_commands(stop_command);
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
+    initd_request.set_user(FLAGS_agent_default_user);
 
     if (task_info->initd_stub == NULL 
             && !rpc_client_->GetStub(task_info->initd_endpoint, 
@@ -429,8 +456,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command = "wget "; 
         deploy_command.append(task_info->desc.binary());
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
-    }
-
+    } 
     task_info->stage = kTaskStageDEPLOYING;
     SetupDeployProcessKey(task_info);
     task_info->status.set_state(kTaskDeploy);
@@ -671,10 +697,20 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
         int chk_res = InitdProcessCheck(task_info);
-        if (chk_res == 1 && DeployTask(task_info) != 0) {
-            LOG(WARNING, "task %s deploy failed",
-                    task_info->task_id.c_str());
-            task_info->status.set_state(kTaskError); 
+        if (chk_res == 1) {
+            if (task_info->desc.has_binary() 
+                    && !task_info->desc.binary().empty()) {
+                if (DeployTask(task_info) != 0)  {
+                    LOG(WARNING, "task %s deploy failed",
+                        task_info->task_id.c_str());
+                    task_info->status.set_state(kTaskError); 
+                }
+            // if no binary, run directly
+            } else if (RunTask(task_info) != 0) {
+                LOG(WARNING, "task %s run failed",
+                        task_info->task_id.c_str());  
+                task_info->status.set_state(kTaskError); 
+            }
         } else if (chk_res == -1) {
             LOG(WARNING, "task %s check initd failed",
                     task_info->task_id.c_str()); 

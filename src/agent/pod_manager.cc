@@ -275,12 +275,14 @@ int PodManager::CheckPod(const std::string& pod_id) {
     // all task delete by taskmanager, no need check
     if (pod_info.tasks.size() == 0) {
         // TODO check initd exits
-        ::kill(pod_info.initd_pid, SIGTERM);
-        int status = 0;
-        pid_t pid = ::waitpid(pod_info.initd_pid, &status, WNOHANG); 
-        if (pid == 0) {
-            LOG(WARNING, "fail to kill %s initd", pod_info.pod_id.c_str());
-            return 0; 
+        if (pod_info.initd_pid > 0) { 
+            ::kill(pod_info.initd_pid, SIGTERM);
+            int status = 0;
+            pid_t pid = ::waitpid(pod_info.initd_pid, &status, WNOHANG); 
+            if (pid == 0) {
+                LOG(WARNING, "fail to kill %s initd", pod_info.pod_id.c_str());
+                return 0;
+            }
         }
         ReleasePortFromInitd(pod_info.initd_port);
         if (CleanPodEnv(pod_info) != 0) {
@@ -509,7 +511,9 @@ int PodManager::AllocPortForInitd(int& port) {
 }
 
 void PodManager::ReleasePortFromInitd(int port) {
-    initd_free_ports_.insert(port);
+    if (port > 0) {
+        initd_free_ports_.insert(port);
+    }
 }
 
 void PodManager::ReloadInitdPort(int port) {
