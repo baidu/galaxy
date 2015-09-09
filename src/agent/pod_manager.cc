@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "agent/pod_manager.h"
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sched.h>
 #include <signal.h>
 #include <unistd.h>
@@ -31,6 +33,8 @@
 
 DECLARE_string(agent_initd_bin);
 DECLARE_string(agent_work_dir);
+DECLARE_string(agent_gc_dir);
+DECLARE_int64(agent_gc_timeout);
 DECLARE_int32(agent_initd_port_begin);
 DECLARE_int32(agent_initd_port_end);
 DECLARE_bool(agent_namespace_isolation_switch);
@@ -74,10 +78,13 @@ static int LanuchInitdMain(void *arg) {
 
 PodManager::PodManager() : 
     pods_(), 
-    task_manager_(NULL) {
+    task_manager_(NULL),
+    initd_free_ports_(),
+    garbage_collect_thread_(1) {
 }
 
 PodManager::~PodManager() {
+    garbage_collect_thread_.Stop(false);
     if (task_manager_ != NULL) {
         delete task_manager_;
         task_manager_ = NULL;
@@ -90,6 +97,12 @@ int PodManager::Init() {
     for (int i = initd_port_begin; i < initd_port_end; i++) {
         initd_free_ports_.insert(i); 
     }
+    if (!file::Remove(FLAGS_agent_gc_dir)
+            || !file::Mkdir(FLAGS_agent_gc_dir)) {
+        LOG(WARNING, "init gc dir failed"); 
+        return -1;
+    }
+
     task_manager_ = new TaskManager();
     return task_manager_->Init();
 }
@@ -218,6 +231,39 @@ int PodManager::LanuchInitd(PodInfo* info) {
     return 0;
 }
 
+int PodManager::CleanPodEnv(const PodInfo& pod_info) {
+    std::string pod_workspace = FLAGS_agent_work_dir;
+    pod_workspace.append("/");
+    pod_workspace.append(pod_info.pod_id);
+    if (!file::IsExists(pod_workspace)) {
+        return 0; 
+    }
+
+    std::string new_workspace_dir = pod_info.pod_status.pod_gc_path();
+    if (::access(new_workspace_dir.c_str(), F_OK) == 0) {
+        LOG(WARNING, "path %s is already exists", new_workspace_dir.c_str()); 
+        return -1;
+    }
+
+    int ret = ::rename(pod_workspace.c_str(), new_workspace_dir.c_str());
+    if (ret == -1) {
+        LOG(WARNING, "rename %s failed err[%d: %s]",
+                pod_workspace.c_str(), errno, strerror(errno)); 
+        return -1;
+    }
+    garbage_collect_thread_.DelayTask(FLAGS_agent_gc_timeout, 
+            boost::bind(&PodManager::DelayGarbageCollect, this, new_workspace_dir));
+    return 0;
+}
+
+void PodManager::DelayGarbageCollect(const std::string& workspace) {
+    if (file::IsExists(workspace) 
+            && !file::Remove(workspace)) {
+        LOG(WARNING, "remove pod workspace failed %s", workspace.c_str()); 
+    }
+    return;
+}
+
 int PodManager::CheckPod(const std::string& pod_id) {
     std::map<std::string, PodInfo>::iterator pod_it = 
         pods_.find(pod_id);
@@ -231,18 +277,17 @@ int PodManager::CheckPod(const std::string& pod_id) {
         // TODO check initd exits
         if (pod_info.initd_pid > 0) { 
             ::kill(pod_info.initd_pid, SIGTERM);
+            int status = 0;
+            pid_t pid = ::waitpid(pod_info.initd_pid, &status, WNOHANG); 
+            if (pid == 0) {
+                LOG(WARNING, "fail to kill %s initd", pod_info.pod_id.c_str());
+                return 0;
+            }
         }
         ReleasePortFromInitd(pod_info.initd_port);
-        std::string workspace_pod = FLAGS_agent_work_dir;
-        workspace_pod.append("/");
-        workspace_pod.append(pod_id);
-        // NOTE if initd not killed, 
-        // remove may failed, need try again
-        if (file::IsExists(workspace_pod)
-                && !file::Remove(workspace_pod)) {
-            LOG(WARNING, "remove pod workspace failed %s", 
-                         pod_id.c_str());
-            return 0; 
+        if (CleanPodEnv(pod_info) != 0) {
+            LOG(WARNING, "fail to clean %s env", pod_info.pod_id.c_str()); 
+            return 0;
         }
         LOG(INFO, "remove pod %s", pod_info.pod_id.c_str());
         pods_.erase(pod_it);
@@ -361,7 +406,13 @@ int PodManager::AddPod(const PodInfo& info) {
         return 0; 
     }
     pods_[info.pod_id] = info;
+
+    std::string time_str;
+    GetStrFTime(&time_str);
     PodInfo& internal_info = pods_[info.pod_id];
+    std::string gc_dir = FLAGS_agent_gc_dir + "/" 
+        + internal_info.pod_id + "_" + time_str;
+    internal_info.pod_status.set_pod_gc_path(gc_dir);
 
     if (AllocPortForInitd(internal_info.initd_port) != 0){
         LOG(WARNING, "pod %s alloc port for initd failed",

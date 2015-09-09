@@ -562,12 +562,6 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
 
 int TaskManager::CleanWorkspace(TaskInfo* task) {
     tasks_mutex_.AssertHeld();
-    if (file::IsExists(task->task_workspace)
-            && !file::Remove(task->task_workspace)) {
-        LOG(WARNING, "Remove task %s workspace failed",
-                task->task_id.c_str());
-        return -1;
-    }
     return 0;
 }
 

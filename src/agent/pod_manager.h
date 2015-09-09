@@ -13,6 +13,7 @@
 
 #include "proto/galaxy.pb.h"
 #include "mutex.h"
+#include "thread_pool.h"
 #include "agent/task_manager.h"
 
 namespace baidu {
@@ -42,12 +43,15 @@ protected:
 
     int LanuchInitd(PodInfo* info); 
     int LanuchInitdByFork(PodInfo* info);
+    int CleanPodEnv(const PodInfo& pod_info);
+    void DelayGarbageCollect(const std::string& workspace);
     //int LanuchInitdByFork(PodInfo* info);
     //Mutex pods_lock_;
     std::map<std::string, PodInfo> pods_;
     TaskManager* task_manager_;
 
     std::set<int> initd_free_ports_;   
+    ThreadPool garbage_collect_thread_; 
 };
 
 }   // ending namespace galaxy
