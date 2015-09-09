@@ -938,8 +938,8 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
         if (check_assigned != 0) {
             old_agent_info->set_version(old_agent_info->version() + 1);
             break;
-        } 
-
+        }
+        
         // check total resource 
         int32_t check_total = ResourceUtils::Compare(
                         old_agent_info->total(), 
@@ -947,7 +947,25 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
         if (check_total != 0) {
             old_agent_info->set_version(old_agent_info->version() + 1);
             break;
-        } 
+        }
+
+        if (old_agent_info->assigned().ports_size() 
+          != new_agent_info.assigned().ports_size()) {
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
+        std::set<int32_t> used_ports;
+        for (int i = 0; i < old_agent_info->assigned().ports_size(); i++) {
+            used_ports.insert(old_agent_info->assigned().ports(i));
+        }
+        for (int i = 0; i < new_agent_info.assigned().ports_size(); i++) {
+            if (used_ports.find(new_agent_info.assigned().ports(i))
+                != used_ports.end()) {
+                continue;
+            }
+            old_agent_info->set_version(old_agent_info->version() + 1);
+            break;
+        }
     } while(0);
 
     LOG(INFO, "agent %s change version from %d to %d", 
