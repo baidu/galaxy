@@ -229,7 +229,9 @@ int PodManager::CheckPod(const std::string& pod_id) {
     // all task delete by taskmanager, no need check
     if (pod_info.tasks.size() == 0) {
         // TODO check initd exits
-        ::kill(pod_info.initd_pid, SIGTERM);
+        if (pod_info.initd_pid > 0) { 
+            ::kill(pod_info.initd_pid, SIGTERM);
+        }
         ReleasePortFromInitd(pod_info.initd_port);
         std::string workspace_pod = FLAGS_agent_work_dir;
         workspace_pod.append("/");
@@ -450,7 +452,9 @@ int PodManager::AllocPortForInitd(int& port) {
 }
 
 void PodManager::ReleasePortFromInitd(int port) {
-    initd_free_ports_.insert(port);
+    if (port > 0) {
+        initd_free_ports_.insert(port);
+    }
 }
 
 void PodManager::ReloadInitdPort(int port) {

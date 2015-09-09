@@ -20,6 +20,7 @@ DECLARE_int32(agent_background_threads_num);
 DECLARE_int32(agent_heartbeat_interval);
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
+DECLARE_string(agent_work_dir);
 
 DECLARE_int32(agent_millicores);
 DECLARE_int32(agent_memory);
@@ -103,8 +104,8 @@ void AgentImpl::CreatePodInfo(
     pod_info->pod_status.set_podid(req->podid());
     pod_info->pod_status.set_jobid(req->jobid());
     pod_info->pod_status.set_state(kPodPending);
-    pod_info->initd_port = 0;
-    pod_info->initd_pid = 0;
+    pod_info->initd_port = -1;
+    pod_info->initd_pid = -1;
     
     for (int i = 0; i < pod_info->pod_desc.tasks_size(); i++) {
         TaskInfo task_info;
@@ -156,6 +157,8 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
                          req->podid().c_str());
             // NOTE if persistence failed, need delete pod
             pod_manager_.DeletePod(req->podid());
+            resp->set_status(kUnknown);
+            break;
         }
         LOG(INFO, "run pod %s", req->podid().c_str());
         resp->set_status(kOk); 
@@ -238,6 +241,12 @@ bool AgentImpl::Init() {
     resource_capacity_.millicores = FLAGS_agent_millicores;
     resource_capacity_.memory = FLAGS_agent_memory;
     
+    if (!file::Mkdir(FLAGS_agent_work_dir)) {
+        LOG(WARNING, "mkdir workdir %s falied", 
+                            FLAGS_agent_work_dir.c_str()); 
+        return false;
+    }
+
     if (!persistence_handler_.Init(FLAGS_agent_persistence_path)) {
         LOG(WARNING, "init persistence handler failed");
         return false;  

@@ -257,7 +257,7 @@ bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
         user_passd_buf = new char[user_passd_buf_len];
         int ret = ::getpwnam_r(user_name.c_str(), &user_passd_info, 
                 user_passd_buf, user_passd_buf_len, &user_passd_rs);
-        if (ret != 0 && user_passd_rs != NULL) {
+        if (ret == 0 && user_passd_rs != NULL) {
             *uid = user_passd_rs->pw_uid; 
             *gid = user_passd_rs->pw_gid;
             rs = true;
