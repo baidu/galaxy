@@ -110,6 +110,15 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
+    // add default version
+    if (job->desc_.pod().has_version()
+       || job->desc_.pod().version().empty()) {
+        job->desc_.mutable_pod()->set_version("1.0.0");
+    }
+    job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod();
+    job->latest_version = job->desc_.pod().version();
+    // disable update default
+    job->update_state_ = kUpdateSuspend;
     // TODO add nexus lock
     bool save_ok = SaveToNexus(job);
     if (!save_ok) {
@@ -119,16 +128,19 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     jobs_[job_id] = job;
     FillPodsToJob(job);
     pod_cv_.Signal();
-    LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d ",
+    LOG(INFO, "job %s submitted by user: %s, with deploy_step %d, replica %d , pod version %s",
       job_id.c_str(), 
       job_desc.user().c_str(),
       job_desc.deploy_step(),
-      job_desc.replica());
+      job_desc.replica(),
+      job->latest_version.c_str());
     return kOk;
 }
 
 Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
     Job job;
+    bool replica_changed = false;
+    bool pod_desc_changed = false;
     {
         MutexLock lock(&mutex_);
         std::map<JobId, Job*>::iterator it;
@@ -138,8 +150,12 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
             return kJobNotFound;
         }
         job = *(it->second);
+        bool ok = HandleUpdateJob(job_desc, &job, &replica_changed, &pod_desc_changed);
+        if (!ok) {
+            LOG(WARNING, "update job %s failed for handle update job error", job_id.c_str());
+            return kJobUpdateFail;
+        }
     }
-    job.desc_.set_replica(job_desc.replica());
     // TODO add nexus lock
     bool save_ok = SaveToNexus(&job);
     if (!save_ok) {
@@ -153,16 +169,49 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         return kJobNotFound;
     }
     int32_t old_replica = it->second->desc_.replica();
-    it->second->desc_.set_replica(job_desc.replica());
+    bool ok = HandleUpdateJob(job_desc, it->second, 
+                      &replica_changed, &pod_desc_changed);
+    if (!ok) {
+        LOG(WARNING, "update job %s failed for handle update job error", job_id.c_str());
+        return kJobUpdateFail;
+    }
     if (old_replica < job_desc.replica()) {
         FillPodsToJob(it->second);
-        pod_cv_.Signal();
     } else if (old_replica > job_desc.replica()) {
         scale_down_jobs_.insert(it->second->id_);
+    }
+    if (pod_desc_changed) {
+        need_update_jobs_.insert(job_id);
+    }
+
+    if (pod_desc_changed || replica_changed) {
         pod_cv_.Signal();
     }
     LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
     return kOk;
+}
+
+bool JobManager::HandleUpdateJob(const JobDescriptor& desc, Job* job,
+                                 bool* replica_change,
+                                 bool* pod_desc_change) {
+    mutex_.AssertHeld();
+    if (replica_change == NULL || pod_desc_change == NULL) {
+        return false;
+    }
+    *pod_desc_change = false;
+    *replica_change = false;
+    if (desc.pod().version() != job->latest_version) {
+        job->latest_version = desc.pod().version();
+        job->desc_.mutable_pod()->CopyFrom(desc.pod());
+        job->pod_desc_[desc.pod().version()] = desc.pod();
+        *pod_desc_change = true;
+    }
+    
+    if (desc.replica() != job->desc_.replica()) {
+        job->desc_.set_replica(desc.replica());
+        *replica_change = true;
+    }
+    return true;
 }
 
 Status JobManager::Terminte(const JobId& jobid) {
@@ -199,6 +248,7 @@ Status JobManager::Terminte(const JobId& jobid) {
 void JobManager::FillPodsToJob(Job* job) {
     mutex_.AssertHeld();
     bool need_scale_up = false;
+    job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod();
     for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
         PodId pod_id = MasterUtil::UUID();
         PodStatus* pod_status = new PodStatus();
@@ -206,6 +256,7 @@ void JobManager::FillPodsToJob(Job* job) {
         pod_status->set_jobid(job->id_);
         pod_status->set_state(kPodPending);
         pod_status->set_stage(kStagePending);
+        pod_status->set_version(job->latest_version);
         job->pods_[pod_id] = pod_status;
         need_scale_up = true;
     }
@@ -235,6 +286,12 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     job->desc_.CopyFrom(job_info.desc());
     std::string job_id = job_info.jobid();
     job->id_ = job_id;
+    job->update_state_ = job_info.update_state();
+    job->latest_version = job_info.latest_version();
+    for (int32_t i = 0; i < job_info.pod_descs_size(); i++) {
+        const PodDescriptor& desc = job_info.pod_descs(i);
+        job->pod_desc_[desc.version()] = desc;
+    }
     MutexLock lock(&mutex_);
     jobs_[job_id] = job;
 }
@@ -260,25 +317,83 @@ void JobManager::GetPendingPods(JobInfoList* pending_pods,
                                 int32_t max_scale_up_size,
                                 JobInfoList* scale_down_pods,
                                 int32_t max_scale_down_size,
+                                JobInfoList* need_update_jobs,
+                                int32_t max_need_update_job_size,
                                 ::google::protobuf::Closure* done) {
     MutexLock lock(&mutex_);
     if (safe_mode_) {
         done->Run();
         return;
     }
-    if (scale_down_jobs_.size() <= 0 && 
-        scale_up_jobs_.size() <= 0) {
+    if (scale_down_jobs_.size() <= 0 
+        && scale_up_jobs_.size() <= 0
+        && need_update_jobs_.size() <= 0) {
         pod_cv_.TimeWait(FLAGS_master_pending_job_wait_timeout);
     }
     ProcessScaleDown(scale_down_pods, max_scale_down_size);
     ProcessScaleUp(pending_pods, max_scale_up_size);
+    ProcessUpdateJob(need_update_jobs, max_need_update_job_size);
     done->Run();
+}
+
+void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
+                                  int32_t max_need_update_job_size) {
+    mutex_.AssertHeld();
+    std::set<JobId> should_rm_from_update;
+    std::set<JobId>::iterator jobid_it = need_update_jobs_.begin();
+    int32_t job_count = 0;
+    for (; jobid_it != need_update_jobs_.end(); ++jobid_it) {
+        if (job_count >= max_need_update_job_size) {
+            return;
+        }
+        std::map<JobId, Job*>::iterator job_it = jobs_.find(*jobid_it);
+        if (job_it == jobs_.end()) {
+            should_rm_from_update.insert(*jobid_it);
+            continue;
+        }
+        Job* job = job_it->second;
+        // check if job still needs update
+        std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+        bool need_update = false;
+        for (; pod_it != job->pods_.end(); ++pod_it) {
+            if (pod_it->second->version() != job->latest_version) {
+                need_update = true;
+                break;
+            }
+        }
+        if (need_update) {
+            job_count++;
+            LOG(INFO, "add job %s to update queue", job->id_.c_str());
+            pod_it = job->pods_.begin();
+            JobInfo* job_info = need_update_jobs->Add();
+            for (; pod_it != job->pods_.end(); ++pod_it) {
+                PodStatus* pod = job_info->add_pods();
+                pod->CopyFrom(*(pod_it->second));
+            }
+            job_info->set_jobid(job->id_);
+            job_info->set_latest_version(job->latest_version);
+            std::map<Version, PodDescriptor>::iterator v_it = job->pod_desc_.begin();
+            for (; v_it != job->pod_desc_.end(); ++v_it) {
+                PodDescriptor* pod_desc = job_info->add_pod_descs();
+                pod_desc->CopyFrom(v_it->second);
+            }
+            job_info->set_update_state(kUpdateNormal);
+            job->update_state_ = kUpdateNormal;
+        }else {
+            job->update_state_ = kUpdateSuspend;
+            should_rm_from_update.insert(*jobid_it);
+            LOG(INFO, "job %s leave update state", job->id_.c_str());
+        }
+    }
+    jobid_it = should_rm_from_update.begin();
+    for (; jobid_it != should_rm_from_update.end(); ++jobid_it) {
+        need_update_jobs_.erase(*jobid_it);
+    }
 }
 
 void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
                                   int32_t max_scale_down_size) {
     mutex_.AssertHeld();
-    std::map<JobId, std::map<PodId, PodStatus*> >::iterator it;
     std::set<JobId> should_rm_from_scale_down;
     std::set<JobId> should_been_cleaned;
     std::set<JobId>::iterator jobid_it = scale_down_jobs_.begin();
@@ -423,10 +538,12 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         return kPodNotFound;
     }
     PodStatus* pod = pod_it->second;
-    if (sche_info.action() == kTerminate) {
+    if (sche_info.action() == kTerminate 
+        && job->state_ == kJobTerminated) {
         ChangeStage(kStageRemoved, pod, job);
         return kOk;
-    } else if (sche_info.action() == kLaunch) {
+    } else if (sche_info.action() == kLaunch
+               && job->state_ != kJobTerminated) {
         if (pod->stage() != kStagePending) {
             LOG(WARNING, "propose fails for pod been in invalide stage %s, require stage kStgePending", PodStage_Name(pod->stage()).c_str());
             return kInputError; 
@@ -453,7 +570,15 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         LOG(INFO, "propose success, %s will be run on %s",
         podid.c_str(), endpoint.c_str());
         return kOk;
-    } 
+    } else if(sche_info.action() == kTerminate
+              && job->state_ != kJobTerminated 
+              && job->update_state_ == kUpdateNormal) {
+        LOG(INFO, "update pod %s of job %s", 
+                  pod->podid().c_str(),
+                  job->id_.c_str());
+        ChangeStage(kStageDeath, pod, job);
+        return kOk;
+    }
     return kInputError;
 }
 
@@ -1026,6 +1151,9 @@ bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
     fsm_.erase(pod->podid());
     job->pods_.erase(pod->podid());
     delete pod;
+    if (job->state_ != kJobTerminated) {
+        FillPodsToJob(job);
+    }
     return true;
 }
 
@@ -1035,9 +1163,14 @@ bool JobManager::HandlePendingToRunning(PodStatus* pod, Job* job) {
         LOG(WARNING, "fsm the input is invalidate");
         return false;
     }
+    std::map<Version, PodDescriptor>::iterator it = job->pod_desc_.find(pod->version());
+    if (it == job->pod_desc_.end()) {
+        LOG(WARNING, "fail to find pod %d description with version %s", pod->podid().c_str(), pod->version().c_str());
+        return false;
+    }
     pod->set_stage(kStageRunning);
-    pod->set_state(kPodDeploying);
-    RunPod(job->desc_.pod(), pod);
+    pod->set_state(kPodDeploying); 
+    RunPod(it->second, pod);
     return true;
 }
 
@@ -1126,7 +1259,19 @@ bool JobManager::SaveToNexus(const Job* job) {
     JobInfo job_info;
     job_info.set_jobid(job->id_);
     job_info.set_state(job->state_);
+    job_info.set_update_state(job->update_state_);
     job_info.mutable_desc()->CopyFrom(job->desc_);
+    // delete pod 
+    if (job_info.desc().has_pod()) { 
+        job_info.mutable_desc()->release_pod();
+    }
+    job_info.set_latest_version(job->latest_version);
+    std::map<Version, PodDescriptor>::const_iterator it = job->pod_desc_.begin();
+    for(; it != job->pod_desc_.end(); ++it) {
+        PodDescriptor* pod_desc = job_info.add_pod_descs();
+        pod_desc->CopyFrom(it->second);
+    }
+
     std::string job_raw_data;
     std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
                           + "/" + job->id_;

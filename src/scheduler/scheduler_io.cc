@@ -90,18 +90,29 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
     for (int i = 0; i < response_ptr->scale_down_jobs_size(); i++) {
         scale_down_jobs.push_back(response_ptr->mutable_scale_down_jobs(i));
     }
+    std::vector<JobInfo*> need_update_jobs;
+    for(int i = 0; i < response_ptr->need_update_jobs_size(); i++) {
+        need_update_jobs.push_back(response_ptr->mutable_need_update_jobs(i));
+    }
     std::vector<ScheduleInfo*> propose;
     do{
         int32_t status = scheduler_.ScheduleScaleUp(scale_up_jobs, &propose);
         if (status < 0) {
             LOG(WARNING, "fail to schedule scale up ");
             break;
+
         } 
         status = scheduler_.ScheduleScaleDown(scale_down_jobs, &propose);
         if (status < 0) {
             LOG(WARNING, "fail to schedule scale down ");
             break;
-        } 
+        }
+        status = scheduler_.ScheduleUpdate(need_update_jobs, &propose);
+        if (status != 0) {
+            LOG(WARNING, "fail to schedule scale down ");
+            break;
+        }
+
         if (propose.size() > 0) {
             ProposeRequest pro_request;
             ProposeResponse pro_response;

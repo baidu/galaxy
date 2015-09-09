@@ -99,6 +99,8 @@ public:
     int32_t ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
                      std::vector<ScheduleInfo*>* propose);
 
+    int32_t ScheduleUpdate(std::vector<JobInfo*>& update_jobs,
+                           std::vector<ScheduleInfo*>* propose);
     // 从master同步资源数据
     int32_t SyncResources(const GetResourceSnapshotResponse* response);
 
@@ -116,8 +118,9 @@ private:
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
     int32_t ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
-
-
+    
+    void HandleJobUpdate(JobInfo* job_info, 
+                        std::vector<ScheduleInfo*>* propose);
     template<class T>
     void Shuffle(std::vector<T>& list) {
         for (size_t i = list.size(); i > 1; i--) {

@@ -14,6 +14,7 @@ DECLARE_string(jobs_store_path);
 DECLARE_string(labels_store_path);
 DECLARE_int32(max_scale_down_size);
 DECLARE_int32(max_scale_up_size);
+DECLARE_int32(max_need_update_job_size);
 
 namespace baidu {
 namespace galaxy {
@@ -213,6 +214,7 @@ void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* /*controller*
                                 ::google::protobuf::Closure* done) {
     int32_t max_scale_up_size = FLAGS_max_scale_up_size;
     int32_t max_scale_down_size = FLAGS_max_scale_down_size;
+    int32_t max_need_update_job_size = FLAGS_max_need_update_job_size;
     if (request->has_max_scale_up_size() 
         && request->max_scale_up_size() > 0) {
         max_scale_up_size = request->max_scale_up_size();
@@ -221,11 +223,18 @@ void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* /*controller*
         && request->max_scale_down_size() > 0) {
         max_scale_down_size = request->max_scale_down_size();
     }
+    if (request->has_max_need_update_job_size()
+        && request->max_need_update_job_size() > 0) {
+        max_need_update_job_size = request->max_need_update_job_size();
+    }
     response->set_status(kOk);
     job_manager_.GetPendingPods(response->mutable_scale_up_jobs(),
                                 max_scale_up_size,
                                 response->mutable_scale_down_jobs(),
-                                max_scale_down_size, done);
+                                max_scale_down_size,
+                                response->mutable_need_update_jobs(),
+                                max_need_update_job_size,
+                                done);
 }
 
 void MasterImpl::GetResourceSnapshot(::google::protobuf::RpcController* /*controller*/,
