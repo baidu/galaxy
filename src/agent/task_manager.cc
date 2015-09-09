@@ -435,8 +435,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command = "wget "; 
         deploy_command.append(task_info->desc.binary());
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
-    }
-
+    } 
     task_info->stage = kTaskStageDEPLOYING;
     SetupDeployProcessKey(task_info);
     task_info->status.set_state(kTaskDeploy);
@@ -682,10 +681,20 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
         int chk_res = InitdProcessCheck(task_info);
-        if (chk_res == 1 && DeployTask(task_info) != 0) {
-            LOG(WARNING, "task %s deploy failed",
-                    task_info->task_id.c_str());
-            task_info->status.set_state(kTaskError); 
+        if (chk_res == 1) {
+            if (task_info->desc.has_binary() 
+                    && !task_info->desc.binary().empty()) {
+                if (DeployTask(task_info) != 0)  {
+                    LOG(WARNING, "task %s deploy failed",
+                        task_info->task_id.c_str());
+                    task_info->status.set_state(kTaskError); 
+                }
+            // if no binary, run directly
+            } else if (RunTask(task_info) != 0) {
+                LOG(WARNING, "task %s run failed",
+                        task_info->task_id.c_str());  
+                task_info->status.set_state(kTaskError); 
+            }
         } else if (chk_res == -1) {
             LOG(WARNING, "task %s check initd failed",
                     task_info->task_id.c_str()); 
