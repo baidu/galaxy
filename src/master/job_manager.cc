@@ -200,6 +200,7 @@ bool JobManager::HandleUpdateJob(const JobDescriptor& desc, Job* job,
     }
     *pod_desc_change = false;
     *replica_change = false;
+    job->desc_.set_deploy_step(desc.deploy_step());
     if (desc.pod().version() != job->latest_version) {
         job->latest_version = desc.pod().version();
         job->desc_.mutable_pod()->CopyFrom(desc.pod());
@@ -506,6 +507,12 @@ void JobManager::ProcessScaleUp(JobInfoList* scale_up_pods,
         JobInfo* job_info = scale_up_pods->Add();
         job_info->set_jobid(job->id_);
         job_info->mutable_desc()->CopyFrom(job->desc_);
+        std::map<Version, PodDescriptor>::iterator v_it = job->pod_desc_.begin();
+        for (; v_it != job->pod_desc_.end(); ++v_it) {
+            PodDescriptor* pod_desc = job_info->add_pod_descs();
+            pod_desc->CopyFrom(v_it->second);
+        }
+        job_info->set_latest_version(job->latest_version);
         // copy all pod
         for (pod_it= job->pods_.begin(); pod_it != job->pods_.end(); ++pod_it) {
             PodStatus* pod_status = job_info->add_pods();
@@ -538,7 +545,8 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
     }
     PodStatus* pod = pod_it->second;
     if (sche_info.action() == kTerminate 
-        && job->state_ == kJobTerminated) {
+        && (job->state_ == kJobTerminated 
+            || job->update_state_ == kUpdateSuspend)) {
         ChangeStage(kStageRemoved, pod, job);
         return kOk;
     } else if (sche_info.action() == kLaunch
@@ -820,12 +828,13 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         return;
     }
     const AgentInfo& report_agent_info = response->agent();
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d ",
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port size %d",
         report_agent_info.endpoint().c_str(),
         report_agent_info.total().memory(), report_agent_info.total().millicores(),
         report_agent_info.assigned().memory(), report_agent_info.assigned().millicores(),
         report_agent_info.used().memory(), report_agent_info.used().millicores(),
-        report_agent_info.pods_size());
+        report_agent_info.pods_size(),
+        report_agent_info.assigned().ports_size());
     AgentInfo* agent = it->second;
     UpdateAgentVersion(agent, report_agent_info);
     // copy only needed 
@@ -929,16 +938,7 @@ void JobManager::UpdateAgentVersion(AgentInfo* old_agent_info,
         if (check_assigned != 0) {
             old_agent_info->set_version(old_agent_info->version() + 1);
             break;
-        }
-
-        // check used
-        int32_t check_used = ResourceUtils::Compare(
-                        old_agent_info->used(),
-                        new_agent_info.used());
-        if (check_used != 0) {
-            old_agent_info->set_version(old_agent_info->version() + 1);
-            break;
-        }
+        } 
 
         // check total resource 
         int32_t check_total = ResourceUtils::Compare(

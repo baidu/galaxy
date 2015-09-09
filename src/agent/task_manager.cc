@@ -32,6 +32,8 @@ DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
 DECLARE_string(agent_global_cgroup_path);
 DECLARE_int32(agent_detect_interval);
+DECLARE_int32(agent_millicores_share);
+DECLARE_int64(agent_mem_share);
 
 namespace baidu {
 namespace galaxy {

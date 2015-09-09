@@ -213,8 +213,20 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo*>& pending_jobs,
             need_schedule.push_back(job_pending_pods[i].podid());
             deploying_num++;
         }
+        PodDescriptor* pod_desc = NULL;
+        for (int i = 0; i < job->pod_descs_size(); ++i) {
+            if (job->pod_descs(i).version() != job->latest_version()) {
+                continue;
+            }
+            pod_desc = job->mutable_pod_descs(i);
+        }
+        if (pod_desc == NULL) {
+            LOG(WARNING, "fail to get job %s latest version %s pod descripto",
+              job->jobid().c_str(), job->latest_version().c_str());
+            continue;
+        }
         PodScaleUpCell* need_schedule_cell = new PodScaleUpCell();
-        need_schedule_cell->pod = job->mutable_desc()->mutable_pod();
+        need_schedule_cell->pod = pod_desc;
         need_schedule_cell->job = job;
         need_schedule_cell->pod_ids = need_schedule;
         need_schedule_cell->feasible_limit = job->pods_size() * FLAGS_scheduler_feasibility_factor;
@@ -289,6 +301,9 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
         }
     }
 
+    LOG(INFO, "agent used port size %d , pod require port size %d",
+             agent_info_extend->used_port_set.size(),
+             pod->requirement().ports_size());
     for (int port_ind = 0; 
             port_ind < pod->requirement().ports_size(); 
             port_ind++) {
@@ -315,7 +330,7 @@ bool PodScaleUpCell::FeasibilityCheck(const AgentInfoExtend* agent_info_extend) 
         } else {
             LOG(INFO, "agent %s does not fit job %s require:mem require %ld, cpu require %d , agent stat:mem total %ld, cpu total %d, mem assigned %ld, cpu assinged %d, mem used %ld, cpu used %d",
               agent_info_extend->agent_info->endpoint().c_str(),job->jobid().c_str(),
-              pod->requirement().millicores(), pod->requirement().memory(),
+              pod->requirement().memory(), pod->requirement().millicores(),
               agent_info_extend->agent_info->total().memory(), agent_info_extend->agent_info->total().millicores(),
               agent_info_extend->agent_info->assigned().memory(), agent_info_extend->agent_info->assigned().millicores(),
               agent_info_extend->agent_info->used().memory(), agent_info_extend->agent_info->used().millicores());

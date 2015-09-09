@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "utils/resource_utils.h"
+
+#include <set>
 #include "logging.h"
 
 namespace baidu {
@@ -115,8 +117,20 @@ int32_t ResourceUtils::Compare(const Resource& left,
     if (ssd_check == -1) {
         return -1;
     }
+    int32_t port_check = 1;
+    std::set<int32_t> left_ports;
+    for (int i = 0; i < left.ports_size(); i++) {
+        left_ports.insert(left.ports(i));
+    }
 
-    return cpu_check & mem_check & disk_check & ssd_check;
+    for (int i = 0; i < right.ports_size(); i++) {
+        std::set<int32_t>::iterator port_it = left_ports.find(right.ports(i));
+        if (port_it != left_ports.end()) {
+            return -1;
+        }
+    }
+
+    return cpu_check & mem_check & disk_check & ssd_check & port_check;
 }
 
 

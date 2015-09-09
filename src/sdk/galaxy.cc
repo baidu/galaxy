@@ -88,12 +88,13 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     // pod meta
     PodDescriptor* pod_pb = job->mutable_pod();
     pod_pb->set_version(sdk_job.pod.version);
-    printf("pod version %s", pod_pb->version().c_str());
     Resource* pod_res = pod_pb->mutable_requirement();
     // pod res
     pod_res->set_millicores(sdk_job.pod.requirement.millicores);
     pod_res->set_memory(sdk_job.pod.requirement.memory);
-
+    for (size_t i = 0; i < sdk_job.pod.requirement.ports.size(); i++) {
+        pod_res->add_ports(sdk_job.pod.requirement.ports[i]);
+    }
     for (size_t i = 0; i < sdk_job.pod.tasks.size(); i++) {
         TaskDescriptor* task = pod_pb->add_tasks();
         task->set_binary(sdk_job.pod.tasks[i].binary);

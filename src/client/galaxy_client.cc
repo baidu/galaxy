@@ -180,7 +180,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         return -1;
     }
     res->memory = pod_require["memory"].GetInt64();
-    if (pod_json.HasMember("ports")) {
+    if (pod_require.HasMember("ports")) {
         const rapidjson::Value&  pod_ports = pod_require["ports"];
         for (rapidjson::SizeType i = 0; i < pod_ports.Size(); i++) {
             res->ports.push_back(pod_ports[i].GetInt());
@@ -427,7 +427,7 @@ int ListJob() {
                 vs.push_back(baidu::common::NumToString(infos[i].replica));
 				    		vs.push_back(infos[i].is_batch ? "batch" : "");
                 vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
-                vs.push_back(baidu::common::NumToString(infos[i].mem_used));
+                vs.push_back(baidu::common::HumanReadableString(infos[i].mem_used));
                 tp.AddRow(vs);
             }
             printf("%s\n", tp.ToString().c_str());
