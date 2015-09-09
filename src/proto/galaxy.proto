@@ -92,6 +92,7 @@ message PodDescriptor {
     optional Resource requirement = 2;
     optional bool pin_on_agent = 3 [default = false];
     repeated string labels = 4;
+    optional string version = 5;
 }
 
 message TaskStatus {
@@ -108,10 +109,10 @@ message PodStatus {
     repeated TaskStatus status = 3; 
     optional Resource resource_used = 4;
     optional string endpoint = 5;
-    optional string version = 6;
     optional PodState state = 7;
     optional PodStage stage = 8;
     optional string pod_gc_path = 9;
+    optional string version = 10;
 }
 
 message AgentInfo {

@@ -292,6 +292,8 @@ int PodManager::CheckPod(const std::string& pod_id) {
         return -1;
     }
 
+    int32_t millicores = 0;
+    int64_t memory_used = 0;
     std::map<std::string, TaskInfo>::iterator task_it = 
         pod_info.tasks.begin();
     TaskState pod_state = kTaskRunning; 
@@ -300,6 +302,8 @@ int PodManager::CheckPod(const std::string& pod_id) {
         if (task_manager_->QueryTask(&(task_it->second)) != 0) {
             to_del_task.push_back(task_it->first);
         } else {
+            millicores += task_it->second.status.resource_used().millicores();
+            memory_used += task_it->second.status.resource_used().memory();
             // TODO pod state 
             if (task_it->second.status.state() <= kTaskRunning
                     && task_it->second.status.state() < pod_state) {
@@ -311,6 +315,10 @@ int PodManager::CheckPod(const std::string& pod_id) {
             }
         }
     }
+    pod_info.pod_status.mutable_resource_used()->set_millicores(millicores);
+    pod_info.pod_status.mutable_resource_used()->set_memory(memory_used);
+    std::string version = pod_info.pod_desc.version();
+    pod_info.pod_status.set_version(version);
     switch (pod_state) {
         case kTaskPending : 
         pod_info.pod_status.set_state(kPodPending);

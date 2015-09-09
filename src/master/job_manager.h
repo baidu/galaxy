@@ -28,14 +28,17 @@ typedef google::protobuf::RepeatedPtrField<baidu::galaxy::AgentInfo> AgentInfoLi
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobOverview> JobOverviewList;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::DiffVersion> DiffVersionList;
 typedef google::protobuf::RepeatedPtrField<std::string> StringList;
+typedef std::string Version;
 
 struct Job {
     JobState state_;
     std::map<PodId, PodStatus*> pods_;
     JobDescriptor desc_;
     JobId id_;
+    std::map<Version, PodDescriptor> pod_desc_;
+    JobUpdateState update_state_;
+    Version latest_version;
 };
-
 
 class JobManager {
 public:
@@ -49,13 +52,17 @@ public:
     void GetPendingPods(JobInfoList* pending_pods,
                         int32_t max_scale_up_size,
                         JobInfoList* scale_down_pods,
-                        int32_t max_scale_down_size);
+                        int32_t max_scale_down_size,
+                        JobInfoList* need_update_jobs,
+                        int32_t max_need_update_job_size,
+                        ::google::protobuf::Closure* done);
     Status Propose(const ScheduleInfo& sche_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsByDiff(const DiffVersionList& versions,
                               AgentInfoList* agents_info,
-                              StringList* deleted_agents);
+                              StringList* deleted_agents,
+                              ::google::protobuf::Closure* done);
     void GetJobsOverview(JobOverviewList* jobs_overview);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
     void KeepAlive(const std::string& agent_addr);
@@ -100,6 +107,8 @@ private:
                           int32_t max_scale_down_size);
     void ProcessScaleUp(JobInfoList* scale_up_pods,
                         int32_t max_scale_up_size);
+    void ProcessUpdateJob(JobInfoList* need_update_jobs,
+                         int32_t max_need_update_job_size);
     void BuildPodFsm();
     bool HandleCleanPod(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);
@@ -118,13 +127,18 @@ private:
     bool SaveToNexus(const Job* job);
     bool SaveLabelToNexus(const LabelCell& label_cell);
     bool DeleteFromNexus(const JobId& jobid);
+
+    bool HandleUpdateJob(const JobDescriptor& desc, Job* job, 
+                         bool* replica_change, bool* pod_desc_change);
 private:
     std::map<JobId, Job*> jobs_;
     typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
-    PodMap pending_pods_;
-    // all jobs that needs scale down
+    // all jobs that need scale up
+    std::set<JobId> scale_up_jobs_;
+    // all jobs that need scale down
     std::set<JobId> scale_down_jobs_;
-
+    // all jobs that need update
+    std::set<JobId> need_update_jobs_;
     std::map<AgentAddr, PodMap> pods_on_agent_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
@@ -153,6 +167,8 @@ private:
 
     // nexus
     ::galaxy::ins::sdk::InsSDK* nexus_;
+
+    CondVar pod_cv_;
 };
 
 }
