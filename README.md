@@ -19,3 +19,5 @@ ubunutu系统可以直接使用
 sh build4internal.sh
 make -j6
 ```
+## 使用client
+参照[galaxy-cli.md](doc/galaxy-cli.md)
