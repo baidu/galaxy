@@ -1324,7 +1324,7 @@ bool JobManager::SaveLabelToNexus(const LabelCell& label_cell) {
     std::string label_key = FLAGS_nexus_root_path + FLAGS_labels_store_path 
                             + "/" + label_cell.label();
     std::string label_value;
-    if (label_cell.SerializeToString(&label_value)) {
+    if (!label_cell.SerializeToString(&label_value)) {
         LOG(WARNING, "label %s serialize failed", 
                 label_cell.label().c_str()); 
         return false;
