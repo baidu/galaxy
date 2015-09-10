@@ -29,6 +29,8 @@ public:
                      const std::vector<std::string>& agents);
     bool ShowPod(const std::string& jobid,
                  std::vector<PodInformation>* pods);
+
+    bool GetStatus(MasterStatus* status);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -239,6 +241,37 @@ bool GalaxyImpl::ShowPod(const std::string& jobid,
     return true;
 
 }
+
+bool GalaxyImpl::GetStatus(MasterStatus* status) {
+    GetMasterStatusRequest request;
+    GetMasterStatusResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::GetStatus,
+                             &request, &response, 5, 1);
+    if (response.status() != kOk) {
+        return false;
+    }
+    status->safe_mode = response.safe_mode();
+
+    status->agent_total = response.agent_total();
+    status->agent_live_count = response.agent_live_count();
+    status->agent_dead_count = response.agent_dead_count();
+
+    status->cpu_total = response.cpu_total();
+    status->cpu_used = response.cpu_used();
+    status->cpu_assigned = response.cpu_assigned();
+
+    status->mem_total = response.mem_total();
+    status->mem_used = response.mem_used();
+    status->mem_assigned = response.mem_assigned();
+
+    status->job_count = response.job_count();
+    status->pod_count = response.pod_count();
+    status->scale_up_job_count = response.scale_up_job_count();
+    status->scale_down_job_count = response.scale_down_job_count();
+    status->need_update_job_count = response.need_update_job_count();
+    return true;
+}
+
 bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
     ListAgentsRequest request;
     ListAgentsResponse response;

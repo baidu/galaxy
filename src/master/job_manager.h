@@ -71,6 +71,7 @@ public:
     void ReloadJobInfo(const JobInfo& job_info);
     Status LabelAgents(const LabelCell& label_cell);
     Status GetPods(const std::string& jobid, PodOverviewList* pods);
+    Status GetStatus(::baidu::galaxy::GetMasterStatusResponse* response);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);

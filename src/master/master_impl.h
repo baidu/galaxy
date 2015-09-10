@@ -73,6 +73,10 @@ public:
                            const ::baidu::galaxy::ShowPodRequest* request,
                            ::baidu::galaxy::ShowPodResponse* response,
                            ::google::protobuf::Closure* done);
+      virtual void GetStatus(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::GetMasterStatusRequest* request,
+                           ::baidu::galaxy::GetMasterStatusResponse* response,
+                           ::google::protobuf::Closure* done); 
       void OnSessionTimeout();
       void OnLockChange(std::string lock_session_id);
 private:
@@ -82,6 +86,7 @@ private:
       void ReloadLabelInfo(); private:
       JobManager job_manager_;
       InsSDK* nexus_;
+
 };
 
 }

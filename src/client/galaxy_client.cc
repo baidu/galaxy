@@ -35,6 +35,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
+                                 "    galaxy status \n"
                                  "Options:\n"
                                  "    -f config    Specify config file ,eg job config file , label config file.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
@@ -444,6 +445,65 @@ int ShowPod() {
     }
     return 0;
 }
+int GetMasterStatus() {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    ::baidu::galaxy::MasterStatus status;
+    ok = galaxy->GetStatus(&status);
+    if (!ok) {
+        fprintf(stderr, "fail to get status\n");
+        return -1;
+    }
+    baidu::common::TPrinter master(2);
+    printf("master infomation\n");
+    master.AddRow(2, "addr", "state");
+    std::string mode = status.safe_mode ? "safe mode" : "normal mode";
+    master.AddRow(2, master_endpoint.c_str(), mode.c_str());
+    printf("%s\n", master.ToString().c_str());
+
+    baidu::common::TPrinter agent(3);
+    printf("cluster agent infomation\n");
+    agent.AddRow(3, "agent total", "live count", "dead count");
+    agent.AddRow(3, baidu::common::NumToString(status.agent_total).c_str(), 
+                     baidu::common::NumToString(status.agent_live_count).c_str(),
+                     baidu::common::NumToString(status.agent_dead_count).c_str());
+    printf("%s\n", agent.ToString().c_str());
+
+
+    baidu::common::TPrinter mem(3);
+    printf("cluster memory infomation\n");
+    mem.AddRow(3, "mem total", "mem used", "mem assigned");
+    mem.AddRow(3, baidu::common::HumanReadableString(status.mem_total).c_str(), 
+                     baidu::common::HumanReadableString(status.mem_used).c_str(),
+                     baidu::common::HumanReadableString(status.mem_assigned).c_str());
+    printf("%s\n", mem.ToString().c_str());
+
+    baidu::common::TPrinter cpu(3);
+    printf("cluster cpu infomation\n");
+    cpu.AddRow(3, "cpu total", "cpu used", "cpu assigned");
+    cpu.AddRow(3, baidu::common::NumToString(status.cpu_total).c_str(), 
+                  baidu::common::NumToString(status.cpu_used).c_str(),
+                  baidu::common::NumToString(status.cpu_assigned).c_str());
+    printf("%s\n", cpu.ToString().c_str());
+
+    baidu::common::TPrinter job(5);
+    printf("cluster job infomation\n");
+    job.AddRow(5, "job count", "job scale up", "job scale down", "job need update", "pod count");
+    job.AddRow(5, baidu::common::NumToString(status.job_count).c_str(), 
+                  baidu::common::NumToString(status.scale_up_job_count).c_str(),
+                  baidu::common::NumToString(status.scale_down_job_count).c_str(),
+                  baidu::common::NumToString(status.need_update_job_count).c_str(),
+                  baidu::common::NumToString(status.pod_count).c_str()
+                  );
+    printf("%s\n", job.ToString().c_str());
+    return 0;
+}
+
 
 int ListJob() {
     std::string master_endpoint;
@@ -529,6 +589,8 @@ int main(int argc, char* argv[]) {
         return KillJob();
     } else if (strcmp(argv[1], "pods") ==0){
         return ShowPod();
+    } else if (strcmp(argv[1], "status") == 0) {
+        return GetMasterStatus();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
