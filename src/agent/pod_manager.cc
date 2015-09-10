@@ -95,7 +95,7 @@ int PodManager::Init() {
     int initd_port_begin = FLAGS_agent_initd_port_begin; 
     int initd_port_end = FLAGS_agent_initd_port_end;
     for (int i = initd_port_begin; i < initd_port_end; i++) {
-        initd_free_ports_.insert(i); 
+        initd_free_ports_.PushBack(i); 
     }
     if (!file::Remove(FLAGS_agent_gc_dir)
             || !file::Mkdir(FLAGS_agent_gc_dir)) {
@@ -507,24 +507,24 @@ int PodManager::ReloadPod(const PodInfo& info) {
 }
 
 int PodManager::AllocPortForInitd(int& port) {
-    if (initd_free_ports_.size() == 0) {
+    if (initd_free_ports_.Size() == 0) {
         LOG(WARNING, "no free ports for alloc");
         return -1; 
     }
-    std::set<int>::iterator it = initd_free_ports_.begin();
-    initd_free_ports_.erase(it);
-    port = *it;
+    port = initd_free_ports_.Front();
+    initd_free_ports_.PopFront();
     return 0;
 }
 
 void PodManager::ReleasePortFromInitd(int port) {
-    if (port > 0) {
-        initd_free_ports_.insert(port);
+    if (port >= FLAGS_agent_initd_port_begin 
+            && port < FLAGS_agent_initd_port_end) {
+        initd_free_ports_.PushBack(port);
     }
 }
 
 void PodManager::ReloadInitdPort(int port) {
-    initd_free_ports_.erase(port);
+    initd_free_ports_.Erase(port);
 }
 
 }   // ending namespace galaxy
