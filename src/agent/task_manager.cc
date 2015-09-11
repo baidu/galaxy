@@ -661,7 +661,7 @@ int TaskManager::RunProcessCheck(TaskInfo* task_info) {
     // 1. query main_process status
     if (QueryProcessInfo(task_info->initd_stub, 
                 &(task_info->main_process)) != 0) {
-        LOG(WARNING, "task %s check deploy state failed",
+        LOG(WARNING, "task %s check run state failed",
                 task_info->task_id.c_str());
         task_info->status.set_state(kTaskError);
         return -1;

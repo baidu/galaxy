@@ -37,11 +37,6 @@ bool FreezerSwitch(const std::string& hierarchy,
                       &freezer_state_val)) {
             return false; 
         } 
-        LOG(WARNING, "%s: %s [%d: %d]", 
-                freezer_state_val.c_str(), 
-                freezer_state.c_str(), 
-                freezer_state_val.size(), 
-                freezer_state.size());
         if (freezer_state_val == freezer_state) {
             return true; 
         }
