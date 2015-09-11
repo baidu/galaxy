@@ -5,6 +5,7 @@
 #ifndef _SRC_AGENT_TASK_MANAGER_H
 #define _SRC_AGENT_TASK_MANAGER_H
 
+#include <deque>
 #include "agent/agent_internal_infos.h"
 #include "proto/initd.pb.h"
 #include "rpc/rpc_client.h"
@@ -73,7 +74,7 @@ protected:
     std::map<std::string, TaskInfo*> tasks_;
     ThreadPool background_thread_;
     std::string cgroup_root_;
-    std::vector<std::string> hierarchies_;
+    std::map<std::string, std::string> hierarchies_;
     RpcClient* rpc_client_;
 };
 
