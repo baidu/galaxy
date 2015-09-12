@@ -109,6 +109,8 @@ test_persistence_handler_src='src/proto/agent.proto src/proto/galaxy.proto  \
                               src/proto/initd.proto \
                               src/agent/persistence_handler.cc src/agent/test_persistence_handler.cc'
 
+test_index_list_src='src/agent/test_index_list.cc'
+
 Application('scheduler',Sources(scheduler_src))
 Application('master',Sources(master_src))
 Application('agent',Sources(agent_src))
@@ -120,3 +122,4 @@ Application('test_cgroup', Sources(test_cgroup_src))
 Application('test_resource_collector', Sources(test_resource_collector_src))
 Application('test_persistence_handler', Sources(test_persistence_handler_src))
 Application('test_cgroup_resource_collector', Sources(test_cgroup_resource_collector_src))
+Application('test_index_list', Sources(test_index_list_src))
