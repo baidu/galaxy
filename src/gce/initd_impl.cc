@@ -156,6 +156,13 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
         } 
         fd_vector.push_back(::atoi(files[i].c_str()));
     }
+    // check if need chroot
+    std::string workspace;
+    bool is_chroot = false;
+    if (::getpid() == 1) {
+        is_chroot = true;
+        process::GetCwd(&workspace);
+    }
 
     // 2. prepare std fds for child 
     int stdout_fd = 0;
@@ -198,6 +205,11 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
         process::PrepareChildProcessEnvStep2(stdout_fd, 
                                              stderr_fd, 
                                              fd_vector);
+        if (is_chroot 
+                && ::chroot(workspace.c_str()) != 0) {
+            assert(0);    
+        }
+        
         if (request->has_user() 
                 && !user::Su(request->user())) {
             assert(0); 

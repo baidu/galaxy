@@ -104,6 +104,46 @@ bool DumpInitdCheckpoint(baidu::galaxy::InitdImpl* service) {
     return true;
 }
 
+bool MountRootfs() {
+    std::vector<std::string> files;     
+    if (!::baidu::galaxy::file::ListFiles("/", &files)) {
+        LOG(WARNING, "list / failed"); 
+        return false;
+    }
+
+    std::string cwd;
+    if (!baidu::galaxy::process::GetCwd(&cwd)) {
+        LOG(WARNING, "get cwd failed"); 
+        return false;
+    }
+
+    for (size_t i = 0; i < files.size(); ++i) {
+        if (files[i] == "proc") {
+            LOG(INFO, "not bind proc");
+            continue; 
+        }    
+        std::string old_mount_path("/");
+        old_mount_path.append(files[i]);
+        std::string new_mount_path = cwd;
+        new_mount_path.append("/");
+        new_mount_path.append(files[i]);
+        if (!baidu::galaxy::file::Mkdir(new_mount_path)) {
+            return false;
+        }
+    
+        if (0 != ::mount(old_mount_path.c_str(), 
+                         new_mount_path.c_str(), 
+                         "", MS_BIND, "")
+                && errno != EBUSY) {
+            LOG(WARNING, "mount %s at %s failed", 
+                    old_mount_path.c_str(), new_mount_path.c_str());
+            return false;
+        }
+
+    }
+    return true;
+}
+
 bool MountProc() {
     pid_t cur_pid = ::getpid();
     if (cur_pid != 1) {
@@ -145,7 +185,7 @@ int main(int argc, char* argv[]) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
-    if (!MountProc()) {
+    if (!MountProc() && !MountRootfs()) {
         return EXIT_FAILURE; 
     }
 
