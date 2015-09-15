@@ -133,9 +133,6 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
             request->commands().c_str(), request->path().c_str(),
             request->cgroup_path().c_str());
 
-    std::string cwd;
-    process::GetCwd(&cwd);
-
     // 1. collect initd fds
     std::vector<int> fd_vector;
     std::string proc_path;
@@ -163,11 +160,9 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
         fd_vector.push_back(::atoi(files[i].c_str()));
     }
     // check if need chroot
-    std::string workspace;
-    bool is_chroot = false;
-    if (::getpid() == 1) {
-        is_chroot = true;
-        process::GetCwd(&workspace);
+    bool is_chroot = request->has_chroot_path();
+    if (is_chroot) {
+        LOG(WARNING, "chroot %s", request->chroot_path().c_str()); 
     }
 
     // 2. prepare std fds for child 
@@ -230,8 +225,9 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
                                              stdout_fd, 
                                              stderr_fd, 
                                              fd_vector);
+        // NOTE chroot 执行的位置会影响路径
         if (is_chroot) {
-            if (::chroot(workspace.c_str()) != 0) {
+            if (::chroot(request->chroot_path().c_str()) != 0) {
                 assert(0);    
             }
         }

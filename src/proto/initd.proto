@@ -37,6 +37,7 @@ message ExecuteRequest {
     optional string cgroup_path = 5;
     optional string user = 6;
     optional string pty_file = 7;
+    optional string chroot_path = 8;
 }
 
 message ExecuteResponse {
