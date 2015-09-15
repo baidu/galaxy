@@ -140,6 +140,7 @@ bool PrepareStdFds(const std::string& pwd,
         LOG(WARNING, "prepare stdout_fd or stderr_fd NULL"); 
         return false;
     }
+    baidu::galaxy::file::Mkdir(pwd);
     std::string now_str_time;
     GetStrFTime(&now_str_time);
     pid_t pid = ::getpid();
@@ -201,12 +202,16 @@ void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir) {
     }
 }
 
-void PrepareChildProcessEnvStep2(const int stdout_fd, 
+void PrepareChildProcessEnvStep2(const int stdin_fd,
+                                 const int stdout_fd, 
                                  const int stderr_fd, 
                                  const std::vector<int>& fd_vector) {
     while (::dup2(stdout_fd, STDOUT_FILENO) == -1 
             && errno == EINTR) {}
     while (::dup2(stderr_fd, STDERR_FILENO) == -1
+            && errno == EINTR) {}
+    while (stdin_fd >= 0 
+            && ::dup2(stdin_fd, STDIN_FILENO) == -1 
             && errno == EINTR) {}
     for (size_t i = 0; i < fd_vector.size(); i++) {
         if (fd_vector[i] == STDOUT_FILENO

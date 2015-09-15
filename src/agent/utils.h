@@ -35,7 +35,8 @@ void ReplaceEmptyChar(std::string& str);
 
 void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir);
 
-void PrepareChildProcessEnvStep2(const int stdout_fd, 
+void PrepareChildProcessEnvStep2(const int stdin_fd,
+                                 const int stdout_fd, 
                                  const int stderr_fd, 
                                  const std::vector<int>& fd_vector);
 

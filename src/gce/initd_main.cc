@@ -105,6 +105,9 @@ bool DumpInitdCheckpoint(baidu::galaxy::InitdImpl* service) {
 }
 
 bool MountRootfs() {
+    if (::getpid() != -1) {
+        return true; 
+    }
     std::vector<std::string> files;     
     if (!::baidu::galaxy::file::ListFiles("/", &files)) {
         LOG(WARNING, "list / failed"); 
@@ -116,18 +119,36 @@ bool MountRootfs() {
         LOG(WARNING, "get cwd failed"); 
         return false;
     }
+    LOG(INFO, "mkdir %s success", cwd.c_str());
 
     for (size_t i = 0; i < files.size(); ++i) {
         if (files[i] == "proc") {
             LOG(INFO, "not bind proc");
             continue; 
         }    
+        if (files[i] == "home") {
+            LOG(INFO, "not bind home");
+            continue;
+        }
         std::string old_mount_path("/");
         old_mount_path.append(files[i]);
+        bool is_dir = false;
+        if (!baidu::galaxy::file::IsDir(old_mount_path, is_dir) 
+                || !is_dir) {
+            LOG(WARNING, "%s not dir no need bind", 
+                    old_mount_path.c_str());
+            continue; 
+        }
         std::string new_mount_path = cwd;
         new_mount_path.append("/");
         new_mount_path.append(files[i]);
+        if (!baidu::galaxy::file::IsExists(cwd) 
+                && !baidu::galaxy::file::Mkdir(cwd)) {
+            LOG(WARNING, "%s mkdir failed", cwd.c_str());
+        }
         if (!baidu::galaxy::file::Mkdir(new_mount_path)) {
+            LOG(WARNING, "mdkir new mount %s failed", 
+                    new_mount_path.c_str());
             return false;
         }
     
@@ -168,6 +189,14 @@ bool MountProc() {
         LOG(WARNING, "mount proc at %s failed", proc_path.c_str()); 
         return false;
     }
+    std::vector<std::string> files;
+    if (!baidu::galaxy::file::ListFiles(proc_path, &files)) {
+        LOG(WARNING, "get proc %s failed", proc_path.c_str());
+        return false;  
+    }
+    for (size_t i = 0; i < files.size(); ++i) {
+        LOG(WARNING, "proc %s", files[i].c_str()); 
+    }
     return true;
 }
 
@@ -185,7 +214,7 @@ int main(int argc, char* argv[]) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
-    if (!MountProc() && !MountRootfs()) {
+    if (!MountRootfs() || !MountProc()) {
         return EXIT_FAILURE; 
     }
 
