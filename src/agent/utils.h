@@ -71,6 +71,8 @@ bool IsSpecialDir(const char* path);
 
 bool Mkdir(const std::string& dir_path);
 
+bool MkdirRecur(const std::string& dir_path);
+
 bool Remove(const std::string& path);
 
 bool Chown(const std::string& path, uid_t uid, gid_t gid);

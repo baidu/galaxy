@@ -135,7 +135,6 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
 
     std::string cwd;
     process::GetCwd(&cwd);
-    LOG(INFO, "cwd : %s", cwd.c_str());
 
     // 1. collect initd fds
     std::vector<int> fd_vector;
@@ -148,9 +147,6 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
     std::vector<std::string> files;
     if (!file::ListFiles(proc_path, &files)) {
         LOG(WARNING, "list new proc failed");
-    }
-    for (size_t i = 0; i < files.size(); ++i) {
-        LOG(WARNING, "list proc %s", files[i].c_str()); 
     }
     proc_path.append(boost::lexical_cast<std::string>(::getpid())); 
     proc_path.append("/fd/");
@@ -259,6 +255,8 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
         env[request->envs_size()] = NULL;
         // exec
         ::execve("/bin/sh", argv, env);
+        fprintf(stdout, "execve %s err[%d: %s]", 
+                request->commands().c_str(), errno, strerror(errno));
         assert(0);
     }
 
