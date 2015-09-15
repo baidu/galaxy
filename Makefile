@@ -44,11 +44,11 @@ AGENT_HEADER = $(wildcard src/agent/*.h)
 TEST_AGENT_SRC = src/agent/test_agent.cc src/agent/resource_collector.cc
 TEST_AGENT_OBJ = $(patsubst %.cc, %.o, $(TEST_AGENT_SRC))
 
-INITD_SRC = src/agent/initd_impl.cc src/agent/initd_main.cc src/agent/utils.cc src/flags.cc  src/agent/cgroups.cc
+INITD_SRC = src/gce/initd_impl.cc src/gce/initd_main.cc src/agent/utils.cc src/flags.cc  src/agent/cgroups.cc
 INITD_OBJ = $(patsubst %.cc, %.o, $(INITD_SRC))
 INITD_HEADER = $(wildcard src/gce/*.h) src/agent/utils.h 
 
-INITD_CLI_SRC = src/agent/initd_cli.cc 
+INITD_CLI_SRC = src/gce/initd_cli.cc 
 INITD_CLI_OBJ = $(patsubst %.cc, %.o, $(INITD_CLI_SRC))
 
 TEST_INITD_SRC = src/gce/test_initd.cc
