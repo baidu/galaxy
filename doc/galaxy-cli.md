@@ -36,7 +36,7 @@ vim app.json
         "version":"1.0.0",
         "requirement":{
                 "millicores":1000,
-                "memory":1073741824
+                "memory":"1G"
         },   
         "tasks":[
                     {   
@@ -45,7 +45,7 @@ vim app.json
                      "start_command":"sh app.sh",
                      "requirement":{
                          "millicores":1000,
-                         "memory":1073741824
+                         "memory":"1G"
                      }  
                     } 
         ]

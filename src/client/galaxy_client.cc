@@ -52,6 +52,39 @@ bool GetMasterAddr(std::string* master_addr) {
     return ok;
 }
 
+int ReadableStringToInt(const std::string& input, int64_t* output) {
+    if (output == NULL) {
+        return -1;
+    }
+    std::map<char, int32_t> subfix_table;
+    subfix_table['K'] = 1;
+    subfix_table['M'] = 2;
+    subfix_table['G'] = 3;
+    subfix_table['T'] = 4;
+    subfix_table['B'] = 5;
+    subfix_table['Z'] = 6;
+    int64_t num = 0;
+    char subfix = 0;
+    int32_t shift = 0;
+    int32_t matched = sscanf(input.c_str(), "%ld%c", &num, &subfix);
+    if (matched <= 0) {
+        return -1;
+    }
+    if (matched == 2) {
+        std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
+        if (it == subfix_table.end()) {
+            return -1;
+        }
+        shift = it->second;
+    } 
+    while (shift > 0) {
+        num *= 1024;
+        shift--;
+    }
+    *output = num;
+    return 0;
+}
+
 bool LoadAgentEndpointsFromFile(
         const std::string& file_name, 
         std::vector<std::string>* agents) {
@@ -127,6 +160,7 @@ void ReadBinary(const std::string& file, std::string* binary) {
 // build job description from json config
 // TODO do some validations
 int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescription* job) {
+    int ok = 0;
     FILE* fd = fopen(config.c_str(), "r");
     char buffer[5120];
     rapidjson::FileReadStream frs(fd, buffer, sizeof(buffer));
@@ -174,12 +208,17 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         fprintf(stderr, "millicores is required\n");
         return -1;
     }
+
     res->millicores = pod_require["millicores"].GetInt();
     if (!pod_require.HasMember("memory")) {
         fprintf(stderr, "memory is required\n");
         return -1;
     }
-    res->memory = pod_require["memory"].GetInt64();
+    ok = ReadableStringToInt(pod_require["memory"].GetString(), &res->memory);
+    if (ok != 0) {
+        fprintf(stderr, "fail to parse pod memory %s\n", pod_require["memory"].GetString());
+        return -1;
+    }
     if (pod_require.HasMember("ports")) {
         const rapidjson::Value&  pod_ports = pod_require["ports"];
         for (rapidjson::SizeType i = 0; i < pod_ports.Size(); i++) {
@@ -222,7 +261,11 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
-            res->memory = tasks_json[i]["requirement"]["memory"].GetInt64();
+            ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);
+            if (ok != 0) {
+                fprintf(stderr, "fail to parse task memory %s\n", tasks_json[i]["requirement"]["memory"].GetString());
+                return -1;
+            }
             if (tasks_json[i]["requirement"].HasMember("ports")) {
                 const rapidjson::Value& task_ports = tasks_json[i]["requirement"]["ports"];
                 for (rapidjson::SizeType i = 0; i < task_ports.Size(); i++) {

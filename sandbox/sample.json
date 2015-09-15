@@ -8,7 +8,7 @@
         "version":"2.0.0",
         "requirement":{
             "millicores":1000,
-            "memory":2000,
+            "memory":"2G",
             "ports":[8080]
         },
         "tasks":[
@@ -18,7 +18,7 @@
                      "start_command":"sh longrun.sh",
                      "requirement":{
                          "millicores":500,
-                         "memory":1000
+                         "memory":"2G"
                      }
                  }
 
