@@ -124,7 +124,6 @@ bool ReadMountBindConfig(std::vector<std::string>* files) {
             continue; 
         }
         files->push_back(line);
-        LOG(WARNING, "read line %s", line.c_str());
     }
     if (!ifs.good() && !ifs.eof()) {
         ifs.close(); 
@@ -229,7 +228,6 @@ int main(int argc, char* argv[]) {
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
 
-    LOG(WARNING, "what fuck");
     if (!MountProc()) {
         return EXIT_FAILURE; 
     }
