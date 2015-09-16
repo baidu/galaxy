@@ -35,6 +35,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
+                                 "    galaxy status \n"
                                  "Options:\n"
                                  "    -f config    Specify config file ,eg job config file , label config file.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
@@ -50,6 +51,39 @@ bool GetMasterAddr(std::string* master_addr) {
     std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
     bool ok = nexus.Get(master_path_key, master_addr, &err);
     return ok;
+}
+
+int ReadableStringToInt(const std::string& input, int64_t* output) {
+    if (output == NULL) {
+        return -1;
+    }
+    std::map<char, int32_t> subfix_table;
+    subfix_table['K'] = 1;
+    subfix_table['M'] = 2;
+    subfix_table['G'] = 3;
+    subfix_table['T'] = 4;
+    subfix_table['B'] = 5;
+    subfix_table['Z'] = 6;
+    int64_t num = 0;
+    char subfix = 0;
+    int32_t shift = 0;
+    int32_t matched = sscanf(input.c_str(), "%ld%c", &num, &subfix);
+    if (matched <= 0) {
+        return -1;
+    }
+    if (matched == 2) {
+        std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
+        if (it == subfix_table.end()) {
+            return -1;
+        }
+        shift = it->second;
+    } 
+    while (shift > 0) {
+        num *= 1024;
+        shift--;
+    }
+    *output = num;
+    return 0;
 }
 
 bool LoadAgentEndpointsFromFile(
@@ -127,6 +161,7 @@ void ReadBinary(const std::string& file, std::string* binary) {
 // build job description from json config
 // TODO do some validations
 int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescription* job) {
+    int ok = 0;
     FILE* fd = fopen(config.c_str(), "r");
     char buffer[5120];
     rapidjson::FileReadStream frs(fd, buffer, sizeof(buffer));
@@ -174,12 +209,17 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         fprintf(stderr, "millicores is required\n");
         return -1;
     }
+
     res->millicores = pod_require["millicores"].GetInt();
     if (!pod_require.HasMember("memory")) {
         fprintf(stderr, "memory is required\n");
         return -1;
     }
-    res->memory = pod_require["memory"].GetInt64();
+    ok = ReadableStringToInt(pod_require["memory"].GetString(), &res->memory);
+    if (ok != 0) {
+        fprintf(stderr, "fail to parse pod memory %s\n", pod_require["memory"].GetString());
+        return -1;
+    }
     if (pod_require.HasMember("ports")) {
         const rapidjson::Value&  pod_ports = pod_require["ports"];
         for (rapidjson::SizeType i = 0; i < pod_ports.Size(); i++) {
@@ -222,7 +262,11 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
-            res->memory = tasks_json[i]["requirement"]["memory"].GetInt64();
+            ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);
+            if (ok != 0) {
+                fprintf(stderr, "fail to parse task memory %s\n", tasks_json[i]["requirement"]["memory"].GetString());
+                return -1;
+            }
             if (tasks_json[i]["requirement"].HasMember("ports")) {
                 const rapidjson::Value& task_ports = tasks_json[i]["requirement"]["ports"];
                 for (rapidjson::SizeType i = 0; i < task_ports.Size(); i++) {
@@ -401,6 +445,65 @@ int ShowPod() {
     }
     return 0;
 }
+int GetMasterStatus() {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    ::baidu::galaxy::MasterStatus status;
+    ok = galaxy->GetStatus(&status);
+    if (!ok) {
+        fprintf(stderr, "fail to get status\n");
+        return -1;
+    }
+    baidu::common::TPrinter master(2);
+    printf("master infomation\n");
+    master.AddRow(2, "addr", "state");
+    std::string mode = status.safe_mode ? "safe mode" : "normal mode";
+    master.AddRow(2, master_endpoint.c_str(), mode.c_str());
+    printf("%s\n", master.ToString().c_str());
+
+    baidu::common::TPrinter agent(3);
+    printf("cluster agent infomation\n");
+    agent.AddRow(3, "agent total", "live count", "dead count");
+    agent.AddRow(3, baidu::common::NumToString(status.agent_total).c_str(), 
+                     baidu::common::NumToString(status.agent_live_count).c_str(),
+                     baidu::common::NumToString(status.agent_dead_count).c_str());
+    printf("%s\n", agent.ToString().c_str());
+
+
+    baidu::common::TPrinter mem(3);
+    printf("cluster memory infomation\n");
+    mem.AddRow(3, "mem total", "mem used", "mem assigned");
+    mem.AddRow(3, baidu::common::HumanReadableString(status.mem_total).c_str(), 
+                     baidu::common::HumanReadableString(status.mem_used).c_str(),
+                     baidu::common::HumanReadableString(status.mem_assigned).c_str());
+    printf("%s\n", mem.ToString().c_str());
+
+    baidu::common::TPrinter cpu(3);
+    printf("cluster cpu infomation\n");
+    cpu.AddRow(3, "cpu total", "cpu used", "cpu assigned");
+    cpu.AddRow(3, baidu::common::NumToString(status.cpu_total).c_str(), 
+                  baidu::common::NumToString(status.cpu_used).c_str(),
+                  baidu::common::NumToString(status.cpu_assigned).c_str());
+    printf("%s\n", cpu.ToString().c_str());
+
+    baidu::common::TPrinter job(5);
+    printf("cluster job infomation\n");
+    job.AddRow(5, "job count", "job scale up", "job scale down", "job need update", "pod count");
+    job.AddRow(5, baidu::common::NumToString(status.job_count).c_str(), 
+                  baidu::common::NumToString(status.scale_up_job_count).c_str(),
+                  baidu::common::NumToString(status.scale_down_job_count).c_str(),
+                  baidu::common::NumToString(status.need_update_job_count).c_str(),
+                  baidu::common::NumToString(status.pod_count).c_str()
+                  );
+    printf("%s\n", job.ToString().c_str());
+    return 0;
+}
+
 
 int ListJob() {
     std::string master_endpoint;
@@ -486,6 +589,8 @@ int main(int argc, char* argv[]) {
         return KillJob();
     } else if (strcmp(argv[1], "pods") ==0){
         return ShowPod();
+    } else if (strcmp(argv[1], "status") == 0) {
+        return GetMasterStatus();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
