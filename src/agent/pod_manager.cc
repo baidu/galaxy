@@ -63,7 +63,8 @@ static int LanuchInitdMain(void *arg) {
 
     process::PrepareChildProcessEnvStep1(::getpid(), 
                                          context->path.c_str());  
-    process::PrepareChildProcessEnvStep2(context->stdout_fd, 
+    process::PrepareChildProcessEnvStep2(-1,
+                                         context->stdout_fd, 
                                          context->stderr_fd, 
                                          context->fds);
     char* argv[] = {
@@ -150,7 +151,8 @@ int PodManager::LanuchInitdByFork(PodInfo* info) {
         pid_t my_pid = ::getpid(); 
         process::PrepareChildProcessEnvStep1(my_pid,
                 path.c_str());
-        process::PrepareChildProcessEnvStep2(stdout_fd, 
+        process::PrepareChildProcessEnvStep2(-1,
+                                             stdout_fd, 
                                              stderr_fd, 
                                              fd_vector);
         char* argv[] = {
