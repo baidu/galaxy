@@ -100,31 +100,8 @@ bool PreparePty(int* fdm, std::string* pty_file) {
     return true;
 }
 
-DEFINE_string(user, "", "exec user");
 DEFINE_string(initd_endpoint, "", "initd endpoint");
-DEFINE_string(pod_id, "", "pod id which to operate");
-DECLARE_string(agent_port);
-
-using baidu::galaxy::AgentInfo;
-void QueryAgent(AgentInfo* agent_info) {
-    baidu::galaxy::Agent_Stub* agent;    
-    baidu::galaxy::RpcClient* rpc_client = 
-        new baidu::galaxy::RpcClient();
-    std::string endpoint("127.0.0.1:");
-    endpoint.append(FLAGS_agent_port);
-    rpc_client->GetStub(endpoint, &agent);
-
-
-}
-
-void Ps() {
-
-    return;
-}
-
-void Exec() {
-    return;
-}
+DEFINE_string(user, "", "use user");
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
