@@ -575,7 +575,7 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
     return 0;
 }
 
-int TaskManager::CleanWorkspace(TaskInfo* task) {
+int TaskManager::CleanWorkspace(TaskInfo*) {
     tasks_mutex_.AssertHeld();
     return 0;
 }

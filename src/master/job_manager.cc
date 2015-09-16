@@ -1367,5 +1367,60 @@ Status JobManager::GetPods(const std::string& jobid,
     return kOk;
 }
 
+Status JobManager::GetStatus(::baidu::galaxy::GetMasterStatusResponse* response) {
+    MutexLock lock(&mutex_);
+    response->set_safe_mode(safe_mode_);
+    response->set_agent_total(agents_.size());
+    int32_t agent_live_count = 0;
+    int32_t agent_dead_count = 0;
+    
+    int64_t cpu_total = 0;
+    int64_t cpu_used = 0;
+    int64_t cpu_assigned = 0;
+
+    int64_t mem_total = 0;
+    int64_t mem_used = 0;
+    int64_t mem_assigned = 0;
+
+    std::map<AgentAddr, AgentInfo*>::iterator a_it = agents_.begin();
+    for (; a_it != agents_.end(); ++a_it) {
+        if (a_it->second->state() == kDead) {
+            agent_dead_count++;
+        }else {
+            agent_live_count++;
+            cpu_total += a_it->second->total().millicores();
+            mem_total += a_it->second->total().memory();
+            
+            cpu_used += a_it->second->used().millicores();
+            mem_used += a_it->second->used().memory();
+
+            cpu_assigned += a_it->second->assigned().millicores();
+            mem_assigned += a_it->second->assigned().memory();
+        }
+    }
+    response->set_agent_live_count(agent_live_count);
+    response->set_agent_dead_count(agent_dead_count);
+
+    response->set_cpu_total(cpu_total);
+    response->set_cpu_used(cpu_used);
+    response->set_cpu_assigned(cpu_assigned);
+
+    response->set_mem_total(mem_total);
+    response->set_mem_used(mem_used);
+    response->set_mem_assigned(mem_assigned);
+
+    response->set_job_count(jobs_.size());
+    int64_t pod_count = 0;
+    std::map<JobId, Job*>::iterator j_it = jobs_.begin();
+    for (; j_it != jobs_.end(); ++j_it) {
+        pod_count += j_it->second->pods_.size();
+    }
+    response->set_pod_count(pod_count);
+    response->set_scale_up_job_count(scale_up_jobs_.size());
+    response->set_scale_down_job_count(scale_down_jobs_.size());
+    response->set_need_update_job_count(need_update_jobs_.size());
+    return kOk;
+}
+
 }
 }

@@ -89,6 +89,45 @@ struct PodInformation {
     std::string endpoint;
 };
 
+struct MasterStatus {
+    std::string addr;
+    bool safe_mode;
+
+    int32_t agent_total;
+    int32_t agent_live_count;
+    int32_t agent_dead_count;
+
+    int64_t cpu_total;
+    int64_t cpu_used;
+    int64_t cpu_assigned;
+
+    int64_t mem_total;
+    int64_t mem_used;
+    int64_t mem_assigned;
+
+    int32_t job_count;
+    int64_t pod_count;
+    int64_t scale_up_job_count;
+    int64_t scale_down_job_count;
+    int64_t need_update_job_count;
+    MasterStatus():addr(),
+    safe_mode(false),
+    agent_total(0),
+    agent_live_count(0),
+    agent_dead_count(0),
+    cpu_total(0),
+    cpu_used(0),
+    cpu_assigned(0),
+    mem_total(0),
+    mem_used(0),
+    mem_assigned(0),
+    job_count(0),
+    pod_count(0),
+    scale_up_job_count(0),
+    scale_down_job_count(0),
+    need_update_job_count(0){}
+};
+
 class Galaxy {
 public:
     static Galaxy* ConnectGalaxy(const std::string& master_addr);
@@ -106,6 +145,7 @@ public:
                              const std::vector<std::string>& agents) = 0;
     virtual bool ShowPod(const std::string& jobid,
                          std::vector<PodInformation>* pods) = 0;
+    virtual bool GetStatus(MasterStatus* status) = 0;
 };
 
 } // namespace galaxy

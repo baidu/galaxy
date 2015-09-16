@@ -21,7 +21,7 @@ namespace galaxy {
 
 const std::string LABEL_PREFIX = "LABEL_";
 
-MasterImpl::MasterImpl() : nexus_(NULL) {
+MasterImpl::MasterImpl() : nexus_(NULL){
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
 }
 
@@ -286,6 +286,15 @@ void MasterImpl::ShowPod(::google::protobuf::RpcController* /*controller*/,
                          ::google::protobuf::Closure* done) {
     Status ok = job_manager_.GetPods(request->jobid(), 
                                      response->mutable_pods());
+    response->set_status(ok);
+    done->Run();
+}
+
+void MasterImpl::GetStatus(::google::protobuf::RpcController*,
+                           const ::baidu::galaxy::GetMasterStatusRequest* ,
+                           ::baidu::galaxy::GetMasterStatusResponse* response,
+                           ::google::protobuf::Closure* done) {
+    Status ok = job_manager_.GetStatus(response);
     response->set_status(ok);
     done->Run();
 }

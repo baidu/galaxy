@@ -230,6 +230,37 @@ message ShowPodResponse {
     optional Status status = 2;
 }
 
+message GetMasterStatusRequest {}
+
+message GetMasterStatusResponse {
+    optional bool safe_mode = 2;
+
+    // agent
+    optional int32 agent_total = 3;
+    optional int32 agent_live_count = 4;
+    optional int32 agent_dead_count = 5;
+
+    // cpu
+    optional int64 cpu_total = 6;
+    optional int64 cpu_used = 7;
+    optional int64 cpu_assigned = 8;
+
+    // mem
+    optional int64 mem_total = 9;
+    optional int64 mem_used = 10;
+    optional int64 mem_assigned = 11;
+
+    // job
+    optional int32 job_count = 12;
+    optional int64 pod_count = 13;
+    optional int64 scale_up_job_count = 14;
+    optional int64 scale_down_job_count = 15;
+    optional int64 need_update_job_count = 16;
+
+    optional Status status = 17;
+}
+
+
 service Master {
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
@@ -239,6 +270,7 @@ service Master {
     rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
     rpc ShowPod(ShowPodRequest) returns (ShowPodResponse);
     rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+    rpc GetStatus(GetMasterStatusRequest) returns (GetMasterStatusResponse);
 
     rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);
 
