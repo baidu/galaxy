@@ -857,6 +857,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             fake_pod.CopyFrom(report_pod_info);
             fake_pod.set_endpoint(report_agent_info.endpoint());
             pods_has_expired.push_back(fake_pod);
+            continue;
         }
         // for recovering
         if (first_query_on_agent 
