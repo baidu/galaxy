@@ -971,10 +971,12 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
     agent_in_master->mutable_assigned()->CopyFrom(agent.assigned());
     agent_in_master->mutable_used()->CopyFrom(agent.used());
     agent_in_master->mutable_pods()->CopyFrom(agent.pods());
-    LOG(INFO, "agent %s change version from %d to %d", 
+    if (agent_in_master->version() != old_version) {
+        LOG(INFO, "agent %s change version from %d to %d", 
               agent_in_master->endpoint().c_str(), 
               old_version,
               agent_in_master->version());
+    }
     return; 
 }
 
