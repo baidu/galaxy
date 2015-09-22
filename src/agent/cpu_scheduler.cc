@@ -44,6 +44,16 @@ CpuScheduler::CpuScheduler() :
 
 CpuScheduler::~CpuScheduler() {
     delete scheduler_threads_;
+    SchedulerCellsMap::iterator it = schedule_cells_.begin();
+    for (; it != schedule_cells_.end(); ++it) {
+        CpuSchedulerCell* cell = it->second;
+        if (cell->resource_collector != NULL) {
+            delete cell->resource_collector; 
+            cell->resource_collector = NULL;
+        } 
+
+        delete cell;
+    }
 }
 
 void CpuScheduler::Release(int cpu_cores) {
@@ -309,7 +319,7 @@ void CpuScheduler::CalcCpuNeed(std::map<std::string, CpuSchedulerCell*>* sched_c
             }
         }
 
-        LOG(DEBUG, "%s cpu_extra %d cpu_extra_need %d avg_idle %d", 
+        LOG(INFO, "%s cpu_extra %d cpu_extra_need %d avg_idle %d", 
                 cell->cgroup_name.c_str(), cell->cpu_extra, 
                 cell->cpu_extra_need, cpu_idle_cores); 
         sched_cells->insert(std::make_pair(cell->cgroup_name, cell));
