@@ -31,12 +31,16 @@ protected:
     int PrepareCgroupEnv(TaskInfo* task_info); 
     int PrepareResourceCollector(TaskInfo* task_info);
     int PrepareVolumeEnv(TaskInfo* task_info);
+    int PrepareCpuScheduler(TaskInfo* task_info);
+
+    int ResetCpuScheduler(TaskInfo* task_info);
 
     int CleanWorkspace(TaskInfo* task_info);
     int CleanCgroupEnv(TaskInfo* task_info);
     int CleanResourceCollector(TaskInfo* task_info);
     int CleanVolumeEnv(TaskInfo* task_info);
     int CleanProcess(TaskInfo* task_info);
+    int CleanCpuScheduler(TaskInfo* task_info);
 
     void SetResourceUsage(TaskInfo* task_info);
     // task stage run

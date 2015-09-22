@@ -26,6 +26,7 @@
 #include "agent/resource_collector.h"
 #include "logging.h"
 #include "timer.h"
+#include "agent/cpu_scheduler.h"
 
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
@@ -36,6 +37,9 @@ DECLARE_int32(agent_millicores_share);
 DECLARE_int64(agent_mem_share);
 DECLARE_string(agent_default_user);
 DECLARE_bool(agent_namespace_isolation_switch);
+DECLARE_bool(cpu_scheduler_switch);
+DECLARE_int32(cpu_scheduler_intervals);
+DECLARE_int32(cpu_scheduler_start_frozen_time);
 
 namespace baidu {
 namespace galaxy {
@@ -262,6 +266,8 @@ int TaskManager::RunTask(TaskInfo* task_info) {
         }
     }
     
+    ResetCpuScheduler(task_info); 
+
     task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
     SetupRunProcessKey(task_info);
@@ -863,12 +869,24 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
         return -1;
     }
     
+    if (PrepareCpuScheduler(task) != 0) {
+        LOG(WARNING, "prepare cpu scheduler for %s failed", 
+                        task->task_id.c_str());
+        return -1; 
+    }
     return 0;    
 }
 
 int TaskManager::CleanCgroupEnv(TaskInfo* task) {
     if (task == NULL) {
         return -1; 
+    }
+
+
+    if (CleanCpuScheduler(task) != 0) {
+        LOG(WARNING, "clean cpu scheduler for %s failed",
+                        task->task_id.c_str()); 
+        return -1;
     }
 
     std::vector<std::string>::iterator hier_it = 
@@ -957,6 +975,49 @@ void TaskManager::SetResourceUsage(TaskInfo* task_info) {
     task_info->status.mutable_resource_used()->set_memory(
             memory_used);
     return ; 
+}
+
+int TaskManager::ResetCpuScheduler(TaskInfo* task_info) {
+    if (!FLAGS_cpu_scheduler_switch) {
+        return 0; 
+    }
+
+    CpuScheduler* scheduler = CpuScheduler::GetInstance();
+    // TODO frozen 30s?
+    scheduler->SetFrozen(task_info->cgroup_path, 
+                         FLAGS_cpu_scheduler_start_frozen_time 
+                         * 1000);
+    return 0;
+}
+
+int TaskManager::PrepareCpuScheduler(TaskInfo* task_info) {
+    if (!FLAGS_cpu_scheduler_switch) {
+        return 0; 
+    }
+
+    CpuScheduler* scheduler = CpuScheduler::GetInstance(); 
+    if (!scheduler->EnqueueTask(
+                task_info->cgroup_path, 
+                task_info->desc.requirement().millicores())) {
+        LOG(WARNING, "enqueue task %s failed",
+                    task_info->task_id.c_str());
+        return -1;  
+    }
+    return 0;
+}
+
+int TaskManager::CleanCpuScheduler(TaskInfo* task_info) {
+    if (!FLAGS_cpu_scheduler_switch) {
+        return 0; 
+    }
+
+    CpuScheduler* scheduler = CpuScheduler::GetInstance();  
+    if (!scheduler->DequeueTask(task_info->cgroup_path)) {
+        LOG(WARNING, "dequeue task %s failed", 
+                    task_info->task_id.c_str());
+        return -1; 
+    }
+    return 0;
 }
 
 }   // ending namespace galaxy
