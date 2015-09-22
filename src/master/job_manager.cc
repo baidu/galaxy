@@ -913,7 +913,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     // handle lost pod
     HandleLostPod(report_agent_info.endpoint(), pods_on_agent);
     // send kill cmd to agent
-    HandleExporedPod(pods_has_expired);
+    HandleExpiredPod(pods_has_expired);
     if (queried_agents_.size() == agents_.size() && safe_mode_) {
         FillAllJobs();
         safe_mode_ = false;
@@ -1450,7 +1450,7 @@ void JobManager::HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_
     }
 }
 
-void JobManager::HandleExporedPod(const std::vector<PodStatus>& pods) {
+void JobManager::HandleExpiredPod(const std::vector<PodStatus>& pods) {
     mutex_.AssertHeld();
     if (safe_mode_) {
         return;

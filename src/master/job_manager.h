@@ -138,7 +138,7 @@ private:
                          bool* replica_change, bool* pod_desc_change);
 
     void HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_agent);
-    void HandleExporedPod(const std::vector<PodStatus>& pods);
+    void HandleExpiredPod(const std::vector<PodStatus>& pods);
 private:
     std::map<JobId, Job*> jobs_;
     // all jobs that need scale up
