@@ -162,6 +162,7 @@ bool CpuScheduler::AllocateCpu(int cpu_cores) {
         just_need_cpu -= cpu_cores_left_;
     }
     std::vector<CpuSchedulerCell*> sched_vec;
+    RebuildExtraQueue();
     while (just_need_cpu > 0) {
         CpuSchedulerCell* cell = extra_queue_.top();
         extra_queue_.pop();

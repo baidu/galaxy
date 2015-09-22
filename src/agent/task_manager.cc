@@ -983,7 +983,6 @@ int TaskManager::ResetCpuScheduler(TaskInfo* task_info) {
     }
 
     CpuScheduler* scheduler = CpuScheduler::GetInstance();
-    // TODO frozen 30s?
     scheduler->SetFrozen(task_info->cgroup_path, 
                          FLAGS_cpu_scheduler_start_frozen_time 
                          * 1000);
