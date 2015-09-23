@@ -320,9 +320,9 @@ void CpuScheduler::CalcCpuNeed(std::map<std::string, CpuSchedulerCell*>* sched_c
             }
         }
 
-        LOG(INFO, "%s cpu_extra %d cpu_extra_need %d avg_idle %d", 
+        LOG(INFO, "%s cpu_extra %d cpu_extra_need %d avg_idle %d avg_cpu_usages_len %d", 
                 cell->cgroup_name.c_str(), cell->cpu_extra, 
-                cell->cpu_extra_need, cpu_idle_cores); 
+                cell->cpu_extra_need, cpu_idle_cores, cpu_usages_len); 
         sched_cells->insert(std::make_pair(cell->cgroup_name, cell));
     }
 }
@@ -477,6 +477,7 @@ bool CpuScheduler::ReCalcCpuNeed(std::map<std::string, CpuSchedulerCell*>* sched
     }
 
     temp_cpu_cores_left -= extra_left_require_count;
+    Shuffle(&extra_right_require);
     for (size_t i = 0; i < extra_right_require.size(); ++i) {
         CpuSchedulerCell* cell = extra_right_require[i];
         if (cell->cpu_extra_need < 0) {

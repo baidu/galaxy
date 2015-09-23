@@ -96,6 +96,20 @@ private:
         delete instance_; 
         instance_ = NULL;
     }
+
+    void Shuffle(std::vector<CpuSchedulerCell*>* cells) {
+        if (cells == NULL) {
+            return; 
+        } 
+        for (size_t i = cells->size(); i > 1; i--) {
+            CpuSchedulerCell* tmp = (*cells)[i - 1];  
+            size_t target_index = ::rand() % i;
+            (*cells)[i - 1] = (*cells)[target_index];
+            (*cells)[target_index] = tmp;
+        }
+        return;
+    }
+
 private:
 
     static pthread_once_t ptonce_;
