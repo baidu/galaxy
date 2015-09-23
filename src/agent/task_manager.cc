@@ -72,6 +72,7 @@ int TaskManager::Init() {
         if (sub_systems[i].empty()) {
             continue; 
         }
+        // no deal with freezer
         std::string hierarchy =
             FLAGS_gce_cgroup_root + "/" 
             + sub_systems[i];
@@ -85,7 +86,8 @@ int TaskManager::Init() {
         }
 
         LOG(INFO, "support cgroups hierarchy %s", hierarchy.c_str());
-        hierarchies_.push_back(hierarchy);
+
+        hierarchies_[sub_systems[i]] = hierarchy;
     }
     LOG(INFO, "support cgroups types %u", sub_systems.size());
     return 0;
@@ -581,7 +583,7 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
     return 0;
 }
 
-int TaskManager::CleanWorkspace(TaskInfo*) {
+int TaskManager::CleanWorkspace(TaskInfo* /*task*/) {
     tasks_mutex_.AssertHeld();
     return 0;
 }
@@ -678,7 +680,7 @@ int TaskManager::RunProcessCheck(TaskInfo* task_info) {
     // 1. query main_process status
     if (QueryProcessInfo(task_info->initd_stub, 
                 &(task_info->main_process)) != 0) {
-        LOG(WARNING, "task %s check deploy state failed",
+        LOG(WARNING, "task %s check run state failed",
                 task_info->task_id.c_str());
         task_info->status.set_state(kTaskError);
         return -1;
@@ -802,10 +804,10 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
     task->cgroup_path = cgroup_name;
-    std::vector<std::string>::iterator hier_it = 
+    std::map<std::string, std::string>::iterator hier_it = 
         hierarchies_.begin();
     for (; hier_it != hierarchies_.end(); ++hier_it) {
-        std::string cgroup_dir = *hier_it;     
+        std::string cgroup_dir = hier_it->second;     
         cgroup_dir.append("/");
         cgroup_dir.append(cgroup_name);
         if (!file::Mkdir(cgroup_dir)) {
@@ -817,8 +819,8 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
                   cgroup_dir.c_str(), task->task_id.c_str());
     }
 
-    std::string cpu_hierarchy = FLAGS_gce_cgroup_root + "/cpu/";
-    std::string mem_hierarchy = FLAGS_gce_cgroup_root + "/memory/";
+    std::string cpu_hierarchy = hierarchies_["cpu"];
+    std::string mem_hierarchy = hierarchies_["memory"];
     const int CPU_CFS_PERIOD = 100000;
     const int MIN_CPU_CFS_QUOTA = 1000;
 
@@ -882,7 +884,6 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
         return -1; 
     }
 
-
     if (CleanCpuScheduler(task) != 0) {
         LOG(WARNING, "clean cpu scheduler for %s failed",
                         task->task_id.c_str()); 
@@ -893,21 +894,33 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
         hierarchies_.begin();
     std::string cgroup = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
+    std::string freezer_hierarchy = hierarchies_["freezer"];
+    std::map<std::string, std::string>::iterator hier_it = 
+        hierarchies_.begin();
     for (; hier_it != hierarchies_.end(); ++hier_it) {
-        std::string cgroup_dir = *hier_it; 
+        if (hier_it->first == "freezer") {
+            continue; 
+        }
+        std::string cgroup_dir = hier_it->second; 
         cgroup_dir.append("/");
         cgroup_dir.append(cgroup);
         if (!file::IsExists(cgroup_dir)) {
             LOG(INFO, "%s %s not exists",
-                    (*hier_it).c_str(), cgroup.c_str()); 
+                    (hier_it->second).c_str(), cgroup.c_str()); 
             continue;
         }
+        if (!cgroups::FreezerSwitch(freezer_hierarchy, 
+                                    cgroup, "FROZEN")) {
+            LOG(WARNING, "%s %s frozen failed", freezer_hierarchy.c_str(), cgroup.c_str()); 
+            return -1;
+        }
         std::vector<int> pids;
-        if (!cgroups::GetPidsFromCgroup(*hier_it, cgroup, &pids)) {
+        if (!cgroups::GetPidsFromCgroup(hier_it->second, cgroup, &pids)) {
             LOG(WARNING, "get pids from %s failed",
                     cgroup.c_str());  
             return -1;
         }
+
         std::vector<int>::iterator pid_it = pids.begin();
         for (; pid_it != pids.end(); ++pid_it) {
             int pid = *pid_it;
@@ -915,6 +928,12 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
                 ::kill(pid, SIGKILL); 
             }
         }
+        if (!cgroups::FreezerSwitch(freezer_hierarchy,
+                                    cgroup, "THAWED")) {
+            LOG(WARNING, "%s %s thawed failed", freezer_hierarchy.c_str(), cgroup.c_str()); 
+            return -1;
+        }
+
         if (::rmdir(cgroup_dir.c_str()) != 0
                 && errno != ENOENT) {
             LOG(WARNING, "rmdir %s failed err[%d: %s]",
@@ -922,6 +941,16 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
             return -1;
         }
     }
+
+    std::string freezer_cgroup_path = freezer_hierarchy + "/" + cgroup;
+    if (::rmdir(freezer_cgroup_path.c_str()) != 0
+            && errno != ENOENT) {
+        LOG(WARNING, "rmdir %s/%s failed err[%d: %s]",
+                freezer_hierarchy.c_str(), cgroup.c_str(), 
+                errno, strerror(errno)); 
+        return -1;
+    }
+
     return 0;
 }
 
