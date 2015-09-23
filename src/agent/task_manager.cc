@@ -890,8 +890,6 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
         return -1;
     }
 
-    std::vector<std::string>::iterator hier_it = 
-        hierarchies_.begin();
     std::string cgroup = FLAGS_agent_global_cgroup_path + "/" 
         + task->task_id;
     std::string freezer_hierarchy = hierarchies_["freezer"];
