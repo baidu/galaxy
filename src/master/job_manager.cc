@@ -823,7 +823,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     }
     int64_t current_seq_id = agent_sequence_ids_[endpoint];
     if (seq_id_at_query < current_seq_id) {
-        LOG(FATAL, "outdated query callback, just ignore it. %ld < %ld, %s", 
+        LOG(WARNING, "outdated query callback, just ignore it. %ld < %ld, %s",
             seq_id_at_query, current_seq_id, endpoint.c_str());
         return;
     }
