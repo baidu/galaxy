@@ -28,6 +28,7 @@ DECLARE_int64(agent_mem_share);
 
 DECLARE_string(agent_persistence_path);
 DECLARE_bool(cpu_scheduler_switch);
+DECLARE_string(agent_container_link_dir);
 
 namespace baidu {
 namespace galaxy {
@@ -261,6 +262,12 @@ bool AgentImpl::Init() {
     if (!file::Mkdir(FLAGS_agent_work_dir)) {
         LOG(WARNING, "mkdir workdir %s falied", 
                             FLAGS_agent_work_dir.c_str()); 
+        return false;
+    }
+
+    if (!file::Mkdir(FLAGS_agent_container_link_dir)) {
+        LOG(WARNING, "mkdir container dir %s failed",
+                            FLAGS_agent_container_link_dir.c_str()); 
         return false;
     }
 

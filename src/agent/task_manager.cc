@@ -40,6 +40,7 @@ DECLARE_bool(agent_namespace_isolation_switch);
 DECLARE_bool(cpu_scheduler_switch);
 DECLARE_int32(cpu_scheduler_intervals);
 DECLARE_int32(cpu_scheduler_start_frozen_time);
+DECLARE_string(agent_container_link_dir);
 
 namespace baidu {
 namespace galaxy {
@@ -569,22 +570,55 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
 
     std::string task_workspace(workspace_root);
     task_workspace.append("/");
+    task_workspace.append(FLAGS_agent_container_link_dir);
+    task_workspace.append("/");
     task_workspace.append(task->task_id);
-    if (!file::Mkdir(task_workspace)) {
+    if (!file::MkdirRecur(task_workspace)) {
         LOG(WARNING, "mkdir task workspace failed");
         return -1;
     }
+
+    if (!file::IsExists(FLAGS_agent_container_link_dir)
+            && !file::MkdirRecur(FLAGS_agent_container_link_dir)) {
+        LOG(WARNING, "mkdir container link dir failed"); 
+        return -1;
+    }
+
+    // symlink 
+    std::string link_dir_path = FLAGS_agent_container_link_dir;
+    link_dir_path.append("/");
+    link_dir_path.append(task->task_id);
+    if (!file::SymbolLink(task_workspace, link_dir_path)) {
+        LOG(WARNING, "symlink %s->%s failed for task %s", 
+                link_dir_path.c_str(), task_workspace.c_str(),
+                task->task_id.c_str()); 
+        return -1;
+    }
+
+    task->task_link_path = link_dir_path;
     task->task_workspace = task_workspace;
-    task->task_chroot_path = FLAGS_agent_work_dir;
-    task->task_chroot_path.append("/");
-    task->task_chroot_path.append(task->pod_id);
-    LOG(INFO, "task %s workspace %s",
-            task->task_id.c_str(), task->task_workspace.c_str());
+    task->task_chroot_path = workspace_root;
+    LOG(INFO, "task %s workspace %s link path %s",
+            task->task_id.c_str(), task->task_workspace.c_str(),
+            task->task_link_path.c_str());
     return 0;
 }
 
-int TaskManager::CleanWorkspace(TaskInfo* /*task*/) {
+int TaskManager::CleanWorkspace(TaskInfo* task) {
     tasks_mutex_.AssertHeld();
+    if (task->task_link_path.empty()) {
+        return 0; 
+    }
+
+    if (!file::IsExists(task->task_link_path)) {
+        return 0; 
+    }
+
+    if (!file::Remove(task->task_link_path)) {
+        LOG(WARNING, "task %s clean symlink failed %s",
+                task->task_id.c_str(), task->task_link_path.c_str()); 
+        return -1;
+    }  
     return 0;
 }
 
