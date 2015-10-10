@@ -587,7 +587,7 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
 
     task->task_workspace = task_workspace;
     task->task_chroot_path = workspace_root;
-    LOG(INFO, "task %s workspace %s link path %s",
+    LOG(INFO, "task %s workspace %s",
             task->task_id.c_str(), task->task_workspace.c_str());
     return 0;
 }
