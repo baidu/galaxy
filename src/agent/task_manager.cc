@@ -40,7 +40,6 @@ DECLARE_bool(agent_namespace_isolation_switch);
 DECLARE_bool(cpu_scheduler_switch);
 DECLARE_int32(cpu_scheduler_intervals);
 DECLARE_int32(cpu_scheduler_start_frozen_time);
-DECLARE_string(agent_container_link_dir);
 
 namespace baidu {
 namespace galaxy {
@@ -281,6 +280,9 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     initd_request.set_commands(task_info->desc.start_command());
     if (FLAGS_agent_namespace_isolation_switch) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
+        std::string* chroot_path = initd_request.add_envs();
+        chroot_path->append("CHROOT_PATH=");
+        chroot_path->append(task_info->task_chroot_path);
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
@@ -291,6 +293,7 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     std::string* task_id = initd_request.add_envs();
     task_id->append("TASK_ID=");
     task_id->append(task_info->task_id);
+    
     if (task_info->initd_stub == NULL 
             && !rpc_client_->GetStub(task_info->initd_endpoint, 
                                      &(task_info->initd_stub))) {
@@ -353,6 +356,9 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     initd_request.set_commands(stop_command);
     if (FLAGS_agent_namespace_isolation_switch) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
+        std::string* chroot_path = initd_request.add_envs();
+        chroot_path->append("CHROOT_PATH=");
+        chroot_path->append(task_info->task_chroot_path);
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
@@ -485,6 +491,9 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     initd_request.set_commands(deploy_command);
     if (FLAGS_agent_namespace_isolation_switch) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
+        std::string* chroot_path = initd_request.add_envs();
+        chroot_path->append("CHROOT_PATH=");
+        chroot_path->append(task_info->task_chroot_path);
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
@@ -570,55 +579,21 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
 
     std::string task_workspace(workspace_root);
     task_workspace.append("/");
-    task_workspace.append(FLAGS_agent_container_link_dir);
-    task_workspace.append("/");
     task_workspace.append(task->task_id);
     if (!file::MkdirRecur(task_workspace)) {
         LOG(WARNING, "mkdir task workspace failed");
         return -1;
     }
 
-    if (!file::IsExists(FLAGS_agent_container_link_dir)
-            && !file::MkdirRecur(FLAGS_agent_container_link_dir)) {
-        LOG(WARNING, "mkdir container link dir failed"); 
-        return -1;
-    }
-
-    // symlink 
-    std::string link_dir_path = FLAGS_agent_container_link_dir;
-    link_dir_path.append("/");
-    link_dir_path.append(task->task_id);
-    if (!file::SymbolLink(task_workspace, link_dir_path)) {
-        LOG(WARNING, "symlink %s->%s failed for task %s", 
-                link_dir_path.c_str(), task_workspace.c_str(),
-                task->task_id.c_str()); 
-        return -1;
-    }
-
-    task->task_link_path = link_dir_path;
     task->task_workspace = task_workspace;
     task->task_chroot_path = workspace_root;
     LOG(INFO, "task %s workspace %s link path %s",
-            task->task_id.c_str(), task->task_workspace.c_str(),
-            task->task_link_path.c_str());
+            task->task_id.c_str(), task->task_workspace.c_str());
     return 0;
 }
 
-int TaskManager::CleanWorkspace(TaskInfo* task) {
+int TaskManager::CleanWorkspace(TaskInfo* /*task*/) {
     tasks_mutex_.AssertHeld();
-    if (task->task_link_path.empty()) {
-        return 0; 
-    }
-
-    if (!file::IsExists(task->task_link_path)) {
-        return 0; 
-    }
-
-    if (!file::Remove(task->task_link_path)) {
-        LOG(WARNING, "task %s clean symlink failed %s",
-                task->task_id.c_str(), task->task_link_path.c_str()); 
-        return -1;
-    }  
     return 0;
 }
 

@@ -41,7 +41,6 @@ struct TaskInfo {
     Initd_Stub* initd_stub;
     CGroupResourceCollector* resource_collector; 
 
-    std::string task_link_path;
 
     std::string ToString() {
         std::string pb_str;
@@ -81,7 +80,6 @@ struct TaskInfo {
         str_format.append("cgroup_path : " + cgroup_path + "\n");
         str_format.append("task_workspace : " + task_workspace + "\n");
         str_format.append("task_chroot_path : " + task_chroot_path + "\n");
-        str_format.append("task_link_path : " + task_link_path + "\n");
         return str_format;
     }
 
@@ -103,8 +101,7 @@ struct TaskInfo {
           stop_timeout_point(0),
           initd_check_failed(0),
           initd_stub(NULL),
-          resource_collector(NULL),
-          task_link_path() {
+          resource_collector(NULL) {
     }
 
     void CopyFrom(const TaskInfo& task) {
@@ -126,7 +123,6 @@ struct TaskInfo {
         initd_check_failed = task.initd_check_failed;
         initd_stub = task.initd_stub;
         resource_collector = task.resource_collector;
-        task_link_path = task.task_link_path;
     }
 
     TaskInfo& operator=(const TaskInfo& task) {

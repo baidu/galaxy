@@ -41,7 +41,6 @@ DECLARE_bool(agent_namespace_isolation_switch);
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_string(flagfile);
-DECLARE_string(agent_container_link_dir);
 
 namespace baidu {
 namespace galaxy {
