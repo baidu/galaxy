@@ -248,7 +248,12 @@ void JobManager::FillPodsToJob(Job* job) {
     mutex_.AssertHeld();
     bool need_scale_up = false;
     job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod();
-    for(int i = job->pods_.size(); i < job->desc_.replica(); i++) {
+    int pods_size = job->pods_.size();
+    if (pods_size > job->desc_.replica()) {
+        LOG(INFO, "move job %s to scale down queue", job->id_.c_str());
+        scale_down_jobs_.insert(job->id_);
+    }
+    for(int i = pods_size; i < job->desc_.replica(); i++) {
         PodId pod_id = MasterUtil::UUID();
         PodStatus* pod_status = new PodStatus();
         pod_status->set_podid(pod_id);
@@ -263,6 +268,7 @@ void JobManager::FillPodsToJob(Job* job) {
         LOG(INFO, "move job %s to scale up queue", job->id_.c_str());
         scale_up_jobs_.insert(job->id_);
     }
+   
 }
 
 void JobManager::FillAllJobs() {
@@ -859,9 +865,11 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             pods_has_expired.push_back(fake_pod);
             continue;
         }
-        // for recovering
+        Job* job = job_it->second;
+        // for recovering only in safe mode
         if (first_query_on_agent 
-            && jobs_[jobid]->pods_.find(podid) == jobs_[jobid]->pods_.end()) {
+            && job->pods_.find(podid) == job->pods_.end()
+            && safe_mode_) {
             PodStatus* pod = new PodStatus();
             pod->CopyFrom(report_pod_info);
             pod->set_stage(state_to_stage_[pod->state()]);
@@ -873,7 +881,6 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         }
 
         // validate pod
-        Job* job = job_it->second;
         std::map<PodId, PodStatus*>::iterator p_it = job->pods_.find(podid);
         // pod does not exist in master
         if (p_it == job->pods_.end()) {
