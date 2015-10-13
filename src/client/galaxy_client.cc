@@ -445,6 +445,23 @@ int ShowPod() {
     }
     return 0;
 }
+int SwitchSafeMode(bool mode) {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    ::baidu::galaxy::MasterStatus status;
+    ok = galaxy->SwitchSafeMode(mode);
+    if (!ok) {
+        fprintf(stderr, "fail to switch safemode\n");
+        return -1;
+    }
+    printf("sucessfully %s safemode\n", mode ? "enter" : "leave");
+    return 0;
+}
 int GetMasterStatus() {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
@@ -591,6 +608,11 @@ int main(int argc, char* argv[]) {
         return ShowPod();
     } else if (strcmp(argv[1], "status") == 0) {
         return GetMasterStatus();
+    } else if (argc > 2 && strcmp(argv[2], "safemode") == 0) {
+        if (strcmp(argv[1], "enter") == 0) 
+            return SwitchSafeMode(true);
+        else if (strcmp(argv[1], "leave") == 0) 
+            return SwitchSafeMode(false);
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;

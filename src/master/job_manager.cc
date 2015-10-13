@@ -44,7 +44,10 @@ JobManager::JobManager()
 JobManager::~JobManager() {
     delete nexus_;
 }
-
+Status JobManager::SetSafeMode(bool mode) {
+	safe_mode_ = mode;
+	return kOk;
+}
 Status JobManager::LabelAgents(const LabelCell& label_cell) {
     AgentSet new_label_set;
     for (int i = 0; i < label_cell.agents_endpoint_size(); ++i) {

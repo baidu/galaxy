@@ -29,8 +29,8 @@ public:
                      const std::vector<std::string>& agents);
     bool ShowPod(const std::string& jobid,
                  std::vector<PodInformation>* pods);
-
     bool GetStatus(MasterStatus* status);
+    bool SwitchSafeMode(bool mode);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -269,6 +269,17 @@ bool GalaxyImpl::GetStatus(MasterStatus* status) {
     status->scale_up_job_count = response.scale_up_job_count();
     status->scale_down_job_count = response.scale_down_job_count();
     status->need_update_job_count = response.need_update_job_count();
+    return true;
+}
+bool GalaxyImpl::SwitchSafeMode(bool mode) {
+    SwitchSafeModeRequest request;
+    SwitchSafeModeResponse response;
+    request.set_enter_or_leave(mode);
+    rpc_client_->SendRequest(master_, &Master_Stub::SwitchSafeMode, 
+                             &request, &response, 5, 1);
+    if (response.status() != kOk) {
+        return false;
+    }
     return true;
 }
 
