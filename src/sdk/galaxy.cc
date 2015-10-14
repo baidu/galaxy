@@ -108,6 +108,12 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
             return false;
         }
         task->set_source_type(source_type);
+        MemIsolationType mem_isolation_type;
+        ok = MemIsolationType_Parse(sdk_job.pod.tasks[i].mem_isolation_type, &mem_isolation_type);
+        if (!ok) {
+            return false;
+        }
+        task->set_mem_isolation_type(mem_isolation_type);
         Resource* task_res = task->mutable_requirement();
         const ResDescription& task_res_desc = sdk_job.pod.tasks[i].requirement;
         task_res->set_millicores(task_res_desc.millicores);

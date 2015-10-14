@@ -167,6 +167,10 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
     rapidjson::FileReadStream frs(fd, buffer, sizeof(buffer));
     rapidjson::Document document;
     document.ParseStream<0>(frs);
+    if (!document.IsObject()) {
+        fprintf(stderr, "invalidate config file\n");
+        return -1;
+    }
     fclose(fd);
     if (!document.HasMember("name")) {
         fprintf(stderr, "name is required in config\n");
@@ -259,6 +263,10 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             }
             if (tasks_json[i].HasMember("stop_command")) {
                 task.stop_cmd = tasks_json[i]["stop_command"].GetString();
+            }
+            task.mem_isolation_type = "kMemIsolationCgroup";
+            if (tasks_json[i].HasMember("mem_isolation_type")) {
+                task.mem_isolation_type = tasks_json[i].HasMember("mem_isolation_type");
             }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
