@@ -858,14 +858,28 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     //    return -1;
     //}
     int64_t memory_limit = task->desc.requirement().memory();
-    if (cgroups::Write(mem_hierarchy,
-                cgroup_name,
-                "memory.limit_in_bytes",
-                boost::lexical_cast<std::string>(memory_limit)
-                ) != 0) {
-        LOG(WARNING, "set memory limit %ld failed for %s",
-                memory_limit, cgroup_name.c_str()); 
-        return -1;
+    if (task->desc.has_mem_isolation_type() && 
+            task->desc.mem_isolation_type() == 
+                    kMemIsolationLimit) {
+        int ret = cgroups::Write(mem_hierarchy,
+                                 cgroup_name,
+                                 "memory.soft_limit_in_bytes",
+                                 boost::lexical_cast<std::string>(memory_limit));    
+        if (ret != 0) {
+            LOG(WARNING, "set memory soft limit %ld failed for %s",
+                    memory_limit, cgroup_name.c_str()); 
+            return -1;
+        }
+    } else {
+        if (cgroups::Write(mem_hierarchy,
+                    cgroup_name,
+                    "memory.limit_in_bytes",
+                    boost::lexical_cast<std::string>(memory_limit)
+                    ) != 0) {
+            LOG(WARNING, "set memory limit %ld failed for %s",
+                    memory_limit, cgroup_name.c_str()); 
+            return -1;
+        }
     }
 
     const int GROUP_KILL_MODE = 1;
