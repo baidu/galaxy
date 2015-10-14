@@ -280,6 +280,9 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     initd_request.set_commands(task_info->desc.start_command());
     if (FLAGS_agent_namespace_isolation_switch) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
+        std::string* chroot_path = initd_request.add_envs();
+        chroot_path->append("CHROOT_PATH=");
+        chroot_path->append(task_info->task_chroot_path);
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
@@ -290,6 +293,7 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     std::string* task_id = initd_request.add_envs();
     task_id->append("TASK_ID=");
     task_id->append(task_info->task_id);
+    
     if (task_info->initd_stub == NULL 
             && !rpc_client_->GetStub(task_info->initd_endpoint, 
                                      &(task_info->initd_stub))) {
@@ -352,6 +356,9 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     initd_request.set_commands(stop_command);
     if (FLAGS_agent_namespace_isolation_switch) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
+        std::string* chroot_path = initd_request.add_envs();
+        chroot_path->append("CHROOT_PATH=");
+        chroot_path->append(task_info->task_chroot_path);
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
@@ -484,6 +491,9 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     initd_request.set_commands(deploy_command);
     if (FLAGS_agent_namespace_isolation_switch) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
+        std::string* chroot_path = initd_request.add_envs();
+        chroot_path->append("CHROOT_PATH=");
+        chroot_path->append(task_info->task_chroot_path);
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
@@ -570,14 +580,13 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
     std::string task_workspace(workspace_root);
     task_workspace.append("/");
     task_workspace.append(task->task_id);
-    if (!file::Mkdir(task_workspace)) {
+    if (!file::MkdirRecur(task_workspace)) {
         LOG(WARNING, "mkdir task workspace failed");
         return -1;
     }
+
     task->task_workspace = task_workspace;
-    task->task_chroot_path = FLAGS_agent_work_dir;
-    task->task_chroot_path.append("/");
-    task->task_chroot_path.append(task->pod_id);
+    task->task_chroot_path = workspace_root;
     LOG(INFO, "task %s workspace %s",
             task->task_id.c_str(), task->task_workspace.c_str());
     return 0;
@@ -849,14 +858,28 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     //    return -1;
     //}
     int64_t memory_limit = task->desc.requirement().memory();
-    if (cgroups::Write(mem_hierarchy,
-                cgroup_name,
-                "memory.limit_in_bytes",
-                boost::lexical_cast<std::string>(memory_limit)
-                ) != 0) {
-        LOG(WARNING, "set memory limit %ld failed for %s",
-                memory_limit, cgroup_name.c_str()); 
-        return -1;
+    if (task->desc.has_mem_isolation_type() && 
+            task->desc.mem_isolation_type() == 
+                    kMemIsolationLimit) {
+        int ret = cgroups::Write(mem_hierarchy,
+                                 cgroup_name,
+                                 "memory.soft_limit_in_bytes",
+                                 boost::lexical_cast<std::string>(memory_limit));    
+        if (ret != 0) {
+            LOG(WARNING, "set memory soft limit %ld failed for %s",
+                    memory_limit, cgroup_name.c_str()); 
+            return -1;
+        }
+    } else {
+        if (cgroups::Write(mem_hierarchy,
+                    cgroup_name,
+                    "memory.limit_in_bytes",
+                    boost::lexical_cast<std::string>(memory_limit)
+                    ) != 0) {
+            LOG(WARNING, "set memory limit %ld failed for %s",
+                    memory_limit, cgroup_name.c_str()); 
+            return -1;
+        }
     }
 
     const int GROUP_KILL_MODE = 1;
