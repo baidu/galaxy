@@ -381,18 +381,18 @@ int ListAgent() {
                 vs.push_back(baidu::common::HumanReadableString(agents[i].mem_share));
                 vs.push_back(agents[i].labels);
                 tp.AddRow(vs);
-		    }
+            }
             printf("%s\n", tp.ToString().c_str());
-	    }else {
-	        printf("Listagent fail\n");
-	        return 1;
-	    }
-	    if (FLAGS_d <=0) {
-	        break;
-	    }else{
-	        ::sleep(FLAGS_d);
-	        ::system("clear");
-	    }
+        }else {
+            printf("Listagent fail\n");
+            return 1;
+        }
+        if (FLAGS_d <=0) {
+            break;
+        }else{
+            ::sleep(FLAGS_d);
+            ::system("clear");
+        }
     }
     return 0;
 }
@@ -436,11 +436,11 @@ int ShowPod() {
         }
         printf("%s\n", tp.ToString().c_str());
         if (FLAGS_d <=0) {
-	        break;
-	    }else{
-	        ::sleep(FLAGS_d);
-	        ::system("clear");
-	    }
+            break;
+        }else{
+            ::sleep(FLAGS_d);
+            ::system("clear");
+        }
 
     }
     return 0;
@@ -545,7 +545,7 @@ int ListJob() {
                              baidu::common::NumToString(infos[i].pending_num) + "/" +
                              baidu::common::NumToString(infos[i].deploying_num));
                 vs.push_back(baidu::common::NumToString(infos[i].replica));
-				    		vs.push_back(infos[i].is_batch ? "batch" : "");
+                            vs.push_back(infos[i].is_batch ? "batch" : "");
                 vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
                 vs.push_back(baidu::common::HumanReadableString(infos[i].mem_used));
                 tp.AddRow(vs);
@@ -597,7 +597,7 @@ int main(int argc, char* argv[]) {
     } else if (strcmp(argv[1], "jobs") == 0) {
         return ListJob();
     } else if (strcmp(argv[1], "agents") == 0) {
-		return ListAgent();
+        return ListAgent();
     } else if (strcmp(argv[1], "label") == 0) {
         return LabelAgent();
     } else if (strcmp(argv[1], "update") == 0) {

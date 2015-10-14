@@ -77,10 +77,10 @@ public:
                            const ::baidu::galaxy::GetMasterStatusRequest* request,
                            ::baidu::galaxy::GetMasterStatusResponse* response,
                            ::google::protobuf::Closure* done); 
-	  virtual void SwitchSafeMode(::google::protobuf::RpcController* controller,
+      virtual void SwitchSafeMode(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SwitchSafeModeRequest* request,
-						   ::baidu::galaxy::SwitchSafeModeResponse* response,
-						   ::google::protobuf::Closure* done);
+                           ::baidu::galaxy::SwitchSafeModeResponse* response,
+                           ::google::protobuf::Closure* done);
 
       void OnSessionTimeout();
       void OnLockChange(std::string lock_session_id);

@@ -210,11 +210,11 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
 
 void MasterImpl::SwitchSafeMode(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SwitchSafeModeRequest* request,
-						   ::baidu::galaxy::SwitchSafeModeResponse* response,
-						   ::google::protobuf::Closure* done) {
-	Status ok = job_manager_.SetSafeMode(request->enter_or_leave());
-	response->set_status(ok);
-	done->Run();
+                           ::baidu::galaxy::SwitchSafeModeResponse* response,
+                           ::google::protobuf::Closure* done) {
+    Status ok = job_manager_.SetSafeMode(request->enter_or_leave());
+    response->set_status(ok);
+    done->Run();
 }
 
 void MasterImpl::GetPendingJobs(::google::protobuf::RpcController* /*controller*/,
