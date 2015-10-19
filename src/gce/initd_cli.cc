@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 
 #include "gflags/gflags.h"
 #include "proto/agent.pb.h"
@@ -21,6 +22,16 @@ bool TerminateContact(int fdm) {
     if (fdm < 0) {
         return false; 
     }
+    struct termios temp_termios;
+    struct termios orig_termios;
+
+    ::tcgetattr(0, &orig_termios);
+    temp_termios = orig_termios;
+    temp_termios.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
+    temp_termios.c_cc[VTIME] = 1;
+    temp_termios.c_cc[VMIN] = 1;
+    ::tcsetattr(0, TCSANOW, &temp_termios);
+
     const int INPUT_BUFFER_LEN = 1024 * 10;
     char input[INPUT_BUFFER_LEN];
     fd_set fd_in; 
@@ -34,7 +45,7 @@ bool TerminateContact(int fdm) {
             case -1 :  
                 fprintf(stderr, "select err[%d: %s]\n", 
                         errno, strerror(errno));
-                return false;
+                break;
             default : {
                 if (FD_ISSET(0, &fd_in))  {
                     ret = ::read(0, input, sizeof(input)); 
@@ -45,7 +56,7 @@ bool TerminateContact(int fdm) {
                             fprintf(stderr, "read err[%d: %s]\n",
                                     errno,
                                     strerror(errno)); 
-                            return false;
+                            break;
                         }
                     }
                 }         
@@ -58,12 +69,20 @@ bool TerminateContact(int fdm) {
                             fprintf(stderr, "read err[%d: %s]\n",
                                     errno,
                                     strerror(errno)); 
-                            return false;
+                            break;
                         } 
                     }
                 }
             }
         }
+        if (ret < 0) {
+            break; 
+        }
+    }
+
+    ::tcsetattr(0, TCSANOW, &orig_termios);
+    if (ret < 0) {
+        return false; 
     }
     return true;
 } 
@@ -102,6 +121,7 @@ bool PreparePty(int* fdm, std::string* pty_file) {
 
 DEFINE_string(initd_endpoint, "", "initd endpoint");
 DEFINE_string(user, "", "use user");
+DEFINE_string(chroot, "", "chroot path");
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
@@ -126,6 +146,9 @@ int main(int argc, char* argv[]) {
     exec_request.set_pty_file(pty_file);
     if (FLAGS_user != "") {
         exec_request.set_user(FLAGS_user);
+    }
+    if (FLAGS_chroot != "") {
+        exec_request.set_chroot_path(FLAGS_chroot); 
     }
     baidu::galaxy::ExecuteResponse exec_response;
     bool ret = rpc_client->SendRequest(initd,
