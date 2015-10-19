@@ -27,9 +27,10 @@ bool TerminateContact(int fdm) {
 
     ::tcgetattr(0, &orig_termios);
     temp_termios = orig_termios;
+    // 去掉输入同步的输出, 以及不等待换行符
     temp_termios.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
-    temp_termios.c_cc[VTIME] = 1;
-    temp_termios.c_cc[VMIN] = 1;
+    temp_termios.c_cc[VTIME] = 1;   // 终端等待延迟时间（十分之一秒为单位）
+    temp_termios.c_cc[VMIN] = 1;    // 终端接收字符数
     ::tcsetattr(0, TCSANOW, &temp_termios);
 
     const int INPUT_BUFFER_LEN = 1024 * 10;
