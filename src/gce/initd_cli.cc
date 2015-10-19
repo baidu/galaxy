@@ -123,6 +123,8 @@ bool PreparePty(int* fdm, std::string* pty_file) {
 DEFINE_string(initd_endpoint, "", "initd endpoint");
 DEFINE_string(user, "", "use user");
 DEFINE_string(chroot, "", "chroot path");
+DEFINE_string(LINES, "39", "env values");
+DEFINE_string(COLUMNS, "139", "env values");
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
@@ -151,6 +153,12 @@ int main(int argc, char* argv[]) {
     if (FLAGS_chroot != "") {
         exec_request.set_chroot_path(FLAGS_chroot); 
     }
+    std::string* lines_env = exec_request.add_envs();
+    lines_env->append("LINES=");
+    lines_env->append(FLAGS_LINES);
+    std::string* columns_env = exec_request.add_envs();
+    columns_env->append("COLUMNS=");
+    columns_env->append(FLAGS_COLUMNS);
     baidu::galaxy::ExecuteResponse exec_response;
     bool ret = rpc_client->SendRequest(initd,
                             &baidu::galaxy::Initd_Stub::Execute,
