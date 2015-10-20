@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/select.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 
 #include "gflags/gflags.h"
 #include "proto/agent.pb.h"
@@ -21,6 +22,17 @@ bool TerminateContact(int fdm) {
     if (fdm < 0) {
         return false; 
     }
+    struct termios temp_termios;
+    struct termios orig_termios;
+
+    ::tcgetattr(0, &orig_termios);
+    temp_termios = orig_termios;
+    // 去掉输入同步的输出, 以及不等待换行符
+    temp_termios.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
+    temp_termios.c_cc[VTIME] = 1;   // 终端等待延迟时间（十分之一秒为单位）
+    temp_termios.c_cc[VMIN] = 1;    // 终端接收字符数
+    ::tcsetattr(0, TCSANOW, &temp_termios);
+
     const int INPUT_BUFFER_LEN = 1024 * 10;
     char input[INPUT_BUFFER_LEN];
     fd_set fd_in; 
@@ -34,7 +46,7 @@ bool TerminateContact(int fdm) {
             case -1 :  
                 fprintf(stderr, "select err[%d: %s]\n", 
                         errno, strerror(errno));
-                return false;
+                break;
             default : {
                 if (FD_ISSET(0, &fd_in))  {
                     ret = ::read(0, input, sizeof(input)); 
@@ -45,7 +57,7 @@ bool TerminateContact(int fdm) {
                             fprintf(stderr, "read err[%d: %s]\n",
                                     errno,
                                     strerror(errno)); 
-                            return false;
+                            break;
                         }
                     }
                 }         
@@ -58,12 +70,20 @@ bool TerminateContact(int fdm) {
                             fprintf(stderr, "read err[%d: %s]\n",
                                     errno,
                                     strerror(errno)); 
-                            return false;
+                            break;
                         } 
                     }
                 }
             }
         }
+        if (ret < 0) {
+            break; 
+        }
+    }
+
+    ::tcsetattr(0, TCSANOW, &orig_termios);
+    if (ret < 0) {
+        return false; 
     }
     return true;
 } 
@@ -102,6 +122,9 @@ bool PreparePty(int* fdm, std::string* pty_file) {
 
 DEFINE_string(initd_endpoint, "", "initd endpoint");
 DEFINE_string(user, "", "use user");
+DEFINE_string(chroot, "", "chroot path");
+DEFINE_string(LINES, "39", "env values");
+DEFINE_string(COLUMNS, "139", "env values");
 
 int main(int argc, char* argv[]) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
@@ -127,6 +150,15 @@ int main(int argc, char* argv[]) {
     if (FLAGS_user != "") {
         exec_request.set_user(FLAGS_user);
     }
+    if (FLAGS_chroot != "") {
+        exec_request.set_chroot_path(FLAGS_chroot); 
+    }
+    std::string* lines_env = exec_request.add_envs();
+    lines_env->append("LINES=");
+    lines_env->append(FLAGS_LINES);
+    std::string* columns_env = exec_request.add_envs();
+    columns_env->append("COLUMNS=");
+    columns_env->append(FLAGS_COLUMNS);
     baidu::galaxy::ExecuteResponse exec_response;
     bool ret = rpc_client->SendRequest(initd,
                             &baidu::galaxy::Initd_Stub::Execute,
