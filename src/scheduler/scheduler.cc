@@ -39,6 +39,17 @@ static bool JobCompare(const JobInfo* left, const JobInfo* right) {
     return left->desc().priority() > right->desc().priority();
 }
 
+
+static bool ScoreCompare(const std::pair<double, std::string>& left,
+                         const std::pair<double, std::string>& right) {
+    return left.first > right.first;
+}
+
+static bool AgentCompare(const std::pair<double, AgentInfo*>& left,
+                         const std::pair<double, AgentInfo*>& right) {
+    return left.first < right.first;
+}
+
 int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                                    std::vector<ScheduleInfo*>* propose) {
     LOG(INFO, "schedule scale up turns: %lld", schedule_turns_);
@@ -76,6 +87,7 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                     (*pod_it)->feasible.push_back(*res_it);
                     cur_feasible_count++;
                 }
+                break;
                 // 此处不break，说明一个Agent尽量调度多的Pod
                 // TODO 此处需要再斟酌一下，对于新添入机器会出现负载较高的情况
                 // 但是如果直接break的话，对于符合某个pod的所有机器对其他pod不可见的问题
@@ -120,7 +132,7 @@ int32_t Scheduler::ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_al
 }
 
 int32_t Scheduler::ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
-                 std::vector<ScheduleInfo*>* propose) {
+                                     std::vector<ScheduleInfo*>* propose) {
     int propose_count = 0;
     // 计算job优先级，及其需要调度的pod数量
     std::vector<PodScaleDownCell*> reducing_pods;
@@ -161,17 +173,25 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
    for (int32_t i =0 ; i < response->agents_size(); i++) {
        boost::unordered_map<std::string, AgentInfoExtend*>::iterator it =
          resources_.find(response->agents(i).endpoint());
+       AgentInfoExtend* agent_ext = NULL;
        if (it == resources_.end()) {
            AgentInfo* agent = new AgentInfo();
            agent->CopyFrom(response->agents(i));
-           AgentInfoExtend* extend = new AgentInfoExtend(agent);
-           extend->CalcExtend();
-           resources_.insert(std::make_pair(agent->endpoint(), extend));
+           agent_ext = new AgentInfoExtend(agent);
+           agent_ext->CalcExtend();
+           resources_.insert(std::make_pair(agent->endpoint(), agent_ext));
        }else {
-           it->second->agent_info->CopyFrom(response->agents(i));
+           agent_ext = it->second;
+           agent_ext->agent_info->CopyFrom(response->agents(i));
            // re calc free and unassigned
-           it->second->CalcExtend();
+           agent_ext->CalcExtend();
        }
+       LOG(INFO, "sync agent %s with version %d stat:mem total %ld, cpu total %d, mem assigned %ld, cpu assinged %d, mem used %ld, cpu used %d",
+              agent_ext->agent_info->endpoint().c_str(), agent_ext->agent_info->version(),
+              agent_ext->agent_info->total().memory(), agent_ext->agent_info->total().millicores(),
+              agent_ext->agent_info->assigned().memory(), agent_ext->agent_info->assigned().millicores(),
+              agent_ext->agent_info->used().memory(), agent_ext->agent_info->used().millicores());
+
    }
    return resources_.size();
 }
@@ -249,16 +269,15 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
         for (int i = 0; i < (*job_it)->pods_size(); ++i) {
             boost::unordered_map<std::string, AgentInfoExtend*>::iterator agt_it =
                     resources_.find((*job_it)->pods(i).endpoint());
-            LOG(INFO, "scale down pod %s  agent %s",
-                        (*job_it)->pods(i).podid().c_str(),
-                        (*job_it)->pods(i).endpoint().c_str());
-
             if (agt_it == resources_.end()) {
                 LOG(INFO, "scale down pod %s dose not belong to agent %s",
                         (*job_it)->pods(i).podid().c_str(),
                         (*job_it)->pods(i).endpoint().c_str());
             }
             else {
+                LOG(INFO, "scale down pod %s  agent %s",
+                        (*job_it)->pods(i).podid().c_str(),
+                        (*job_it)->pods(i).endpoint().c_str());
                 cell->pod_agent_map.insert(
                         std::make_pair((*job_it)->pods(i).podid(), agt_it->second->agent_info));
             }
@@ -267,6 +286,7 @@ int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
         int32_t scale_down_count = (*job_it)->pods_size() - cell->job->desc().replica();
         cell->scale_down_count = scale_down_count;
         reducing_count += scale_down_count;
+        LOG(INFO, "job %s scale down count %d with pod_size %d replica %d", (*job_it)->jobid().c_str(), scale_down_count, (*job_it)->pods_size(), cell->job->desc().replica());
         reducing_pods->push_back(cell);
     }
     return reducing_count;
@@ -384,14 +404,15 @@ int32_t PodScaleUpCell::Score() {
     std::vector<AgentInfoExtend*>::iterator agt_it = feasible.begin();
     for(; agt_it != feasible.end(); ++agt_it) {
         double score = ScoreAgent((*agt_it)->agent_info, pod);
-        sorted.insert(std::make_pair(score, (*agt_it)->agent_info));
+        sorted.push_back(std::make_pair(score, (*agt_it)->agent_info));
     }
+    std::sort(sorted.begin(), sorted.end(), AgentCompare);
     return 0;
 }
 
 int32_t PodScaleUpCell::Propose(std::vector<ScheduleInfo*>* propose) {
     int propose_count = 0;
-    std::map<double, AgentInfo*>::iterator sorted_it = sorted.begin();
+    std::vector<std::pair<double, AgentInfo*> >::iterator sorted_it = sorted.begin();
     for (size_t i = 0; i < pod_ids.size(); ++i) {
         if (sorted_it == sorted.end()) {
             break;
@@ -428,8 +449,9 @@ int32_t PodScaleDownCell::Score() {
     std::map<std::string, AgentInfo*>::iterator pod_agt_it = pod_agent_map.begin();
     for(; pod_agt_it != pod_agent_map.end(); ++pod_agt_it) {
         double score = ScoreAgent(pod_agt_it->second, pod);
-        sorted_pods.insert(std::make_pair(score, pod_agt_it->first));
+        sorted_pods.push_back(std::make_pair(score, pod_agt_it->first));
     }
+    std::sort(sorted_pods.begin(), sorted_pods.end(), ScoreCompare);
     return 0;
 }
 
@@ -444,7 +466,7 @@ double PodScaleDownCell::ScoreAgent(const AgentInfo* agent_info,
 int32_t PodScaleDownCell::Propose(std::vector<ScheduleInfo*>* propose) {
     int propose_count = 0;
     std::map<std::string, AgentInfo*>::iterator pod_agent_it;
-    std::map<double, std::string>::iterator sorted_it = sorted_pods.begin();
+    std::vector<std::pair<double, std::string> >::iterator sorted_it = sorted_pods.begin();
     for (size_t i = 0; i < scale_down_count; ++i) {
         if (sorted_it == sorted_pods.end()) {
             break;

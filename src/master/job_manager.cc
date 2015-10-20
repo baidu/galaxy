@@ -77,7 +77,6 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
         }
         LOG(DEBUG, "%s remove label %s", (*it).c_str(), label_cell.label().c_str());
         lab_it->second.erase(label_cell.label());
-        agent_labels_[*it].erase(label_cell.label()); 
         // update Version
         std::map<AgentAddr, AgentInfo*>::iterator agent_it 
                                             = agents_.find(*it); 
@@ -622,7 +621,6 @@ Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
         return kQuota;
     }
     agent->mutable_assigned()->CopyFrom(assigned);
-    agent->set_version(agent->version() + 1);
     return kOk;
 }
 
