@@ -87,7 +87,6 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
                     (*pod_it)->feasible.push_back(*res_it);
                     cur_feasible_count++;
                 }
-                break;
                 // 此处不break，说明一个Agent尽量调度多的Pod
                 // TODO 此处需要再斟酌一下，对于新添入机器会出现负载较高的情况
                 // 但是如果直接break的话，对于符合某个pod的所有机器对其他pod不可见的问题
