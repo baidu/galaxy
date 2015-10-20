@@ -609,9 +609,20 @@ Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
     if (!ret) {
         return kQuota;
     }
-    if (!MasterUtil::FitResource(pod_requirement, unassigned)) {
+
+    ret = ResourceUtils::Alloc(pod_requirement, unassigned);
+    if (!ret) {
         return kQuota;
     }
+    
+    Resource assigned;
+    assigned.CopyFrom(agent->total());
+    ret = ResourceUtils::Alloc(unassigned, assigned);
+    if (!ret) {
+        return kQuota;
+    }
+    agent->mutable_assigned()->CopyFrom(assigned);
+    agent->set_version(agent->version() + 1);
     return kOk;
 }
 
@@ -930,13 +941,17 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
 
 void JobManager::UpdateAgent(const AgentInfo& agent,
                              AgentInfo* agent_in_master) {
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port size %d",
+    std::stringstream ss;
+    for (int i = 0; i < agent.assigned().ports_size(); i++) {
+        ss << agent.assigned().ports(i) << ",";
+    }
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port %s",
         agent.endpoint().c_str(),
         agent.total().memory(), agent.total().millicores(),
         agent.assigned().memory(), agent.assigned().millicores(),
         agent.used().memory(), agent.used().millicores(),
         agent.pods_size(),
-        agent.assigned().ports_size());
+        ss.str().c_str());
     int old_version = agent_in_master->version();
     // check assigned
     do {
