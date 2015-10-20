@@ -249,7 +249,7 @@ void JobManager::FillPodsToJob(Job* job) {
     job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod();
     int pods_size = job->pods_.size();
     if (pods_size > job->desc_.replica()) {
-        LOG(INFO, "move job %s to scale down queue", job->id_.c_str());
+        LOG(INFO, "move job %s to scale down queue job update_state_ %s", job->id_.c_str(), JobUpdateState_Name(job->update_state_).c_str());
         scale_down_jobs_.insert(job->id_);
     }
     for(int i = pods_size; i < job->desc_.replica(); i++) {
@@ -367,7 +367,7 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
         }
         if (need_update) {
             job_count++;
-            LOG(INFO, "add job %s to update queue", job->id_.c_str());
+            LOG(INFO, "add job %s to update queue ", job->id_.c_str());
             pod_it = job->pods_.begin();
             JobInfo* job_info = need_update_jobs->Add();
             for (; pod_it != job->pods_.end(); ++pod_it) {
@@ -892,6 +892,9 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             jobs_[jobid]->pods_[podid] = pod;
             pods_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
+            if (pod->version() != job->latest_version) {
+                need_update_jobs_.insert(jobid);
+            }
             LOG(INFO, "recover pod %s of job %s on agent %s", podid.c_str(), jobid.c_str(), report_agent_info.endpoint().c_str());
         }
 

@@ -567,6 +567,7 @@ void Scheduler::HandleJobUpdate(JobInfo* job_info,
         ScheduleInfo* sched_info = new ScheduleInfo();
         PodStatus* pod = need_update_pods[i];
         sched_info->set_endpoint(pod->endpoint());
+        LOG(INFO, "choose agent %s update pod %s of job %s", pod->endpoint().c_str(), pod->podid().c_str(), pod->jobid().c_str());
         sched_info->set_jobid(pod->jobid());
         sched_info->set_podid(pod->podid());
         sched_info->set_action(kTerminate);
