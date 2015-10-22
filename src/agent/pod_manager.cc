@@ -279,7 +279,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
     if (pod_info.tasks.size() == 0) {
         // TODO check initd exits
         if (pod_info.initd_pid > 0) { 
-            ::kill(pod_info.initd_pid, SIGTERM);
+            ::kill(pod_info.initd_pid, SIGKILL);
             int status = 0;
             pid_t pid = ::waitpid(pod_info.initd_pid, &status, WNOHANG); 
             if (pid == 0) {

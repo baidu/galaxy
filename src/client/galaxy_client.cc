@@ -266,7 +266,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             }
             task.mem_isolation_type = "kMemIsolationCgroup";
             if (tasks_json[i].HasMember("mem_isolation_type")) {
-                task.mem_isolation_type = tasks_json[i].HasMember("mem_isolation_type");
+                task.mem_isolation_type = tasks_json[i]["mem_isolation_type"].GetString();
             }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();

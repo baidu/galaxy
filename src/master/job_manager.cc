@@ -77,7 +77,6 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
         }
         LOG(DEBUG, "%s remove label %s", (*it).c_str(), label_cell.label().c_str());
         lab_it->second.erase(label_cell.label());
-        agent_labels_[*it].erase(label_cell.label()); 
         // update Version
         std::map<AgentAddr, AgentInfo*>::iterator agent_it 
                                             = agents_.find(*it); 
@@ -250,7 +249,7 @@ void JobManager::FillPodsToJob(Job* job) {
     job->pod_desc_[job->desc_.pod().version()] = job->desc_.pod();
     int pods_size = job->pods_.size();
     if (pods_size > job->desc_.replica()) {
-        LOG(INFO, "move job %s to scale down queue", job->id_.c_str());
+        LOG(INFO, "move job %s to scale down queue job update_state_ %s", job->id_.c_str(), JobUpdateState_Name(job->update_state_).c_str());
         scale_down_jobs_.insert(job->id_);
     }
     for(int i = pods_size; i < job->desc_.replica(); i++) {
@@ -368,7 +367,7 @@ void JobManager::ProcessUpdateJob(JobInfoList* need_update_jobs,
         }
         if (need_update) {
             job_count++;
-            LOG(INFO, "add job %s to update queue", job->id_.c_str());
+            LOG(INFO, "add job %s to update queue ", job->id_.c_str());
             pod_it = job->pods_.begin();
             JobInfo* job_info = need_update_jobs->Add();
             for (; pod_it != job->pods_.end(); ++pod_it) {
@@ -609,9 +608,19 @@ Status JobManager::AcquireResource(const PodStatus& pod, AgentInfo* agent) {
     if (!ret) {
         return kQuota;
     }
-    if (!MasterUtil::FitResource(pod_requirement, unassigned)) {
+
+    ret = ResourceUtils::Alloc(pod_requirement, unassigned);
+    if (!ret) {
         return kQuota;
     }
+    
+    Resource assigned;
+    assigned.CopyFrom(agent->total());
+    ret = ResourceUtils::Alloc(unassigned, assigned);
+    if (!ret) {
+        return kQuota;
+    }
+    agent->mutable_assigned()->CopyFrom(assigned);
     return kOk;
 }
 
@@ -883,6 +892,9 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             jobs_[jobid]->pods_[podid] = pod;
             pods_on_agent[jobid][podid] = pod;
             pods_on_agent_[endpoint][jobid][podid] = pod;
+            if (pod->version() != job->latest_version) {
+                need_update_jobs_.insert(jobid);
+            }
             LOG(INFO, "recover pod %s of job %s on agent %s", podid.c_str(), jobid.c_str(), report_agent_info.endpoint().c_str());
         }
 
@@ -936,13 +948,17 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
 
 void JobManager::UpdateAgent(const AgentInfo& agent,
                              AgentInfo* agent_in_master) {
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port size %d",
+    std::stringstream ss;
+    for (int i = 0; i < agent.assigned().ports_size(); i++) {
+        ss << agent.assigned().ports(i) << ",";
+    }
+    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port %s",
         agent.endpoint().c_str(),
         agent.total().memory(), agent.total().millicores(),
         agent.assigned().memory(), agent.assigned().millicores(),
         agent.used().memory(), agent.used().millicores(),
         agent.pods_size(),
-        agent.assigned().ports_size());
+        ss.str().c_str());
     int old_version = agent_in_master->version();
     // check assigned
     do {
