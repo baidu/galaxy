@@ -11,6 +11,7 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <signal.h>
 
 #include "gflags/gflags.h"
 #include "proto/agent.pb.h"
@@ -41,6 +42,8 @@ bool TerminateContact(int fdm) {
     struct termios temp_termios;
     struct termios orig_termios;
 
+    ::signal(SIGINT, SIG_IGN);
+    ::signal(SIGTERM, SIG_IGN);
     ::tcgetattr(0, &orig_termios);
     temp_termios = orig_termios;
     // 去掉输入同步的输出, 以及不等待换行符
