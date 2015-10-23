@@ -165,8 +165,8 @@ void ListPods() {
         return;
     }
 
-    ::baidu::common::TPrinter tp(5);
-    tp.AddRow(5, "", "podid", "jobid", "job name", "initd_endpoint");
+    ::baidu::common::TPrinter tp(7);
+    tp.AddRow(7, "", "podid", "jobid", "job name", "state", "cpu usage", "mem usage");
     for (int i = 0; i < response.pods_size(); ++i) {
         const ::baidu::galaxy::PodPropertiy& pod = response.pods(i);
         std::vector<std::string> vs;
@@ -174,7 +174,13 @@ void ListPods() {
         vs.push_back(pod.pod_id());
         vs.push_back(pod.job_id());
         vs.push_back(pod.job_name());
-        vs.push_back(pod.initd_endpoint());
+        vs.push_back(::baidu::galaxy::PodState_Name(
+                    pod.pod_status().state()));
+        vs.push_back(::baidu::common::NumToString(
+                    pod.pod_status().resource_used().millicores()));
+        vs.push_back(::baidu::common::NumToString(
+                    pod.pod_status().resource_used().memory()));
+        //vs.push_back(pod.initd_endpoint());
         tp.AddRow(vs);
     }
     fprintf(stdout, "%s\n", tp.ToString().c_str());
