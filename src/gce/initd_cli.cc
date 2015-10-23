@@ -279,56 +279,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     return 0;
-   
-    baidu::galaxy::Initd_Stub* initd;
-    baidu::galaxy::RpcClient* rpc_client = 
-        new baidu::galaxy::RpcClient();
-    std::string endpoint(FLAGS_initd_endpoint);
-    rpc_client->GetStub(endpoint, &initd);
-
-    std::string pty_file;
-    int pty_fdm = -1;
-    if (!PreparePty(&pty_fdm, &pty_file)) {
-        fprintf(stderr, "prepare pty failed\n"); 
-        return -1;
-    }
-
-    baidu::galaxy::ExecuteRequest exec_request;
-    // TODO unqic key 
-    exec_request.set_key("client");
-    exec_request.set_commands("/bin/bash");
-    exec_request.set_path(".");
-    exec_request.set_pty_file(pty_file);
-    if (FLAGS_user != "") {
-        exec_request.set_user(FLAGS_user);
-    }
-    if (FLAGS_chroot != "") {
-        exec_request.set_chroot_path(FLAGS_chroot); 
-    }
-    std::string* lines_env = exec_request.add_envs();
-    lines_env->append("LINES=");
-    lines_env->append(FLAGS_LINES);
-    std::string* columns_env = exec_request.add_envs();
-    columns_env->append("COLUMNS=");
-    columns_env->append(FLAGS_COLUMNS);
-    baidu::galaxy::ExecuteResponse exec_response;
-    bool ret = rpc_client->SendRequest(initd,
-                            &baidu::galaxy::Initd_Stub::Execute,
-                            &exec_request,
-                            &exec_response, 5, 1);
-    if (ret && exec_response.status() == baidu::galaxy::kOk) {
-        fprintf(stdout, "terminate starting...\n");
-        ret = TerminateContact(pty_fdm); 
-        if (ret) {
-            fprintf(stdout, "terminate contact over\n"); 
-        } else {
-            fprintf(stderr, "terminate contact interrupt\n"); 
-        }
-        return 0;
-    } 
-    fprintf(stderr, "exec in initd failed %s\n", 
-            baidu::galaxy::Status_Name(exec_response.status()).c_str());
-    return -1;
 }
 
 /* vim: set ts=4 sw=4 sts=4 tw=100 */
