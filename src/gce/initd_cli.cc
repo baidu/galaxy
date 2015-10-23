@@ -31,8 +31,8 @@ DEFINE_string(pod_id, "", "pod id");
 
 const std::string SInitdCliUsage = "initd client.\n"
                                    "Usage: \n"
-                                   "     initd_cli ps\n"
-                                   "     initd_cli attach --pod_id=<podid> --user=galaxy\n";
+                                   "     ./initd_cli ps --flagfile=galaxy.flag\n"
+                                   "     ./initd_cli attach --pod_id=<podid> --user=galaxy --flagfile=galaxy.flag\n";
 
 bool TerminateContact(int fdm) {
     if (fdm < 0) {
@@ -161,14 +161,15 @@ void ListPods() {
         return;
     }
 
-    ::baidu::common::TPrinter tp(4);
-    tp.AddRow(4, "", "podid", "jobid", "initd_endpoint");
+    ::baidu::common::TPrinter tp(5);
+    tp.AddRow(5, "", "podid", "jobid", "job name", "initd_endpoint");
     for (int i = 0; i < response.pods_size(); ++i) {
         const ::baidu::galaxy::PodPropertiy& pod = response.pods(i);
         std::vector<std::string> vs;
         vs.push_back(::baidu::common::NumToString(i + 1));
         vs.push_back(pod.pod_id());
         vs.push_back(pod.job_id());
+        vs.push_back(pod.job_name());
         vs.push_back(pod.initd_endpoint());
         tp.AddRow(vs);
     }
