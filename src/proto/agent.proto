@@ -23,6 +23,7 @@ message PodInfoPersistence {
     optional int32 initd_port = 5;
     optional int32 initd_pid = 6;
     repeated TaskInfoPersistence tasks = 7;
+    optional string job_name = 8;
 }
 
 message QueryRequest {
@@ -37,6 +38,7 @@ message RunPodRequest {
     optional string podid = 1;
     optional PodDescriptor pod = 2;
     optional string jobid = 3;
+    optional string job_name = 4;
 }
 
 message RunPodResponse {
@@ -58,6 +60,7 @@ message PodPropertiy {
     optional PodStatus pod_status = 4;
     optional string initd_endpoint = 5;
     optional string pod_path = 6;
+    optional string job_name = 7;
 }
 
 message ShowPodsRequest {

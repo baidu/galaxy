@@ -132,6 +132,9 @@ void AgentImpl::CreatePodInfo(
         task_info.max_retry_times = 10;
         pod_info->tasks[task_info.task_id] = task_info;
     }
+    if (req->has_job_name()) {
+        pod_info->job_name = req->job_name();
+    }
 }
 
 void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
@@ -433,6 +436,7 @@ void AgentImpl::ConvertToPodPropertiy(const PodInfo& show_pod_info, PodPropertiy
                     show_pod_info.initd_port));
     pod_propertiy->set_initd_endpoint(initd_endpoint);
     pod_propertiy->set_pod_path(show_pod_info.pod_path);
+    pod_propertiy->set_job_name(show_pod_info.job_name);
     return;
 }
 

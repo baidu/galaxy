@@ -186,6 +186,7 @@ void AttachPod() {
 
     ::baidu::galaxy::ShowPodsRequest request;
     ::baidu::galaxy::ShowPodsResponse response;
+    request.set_podid(FLAGS_pod_id);
     bool ret = rpc_client->SendRequest(agent,
             &::baidu::galaxy::Agent_Stub::ShowPods,
             &request,
@@ -260,6 +261,7 @@ void AttachPod() {
 }
 
 int main(int argc, char* argv[]) {
+    FLAGS_flagfile="galaxy.flag";
     ::google::SetUsageMessage(SInitdCliUsage);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (argc < 2) {
