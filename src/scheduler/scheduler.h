@@ -45,7 +45,7 @@ struct PodScaleUpCell {
     uint32_t feasible_limit;
     std::vector<std::string> pod_ids;
     std::vector<AgentInfoExtend*> feasible;
-    std::map<double, AgentInfo*> sorted;
+    std::vector<std::pair<double, AgentInfo*> > sorted;
 
     PodScaleUpCell();
 
@@ -69,10 +69,8 @@ struct PodScaleDownCell {
     JobInfo* job;
     uint32_t scale_down_count;
     std::map<std::string, AgentInfo*> pod_agent_map;
-    std::map<double, std::string> sorted_pods;
-
+    std::vector<std::pair<double, std::string> > sorted_pods;
     PodScaleDownCell();
-
     int32_t Score();
 
     double ScoreAgent(const AgentInfo* agent_info,
@@ -134,6 +132,8 @@ private:
 private:
     boost::unordered_map<std::string, AgentInfoExtend*> resources_;
     int64_t schedule_turns_;    // 当前调度轮数
+    typedef boost::unordered_map<std::string, boost::unordered_map<std::string, std::string> > UpdateJobs;
+    UpdateJobs update_jobs_;
 };
 
 
