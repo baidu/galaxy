@@ -25,6 +25,7 @@ DEFINE_string(user, "galaxy", "use user");
 DEFINE_string(chroot, "", "chroot path");
 DEFINE_string(LINES, "39", "env values");
 DEFINE_string(COLUMNS, "139", "env values");
+DEFINE_string(TERM, "xterm-256color", "env values");
 DECLARE_string(agent_port);
 DECLARE_string(agent_default_user);
 DECLARE_string(flagfile);
@@ -244,6 +245,9 @@ void AttachPod() {
     std::string* columns_env = exec_request.add_envs();
     columns_env->append("COLUMNS=");
     columns_env->append(FLAGS_COLUMNS);
+    std::string* xterm_env = exec_request.add_envs();
+    xterm_env->append("TERM=");
+    xterm_env->append(FLAGS_TERM);
     baidu::galaxy::ExecuteResponse exec_response;
     ret = rpc_client->SendRequest(initd,
                             &baidu::galaxy::Initd_Stub::Execute,
