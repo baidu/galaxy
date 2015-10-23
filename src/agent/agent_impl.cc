@@ -420,5 +420,55 @@ void AgentImpl::ReleaseResource(const Resource& requirement) {
     }
 }
 
+void AgentImpl::ConvertToPodPropertiy(const PodInfo& show_pod_info, PodPropertiy* pod_propertiy) {
+    pod_propertiy->set_pod_id(show_pod_info.pod_id);
+    pod_propertiy->set_job_id(show_pod_info.job_id);
+    pod_propertiy->mutable_pod_desc()->CopyFrom(
+                            show_pod_info.pod_desc);
+    pod_propertiy->mutable_pod_status()->CopyFrom(
+                            show_pod_info.pod_status);
+    std::string initd_endpoint = "127.0.0.1:";
+    initd_endpoint.append(
+            boost::lexical_cast<std::string>(
+                    show_pod_info.initd_port));
+    pod_propertiy->set_initd_endpoint(initd_endpoint);
+    pod_propertiy->set_pod_path(show_pod_info.pod_path);
+    return;
+}
+
+void AgentImpl::ShowPods(::google::protobuf::RpcController* /*cntl*/,
+                         const ::baidu::galaxy::ShowPodsRequest* req,
+                         ::baidu::galaxy::ShowPodsResponse* resp,
+                         ::google::protobuf::Closure* done) {
+    MutexLock scope_lock(&lock_);
+    resp->set_status(kOk);
+    do {
+        if (req->has_podid()) {
+            PodInfo show_pod_info;          
+            if (0 != 
+                    pod_manager_.ShowPod(req->podid(), 
+                                         &show_pod_info)) { 
+                LOG(WARNING, "pod %s not exists", 
+                             req->podid().c_str());
+                resp->set_status(kUnknown);
+                break;
+            }
+            PodPropertiy* pod_propertiy = resp->add_pods();
+            ConvertToPodPropertiy(show_pod_info, 
+                                  pod_propertiy);
+            break;
+        }     
+        std::vector<PodInfo> pods; 
+        pod_manager_.ShowPods(&pods);
+        std::vector<PodInfo>::iterator it = pods.begin();
+        for (; it != pods.end(); ++it) {
+            ConvertToPodPropertiy(*it, resp->add_pods());            
+        }
+        LOG(INFO, "pods show size %d", resp->pods_size());
+    } while (0);
+    done->Run();    
+    return;
+}
+
 }   // ending namespace galaxy
 }   // ending namespace baidu

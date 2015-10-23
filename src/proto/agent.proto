@@ -51,8 +51,27 @@ message KillPodResponse {
     optional Status status = 1;
 }
 
+message PodPropertiy {
+    optional string pod_id = 1;
+    optional string job_id = 2;
+    optional PodDescriptor pod_desc = 3;
+    optional PodStatus pod_status = 4;
+    optional string initd_endpoint = 5;
+    optional string pod_path = 6;
+}
+
+message ShowPodsRequest {
+    optional string podid = 1;
+}
+
+message ShowPodsResponse {
+    optional Status status = 1;
+    repeated PodPropertiy pods = 2;
+}
+
 service Agent {
     rpc Query(QueryRequest) returns (QueryResponse);
     rpc RunPod(RunPodRequest) returns (RunPodResponse);
     rpc KillPod(KillPodRequest) returns (KillPodResponse);
+    rpc ShowPods(ShowPodsRequest) returns (ShowPodsResponse);
 }
