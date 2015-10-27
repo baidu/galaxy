@@ -83,7 +83,7 @@ private:
     void HandleAgentOffline(const std::string agent_addr);
     void ReschedulePod(PodStatus* pod_status);
 
-    void RunPod(const PodDescriptor& desc, PodStatus* pod) ;
+    void RunPod(const PodDescriptor& desc, Job* job, PodStatus* pod) ;
     void RunPodCallback(PodStatus* pod, AgentAddr endpoint, const RunPodRequest* request,
                         RunPodResponse* response, bool failed, int error);
 

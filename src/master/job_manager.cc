@@ -722,13 +722,16 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
     LOG(INFO, "agent is dead: %s", agent_addr.c_str());
 }
 
-void JobManager::RunPod(const PodDescriptor& desc, PodStatus* pod) {
+void JobManager::RunPod(const PodDescriptor& desc, Job* job, PodStatus* pod) {
     mutex_.AssertHeld();
     RunPodRequest* request = new RunPodRequest;
     RunPodResponse* response = new RunPodResponse;
     request->set_podid(pod->podid());
     request->mutable_pod()->CopyFrom(desc);
     request->set_jobid(pod->jobid());
+    if (job != NULL) {
+        request->set_job_name(job->desc_.name());
+    }
     Agent_Stub* stub;
     const AgentAddr& endpoint = pod->endpoint();
     rpc_client_.GetStub(endpoint, &stub);
@@ -1226,7 +1229,7 @@ bool JobManager::HandlePendingToRunning(PodStatus* pod, Job* job) {
     }
     pod->set_stage(kStageRunning);
     pod->set_state(kPodDeploying); 
-    RunPod(it->second, pod);
+    RunPod(it->second, job, pod);
     return true;
 }
 
