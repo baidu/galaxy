@@ -839,7 +839,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     }
     std::map<AgentAddr, AgentInfo*>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
-        LOG(FATAL, "query agent [%s] not exist", endpoint.c_str());
+        LOG(INFO, "query agent [%s] not exist", endpoint.c_str());
         return;
     }
     int64_t current_seq_id = agent_sequence_ids_[endpoint];
@@ -952,13 +952,6 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
     for (int i = 0; i < agent.assigned().ports_size(); i++) {
         ss << agent.assigned().ports(i) << ",";
     }
-    LOG(INFO, "agent %s stat: mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port %s",
-        agent.endpoint().c_str(),
-        agent.total().memory(), agent.total().millicores(),
-        agent.assigned().memory(), agent.assigned().millicores(),
-        agent.used().memory(), agent.used().millicores(),
-        agent.pods_size(),
-        ss.str().c_str());
     int old_version = agent_in_master->version();
     // check assigned
     do {
@@ -1000,13 +993,15 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
     agent_in_master->mutable_total()->CopyFrom(agent.total()); 
     agent_in_master->mutable_assigned()->CopyFrom(agent.assigned());
     agent_in_master->mutable_used()->CopyFrom(agent.used());
-    agent_in_master->mutable_pods()->CopyFrom(agent.pods());
-    if (agent_in_master->version() != old_version) {
-        LOG(INFO, "agent %s change version from %d to %d", 
-              agent_in_master->endpoint().c_str(), 
-              old_version,
-              agent_in_master->version());
-    }
+    agent_in_master->mutable_pods()->CopyFrom(agent.pods()); 
+    LOG(INFO, "agent %s stat:version %d, mem total %ld, cpu total %d, mem assigned %ld, cpu assigend %d, mem used %ld , cpu used %d, pod size %d , used port %s",
+        agent.endpoint().c_str(),
+        agent_in_master->version(),
+        agent_in_master->total().memory(), agent_in_master->total().millicores(),
+        agent_in_master->assigned().memory(), agent_in_master->assigned().millicores(),
+        agent_in_master->used().memory(), agent_in_master->used().millicores(),
+        agent.pods_size(),
+        ss.str().c_str());
     return; 
 }
 
