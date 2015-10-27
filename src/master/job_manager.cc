@@ -958,19 +958,19 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
     int old_version = agent_in_master->version();
     // check assigned
     do {
-        int32_t check_assigned = ResourceUtils::Compare(
+        bool check_assigned = ResourceUtils::HasDiff(
                                  agent_in_master->assigned(),
                                  agent.assigned());
-        if (check_assigned != 0) {
+        if (check_assigned) {
             agent_in_master->set_version(old_version + 1);
             break;
         }
         
         // check total resource 
-        int32_t check_total = ResourceUtils::Compare(
+        bool check_total = ResourceUtils::HasDiff(
                               agent_in_master->total(), 
                               agent.total());
-        if (check_total != 0) {
+        if (check_total) {
             agent_in_master->set_version(old_version + 1);
             break;
         }
