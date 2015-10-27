@@ -45,6 +45,11 @@ public:
                          const ::baidu::galaxy::KillPodRequest* req,
                          ::baidu::galaxy::KillPodResponse* resp,
                          ::google::protobuf::Closure* done);
+    virtual void ShowPods(::google::protobuf::RpcController* cntl,
+                         const ::baidu::galaxy::ShowPodsRequest* req,
+                         ::baidu::galaxy::ShowPodsResponse* resp,
+                         ::google::protobuf::Closure* done);
+
     void HandleMasterChange(const std::string& new_master_endpoint);
 private:
     void KeepHeartBeat();
@@ -61,6 +66,8 @@ private:
     //        -1 alloc failed
     int AllocResource(const Resource& requirement);
     void ReleaseResource(const Resource& requirement);
+
+    void ConvertToPodPropertiy(const PodInfo& info, PodPropertiy* pod_propertiy);
 
     void CreatePodInfo(const ::baidu::galaxy::RunPodRequest* req, 
                        PodInfo* pod_info);

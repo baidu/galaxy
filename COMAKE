@@ -112,7 +112,7 @@ test_persistence_handler_src='src/proto/agent.proto src/proto/galaxy.proto  \
                               src/agent/persistence_handler.cc src/agent/test_persistence_handler.cc'
 
 test_index_list_src='src/agent/test_index_list.cc'
-initd_cli_src='src/proto/initd.proto src/proto/galaxy.proto src/gce/initd_cli.cc'
+initd_cli_src='src/proto/agent.proto src/proto/initd.proto src/proto/galaxy.proto src/flags.cc src/gce/initd_cli.cc'
 
 Application('scheduler',Sources(scheduler_src))
 Application('master',Sources(master_src))

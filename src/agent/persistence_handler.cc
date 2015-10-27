@@ -50,6 +50,7 @@ bool PersistenceHandler::SavePodInfo(const PodInfo& pod_info) {
         persistence_data->set_task_id(task.task_id);
         persistence_data->mutable_task_desc()->CopyFrom(task.desc);
     }
+    persistence.set_job_name(pod_info.job_name);
     
     std::string key = pod_info.pod_id;
     std::string value;
@@ -107,6 +108,7 @@ bool PersistenceHandler::ScanPodInfo(std::vector<PodInfo>* pods) {
             task_info.desc.CopyFrom(persistence.tasks(i).task_desc());
             pod.tasks[task_info.task_id] = task_info;
         }
+        pod.job_name = persistence.job_name();
         pods->push_back(pod);
         it->Next();
     }
