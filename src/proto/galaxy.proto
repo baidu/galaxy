@@ -70,6 +70,11 @@ message Resource {
     repeated Volume ssds = 5; 
 }
 
+enum MemIsolationType {
+    kMemIsolationCgroup = 0;
+    kMemIsolationLimit = 1;
+}
+
 message TaskDescriptor {
     optional bytes binary = 1; 
     optional string start_command = 2;
@@ -82,6 +87,7 @@ message TaskDescriptor {
     // generate it automatically when create job
     optional int32 offset = 7;
     optional SourceType source_type = 8;
+    optional MemIsolationType mem_isolation_type = 9;
 }
 
 message PodDescriptor {

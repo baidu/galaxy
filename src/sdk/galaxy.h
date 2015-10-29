@@ -33,6 +33,7 @@ struct TaskDescription {
     std::string start_cmd;
     std::string stop_cmd;
     ResDescription requirement;
+    std::string mem_isolation_type;
 };
 
 struct PodDescription {
