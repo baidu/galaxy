@@ -914,9 +914,25 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             pods_has_expired.push_back(fake_pod);
             continue;
         }
+
+        PodStatus* pod = jobs_[jobid]->pods_[podid];
         std::map<PodId, PodStatus*>::iterator pa_it =  pods_on_agent[jobid].find(podid);
         // pod has been expired
         if (pa_it == pods_on_agent[jobid].end()) {
+            // check reuse pod
+            if (pod->stage() == kStagePending
+                && state_to_stage_[report_pod_info.state()] == kStageRunning) {
+                LOG(INFO, "reuse pod %s of job %s on timeout agent %s", podid.c_str(), 
+                        jobid.c_str(),
+                        report_agent_info.endpoint().c_str());
+                pod->mutable_status()->CopyFrom(report_pod_info.status());
+                pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
+                pod->set_state(report_pod_info.state());
+                pod->set_endpoint(report_agent_info.endpoint());
+                pod->set_stage(kStageRunning);
+                pods_on_agent_[report_agent_info.endpoint()][jobid][podid] = pod;
+                continue;
+            }
             LOG(WARNING, "the pod %s from agent %s has expired", podid.c_str(), report_agent_info.endpoint().c_str());
             PodStatus fake_pod;
             fake_pod.CopyFrom(report_pod_info);
@@ -924,7 +940,6 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             pods_has_expired.push_back(fake_pod);
         } else {
             // update pod in master
-            PodStatus* pod = jobs_[jobid]->pods_[podid];
             pod->mutable_status()->CopyFrom(report_pod_info.status());
             pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
             pod->set_state(report_pod_info.state());
@@ -1175,10 +1190,11 @@ void JobManager::ChangeStage(const std::string& reason,
     std::string handler_key = BuildHandlerKey(pod->stage(), to);
     std::map<std::string, Handle>::iterator h_it = fsm_.find(handler_key);
     if (h_it == fsm_.end()) {
-        LOG(WARNING, "pod %s can not change stage from %s to %s",
+        LOG(WARNING, "pod %s can not change stage from %s to %s reason %s",
         pod->podid().c_str(),
         PodStage_Name(pod->stage()).c_str(),
-        PodStage_Name(to).c_str());
+        PodStage_Name(to).c_str(),
+        reason.c_str());
         return;
     }
     PodId podid = pod->podid();
