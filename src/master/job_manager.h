@@ -139,6 +139,9 @@ private:
 
     void HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_agent);
     void HandleExpiredPod(const std::vector<PodStatus>& pods);
+    void HandleReusePod(const PodStatus& report_pod,
+                        const std::string& endpoint,
+                        PodStatus* pod);
 private:
     std::map<JobId, Job*> jobs_;
     // all jobs that need scale up

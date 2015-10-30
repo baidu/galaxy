@@ -922,15 +922,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             // check reuse pod
             if (pod->stage() == kStagePending
                 && state_to_stage_[report_pod_info.state()] == kStageRunning) {
-                LOG(INFO, "reuse pod %s of job %s on timeout agent %s", podid.c_str(), 
-                        jobid.c_str(),
-                        report_agent_info.endpoint().c_str());
-                pod->mutable_status()->CopyFrom(report_pod_info.status());
-                pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
-                pod->set_state(report_pod_info.state());
-                pod->set_endpoint(report_agent_info.endpoint());
-                pod->set_stage(kStageRunning);
-                pods_on_agent_[report_agent_info.endpoint()][jobid][podid] = pod;
+                HandleReusePod(report_pod_info, report_agent_info.endpoint(), pod);
                 continue;
             }
             LOG(WARNING, "the pod %s from agent %s has expired", podid.c_str(), report_agent_info.endpoint().c_str());
@@ -1502,6 +1494,26 @@ void JobManager::HandleExpiredPod(const std::vector<PodStatus>& pods) {
     for (; it != pods.end(); ++it) {
         SendKillToAgent(it->endpoint(), it->podid(), it->jobid());
     }
+}
+
+void JobManager::HandleReusePod(const PodStatus& report_pod,
+                                const std::string& endpoint,
+                                PodStatus* pod) {
+    mutex_.AssertHeld();
+    if (pod == NULL) {
+        LOG(WARNING, "pod is null in handle reuse pod");
+        return;
+    }
+    LOG(INFO, "reuse pod %s of job %s on timeout agent %s",
+              pod->podid().c_str(), 
+              pod->jobid().c_str(),
+              endpoint.c_str());
+    pod->mutable_status()->CopyFrom(report_pod.status());
+    pod->mutable_resource_used()->CopyFrom(report_pod.resource_used());
+    pod->set_state(report_pod.state());
+    pod->set_endpoint(endpoint);
+    pod->set_stage(kStageRunning);
+    pods_on_agent_[endpoint][pod->jobid()][pod->podid()] = pod;
 }
 
 }
