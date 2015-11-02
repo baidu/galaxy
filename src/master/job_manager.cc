@@ -30,7 +30,6 @@ namespace galaxy {
 JobManager::JobManager()
     : on_query_num_(0),
     pod_cv_(&mutex_){
-    safe_mode_ = true;
     ScheduleNextQuery();
     state_to_stage_[kPodPending] = kStageRunning;
     state_to_stage_[kPodDeploying] = kStageRunning;
@@ -39,19 +38,24 @@ JobManager::JobManager()
     state_to_stage_[kPodError] = kStageDeath;
     BuildPodFsm();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
-    safe_mode_switch_ = CheckSafeMode();
+    if (CheckSafeModeManual()) {
+        safe_mode_ = kSafeModeManual;
+    }
+    else {
+        safe_mode_ = kSafeModeAutomatic;
+    }
 }
 
 JobManager::~JobManager() {
     delete nexus_;
 }
 
-bool JobManager::CheckSafeMode() {
+bool JobManager::CheckSafeModeManual() {
     //check whether user enter safemode manually 
     ::galaxy::ins::sdk::SDKError err;
-    std::string value;
+    std::string value = "off";
     nexus_->Get("safe_mode_switch", &value, &err);
-    return err == ::galaxy::ins::sdk::kOK;
+    return value == "on";
 }
 
 bool JobManager::SaveSafeMode(bool mode) {
@@ -59,10 +63,10 @@ bool JobManager::SaveSafeMode(bool mode) {
     ::galaxy::ins::sdk::SDKError err;
     bool ok = false;
     if (mode) {
-        ok = nexus_->Put("safe_mode_switch", "", &err);
+        ok = nexus_->Put("safe_mode_switch", "on", &err);
     }
     else {
-        ok = nexus_->Delete("safe_mode_switch", &err);
+        ok = nexus_->Put("safe_mode_switch", "off", &err);
     }
     return ok;
 }
@@ -70,7 +74,8 @@ bool JobManager::SaveSafeMode(bool mode) {
 Status JobManager::SetSafeMode(bool mode) {
     //manually set safe mode
     MutexLock lock(&mutex_);
-    if (mode == safe_mode_switch_ || mode == safe_mode_) {
+    if ((mode && safe_mode_ == kSafeModeManual) ||
+            (!mode && safe_mode_ != kSafeModeManual)) {
         LOG(WARNING, "invalid safemode operation"); 
         return kInputError;
     }
@@ -82,8 +87,12 @@ Status JobManager::SetSafeMode(bool mode) {
         FillAllJobs();
     }
     LOG(INFO, "master %s safemode manually", (mode ? "enter": "leave"));
-    safe_mode_ = mode;
-    safe_mode_switch_ = mode;
+    if (mode) {
+        safe_mode_ = kSafeModeManual;
+    }
+    else {
+        safe_mode_ = kSafeModeOff;
+    }
     return kOk;
 }
 
@@ -991,10 +1000,10 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     HandleLostPod(report_agent_info.endpoint(), pods_on_agent);
     // send kill cmd to agent
     HandleExpiredPod(pods_has_expired);
-    if (queried_agents_.size() == agents_.size() && safe_mode_ && !safe_mode_switch_) {
+    if (queried_agents_.size() == agents_.size() && safe_mode_ == kSafeModeAutomatic) {
         FillAllJobs();
-        safe_mode_ = false;
-        LOG(INFO, "master leave safe mode");
+        safe_mode_ = kSafeModeOff;
+        LOG(INFO, "master leave safe mode automatically");
     }
 }
 
