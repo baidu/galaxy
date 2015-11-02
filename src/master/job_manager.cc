@@ -21,6 +21,7 @@ DECLARE_int32(master_agent_rpc_timeout);
 DECLARE_int32(master_query_period);
 DECLARE_string(nexus_servers);
 DECLARE_string(nexus_root_path);
+DECLARE_string(safemode_store_path);
 DECLARE_string(labels_store_path);
 DECLARE_string(jobs_store_path);
 DECLARE_int32(master_pending_job_wait_timeout);
@@ -57,7 +58,14 @@ bool JobManager::CheckSafeModeManual(bool& mode) {
     ::galaxy::ins::sdk::SDKError err;
     std::string value = "off";
     bool ok = false;
-    ok = nexus_->Get("safe_mode_switch", &value, &err);
+
+    std::string safe_mode_key = FLAGS_nexus_root_path + FLAGS_safemode_store_path 
+                           + "/safe_mode_switch";
+    ok = nexus_->Get(safe_mode_key, &value, &err);
+    if (!ok) {
+        LOG(WARNING, "fail to read safemode from nexus err msg %s",
+            ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+    }
     mode = value == "on";
     return ok;
 }
@@ -66,11 +74,17 @@ bool JobManager::SaveSafeMode(bool mode) {
     //save safemode to nexus
     ::galaxy::ins::sdk::SDKError err;
     bool ok = false;
+    std::string safe_mode_key = FLAGS_nexus_root_path + FLAGS_safemode_store_path 
+                           + "/safe_mode_swith";
     if (mode) {
-        ok = nexus_->Put("safe_mode_switch", "on", &err);
+        ok = nexus_->Put(safe_mode_key, "on", &err);
     }
     else {
-        ok = nexus_->Put("safe_mode_switch", "off", &err);
+        ok = nexus_->Put(safe_mode_key, "off", &err);
+    }
+    if (!ok) {
+        LOG(WARNING, "fail to save safemode to nexus err msg %s", 
+            ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
     }
     return ok;
 }
