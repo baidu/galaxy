@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <boost/unordered_map.hpp>
-//#include <mutex.h>
 #include <thread_pool.h>
 #include "ins_sdk.h"
 #include "proto/agent.pb.h"
@@ -138,9 +137,8 @@ private:
                          bool* replica_change, bool* pod_desc_change);
 
     void HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_agent);
-    void HandleExpiredPod(const std::vector<PodStatus>& pods);
+    void HandleExpiredPod(std::vector<std::pair<PodStatus, PodStatus*> >& pods);
     void HandleReusePod(const PodStatus& report_pod,
-                        const std::string& endpoint,
                         PodStatus* pod);
 private:
     std::map<JobId, Job*> jobs_;

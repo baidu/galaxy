@@ -860,7 +860,8 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     AgentInfo* agent = it->second;
     UpdateAgent(report_agent_info, agent);
     PodMap pods_on_agent = pods_on_agent_[endpoint]; // this is a copy
-    std::vector<PodStatus> pods_has_expired;
+
+    std::vector<std::pair<PodStatus, PodStatus*> > pods_has_expired;
     for (int32_t i = 0; i < report_agent_info.pods_size(); i++) {
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
@@ -880,7 +881,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             PodStatus fake_pod;
             fake_pod.CopyFrom(report_pod_info);
             fake_pod.set_endpoint(report_agent_info.endpoint());
-            pods_has_expired.push_back(fake_pod);
+            pods_has_expired.push_back(std::make_pair<PodStatus, PodStatus*>(fake_pod, NULL));
             continue;
         }
         Job* job = job_it->second;
@@ -911,25 +912,18 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             PodStatus fake_pod;
             fake_pod.CopyFrom(report_pod_info);
             fake_pod.set_endpoint(report_agent_info.endpoint());
-            pods_has_expired.push_back(fake_pod);
+            pods_has_expired.push_back(std::make_pair<PodStatus, PodStatus*>(fake_pod, NULL));
             continue;
         }
-
-        PodStatus* pod = jobs_[jobid]->pods_[podid];
+        PodStatus* pod = p_it->second;
         std::map<PodId, PodStatus*>::iterator pa_it =  pods_on_agent[jobid].find(podid);
         // pod has been expired
-        if (pa_it == pods_on_agent[jobid].end()) {
-            // check reuse pod
-            if (pod->stage() == kStagePending
-                && state_to_stage_[report_pod_info.state()] == kStageRunning) {
-                HandleReusePod(report_pod_info, report_agent_info.endpoint(), pod);
-                continue;
-            }
+        if (pa_it == pods_on_agent[jobid].end()) { 
             LOG(WARNING, "the pod %s from agent %s has expired", podid.c_str(), report_agent_info.endpoint().c_str());
             PodStatus fake_pod;
             fake_pod.CopyFrom(report_pod_info);
             fake_pod.set_endpoint(report_agent_info.endpoint());
-            pods_has_expired.push_back(fake_pod);
+            pods_has_expired.push_back(std::make_pair(fake_pod, pod));
         } else {
             // update pod in master
             pod->mutable_status()->CopyFrom(report_pod_info.status());
@@ -1485,19 +1479,23 @@ void JobManager::HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_
     }
 }
 
-void JobManager::HandleExpiredPod(const std::vector<PodStatus>& pods) {
+void JobManager::HandleExpiredPod(std::vector<std::pair<PodStatus, PodStatus*> >& pods) {
     mutex_.AssertHeld();
     if (safe_mode_) {
         return;
     }
-    std::vector<PodStatus>::const_iterator it = pods.begin();
+    std::vector<std::pair<PodStatus, PodStatus*> >::const_iterator it = pods.begin();
     for (; it != pods.end(); ++it) {
-        SendKillToAgent(it->endpoint(), it->podid(), it->jobid());
+        if (it->second != NULL && it->second->stage() == kStagePending 
+            && state_to_stage_[it->first.state()] == kStageRunning) {
+            HandleReusePod(it->first, it->second);
+            continue;
+        }
+        SendKillToAgent(it->first.endpoint(), it->first.podid(), it->first.jobid());
     }
 }
 
 void JobManager::HandleReusePod(const PodStatus& report_pod,
-                                const std::string& endpoint,
                                 PodStatus* pod) {
     mutex_.AssertHeld();
     if (pod == NULL) {
@@ -1507,13 +1505,13 @@ void JobManager::HandleReusePod(const PodStatus& report_pod,
     LOG(INFO, "reuse pod %s of job %s on timeout agent %s",
               pod->podid().c_str(), 
               pod->jobid().c_str(),
-              endpoint.c_str());
+              report_pod.endpoint().c_str());
     pod->mutable_status()->CopyFrom(report_pod.status());
     pod->mutable_resource_used()->CopyFrom(report_pod.resource_used());
     pod->set_state(report_pod.state());
-    pod->set_endpoint(endpoint);
+    pod->set_endpoint(report_pod.endpoint());
     pod->set_stage(kStageRunning);
-    pods_on_agent_[endpoint][pod->jobid()][pod->podid()] = pod;
+    pods_on_agent_[report_pod.endpoint()][pod->jobid()][pod->podid()] = pod;
 }
 
 }
