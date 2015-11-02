@@ -82,7 +82,7 @@ private:
     void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
     void HandleAgentOffline(const std::string agent_addr);
     void ReschedulePod(PodStatus* pod_status);
-    bool CheckSafeModeManual();
+    bool CheckSafeModeManual(bool& mode);
     bool SaveSafeMode(bool mode);
 
     void RunPod(const PodDescriptor& desc, Job* job, PodStatus* pod) ;

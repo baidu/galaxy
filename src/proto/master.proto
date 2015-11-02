@@ -148,11 +148,11 @@ message HeartBeatResponse {
 }
 
 message SwitchSafeModeRequest {
-	optional bool enter_or_leave = 1;
+    optional bool enter_or_leave = 1;
 }
 
 message SwitchSafeModeResponse {
-	optional Status status = 1;
+    optional Status status = 1;
 }
 
 
@@ -283,7 +283,7 @@ service Master {
 
     rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);
 
-	rpc SwitchSafeMode(SwitchSafeModeRequest) returns (SwitchSafeModeResponse);
+    rpc SwitchSafeMode(SwitchSafeModeRequest) returns (SwitchSafeModeResponse);
 
     // rpc AddUser() returns ();
     // rpc DeleteUser() returns ();

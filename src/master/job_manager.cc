@@ -38,7 +38,9 @@ JobManager::JobManager()
     state_to_stage_[kPodError] = kStageDeath;
     BuildPodFsm();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
-    if (CheckSafeModeManual()) {
+    bool safe_mode_manual = false;
+    CheckSafeModeManual(safe_mode_manual);
+    if (safe_mode_manual) {
         safe_mode_ = kSafeModeManual;
     }
     else {
@@ -50,12 +52,14 @@ JobManager::~JobManager() {
     delete nexus_;
 }
 
-bool JobManager::CheckSafeModeManual() {
+bool JobManager::CheckSafeModeManual(bool& mode) {
     //check whether user enter safemode manually 
     ::galaxy::ins::sdk::SDKError err;
     std::string value = "off";
-    nexus_->Get("safe_mode_switch", &value, &err);
-    return value == "on";
+    bool ok = false;
+    ok = nexus_->Get("safe_mode_switch", &value, &err);
+    mode = value == "on";
+    return ok;
 }
 
 bool JobManager::SaveSafeMode(bool mode) {
@@ -76,7 +80,10 @@ Status JobManager::SetSafeMode(bool mode) {
     MutexLock lock(&mutex_);
     if ((mode && safe_mode_ == kSafeModeManual) ||
             (!mode && safe_mode_ != kSafeModeManual)) {
-        LOG(WARNING, "invalid safemode operation"); 
+        LOG(WARNING, ""); 
+        LOG(WARNING, "invalid safemode operation: trying to %s safemode manually when safemode is %s", 
+                     mode ? "enter" : "leave",
+                     mode ? "on" : "off");
         return kInputError;
     }
     if (!SaveSafeMode(mode)) {
