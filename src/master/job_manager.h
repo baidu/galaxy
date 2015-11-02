@@ -83,6 +83,8 @@ private:
     void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
     void HandleAgentOffline(const std::string agent_addr);
     void ReschedulePod(PodStatus* pod_status);
+    bool CheckSafeMode();
+    bool SaveSafeMode(bool mode);
 
     void RunPod(const PodDescriptor& desc, PodStatus* pod) ;
     void RunPodCallback(PodStatus* pod, AgentAddr endpoint, const RunPodRequest* request,
@@ -159,6 +161,7 @@ private:
     int64_t on_query_num_;
     std::set<AgentAddr> queried_agents_;
     bool safe_mode_;
+    bool safe_mode_switch_;
 
     // for label on agent 
     typedef std::string LabelName;

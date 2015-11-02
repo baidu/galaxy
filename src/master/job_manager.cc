@@ -39,15 +39,54 @@ JobManager::JobManager()
     state_to_stage_[kPodError] = kStageDeath;
     BuildPodFsm();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
+    safe_mode_switch_ = CheckSafeMode();
 }
 
 JobManager::~JobManager() {
     delete nexus_;
 }
+
+bool JobManager::CheckSafeMode() {
+    //check whether user enter safemode manually 
+    ::galaxy::ins::sdk::SDKError err;
+    std::string value;
+    nexus_->Get("safe_mode_switch", &value, &err);
+    return err == ::galaxy::ins::sdk::kOK;
+}
+
+bool JobManager::SaveSafeMode(bool mode) {
+    //save safemode to nexus
+    ::galaxy::ins::sdk::SDKError err;
+    bool ok = false;
+    if (mode) {
+        ok = nexus_->Put("safe_mode_switch", "", &err);
+    }
+    else {
+        ok = nexus_->Delete("safe_mode_switch", &err);
+    }
+    return ok;
+}
+
 Status JobManager::SetSafeMode(bool mode) {
+    //manually set safe mode
+    MutexLock lock(&mutex_);
+    if (mode == safe_mode_switch_ || mode == safe_mode_) {
+        LOG(WARNING, "invalid safemode operation"); 
+        return kInputError;
+    }
+    if (!SaveSafeMode(mode)) {
+        LOG(WARNING, "save safemode failed");
+        return kPersistenceError;
+    }
+    if (!mode) {
+        FillAllJobs();
+    }
+    LOG(INFO, "master %s safemode manually", (mode ? "enter": "leave"));
     safe_mode_ = mode;
+    safe_mode_switch_ = mode;
     return kOk;
 }
+
 Status JobManager::LabelAgents(const LabelCell& label_cell) {
     AgentSet new_label_set;
     for (int i = 0; i < label_cell.agents_endpoint_size(); ++i) {
@@ -700,6 +739,16 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
         return;
     }
     a_it->second->set_state(kDead);
+    if (safe_mode_) {
+        MutexLock lock(&mutex_timer_);
+        int64_t timer_id;
+        timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
+                                            boost::bind(&JobManager::HandleAgentOffline,
+                                                        this,
+                                                        agent_addr));
+        agent_timer_[agent_addr] = timer_id;
+        return;
+    }
     PodMap& agent_pods = pods_on_agent_[agent_addr];
     PodMap::iterator it = agent_pods.begin();
     std::vector<std::pair<Job*, PodStatus*> > wait_to_pending;
@@ -942,7 +991,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
     HandleLostPod(report_agent_info.endpoint(), pods_on_agent);
     // send kill cmd to agent
     HandleExpiredPod(pods_has_expired);
-    if (queried_agents_.size() == agents_.size() && safe_mode_) {
+    if (queried_agents_.size() == agents_.size() && safe_mode_ && !safe_mode_switch_) {
         FillAllJobs();
         safe_mode_ = false;
         LOG(INFO, "master leave safe mode");
