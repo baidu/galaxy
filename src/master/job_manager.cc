@@ -94,7 +94,6 @@ Status JobManager::SetSafeMode(bool mode) {
     MutexLock lock(&mutex_);
     if ((mode && safe_mode_ == kSafeModeManual) ||
             (!mode && safe_mode_ != kSafeModeManual)) {
-        LOG(WARNING, ""); 
         LOG(WARNING, "invalid safemode operation: trying to %s safemode manually when safemode is %s", 
                      mode ? "enter" : "leave",
                      mode ? "on" : "off");
