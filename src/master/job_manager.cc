@@ -40,7 +40,9 @@ JobManager::JobManager()
     BuildPodFsm();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
     bool safe_mode_manual = false;
-    CheckSafeModeManual(safe_mode_manual);
+    if (!CheckSafeModeManual(safe_mode_manual)) {
+        assert(0);
+    }
     if (safe_mode_manual) {
         safe_mode_ = kSafeModeManual;
     }
