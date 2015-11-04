@@ -118,6 +118,7 @@ private:
                          int32_t max_need_update_job_size);
     void BuildPodFsm();
     bool HandleCleanPod(PodStatus* pod, Job* job);
+    bool HandleRunningToFinished(PodStatus* pod, Job* job);
     bool HandlePendingToRunning(PodStatus* pod, Job* job);
     bool HandleRunningToDeath(PodStatus* pod, Job* job);
     bool HandleRunningToRemoved(PodStatus* pod, Job* job);
