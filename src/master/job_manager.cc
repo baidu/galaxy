@@ -36,7 +36,7 @@ JobManager::JobManager()
     state_to_stage_[kPodPending] = kStageRunning;
     state_to_stage_[kPodDeploying] = kStageRunning;
     state_to_stage_[kPodRunning] = kStageRunning;
-    state_to_stage_[kPodTerminate] = kStageDeath;
+    state_to_stage_[kPodTerminate] = kStageFinished;
     state_to_stage_[kPodError] = kStageDeath;
     BuildPodFsm();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
@@ -489,7 +489,7 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             if (job->pods_.size() == 0 
                 && job->state_ == kJobTerminated) {
                 should_been_cleaned.insert(*jobid_it);
-            }else {
+            } else {
                 should_rm_from_scale_down.insert(*jobid_it);
             }
             continue;
@@ -502,7 +502,8 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
             for (; pod_it != job->pods_.end() && scale_down_count > 0;
               ++pod_it) {
-                if (pod_it->second->stage() != kStagePending) {
+                if (pod_it->second->stage() != kStagePending &&
+                        pod_it->second->stage() != kStageFinished) {
                     continue;
                 }
                 --scale_down_count;
@@ -1221,6 +1222,12 @@ void JobManager::BuildPodFsm() {
           boost::bind(&JobManager::HandleRunningToDeath, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRemoved), 
           boost::bind(&JobManager::HandleRunningToRemoved, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageFinished), 
+          boost::bind(&JobManager::HandleRunningToFinished, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageFinished, kStageFinished), 
+          boost::bind(&JobManager::HandleRunningToFinished, this, _1, _2)));
+    fsm_.insert(std::make_pair(BuildHandlerKey(kStageFinished, kStageDeath), 
+          boost::bind(&JobManager::HandleCleanPod, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageDeath, kStageRemoved), 
           boost::bind(&JobManager::HandleRunningToRemoved, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRunning, kStageRunning), 
@@ -1293,12 +1300,15 @@ bool JobManager::HandleCleanPod(PodStatus* pod, Job* job) {
             p_it->second.erase(pod->podid());
         }
     }
-    fsm_.erase(pod->podid());
     job->pods_.erase(pod->podid());
-    delete pod;
     if (job->state_ != kJobTerminated) {
-        FillPodsToJob(job);
+        if (pod->stage() == kStageFinished) {
+            job->desc_.set_replica(job->desc_.replica() - 1);
+        } else {
+            FillPodsToJob(job);
+        }
     }
+    delete pod;
     return true;
 }
 
@@ -1326,6 +1336,17 @@ bool JobManager::HandleRunningToDeath(PodStatus* pod, Job*) {
         return false;
     }
     pod->set_stage(kStageDeath);
+    SendKillToAgent(pod->endpoint(), pod->podid(), pod->jobid());
+    return true;
+}
+
+bool JobManager::HandleRunningToFinished(PodStatus* pod, Job*) {
+    mutex_.AssertHeld();
+    if (pod == NULL) {
+        LOG(WARNING, "fsm the input is invalidate");
+        return false;
+    }
+    pod->set_stage(kStageFinished);
     SendKillToAgent(pod->endpoint(), pod->podid(), pod->jobid());
     return true;
 }
@@ -1511,7 +1532,7 @@ Status JobManager::GetStatus(::baidu::galaxy::GetMasterStatusResponse* response)
     for (; a_it != agents_.end(); ++a_it) {
         if (a_it->second->state() == kDead) {
             agent_dead_count++;
-        }else {
+        } else {
             agent_live_count++;
             cpu_total += a_it->second->total().millicores();
             mem_total += a_it->second->total().memory();
@@ -1558,7 +1579,11 @@ void JobManager::HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_
         std::map<PodId, PodStatus*>::const_iterator p_it = j_it->second.begin();
         for (; p_it != j_it->second.end(); ++p_it) {
             std::string reason = "pod lost from agent  " + addr;
-            ChangeStage(reason, kStagePending, p_it->second, job_it->second);
+            if (p_it->second->stage() == kStageFinished) {
+                ChangeStage(reason, kStageDeath, p_it->second, job_it->second);
+            } else {
+                ChangeStage(reason, kStagePending, p_it->second, job_it->second);
+            }
         }
     }
 }
