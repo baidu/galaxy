@@ -17,6 +17,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <boost/unordered_map.hpp>
+#include <boost/unordered_set.hpp>
 #include "gflags/gflags.h"
 #include "proto/agent.pb.h"
 #include "proto/initd.pb.h"
@@ -40,65 +42,6 @@ DEFINE_string(pod_id, "", "pod id");
 using baidu::common::INFO;
 using baidu::common::WARNING;
 
-bool TerminateContact(int fdm, int connfd) {
-    if (fdm < 0 || connfd < 0) {
-        return false; 
-    }
-    const int INPUT_BUFFER_LEN = 1024 * 10;
-    char input[INPUT_BUFFER_LEN];
-    fd_set fd_in; 
-    int ret = 0;
-    int max_fd = connfd; 
-    if (max_fd < fdm) {
-        max_fd = fdm;
-    }
-    while (1) {
-        FD_ZERO(&fd_in); 
-        FD_SET(fdm, &fd_in);
-        FD_SET(connfd, &fd_in);
-        ret = ::select(max_fd + 1, &fd_in, NULL, NULL, NULL);
-        switch (ret) {
-            case -1 :  
-                LOG(WARNING, "select err[%d: %s]\n", errno, strerror(errno));
-                break;
-            default : {
-                if (FD_ISSET(connfd, &fd_in))  {
-                    ret = ::read(connfd, input, sizeof(input)); 
-                    if (ret > 0) {
-                        ::write(fdm, input, ret); 
-                    } else {
-                        if (ret < 0) {
-                            LOG(0, "read err[%d: %s]\n",
-                                    errno,
-                                    strerror(errno)); 
-                            break;
-                        }
-                    }
-                }         
-                if (FD_ISSET(fdm, &fd_in)) {
-                    ret = ::read(fdm, input, sizeof(input)); 
-                    if (ret > 0) {
-                        ::write(connfd, input, ret);
-                    } else {
-                        if (ret < 0) {
-                            LOG(WARNING, "read err[%d: %s]\n",
-                                    errno,
-                                    strerror(errno)); 
-                            break;
-                        } 
-                    }
-                }
-            }
-        }
-        if (ret < 0) {
-            break; 
-        }
-    }
-    if (ret < 0) {
-        return false; 
-    }
-    return true;
-} 
 
 bool PreparePty(int* fdm, std::string* pty_file) {
     if (pty_file == NULL || fdm == NULL) {
@@ -133,7 +76,7 @@ bool PreparePty(int* fdm, std::string* pty_file) {
 }
 
 
-void AttachPod(std::string pod_id, int connfd) {
+int GetPodFd(std::string pod_id) {
     ::baidu::galaxy::Agent_Stub* agent;    
     ::baidu::galaxy::RpcClient* rpc_client = 
         new ::baidu::galaxy::RpcClient();
@@ -150,20 +93,18 @@ void AttachPod(std::string pod_id, int connfd) {
             &response, 5, 1);
     if (!ret) {
         LOG(WARNING, "rpc failed\n");
-        return;
+        return -1;
     } else if (response.has_status()
             && response.status() != ::baidu::galaxy::kOk) {
         LOG(WARNING, "response status %s\n",
                 ::baidu::galaxy::Status_Name(response.status()).c_str()); 
-        return;
+        return -1;
     }
-
     if (response.pods_size() != 1) {
-        LOG(WARNING, "pod size not 1[%d]\n", 
+       LOG(WARNING, "pod size not 1[%d]\n", 
                         response.pods_size()); 
-        return;
+        return -1;
     }
-
     const ::baidu::galaxy::PodPropertiy& pod = response.pods(0);
 
     FLAGS_initd_endpoint = pod.initd_endpoint();
@@ -176,7 +117,7 @@ void AttachPod(std::string pod_id, int connfd) {
     int pty_fdm = -1;
     if (!PreparePty(&pty_fdm, &pty_file)) {
         LOG(WARNING, "prepare pty failed\n"); 
-        return;
+        return -1;
     }
 
     baidu::galaxy::ExecuteRequest exec_request;
@@ -207,18 +148,12 @@ void AttachPod(std::string pod_id, int connfd) {
                             &exec_request,
                             &exec_response, 5, 1);
     if (ret && exec_response.status() == baidu::galaxy::kOk) {
-        LOG(WARNING, "terminate starting...\n");
-        ret = TerminateContact(pty_fdm, connfd); 
-        if (ret) {
-            LOG(INFO, "terminate contact over\n"); 
-        } else {
-            fprintf(stderr, "terminate contact interrupt\n"); 
-        }
-        return;
+        LOG(INFO, "terminate starting...\n");
+        return pty_fdm;
     } 
     LOG(WARNING, "exec in initd failed %s\n", 
             baidu::galaxy::Status_Name(exec_response.status()).c_str());
-    return;
+    return -1;
 }
 
 int main(int argc, char* argv[]) {
@@ -238,22 +173,85 @@ int main(int argc, char* argv[]) {
     bind(listenfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
     listen(listenfd, 100);
 
+    const int BUFFER_LEN = 10 * 1024;
     char pod_id[40];
+    char buffer[BUFFER_LEN];
     int ret = -1;
+    int max_fd = listenfd;
+    fd_set fd_in;
+    
+    boost::unordered_map<int, int> sock2pty;
     while (1) {
-        connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
-        ret = read(connfd, pod_id, 36);
-        if (ret != 36) {
-            LOG(WARNING, "read WARNING\n");
-            close(connfd);
+        FD_ZERO(&fd_in);
+        FD_SET(listenfd, &fd_in);
+        for (boost::unordered_map<int, int>::iterator it = sock2pty.begin();
+                it != sock2pty.end(); ++it) {
+            FD_SET(it->first, &fd_in);
+            FD_SET(it->second, &fd_in);
+        }
+        ret = ::select(max_fd + 1, &fd_in, NULL, NULL, NULL);
+        if (ret < 0) {
+            LOG(WARNING, "select err[%d: %s]\n", errno, strerror(errno));
             continue;
         }
-        pod_id[36] = '\0';
-        LOG(INFO, "read pod: %s\n", pod_id);
-        AttachPod(std::string(pod_id), connfd);
-        close(connfd);
+        if (FD_ISSET(listenfd, &fd_in)) {
+            connfd = accept(listenfd, (struct sockaddr*)NULL, NULL);
+            ret = read(connfd, pod_id, 36);
+            if (ret != 36) {
+                LOG(WARNING, "read pod id error");
+                close(connfd);
+            }
+            pod_id[36] = '\0';
+            LOG(INFO, "read pod: %s\n", pod_id);
+            int ptyfd = GetPodFd(pod_id);
+            if (ptyfd < 0) {
+                LOG(WARNING, "create pty fd error\n");
+                continue;
+            }
+            sock2pty[connfd] = ptyfd;
+            if (ptyfd > max_fd) {
+                max_fd = ptyfd;
+            }
+            if (connfd > max_fd) {
+                max_fd = connfd;
+            }
+        }
+        boost::unordered_set<int> broken_sock;
+        for (boost::unordered_map<int, int>::iterator it = sock2pty.begin();
+                it != sock2pty.end(); ++it) {
+            if (FD_ISSET(it->first, &fd_in)) {
+                ret = ::read(it->first, buffer, BUFFER_LEN);
+                if (ret > 0) {
+                    ::write(it->second, buffer, ret);
+                } else if (ret < 0) {
+                    LOG(WARNING, "read from sock err[%d: %s]", 
+                            errno, strerror(errno));
+                    broken_sock.insert(it->first);
+                    continue;
+                }
+            }
+            if (FD_ISSET(it->second, &fd_in)) {
+                ret = ::read(it->second, buffer, BUFFER_LEN);
+                if (ret > 0) {
+                    ::write(it->first, buffer, ret);
+                } else if (ret < 0) {
+                    LOG(WARNING, "read from pty err[%d, %s]",
+                            errno, strerror(errno));
+                    broken_sock.insert(it->first);
+                }
+            }
+        } 
+        for (boost::unordered_set<int>::iterator it = broken_sock.begin();
+                it != broken_sock.end(); ++it) {
+            LOG(INFO, "connection from sock[%d] to pty[%d] ends up", 
+                    *it, sock2pty[*it]);
+            close(*it);
+            close(sock2pty[*it]);
+            sock2pty.erase(*it);
+        }
     }
+    return 0;
 }
 
-
 /* vim: set ts=4 sw=4 sts=4 tw=100 */
+

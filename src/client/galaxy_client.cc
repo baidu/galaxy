@@ -465,42 +465,48 @@ int ShowPod() {
     return 0;
 }
 
-int AttachPod() {
+std::string GetAgentById(std::string job_id, std::string pod_id) {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
     if (!ok) {
         fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;   
+        return "";   
     }
     if (FLAGS_p.empty()) {
         fprintf(stderr, "-p option is required\n");
-        return -1;
+        return "";
     }
     if (FLAGS_j.empty()) {
         fprintf(stderr, "-j option is required\n");
-        return -1;
+        return "";
     }
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
     std::vector<baidu::galaxy::PodInformation> pods;
-    ok = galaxy->ShowPod(FLAGS_j, &pods);
+    ok = galaxy->ShowPod(job_id, &pods);
     if (!ok) {
         fprintf(stderr, "Fail to query job\n");
-        return -1;
+        return "";
     }
     std::vector<baidu::galaxy::PodInformation>::iterator it = pods.begin();
     std::string agent_endpoint = "";
     for (; it != pods.end(); ++it) {
-        if (it->podid == FLAGS_p) {
+        if (it->podid == pod_id) {
             agent_endpoint = it->endpoint;
             break;
         }
     }
     if (agent_endpoint == "") {
         fprintf(stderr, "Fail to find pod\n");
+        return "";
+    }
+    return agent_endpoint.substr(0, agent_endpoint.find_last_of(":"));
+}
+
+int AttachPod() {
+    std::string agent_endpoint = GetAgentById(FLAGS_j, FLAGS_p);
+    if (agent_endpoint == "") {
         return -1;
     }
-    agent_endpoint = agent_endpoint.substr(0, agent_endpoint.find_last_of(":"));
-
     int sockfd = 0;
     const int BUFFER_LEN = 1024 * 10;
     char buffer[BUFFER_LEN];
@@ -509,17 +515,14 @@ int AttachPod() {
         fprintf(stderr, "Fail to create socket\n");
         return -1;
     }
-
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(FLAGS_cli_server_port);
-    
 
     if (inet_pton(AF_INET, agent_endpoint.c_str(), &serv_addr.sin_addr) < 0) {
         fprintf(stderr, "Wrong server address\n");
         return -1;
     }
-
     if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         fprintf(stderr, "Fail to connect cli server\n");
         return -1;
