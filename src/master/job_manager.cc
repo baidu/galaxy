@@ -1107,6 +1107,14 @@ void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     }
 }
 
+void JobManager::GetLabels(StringList* labels) {
+    MutexLock lock(&mutex_);
+    std::map<LabelName, AgentSet>::iterator it;
+    for (it = labels_.begin(); it != labels_.end(); ++it) {
+        labels->Add()->assign(it->first);
+    }
+}
+
 void JobManager::GetAliveAgentsInfo(AgentInfoList* agents_info) {
     MutexLock lock(&mutex_);
     std::map<AgentAddr, AgentInfo*>::iterator it;

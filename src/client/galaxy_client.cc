@@ -372,6 +372,24 @@ int UpdateJob() {
     }
 }
 
+int ListLabels() {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::vector<std::string> labels;
+    if (!galaxy->ListLabels(&labels)) {
+        fprintf(stderr, "Fail to get labels from master\n");
+        return -1;
+    }
+    for (int i = 0; i < labels.size(); i++) {
+        fprintf(stdout, "%s\n", labels[i].c_str());
+    }
+    return 0;
+}
 
 int ListAgent() {
     std::string master_endpoint;
@@ -756,6 +774,8 @@ int main(int argc, char* argv[]) {
             return SwitchSafeMode(false);
     } else if (strcmp(argv[1], "attach") == 0) {
         return AttachPod();
+    } else if (strcmp(argv[1], "labels")) {
+        return ListLabels();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;

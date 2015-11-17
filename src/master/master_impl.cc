@@ -279,6 +279,16 @@ void MasterImpl::ListAgents(::google::protobuf::RpcController* /*controller*/,
 }
 
 
+void MasterImpl::ListLabels(::google::protobuf::RpcController* /*controller*/,
+                            const ::baidu::galaxy::ListLabelsRequest* /*request*/,
+                            ::baidu::galaxy::ListLabelsResponse* response,
+                            ::google::protobuf::Closure* done) {
+    job_manager_.GetLabels(response->mutable_labels());
+    response->set_status(kOk);
+    done->Run();
+}
+
+
 void MasterImpl::LabelAgents(::google::protobuf::RpcController* ,
                              const ::baidu::galaxy::LabelAgentRequest* request,
                              ::baidu::galaxy::LabelAgentResponse* response,

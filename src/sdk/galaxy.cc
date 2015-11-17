@@ -31,6 +31,7 @@ public:
                  std::vector<PodInformation>* pods);
     bool GetStatus(MasterStatus* status);
     bool SwitchSafeMode(bool mode);
+    bool ListLabels(std::vector<std::string>* labels);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -38,6 +39,7 @@ private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
 };
+
 
 bool GalaxyImpl::LabelAgents(const std::string& label, 
                              const std::vector<std::string>& agents) {
@@ -288,6 +290,22 @@ bool GalaxyImpl::SwitchSafeMode(bool mode) {
     }
     return true;
 }
+
+bool GalaxyImpl::ListLabels(std::vector<std::string>* labels) {
+    ListLabelsRequest request;
+    ListLabelsResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::ListLabels, 
+                             &request, &response, 5, 1);
+    if (response.status() != kOk) {
+        return false;
+    }
+    int label_num = response.labels_size();
+    for (int i = 0; i < label_num; i ++) {
+        labels->push_back(response.labels(i));
+    }
+    return true;
+}
+
 
 bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
     ListAgentsRequest request;
