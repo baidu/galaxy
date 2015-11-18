@@ -42,10 +42,14 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy submit -f <jobconfig>\n" 
                                  "    galaxy jobs \n"
                                  "    galaxy agents\n"
+                                 "    galaxy labels\n"
                                  "    galaxy pods -j <jobid>\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
+                                 "    galaxy show-label -l <label>\n"
+                                 "    galaxy enter|leave safemode\n"
+                                 "    galaxy attach -p <podid> -j <jobid>\n"
                                  "    galaxy status \n"
                                  "Options:\n"
                                  "    -f config    Specify config file ,eg job config file , label config file.\n"
@@ -385,8 +389,28 @@ int ListLabels() {
         fprintf(stderr, "Fail to get labels from master\n");
         return -1;
     }
-    for (int i = 0; i < labels.size(); i++) {
+    for (size_t i = 0; i < labels.size(); i++) {
         fprintf(stdout, "%s\n", labels[i].c_str());
+    }
+    return 0;
+}
+
+int ShowLabelledAgents() {
+    if (FLAGS_l.empty()) {
+        fprintf(stderr, "Fail to get label name\n");
+        return -1;
+    }
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::vector<baidu::galaxy::NodeDescription> agents;
+    galaxy->ListLabelledAgents(FLAGS_l, &agents);
+    for (size_t i = 0; i < agents.size(); i ++) {
+        fprintf(stdout, "%-30s %s\n", agents[i].addr.c_str(), agents[i].state.c_str());
     }
     return 0;
 }
@@ -774,8 +798,10 @@ int main(int argc, char* argv[]) {
             return SwitchSafeMode(false);
     } else if (strcmp(argv[1], "attach") == 0) {
         return AttachPod();
-    } else if (strcmp(argv[1], "labels")) {
+    } else if (strcmp(argv[1], "labels") == 0) {
         return ListLabels();
+    } else if (strcmp(argv[1], "show-label") == 0){
+        return ShowLabelledAgents();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;

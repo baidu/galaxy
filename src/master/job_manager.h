@@ -58,6 +58,7 @@ public:
                         int32_t max_need_update_job_size,
                         ::google::protobuf::Closure* done);
     Status Propose(const ScheduleInfo& sche_info);
+    void GetLabelledAgents(std::string label, AgentInfoList* agents_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsByDiff(const DiffVersionList& versions,

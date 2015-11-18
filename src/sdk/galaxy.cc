@@ -24,6 +24,7 @@ public:
     bool UpdateJob(const std::string& jobid, const JobDescription& job);
     bool ListJobs(std::vector<JobInformation>* jobs);
     bool ListAgents(std::vector<NodeDescription>* nodes);
+    bool ListLabelledAgents(std::string label, std::vector<NodeDescription>* nodes);
     bool TerminateJob(const std::string& job_id);
     bool LabelAgents(const std::string& label, 
                      const std::vector<std::string>& agents);
@@ -306,6 +307,26 @@ bool GalaxyImpl::ListLabels(std::vector<std::string>* labels) {
     return true;
 }
 
+
+bool GalaxyImpl::ListLabelledAgents(std::string label, 
+        std::vector<NodeDescription>* nodes) {
+    ListLabelledAgentsRequest request;
+    ListLabelledAgentsResponse response;
+    
+    request.mutable_label()->assign(label);
+    rpc_client_->SendRequest(master_, &Master_Stub::ListLabelledAgents,
+                             &request, &response, 5, 1);
+    int node_num = response.agents_size();
+    for (int i = 0; i < node_num; i ++) {
+        const AgentInfo& node = response.agents(i);
+        NodeDescription node_desc;
+        node_desc.addr = node.endpoint();
+        node_desc.state = node.has_state() ?  
+                          AgentState_Name(node.state()) : "kUnknown";
+        nodes->push_back(node_desc);
+    }
+    return true;
+}
 
 bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
     ListAgentsRequest request;

@@ -208,7 +208,7 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
     done->Run();
 }
 
-void MasterImpl::SwitchSafeMode(::google::protobuf::RpcController* controller,
+void MasterImpl::SwitchSafeMode(::google::protobuf::RpcController* /*controller*/,
                            const ::baidu::galaxy::SwitchSafeModeRequest* request,
                            ::baidu::galaxy::SwitchSafeModeResponse* response,
                            ::google::protobuf::Closure* done) {
@@ -274,6 +274,15 @@ void MasterImpl::ListAgents(::google::protobuf::RpcController* /*controller*/,
                             ::baidu::galaxy::ListAgentsResponse* response,
                             ::google::protobuf::Closure* done) {
     job_manager_.GetAgentsInfo(response->mutable_agents());
+    response->set_status(kOk);
+    done->Run();
+}
+
+void MasterImpl::ListLabelledAgents(::google::protobuf::RpcController* /*controller*/,
+                        const ::baidu::galaxy::ListLabelledAgentsRequest* request,
+                        ::baidu::galaxy::ListLabelledAgentsResponse* response,
+                        ::google::protobuf::Closure* done) {
+    job_manager_.GetLabelledAgents(request->label(), response->mutable_agents());
     response->set_status(kOk);
     done->Run();
 }
