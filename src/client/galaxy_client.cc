@@ -9,6 +9,15 @@
 #include <cstdlib>
 #include <errno.h>
 #include <string.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/select.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <signal.h>
+
 #include <gflags/gflags.h>
 #include <tprinter.h>
 #include <string_util.h>
@@ -23,7 +32,9 @@ DEFINE_string(master_path, "/master", "master path on nexus");
 DEFINE_string(f, "", "specify config file ,job config file or label config file");
 DEFINE_string(j, "", "specify job id");
 DEFINE_string(l, "", "add a label to agent");
+DEFINE_string(p, "", "specify pod id");
 DEFINE_int32(d, 0, "specify delay time to query");
+DEFINE_int32(cli_server_port, 8775, "cli server listen port");
 DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "galaxy client.\n"
@@ -453,6 +464,127 @@ int ShowPod() {
     }
     return 0;
 }
+
+std::string GetAgentById(std::string job_id, std::string pod_id) {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return "";   
+    }
+    if (FLAGS_p.empty()) {
+        fprintf(stderr, "-p option is required\n");
+        return "";
+    }
+    if (FLAGS_j.empty()) {
+        fprintf(stderr, "-j option is required\n");
+        return "";
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::vector<baidu::galaxy::PodInformation> pods;
+    ok = galaxy->ShowPod(job_id, &pods);
+    if (!ok) {
+        fprintf(stderr, "Fail to query job\n");
+        return "";
+    }
+    std::vector<baidu::galaxy::PodInformation>::iterator it = pods.begin();
+    std::string agent_endpoint = "";
+    for (; it != pods.end(); ++it) {
+        if (it->podid == pod_id) {
+            agent_endpoint = it->endpoint;
+            break;
+        }
+    }
+    if (agent_endpoint == "") {
+        fprintf(stderr, "Fail to find pod\n");
+        return "";
+    }
+    return agent_endpoint.substr(0, agent_endpoint.find_last_of(":"));
+}
+
+int AttachPod() {
+    std::string agent_endpoint = GetAgentById(FLAGS_j, FLAGS_p);
+    if (agent_endpoint == "") {
+        return -1;
+    }
+    int sockfd = 0;
+    const int BUFFER_LEN = 1024 * 10;
+    char buffer[BUFFER_LEN];
+    struct sockaddr_in serv_addr;
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        fprintf(stderr, "Fail to create socket\n");
+        return -1;
+    }
+    memset(&serv_addr, 0, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(FLAGS_cli_server_port);
+
+    if (inet_pton(AF_INET, agent_endpoint.c_str(), &serv_addr.sin_addr) < 0) {
+        fprintf(stderr, "Wrong server address\n");
+        return -1;
+    }
+    if (connect(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        fprintf(stderr, "Fail to connect cli server\n");
+        return -1;
+    }
+    
+    struct termios temp_termios;
+    struct termios orig_termios;
+    ::signal(SIGINT, SIG_IGN);
+    ::signal(SIGTERM, SIG_IGN);
+    ::tcgetattr(0, &orig_termios);
+    temp_termios = orig_termios;
+    temp_termios.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
+    temp_termios.c_cc[VTIME] = 1;   // 终端等待延迟时间（十分之一秒为单位）
+    temp_termios.c_cc[VMIN] = 1;    // 终端接收字符数
+    ::tcsetattr(0, TCSANOW, &temp_termios);
+    
+    fd_set fd_in;
+    int ret = 0;
+    write(sockfd, FLAGS_p.c_str(), 36); //send pod id
+
+    fprintf(stderr, "send: %s\n", FLAGS_p.c_str());
+    
+    while (1) {
+        FD_ZERO(&fd_in);
+        FD_SET(sockfd, &fd_in);
+        FD_SET(0, &fd_in);
+
+        ret = ::select(sockfd + 1, &fd_in, NULL, NULL, NULL);
+        if (ret < 0) {
+            fprintf(stderr, "Select error\n");
+            break;
+        } else {
+            if (FD_ISSET(0, &fd_in)) {
+                ret = ::read(0, buffer, sizeof(buffer));
+                if (ret > 0) {
+                    write(sockfd, buffer, ret);
+                } else if (ret < 0) {
+                    fprintf(stderr, "Read error\n");
+                    break;
+                }
+            }
+            if (FD_ISSET(sockfd, &fd_in)) {
+                ret = ::read(sockfd, buffer, sizeof(buffer));
+                if (ret > 0) {
+                    write(1, buffer, ret);
+                } else if (ret < 0) {
+                    fprintf(stderr, "Read error\n");
+                } else {
+                    fprintf(stdout, "Attach pod finished!\n");
+                    break;
+                }
+            }
+        }
+    }
+
+    close(sockfd);
+    ::tcsetattr(0, TCSANOW, &orig_termios);
+    if (ret < 0) {
+        return -1;
+    }
+    return 0;
+}
 int SwitchSafeMode(bool mode) {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
@@ -470,6 +602,7 @@ int SwitchSafeMode(bool mode) {
     printf("sucessfully %s safemode\n", mode ? "enter" : "leave");
     return 0;
 }
+
 int GetMasterStatus() {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
@@ -621,6 +754,8 @@ int main(int argc, char* argv[]) {
             return SwitchSafeMode(true);
         else if (strcmp(argv[1], "leave") == 0) 
             return SwitchSafeMode(false);
+    } else if (strcmp(argv[1], "attach") == 0) {
+        return AttachPod();
     } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
@@ -629,3 +764,4 @@ int main(int argc, char* argv[]) {
 }
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
+
