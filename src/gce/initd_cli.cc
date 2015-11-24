@@ -11,12 +11,30 @@
 #include <sys/select.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <signal.h>
 
 #include "gflags/gflags.h"
 #include "proto/agent.pb.h"
 #include "proto/initd.pb.h"
 #include "rpc/rpc_client.h"
 #include "tprinter.h"
+#include "string_util.h"
+
+DEFINE_string(initd_endpoint, "", "initd endpoint");
+DEFINE_string(user, "galaxy", "use user");
+DEFINE_string(chroot, "", "chroot path");
+DEFINE_string(LINES, "39", "env values");
+DEFINE_string(COLUMNS, "139", "env values");
+DEFINE_string(TERM, "xterm-256color", "env values");
+DECLARE_string(agent_port);
+DECLARE_string(agent_default_user);
+DECLARE_string(flagfile);
+DEFINE_string(pod_id, "", "pod id");
+
+const std::string SInitdCliUsage = "initd client.\n"
+                                   "Usage: \n"
+                                   "     ./initd_cli ps --flagfile=galaxy.flag\n"
+                                   "     ./initd_cli attach --pod_id=<podid> --user=galaxy --flagfile=galaxy.flag\n";
 
 bool TerminateContact(int fdm) {
     if (fdm < 0) {
@@ -25,6 +43,8 @@ bool TerminateContact(int fdm) {
     struct termios temp_termios;
     struct termios orig_termios;
 
+    ::signal(SIGINT, SIG_IGN);
+    ::signal(SIGTERM, SIG_IGN);
     ::tcgetattr(0, &orig_termios);
     temp_termios = orig_termios;
     // 去掉输入同步的输出, 以及不等待换行符
@@ -120,25 +140,97 @@ bool PreparePty(int* fdm, std::string* pty_file) {
     return true;
 }
 
-DEFINE_string(initd_endpoint, "", "initd endpoint");
-DEFINE_string(user, "", "use user");
-DEFINE_string(chroot, "", "chroot path");
-DEFINE_string(LINES, "39", "env values");
-DEFINE_string(COLUMNS, "139", "env values");
+void ListPods() {
+    ::baidu::galaxy::Agent_Stub* agent;        
+    ::baidu::galaxy::RpcClient* rpc_client = 
+        new ::baidu::galaxy::RpcClient();
 
-int main(int argc, char* argv[]) {
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
-    baidu::galaxy::Initd_Stub* initd;
-    baidu::galaxy::RpcClient* rpc_client = 
-        new baidu::galaxy::RpcClient();
-    std::string endpoint(FLAGS_initd_endpoint);
-    rpc_client->GetStub(endpoint, &initd);
+    std::string endpoint("127.0.0.1:");
+    endpoint.append(FLAGS_agent_port); 
+    rpc_client->GetStub(endpoint, &agent);
+    
+    ::baidu::galaxy::ShowPodsRequest request;
+    ::baidu::galaxy::ShowPodsResponse response;
+    bool ret = rpc_client->SendRequest(agent,
+            &::baidu::galaxy::Agent_Stub::ShowPods,
+            &request,
+            &response, 5, 1); 
+    if (!ret) {
+        fprintf(stderr, "rpc failed\n"); 
+        return;
+    } else if (response.has_status() 
+                && response.status() != ::baidu::galaxy::kOk) {
+        fprintf(stderr, "response status %s\n", 
+                ::baidu::galaxy::Status_Name(response.status()).c_str()); 
+        return;
+    }
+
+    ::baidu::common::TPrinter tp(7);
+    tp.AddRow(7, "", "podid", "jobid", "job name", "state", "cpu usage", "mem usage");
+    for (int i = 0; i < response.pods_size(); ++i) {
+        const ::baidu::galaxy::PodPropertiy& pod = response.pods(i);
+        std::vector<std::string> vs;
+        vs.push_back(::baidu::common::NumToString(i + 1));
+        vs.push_back(pod.pod_id());
+        vs.push_back(pod.job_id());
+        vs.push_back(pod.job_name());
+        vs.push_back(::baidu::galaxy::PodState_Name(
+                    pod.pod_status().state()));
+        vs.push_back(::baidu::common::NumToString(
+                    pod.pod_status().resource_used().millicores()));
+        vs.push_back(::baidu::common::NumToString(
+                    pod.pod_status().resource_used().memory()));
+        //vs.push_back(pod.initd_endpoint());
+        tp.AddRow(vs);
+    }
+    fprintf(stdout, "%s\n", tp.ToString().c_str());
+    return;
+}
+
+void AttachPod() {
+    ::baidu::galaxy::Agent_Stub* agent;    
+    ::baidu::galaxy::RpcClient* rpc_client = 
+        new ::baidu::galaxy::RpcClient();
+    std::string endpoint("127.0.0.1:");
+    endpoint.append(FLAGS_agent_port);
+    rpc_client->GetStub(endpoint, &agent);
+
+    ::baidu::galaxy::ShowPodsRequest request;
+    ::baidu::galaxy::ShowPodsResponse response;
+    request.set_podid(FLAGS_pod_id);
+    bool ret = rpc_client->SendRequest(agent,
+            &::baidu::galaxy::Agent_Stub::ShowPods,
+            &request,
+            &response, 5, 1);
+    if (!ret) {
+        fprintf(stderr, "rpc failed\n");  
+        return;
+    } else if (response.has_status()
+            && response.status() != ::baidu::galaxy::kOk) {
+        fprintf(stderr, "response status %s\n",
+                ::baidu::galaxy::Status_Name(response.status()).c_str()); 
+        return;
+    }
+
+    if (response.pods_size() != 1) {
+        fprintf(stderr, "pod size not 1[%d]\n", 
+                        response.pods_size()); 
+        return;
+    }
+
+    const ::baidu::galaxy::PodPropertiy& pod = response.pods(0);
+
+    FLAGS_initd_endpoint = pod.initd_endpoint();
+    FLAGS_chroot = pod.pod_path();
+    ::baidu::galaxy::Initd_Stub* initd;
+    std::string initd_endpoint(FLAGS_initd_endpoint);
+    rpc_client->GetStub(initd_endpoint, &initd);
 
     std::string pty_file;
     int pty_fdm = -1;
     if (!PreparePty(&pty_fdm, &pty_file)) {
         fprintf(stderr, "prepare pty failed\n"); 
-        return -1;
+        return;
     }
 
     baidu::galaxy::ExecuteRequest exec_request;
@@ -159,8 +251,11 @@ int main(int argc, char* argv[]) {
     std::string* columns_env = exec_request.add_envs();
     columns_env->append("COLUMNS=");
     columns_env->append(FLAGS_COLUMNS);
+    std::string* xterm_env = exec_request.add_envs();
+    xterm_env->append("TERM=");
+    xterm_env->append(FLAGS_TERM);
     baidu::galaxy::ExecuteResponse exec_response;
-    bool ret = rpc_client->SendRequest(initd,
+    ret = rpc_client->SendRequest(initd,
                             &baidu::galaxy::Initd_Stub::Execute,
                             &exec_request,
                             &exec_response, 5, 1);
@@ -172,11 +267,31 @@ int main(int argc, char* argv[]) {
         } else {
             fprintf(stderr, "terminate contact interrupt\n"); 
         }
-        return 0;
+        return;
     } 
     fprintf(stderr, "exec in initd failed %s\n", 
             baidu::galaxy::Status_Name(exec_response.status()).c_str());
-    return -1;
+    return;
+}
+
+int main(int argc, char* argv[]) {
+    FLAGS_flagfile="galaxy.flag";
+    ::google::SetUsageMessage(SInitdCliUsage);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    if (argc < 2) {
+        fprintf(stderr, "%s", SInitdCliUsage.c_str()); 
+        return -1;
+    } 
+
+    if (strcmp(argv[1], "ps") == 0) {
+        ListPods(); 
+    } else if (strcmp(argv[1], "attach") == 0) {
+        AttachPod(); 
+    } else {
+        fprintf(stderr, "%s", SInitdCliUsage.c_str()); 
+        return -1;
+    }
+    return 0;
 }
 
 /* vim: set ts=4 sw=4 sts=4 tw=100 */
