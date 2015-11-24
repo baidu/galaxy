@@ -26,12 +26,13 @@
 #include "agent/resource_collector.h"
 #include "logging.h"
 #include "timer.h"
-#include "agent/cpu_scheduler.h"
 
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_string(agent_work_dir);
 DECLARE_string(agent_global_cgroup_path);
+DECLARE_string(agent_global_hardlimit_path);
+DECLARE_string(agent_global_softlimit_path);
 DECLARE_int32(agent_detect_interval);
 DECLARE_int32(agent_millicores_share);
 DECLARE_int64(agent_mem_share);
@@ -52,7 +53,8 @@ TaskManager::TaskManager() :
     background_thread_(5), 
     cgroup_root_(FLAGS_gce_cgroup_root),
     hierarchies_(),
-    rpc_client_(NULL) {
+    rpc_client_(NULL),
+    hardlimit_cores_(0){
     rpc_client_ = new RpcClient();
 }
 
@@ -72,8 +74,25 @@ int TaskManager::Init() {
     hierarchies_.clear();
     for (size_t i = 0; i < sub_systems.size(); i++) {
         if (sub_systems[i].empty()) {
-            continue; 
+            continue;
         }
+        if (sub_systems[i] == "cpu") {
+            bool ok = InitCpuSubSystem();
+            if (!ok) {
+                LOG(WARNING, "fail to init cpu sub system");
+                return -1;
+            }
+            cgroup_funcs_.insert(std::make_pair("cpu", 
+                        boost::bind(&TaskManager::HandleInitTaskCpuCgroup, this, sub_systems[i], _1)));
+            continue;
+        } else if (sub_systems[i] == "memory"){
+            cgroup_funcs_.insert(std::make_pair("memory", 
+                        boost::bind(&TaskManager::HandleInitTaskMemCgroup, this, sub_systems[i], _1)));
+        } else {
+            cgroup_funcs_.insert(std::make_pair(sub_systems[i], 
+             boost::bind(&TaskManager::HandleInitTaskComCgroup, this, sub_systems[i], _1)));
+        }
+
         // no deal with freezer
         std::string hierarchy =
             FLAGS_gce_cgroup_root + "/" 
@@ -86,16 +105,10 @@ int TaskManager::Init() {
             LOG(WARNING, "mkdir global cgroup path failed"); 
             return -1;
         }
-
         LOG(INFO, "support cgroups hierarchy %s", hierarchy.c_str());
-
         hierarchies_[sub_systems[i]] = hierarchy;
     }
     LOG(INFO, "support cgroups types %u", sub_systems.size());
-    bool ok = InitCpuSubSystem();
-    if (!ok) {
-        return -1;
-    }
     return 0;
 }
 
@@ -109,20 +122,70 @@ bool TaskManager::InitCpuSubSystem() {
         LOG(WARNING, "cpu sub system is disable");
         return true;
     }
-    int32_t global_cpu_limit = FLAGS_agent_millicores_share * CPU_CFS_PERIOD/1000;
-    std::string cgroup_name = "cpu/" + FLAGS_agent_global_cgroup_path;
-    int ok = cgroups::Write(FLAGS_gce_cgroup_root, 
-                            cgroup_name,
-                            "cpu.cfs_quota_us",
-                            boost::lexical_cast<std::string>(global_cpu_limit));
-    if (ok != 0) {
-        LOG(WARNING, "fail to write cpu global limit %d %s%s ", global_cpu_limit,
-                FLAGS_gce_cgroup_root.c_str(), cgroup_name.c_str());
+    std::string hierarchy = FLAGS_gce_cgroup_root + "/cpu";
+    if (!file::IsExists(hierarchy)) {
+        LOG(WARNING, "cpu subfolder does not exist");
+        return false;
+    }
+    hierarchies_["cpu"] = hierarchy;
+    std::string hardlimit_folder = hierarchy + "/" + FLAGS_agent_global_hardlimit_path;
+    if (!file::IsExists(hardlimit_folder)) {
+        // add hard_limit folder
+        bool mkdir_ok = file::Mkdir(hardlimit_folder);
+        if (!mkdir_ok) {
+            LOG(WARNING, "mkdir global cpu hardlimit path %s failed", hardlimit_folder.c_str());
+            return false;
+        } 
+    }
+    int write_ok = cgroups::Write(hardlimit_folder, 
+                                  "cpu.cfs_quota_us",
+                                  boost::lexical_cast<std::string>("-1"));
+
+    if (write_ok != 0) {
+        LOG(WARNING, "fail to write cpu global limit %d %s/%s ",
+                -1,
+                hardlimit_folder.c_str(), "cpu.cfs_quota_us");
+        return false;
+    }
+    std::string softlimit_folder = hierarchy + "/" + FLAGS_agent_global_softlimit_path;
+    // add soft_limit
+    if (!file::IsExists(softlimit_folder)) {
+        bool mkdir_ok = file::Mkdir(softlimit_folder);
+        if (!mkdir_ok) {
+            LOG(WARNING, "mkdir global cpu softlimit path %s failed", softlimit_folder.c_str());
+            return false;
+        }
+    }
+    int32_t softlimit_cores = FLAGS_agent_millicores_share * (CPU_CFS_PERIOD / 1000); 
+    write_ok = cgroups::Write(softlimit_folder, 
+                                  "cpu.cfs_quota_us",
+                                  boost::lexical_cast<std::string>(softlimit_cores));
+    if (write_ok != 0) {
+        LOG(WARNING, "fail to write softlimit quota %d to %s", softlimit_cores, softlimit_folder.c_str());
         return false;
     }
     return true;
 }
- 
+
+bool TaskManager::HandleHardlimitChange(int32_t hardlimit_cores) {
+    tasks_mutex_.AssertHeld();
+    if (hierarchies_.find("cpu") == hierarchies_.end()) {
+        LOG(WARNING, "cpu subsystem is disabled");
+        return true;
+    }
+    std::string softlimit_folder = hierarchies_["cpu"] + "/" + FLAGS_agent_global_softlimit_path;
+    int32_t softlimit_cores = (FLAGS_agent_millicores_share - hardlimit_cores) * (CPU_CFS_PERIOD / 1000);
+    int write_ok = cgroups::Write(softlimit_folder, 
+                                  "cpu.cfs_quota_us",
+                                  boost::lexical_cast<std::string>(softlimit_cores));
+    if (write_ok != 0) {
+        LOG(WARNING, "fail to write softlimit quota %d to %s", softlimit_cores, softlimit_folder.c_str());
+        return false;
+    }
+    return true;
+}
+
+
 int TaskManager::ReloadTask(const TaskInfo& task) {
     MutexLock scope_lock(&tasks_mutex_);
     std::map<std::string, TaskInfo*>::iterator it = 
@@ -316,6 +379,12 @@ int TaskManager::RunTask(TaskInfo* task_info) {
     }
     initd_request.set_path(task_info->task_workspace);
     initd_request.set_cgroup_path(task_info->cgroup_path);
+    std::map<std::string, std::string>::iterator it = task_info->cgroups.begin();
+    for (;it != task_info->cgroups.end(); ++it) {
+        CgroupPath* cpath = initd_request.add_cgroups();
+        cpath->set_subsystem(it->first);
+        cpath->set_cgroup_path(it->second);
+    }
     initd_request.set_user(FLAGS_agent_default_user);
     std::string* pod_id = initd_request.add_envs();
     pod_id->append("POD_ID=");
@@ -475,7 +544,17 @@ int TaskManager::CleanTask(TaskInfo* task_info) {
         task_info->status.set_state(kTaskError);
         return -1;
     }
-
+    if (!task_info->desc.has_cpu_isolation_type()
+        ||  task_info->desc.cpu_isolation_type() == kCpuIsolationHard) {
+        int32_t old_hardlimit_cores = hardlimit_cores_;
+        hardlimit_cores_ -= task_info->desc.requirement().millicores();
+        bool ok = HandleHardlimitChange(hardlimit_cores_);
+        if (!ok) {
+            LOG(WARNING, "fail move cpu quota from hard limit to sofelimit , the hardlimit is %d", hardlimit_cores_); 
+            hardlimit_cores_ = old_hardlimit_cores;
+        }
+    }
+     
     LOG(INFO, "task %s clean success", task_info->task_id.c_str());
     return 0;
 }
@@ -831,111 +910,161 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     return; 
 }
 
+bool TaskManager::HandleInitTaskComCgroup(std::string& subsystem, TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
+    if (task == NULL) {
+        return false;
+    }
+    if (hierarchies_.find(subsystem) == hierarchies_.end()) {
+        LOG(WARNING, "%s subsystem is disabled", subsystem.c_str());
+        return true;
+    }
+    std::string path = hierarchies_[subsystem] + "/" + FLAGS_agent_global_cgroup_path + "/" 
+        + task->task_id;
+    if(!file::Mkdir(path)) {
+        LOG(WARNING, "create dir %s failed for %s", path.c_str(), task->task_id.c_str());
+        return false;
+    }
+    LOG(INFO, "create cgroup %s , %s for task %s", subsystem.c_str(), path.c_str(),
+            task->task_id.c_str());
+    task->cgroups[subsystem] = path;
+    return true;
+}
+
+bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
+    if (task == NULL) {
+        return false; 
+    }
+    LOG(INFO, "create cgroup %s for task %s",subsystem.c_str(), task->task_id.c_str());
+    if (hierarchies_.find("memory") == hierarchies_.end()) {
+        LOG(WARNING, "memory subsystem is disabled");
+        return true;
+    }
+    std::string mem_path = hierarchies_["memory"] + "/" + FLAGS_agent_global_cgroup_path + "/" 
+        + task->task_id;
+    if (!file::Mkdir(mem_path)) {
+        LOG(WARNING, "create dir %s failed for %s", mem_path.c_str(), task->task_id.c_str());
+        return false;
+    }
+    task->cgroups["memory"] = mem_path;
+    int64_t memory_limit = task->desc.requirement().memory();
+    if (task->desc.has_mem_isolation_type() && 
+            task->desc.mem_isolation_type() == 
+                    kMemIsolationLimit) {
+        int ret = cgroups::Write(mem_path,
+                                 "memory.soft_limit_in_bytes",
+                                 boost::lexical_cast<std::string>(memory_limit));    
+        if (ret != 0) {
+            LOG(WARNING, "set memory soft limit %ld failed for %s",
+                    memory_limit, mem_path.c_str()); 
+            return false;
+        }
+    } else {
+        if (cgroups::Write(mem_path,
+                    "memory.limit_in_bytes",
+                    boost::lexical_cast<std::string>(memory_limit)
+                    ) != 0) {
+            LOG(WARNING, "set memory limit %ld failed for %s",
+                    memory_limit, mem_path.c_str()); 
+            return false;
+        }
+    }
+    const int GROUP_KILL_MODE = 1;
+    if (file::IsExists(mem_path + "/memory.kill_mode") 
+            && cgroups::Write(mem_path,
+                "memory.kill_mode", 
+                boost::lexical_cast<std::string>(GROUP_KILL_MODE)
+                ) != 0) {
+        LOG(WARNING, "set memory kill mode failed for %s", 
+                mem_path.c_str()); 
+        return false;
+    }
+    return true; 
+}
+
+bool TaskManager::HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
+    if (task == NULL) {
+        return false;
+    }
+    LOG(INFO, "create cgroup %s for task %s",subsystem.c_str(), task->task_id.c_str());
+    if (hierarchies_.find("cpu") == hierarchies_.end()) {
+        LOG(WARNING, "cpu subsystem is disabled");
+        return true;
+    }
+    if (task->desc.has_cpu_isolation_type()
+        && task->desc.cpu_isolation_type() == kCpuIsolationSoft) {
+        LOG(INFO, "create soft limit task %s", task->task_id.c_str());
+        std::string cpu_path = hierarchies_["cpu"] + "/" + FLAGS_agent_global_softlimit_path 
+            + "/" + task->task_id;
+        if (!file::Mkdir(cpu_path)) {
+            LOG(WARNING, "create dir %s failed for %s", cpu_path.c_str(), task->task_id.c_str());
+            return false;
+        } 
+        task->cgroups[subsystem] = cpu_path;
+        int32_t cpu_limit = task->desc.requirement().millicores();
+        if (cgroups::Write(cpu_path,
+                           "cpu.shares",
+                           boost::lexical_cast<std::string>(cpu_limit)) != 0) {
+            LOG(WARNING, "set cpu shares %d failed for %s",
+                    cpu_limit, cpu_path.c_str()); 
+            return false;
+        }
+        if (cgroups::Write(cpu_path,
+                           "cpu.cfs_quota_us",
+                           boost::lexical_cast<std::string>(-1)
+                           ) != 0) {
+            LOG(WARNING, "disable cpu limit failed for %s", cpu_path.c_str()); 
+            return false;
+        } 
+    }else {
+        LOG(INFO, "create hard limit task %s", task->task_id.c_str());
+        std::string cpu_path = hierarchies_["cpu"] + "/" + FLAGS_agent_global_hardlimit_path + "/" + task->task_id;
+        if (!file::Mkdir(cpu_path)) {
+            LOG(WARNING, "create dir %s failed for %s", cpu_path.c_str(), task->task_id.c_str());
+            return false;
+        }
+        task->cgroups[subsystem] = cpu_path;
+        int32_t old_hardlimit_cores = hardlimit_cores_;
+        hardlimit_cores_ += task->desc.requirement().millicores();
+        int32_t limit_cores = task->desc.requirement().millicores() * (CPU_CFS_PERIOD / 1000);
+        if (cgroups::Write(cpu_path,
+                           "cpu.cfs_quota_us",
+                           boost::lexical_cast<std::string>(limit_cores)
+                           ) != 0) {
+            LOG(WARNING, "set cpu limit failed for %s", cpu_path.c_str()); 
+            return false;
+        }
+        bool ok = HandleHardlimitChange(hardlimit_cores_);
+        if (!ok) {
+            LOG(WARNING, "fail to adjust hardlimit to %d", hardlimit_cores_);
+            hardlimit_cores_ = old_hardlimit_cores;
+            return false;
+        }
+    }
+    return true;
+}
+
 int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     if (task == NULL) {
         return -1; 
     }
 
-    if (hierarchies_.size() == 0) {
+    if (cgroup_funcs_.size() == 0) {
         return 0; 
     } 
 
-    std::string cgroup_name = FLAGS_agent_global_cgroup_path + "/" 
-        + task->task_id;
-    task->cgroup_path = cgroup_name;
-    std::map<std::string, std::string>::iterator hier_it = 
-        hierarchies_.begin();
-    for (; hier_it != hierarchies_.end(); ++hier_it) {
-        std::string cgroup_dir = hier_it->second;     
-        cgroup_dir.append("/");
-        cgroup_dir.append(cgroup_name);
-        if (!file::Mkdir(cgroup_dir)) {
-            LOG(WARNING, "create dir %s failed for %s",
-                    cgroup_dir.c_str(), task->task_id.c_str());
+    std::map<std::string, CgroupFunc>::iterator func_it = cgroup_funcs_.begin();
+    for (; func_it != cgroup_funcs_.end(); ++func_it) { 
+        bool ok = func_it->second(task);
+        if (!ok) {
             return -1;
         }
-        LOG(INFO, "create cgroup %s success",
-                  cgroup_dir.c_str(), task->task_id.c_str());
+        LOG(INFO, "create cgroup %s success",  task->task_id.c_str());
     }
-
-    std::string cpu_hierarchy = hierarchies_["cpu"];
-    std::string mem_hierarchy = hierarchies_["memory"];
-    //const int CPU_CFS_PERIOD = 100000;
-    //const int MIN_CPU_CFS_QUOTA = 1000;
-
-    // cpu.shares
-    int32_t cpu_limit = task->desc.requirement().millicores();
-   // if (cpu_limit < MIN_CPU_CFS_QUOTA) {
-     //   cpu_limit = MIN_CPU_CFS_QUOTA; 
-   // }
-    if (cgroups::Write(cpu_hierarchy,
-                       cgroup_name,
-                       "cpu.shares",
-                       boost::lexical_cast<std::string>(cpu_limit)
-                       ) != 0) {
-        LOG(WARNING, "set cpu shares %d failed for %s",
-                cpu_limit, cgroup_name.c_str()); 
-        return -1;
-    }
-    if (cgroups::Write(cpu_hierarchy,
-                       cgroup_name,
-                       "cpu.cfs_quota_us",
-                       boost::lexical_cast<std::string>(-1)
-                       ) != 0) {
-        LOG(WARNING, "disable cpu limit failed for %s", cgroup_name.c_str()); 
-        return -1;
-    }
-    // use share, 
-    //int32_t cpu_share = task->desc.requirement().millicores() * 512;
-    //if (cgroups::Write(cpu_hierarchy,
-    //            cgroup_name,
-    //            "cpu.shares",
-    //            boost::lexical_cast<std::string>(cpu_share)
-    //            ) != 0) {
-    //    LOG(WARNING, "set cpu share %d failed for %s",
-    //            cpu_share, cgroup_name.c_str()); 
-    //    return -1;
-    //}
-    int64_t memory_limit = task->desc.requirement().memory();
-    if (task->desc.has_mem_isolation_type() && 
-            task->desc.mem_isolation_type() == 
-                    kMemIsolationLimit) {
-        int ret = cgroups::Write(mem_hierarchy,
-                                 cgroup_name,
-                                 "memory.soft_limit_in_bytes",
-                                 boost::lexical_cast<std::string>(memory_limit));    
-        if (ret != 0) {
-            LOG(WARNING, "set memory soft limit %ld failed for %s",
-                    memory_limit, cgroup_name.c_str()); 
-            return -1;
-        }
-    } else {
-        if (cgroups::Write(mem_hierarchy,
-                    cgroup_name,
-                    "memory.limit_in_bytes",
-                    boost::lexical_cast<std::string>(memory_limit)
-                    ) != 0) {
-            LOG(WARNING, "set memory limit %ld failed for %s",
-                    memory_limit, cgroup_name.c_str()); 
-            return -1;
-        }
-    }
-
-    const int GROUP_KILL_MODE = 1;
-    if (file::IsExists(mem_hierarchy + "/" + cgroup_name 
-                + "/memory.kill_mode") 
-            && cgroups::Write(mem_hierarchy, cgroup_name, 
-                "memory.kill_mode", 
-                boost::lexical_cast<std::string>(GROUP_KILL_MODE)
-                ) != 0) {
-        LOG(WARNING, "set memory kill mode failed for %s", 
-                cgroup_name.c_str()); 
-        return -1;
-    }
-    
     if (PrepareCpuScheduler(task) != 0) {
-        LOG(WARNING, "prepare cpu scheduler for %s failed", 
-                        task->task_id.c_str());
+        LOG(WARNING, "prepare cpu scheduler for %s failed", task->task_id.c_str());
         return -1; 
     }
     return 0;    
@@ -951,33 +1080,30 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
                         task->task_id.c_str()); 
         return -1;
     }
+    std::string freezer_path;
+    if (task->cgroups.find("freezer") != task->cgroups.end()) {
+        freezer_path = task->cgroups["freezer"];
+    }
+    std::map<std::string, std::string>::iterator it = task->cgroups.begin();
 
-    std::string cgroup = FLAGS_agent_global_cgroup_path + "/" 
-        + task->task_id;
-    std::string freezer_hierarchy = hierarchies_["freezer"];
-    std::map<std::string, std::string>::iterator hier_it = 
-        hierarchies_.begin();
-    for (; hier_it != hierarchies_.end(); ++hier_it) {
-        if (hier_it->first == "freezer") {
+    for (;it != task->cgroups.end(); ++it) {
+        if (it->first == "freezer") {
             continue; 
         }
-        std::string cgroup_dir = hier_it->second; 
-        cgroup_dir.append("/");
-        cgroup_dir.append(cgroup);
+        std::string cgroup_dir = it->second; 
         if (!file::IsExists(cgroup_dir)) {
-            LOG(INFO, "%s %s not exists",
-                    (hier_it->second).c_str(), cgroup.c_str()); 
+            LOG(INFO, "%s not exists", cgroup_dir.c_str()); 
             continue;
         }
-        if (!cgroups::FreezerSwitch(freezer_hierarchy, 
-                                    cgroup, "FROZEN")) {
-            LOG(WARNING, "%s %s frozen failed", freezer_hierarchy.c_str(), cgroup.c_str()); 
+
+        if (!cgroups::FreezerSwitch(freezer_path, "FROZEN")) {
+            LOG(WARNING, "%s frozen failed", freezer_path.c_str()); 
             return -1;
         }
         std::vector<int> pids;
-        if (!cgroups::GetPidsFromCgroup(hier_it->second, cgroup, &pids)) {
+        if (!cgroups::GetPidsFromCgroup(cgroup_dir, &pids)) {
             LOG(WARNING, "get pids from %s failed",
-                    cgroup.c_str());  
+                    cgroup_dir.c_str());  
             return -1;
         }
 
@@ -988,9 +1114,8 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
                 ::kill(pid, SIGKILL); 
             }
         }
-        if (!cgroups::FreezerSwitch(freezer_hierarchy,
-                                    cgroup, "THAWED")) {
-            LOG(WARNING, "%s %s thawed failed", freezer_hierarchy.c_str(), cgroup.c_str()); 
+        if (!cgroups::FreezerSwitch(freezer_path, "THAWED")) {
+            LOG(WARNING, "%s thawed failed", freezer_path.c_str()); 
             return -1;
         }
 
@@ -1001,18 +1126,16 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
             return -1;
         }
     }
-
-    std::string freezer_cgroup_path = freezer_hierarchy + "/" + cgroup;
-    if (::rmdir(freezer_cgroup_path.c_str()) != 0
+    if (::rmdir(freezer_path.c_str()) != 0
             && errno != ENOENT) {
-        LOG(WARNING, "rmdir %s/%s failed err[%d: %s]",
-                freezer_hierarchy.c_str(), cgroup.c_str(), 
+        LOG(WARNING, "rmdir %sfailed err[%d: %s]",
+                freezer_path.c_str(), 
                 errno, strerror(errno)); 
         return -1;
     }
-
     return 0;
 }
+
 
 int TaskManager::PrepareResourceCollector(TaskInfo* task_info) {
     if (task_info == NULL) {
@@ -1030,7 +1153,9 @@ int TaskManager::PrepareResourceCollector(TaskInfo* task_info) {
     std::string cgroup_path = FLAGS_agent_global_cgroup_path + "/" 
                               + task_info->task_id;
     task_info->resource_collector = 
-                    new CGroupResourceCollector(cgroup_path);
+                    new CGroupResourceCollector(task_info->cgroups["memory"],
+                                                task_info->cgroups["cpu"],
+                                                task_info->cgroups["cpuacct"]);
     return 0; 
 }
 
@@ -1071,10 +1196,10 @@ int TaskManager::ResetCpuScheduler(TaskInfo* task_info) {
         return 0; 
     }
 
-    CpuScheduler* scheduler = CpuScheduler::GetInstance();
+   /* CpuScheduler* scheduler = CpuScheduler::GetInstance();
     scheduler->SetFrozen(task_info->cgroup_path, 
                          FLAGS_cpu_scheduler_start_frozen_time 
-                         * 1000);
+                         * 1000);*/
     return 0;
 }
 
@@ -1083,14 +1208,16 @@ int TaskManager::PrepareCpuScheduler(TaskInfo* task_info) {
         return 0; 
     }
 
-    CpuScheduler* scheduler = CpuScheduler::GetInstance(); 
+    /*CpuScheduler* scheduler = CpuScheduler::GetInstance(); 
     if (!scheduler->EnqueueTask(
-                task_info->cgroup_path, 
+                task_info->cgroups["memory"],
+                task_info->cgroups["cpu"],
+                task_info->cgroups["cpuacct"],
                 task_info->desc.requirement().millicores())) {
         LOG(WARNING, "enqueue task %s failed",
                     task_info->task_id.c_str());
         return -1;  
-    }
+    }*/
     return 0;
 }
 
@@ -1099,12 +1226,12 @@ int TaskManager::CleanCpuScheduler(TaskInfo* task_info) {
         return 0; 
     }
 
-    CpuScheduler* scheduler = CpuScheduler::GetInstance();  
+    /*CpuScheduler* scheduler = CpuScheduler::GetInstance();  
     if (!scheduler->DequeueTask(task_info->cgroup_path)) {
         LOG(WARNING, "dequeue task %s failed", 
                     task_info->task_id.c_str());
         return -1; 
-    }
+    }*/
     return 0;
 }
 

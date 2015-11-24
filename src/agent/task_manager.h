@@ -10,6 +10,7 @@
 #include "proto/initd.pb.h"
 #include "rpc/rpc_client.h"
 #include "thread_pool.h"
+#include "boost/function.hpp"
 
 namespace baidu {
 namespace galaxy {
@@ -74,13 +75,20 @@ protected:
                                         + "_stop"); 
     }
     bool InitCpuSubSystem();
+    bool HandleHardlimitChange(int32_t hardlimit_cores);
+    bool HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task);
+    bool HandleInitTaskMemCgroup(std::string& subsystem, TaskInfo* task);
+    bool HandleInitTaskComCgroup(std::string& subsystem, TaskInfo* task);
 protected:
     Mutex tasks_mutex_;
     std::map<std::string, TaskInfo*> tasks_;
     ThreadPool background_thread_;
     std::string cgroup_root_;
+    typedef boost::function<bool (TaskInfo* task)> CgroupFunc;
+    std::map<std::string, CgroupFunc> cgroup_funcs_;
     std::map<std::string, std::string> hierarchies_;
     RpcClient* rpc_client_;
+    int32_t hardlimit_cores_;
 };
 
 }   // ending namespace galaxy

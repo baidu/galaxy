@@ -26,7 +26,7 @@ DEFINE_int32(max_need_update_job_size, 10, "the max size of need update job size
 DEFINE_int32(max_scale_down_size, 10, "the max size of scale down jobs that schedule fetches");
 DEFINE_int32(max_scale_up_size, 10, "the max size of scale up jobs that schedule fetches");
 DEFINE_int32(master_pending_job_wait_timeout, 1000, "the timeout that master pending scheduler request");
-// scheduler
+// scheduler* (CPU_CFS_PERIOD / 1000)
 DEFINE_int32(scheduler_get_pending_job_timeout, 2000, "the timeout that scheduler get pending job from master");
 DEFINE_int32(scheduler_get_pending_job_period, 2000, "the period that scheduler get pending job from master");
 DEFINE_int32(scheduler_sync_resource_timeout, 1000, "the timeout that scheduler sync resource from master");
@@ -57,6 +57,10 @@ DEFINE_int32(agent_rpc_initd_timeout, 2, "agent monitor initd interval, unit sec
 DEFINE_int32(agent_initd_port_begin, 9000, "agent initd port used begin");
 DEFINE_int32(agent_initd_port_end, 9500, "agent initd port used end");
 DEFINE_string(agent_persistence_path, "./data", "agent persistence path");
+// hard limit
+DEFINE_string(agent_global_hardlimit_path, "galaxy", "agent cpu hard limit root");
+// soft limit
+DEFINE_string(agent_global_softlimit_path, "softlimit", "agent cpu soft limit root");
 DEFINE_string(agent_global_cgroup_path, "galaxy", "agent cgroup global path");
 DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
 DEFINE_string(agent_default_user, "galaxy", "agent default run task user");

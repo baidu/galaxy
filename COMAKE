@@ -11,7 +11,7 @@ CopyUsingHardLink(True)
 #ENABLE_MULTI_LIBS(True)
 
 #C预处理器参数.
-CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"_TEST_VERSION_\\\" -D_BD_KERNEL_')
+CPPFLAGS('-D_GNU_SOURCE -D__STDC_LIMIT_MACROS -DVERSION=\\\"b71ff7eebcb7c047ad104029d44a9f66544d4226\\\" -D_BD_KERNEL_')
 #为32位目标编译指定额外的预处理参数
 #CPPFLAGS_32('-D_XOPEN_SOURE=500')
 
@@ -73,9 +73,8 @@ agent_src='src/agent/agent_impl.cc\
            src/agent/persistence_handler.cc\
            src/agent/cgroups.cc\
            src/proto/initd.proto\
-           src/agent/resource_collector.cc\
-           src/agent/cpu_scheduler.cc'
-
+           src/agent/resource_collector.cc'
+           
 initd_src='src/gce/initd_main.cc\
            src/gce/initd_impl.cc\
            src/agent/utils.cc \
@@ -100,12 +99,12 @@ test_task_manager_src='src/proto/initd.proto src/proto/galaxy.proto \
                        src/agent/cpu_scheduler.cc'
 test_cgroup_src='src/agent/cgroups.cc src/agent/test_cgroups.cc'
 
-test_resource_collector_src='src/agent/test_resource_collector.cc\
-                            src/agent/resource_collector.cc src/flags.cc\
-                            src/agent/cgroups.cc'
-test_cgroup_resource_collector_src='src/agent/test_cgroup_resource_collector.cc\
-                                   src/agent/resource_collector.cc src/flags.cc\
-                                   src/agent/cgroups.cc'
+#test_resource_collector_src='src/agent/test_resource_collector.cc\
+#                            src/agent/resource_collector.cc src/flags.cc\
+#                            src/agent/cgroups.cc'
+#test_cgroup_resource_collector_src='src/agent/test_cgroup_resource_collector.cc\
+#                                   src/agent/resource_collector.cc src/flags.cc\
+                                   #src/agent/cgroups.cc'
 
 test_persistence_handler_src='src/proto/agent.proto src/proto/galaxy.proto  \
                               src/proto/initd.proto \
@@ -122,8 +121,8 @@ StaticLibrary('galaxy',Sources(sdk_src),HeaderFiles(sdk_headers))
 Application('galaxy',Sources(client_src), Libraries('./libgalaxy.a ./common/libcommon.a ./ins/libins_sdk.a'))
 Application('test_task_manager', Sources(test_task_manager_src))
 Application('test_cgroup', Sources(test_cgroup_src))
-Application('test_resource_collector', Sources(test_resource_collector_src))
-Application('test_persistence_handler', Sources(test_persistence_handler_src))
-Application('test_cgroup_resource_collector', Sources(test_cgroup_resource_collector_src))
+#Application('test_resource_collector', Sources(test_resource_collector_src))
+#Application('test_persistence_handler', Sources(test_persistence_handler_src))
+#Application('test_cgroup_resource_collector', Sources(test_cgroup_resource_collector_src))
 Application('test_index_list', Sources(test_index_list_src))
 Application('initd_cli', Sources(initd_cli_src))

@@ -209,7 +209,7 @@ bool CpuScheduler::EnqueueTask(const std::string& cgroup_name,
         return true;
     }
     
-    CpuSchedulerCell* cell = new CpuSchedulerCell(); 
+    /*CpuSchedulerCell* cell = new CpuSchedulerCell(); 
     cell->cgroup_name = cgroup_name;
     cell->cpu_quota = cpu_quota;
     cell->cpu_guarantee = FLAGS_cpu_scheduler_guarantee;
@@ -220,7 +220,7 @@ bool CpuScheduler::EnqueueTask(const std::string& cgroup_name,
                     new CGroupResourceCollector(cgroup_name);
     cell->last_schedule_time = common::timer::get_micros() / 1000;
     schedule_cells_[cgroup_name] = cell;
-    cell->resource_collector->CollectStatistics();
+    cell->resource_collector->CollectStatistics();*/
     return true;
 }
 
