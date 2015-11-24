@@ -73,6 +73,7 @@ protected:
         task_info->stop_process.set_key(task_info->task_id  
                                         + "_stop"); 
     }
+    bool InitCpuSubSystem();
 protected:
     Mutex tasks_mutex_;
     std::map<std::string, TaskInfo*> tasks_;
