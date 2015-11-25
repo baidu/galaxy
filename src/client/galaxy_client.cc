@@ -265,6 +265,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         for (rapidjson::SizeType i = 0; i < tasks_json.Size(); i++) {
             ::baidu::galaxy::TaskDescription task;
             task.binary = tasks_json[i]["binary"].GetString();
+            task.offset = i;
             task.source_type = tasks_json[i]["source_type"].GetString();
             if (task.source_type == "kSourceTypeBinary") {
                 ReadBinary(tasks_json[i]["binary"].GetString(), &task.binary);
@@ -279,6 +280,12 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             if (tasks_json[i].HasMember("mem_isolation_type")) {
                 task.mem_isolation_type = tasks_json[i]["mem_isolation_type"].GetString();
             }
+            if (tasks_json[i].HasMember("envs")) {
+                const rapidjson::Value& task_envs = tasks_json[i]["envs"];
+                for (rapidjson::SizeType i = 0; i < task_envs.Size(); i++) {
+                    task.envs.insert(task_envs[i].GetString());
+                }
+            }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
             ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);
@@ -292,7 +299,6 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     res->ports.push_back(task_ports[i].GetInt());
                 }
             }
-
             if (tasks_json[i]["requirement"].HasMember("disks")) {
                 const rapidjson::Value& task_disks = tasks_json[i]["requirement"]["disks"];
                 for (rapidjson::SizeType i = 0; i < task_disks.Size(); i++) { 
