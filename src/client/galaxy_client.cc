@@ -279,6 +279,10 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             if (tasks_json[i].HasMember("mem_isolation_type")) {
                 task.mem_isolation_type = tasks_json[i]["mem_isolation_type"].GetString();
             }
+            task.cpu_isolation_type= "kCpuIsolationHard";
+            if (tasks_json[i].HasMember("cpu_isolation_type")) {
+                task.cpu_isolation_type = tasks_json[i]["cpu_isolation_type"].GetString();
+            }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
             ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);
