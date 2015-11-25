@@ -130,6 +130,7 @@ int PodManager::LanuchInitdByFork(PodInfo* info) {
     command.append(" --gce_initd_dump_file=");
     command.append(path + "/initd_checkpoint_file");
     file::Mkdir(path);
+    info->pod_path = path;
     if (!process::PrepareStdFds(path, &stdout_fd, &stderr_fd)) {
         LOG(WARNING, "prepare std fds for pod %s failed",
                 info->pod_id.c_str()); 
@@ -201,6 +202,7 @@ int PodManager::LanuchInitd(PodInfo* info) {
         LOG(WARNING, "mkdir %s failed", context.path.c_str()); 
         return -1;
     }
+    info->pod_path = context.path;
 
     if (!process::PrepareStdFds(context.path,
                                 &context.stdout_fd,
@@ -279,7 +281,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
     if (pod_info.tasks.size() == 0) {
         // TODO check initd exits
         if (pod_info.initd_pid > 0) { 
-            ::kill(pod_info.initd_pid, SIGTERM);
+            ::kill(pod_info.initd_pid, SIGKILL);
             int status = 0;
             pid_t pid = ::waitpid(pod_info.initd_pid, &status, WNOHANG); 
             if (pid == 0) {
@@ -501,10 +503,12 @@ int PodManager::ReloadPod(const PodInfo& info) {
             return -1;
         }
     }
-    LOG(INFO, "reload pod %s job %s initd pid %d success ", 
+    internal_info.pod_path = FLAGS_agent_work_dir + "/" + internal_info.pod_id;
+    LOG(INFO, "reload pod %s job %s initd pid %d at %s success ", 
             internal_info.pod_id.c_str(), 
             internal_info.job_id.c_str(),
-            internal_info.initd_pid);
+            internal_info.initd_pid,
+            internal_info.pod_path.c_str());
     return 0;
 }
 

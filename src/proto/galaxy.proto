@@ -34,6 +34,7 @@ enum PodStage {
     kStageRunning = 1;
     kStageDeath = 2;
     kStageRemoved = 3;
+    kStageFinished = 4;
 }
 
 enum TaskState {

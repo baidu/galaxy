@@ -143,6 +143,8 @@ struct PodInfo {
     int initd_port;
     int initd_pid;
     std::map<std::string, TaskInfo> tasks;
+    std::string pod_path;
+    std::string job_name; 
 
     std::string ToString() {
         std::string str_format; 
@@ -170,6 +172,12 @@ struct PodInfo {
             str_format.append(",\n");
         }
         str_format.append("]\n");
+        str_format.append("pod path: ");
+        str_format.append(pod_path);
+        str_format.append("\n");
+        str_format.append("job name: ");
+        str_format.append(job_name);
+        str_format.append("\n");
         return str_format;
     }
 
@@ -180,7 +188,9 @@ struct PodInfo {
           pod_status(),
           initd_port(-1),
           initd_pid(-1),
-          tasks() {
+          tasks(),
+          pod_path(),
+          job_name() {
     }
 
     void CopyFrom(const PodInfo& pod_info) {
@@ -191,6 +201,8 @@ struct PodInfo {
         initd_port = pod_info.initd_port;
         initd_pid = pod_info.initd_pid;
         tasks = pod_info.tasks;
+        pod_path = pod_info.pod_path;
+        job_name = pod_info.job_name;
     }
 
     PodInfo(const PodInfo& pod_info) {
