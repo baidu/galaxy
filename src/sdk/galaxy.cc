@@ -114,7 +114,6 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
             return false;
         }
         CpuIsolationType cpu_isolation_type;
-        fprintf(stdout, "cpu %s\n", sdk_job.pod.tasks[i].cpu_isolation_type.c_str());
         ok = CpuIsolationType_Parse(sdk_job.pod.tasks[i].cpu_isolation_type, &cpu_isolation_type);
         if (!ok) {
             return false;
