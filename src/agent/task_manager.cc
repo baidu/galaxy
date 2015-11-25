@@ -44,8 +44,6 @@ DECLARE_int32(cpu_scheduler_start_frozen_time);
 namespace baidu {
 namespace galaxy {
 
-const int CPU_CFS_PERIOD = 100000;
-
 TaskManager::TaskManager() : 
     tasks_mutex_(),
     tasks_(),
@@ -92,37 +90,9 @@ int TaskManager::Init() {
         hierarchies_[sub_systems[i]] = hierarchy;
     }
     LOG(INFO, "support cgroups types %u", sub_systems.size());
-    bool ok = InitCpuSubSystem();
-    if (!ok) {
-        return -1;
-    }
     return 0;
 }
 
-bool TaskManager::InitCpuSubSystem() {
-    std::vector<std::string> sub_systems; 
-    boost::split(sub_systems,
-            FLAGS_gce_support_subsystems,
-            boost::is_any_of(","),
-            boost::token_compress_on);
-    if (std::find(sub_systems.begin(), sub_systems.end(), "cpu") == sub_systems.end()) { 
-        LOG(WARNING, "cpu sub system is disable");
-        return true;
-    }
-    int32_t global_cpu_limit = FLAGS_agent_millicores_share * CPU_CFS_PERIOD/1000;
-    std::string cgroup_name = "cpu/" + FLAGS_agent_global_cgroup_path;
-    int ok = cgroups::Write(FLAGS_gce_cgroup_root, 
-                            cgroup_name,
-                            "cpu.cfs_quota_us",
-                            boost::lexical_cast<std::string>(global_cpu_limit));
-    if (ok != 0) {
-        LOG(WARNING, "fail to write cpu global limit %d %s%s ", global_cpu_limit,
-                FLAGS_gce_cgroup_root.c_str(), cgroup_name.c_str());
-        return false;
-    }
-    return true;
-}
- 
 int TaskManager::ReloadTask(const TaskInfo& task) {
     MutexLock scope_lock(&tasks_mutex_);
     std::map<std::string, TaskInfo*>::iterator it = 
@@ -860,29 +830,20 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
 
     std::string cpu_hierarchy = hierarchies_["cpu"];
     std::string mem_hierarchy = hierarchies_["memory"];
-    //const int CPU_CFS_PERIOD = 100000;
-    //const int MIN_CPU_CFS_QUOTA = 1000;
+    const int CPU_CFS_PERIOD = 100000;
+    const int MIN_CPU_CFS_QUOTA = 1000;
 
-    // cpu.shares
-    int32_t cpu_limit = task->desc.requirement().millicores();
-   // if (cpu_limit < MIN_CPU_CFS_QUOTA) {
-     //   cpu_limit = MIN_CPU_CFS_QUOTA; 
-   // }
-    if (cgroups::Write(cpu_hierarchy,
-                       cgroup_name,
-                       "cpu.shares",
-                       boost::lexical_cast<std::string>(cpu_limit)
-                       ) != 0) {
-        LOG(WARNING, "set cpu shares %d failed for %s",
-                cpu_limit, cgroup_name.c_str()); 
-        return -1;
+    int32_t cpu_limit = task->desc.requirement().millicores() * (CPU_CFS_PERIOD / 1000);
+    if (cpu_limit < MIN_CPU_CFS_QUOTA) {
+        cpu_limit = MIN_CPU_CFS_QUOTA; 
     }
     if (cgroups::Write(cpu_hierarchy,
                        cgroup_name,
                        "cpu.cfs_quota_us",
-                       boost::lexical_cast<std::string>(-1)
+                       boost::lexical_cast<std::string>(cpu_limit)
                        ) != 0) {
-        LOG(WARNING, "disable cpu limit failed for %s", cgroup_name.c_str()); 
+        LOG(WARNING, "set cpu limit %d failed for %s",
+                cpu_limit, cgroup_name.c_str()); 
         return -1;
     }
     // use share, 
