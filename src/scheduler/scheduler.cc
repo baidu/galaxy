@@ -558,11 +558,7 @@ void Scheduler::HandleJobUpdate(JobInfo* job_info,
     }
     LOG(INFO, "job %s update stat: updating_count %d, update_step_size %d, need_update_size %u",
         job_info->jobid().c_str(), updating_count, job_info->desc().deploy_step(), need_update_pods.size());
-    int32_t max_update_size = need_update_pods.size();
-    if (max_update_size > job_info->desc().deploy_step()) {
-        max_update_size = job_info->desc().deploy_step();
-    }
-    for (size_t i = 0; i < need_update_pods.size() && updating_count < max_update_size ; i++ ) {
+    for (size_t i = 0; i < need_update_pods.size() && updating_count < job_info->desc().deploy_step() ; i++ ) {
         updating_count++;
         ScheduleInfo* sched_info = new ScheduleInfo();
         PodStatus* pod = need_update_pods[i];
