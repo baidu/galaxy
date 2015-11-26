@@ -24,8 +24,6 @@
 DECLARE_string(gce_cgroup_root);
 DECLARE_string(gce_support_subsystems);
 DECLARE_int64(gce_initd_zombie_check_interval);
-DECLARE_string(agent_global_cgroup_path);
-DECLARE_bool(agent_deploy_hybrid);
 
 namespace baidu {
 namespace galaxy {
@@ -286,16 +284,6 @@ bool InitdImpl::AttachCgroup(const std::string& cgroup_path,
     if (!cgroups::AttachPid(cgroup_path, 
                             child_pid)) {
         return false;     
-    }
-
-    if (FLAGS_agent_deploy_hybrid) {
-        std::string hierarchy = "/cgroups/tcp_throt";
-        if (!cgroups::AttachPid(hierarchy,
-                               FLAGS_agent_global_cgroup_path,
-                               child_pid)) {
-            fprintf(stdout, "AttachPid %s %s %d err[%d: %s]", hierarchy.c_str(), FLAGS_agent_global_cgroup_path.c_str(), child_pid, errno, strerror(errno));
-            return false;
-        }
     }
     return true;
 }

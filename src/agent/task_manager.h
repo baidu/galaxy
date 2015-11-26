@@ -75,6 +75,7 @@ protected:
     bool HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task);
     bool HandleInitTaskMemCgroup(std::string& subsystem, TaskInfo* task);
     bool HandleInitTaskComCgroup(std::string& subsystem, TaskInfo* task);
+    bool HandleInitTaskTcpCgroup(std::string& subsystem, TaskInfo* task);
     int InitTcpthrotEnv();
 protected:
     Mutex tasks_mutex_;

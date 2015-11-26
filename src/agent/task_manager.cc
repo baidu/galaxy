@@ -38,7 +38,6 @@ DECLARE_int32(agent_millicores_share);
 DECLARE_int64(agent_mem_share);
 DECLARE_string(agent_default_user);
 DECLARE_bool(agent_namespace_isolation_switch);
-DECLARE_bool(agent_deploy_hybrid);
 DECLARE_int32(send_bps_quota);
 DECLARE_int32(recv_bps_quota);
 
@@ -83,9 +82,13 @@ int TaskManager::Init() {
             cgroup_funcs_.insert(std::make_pair("cpu", 
                         boost::bind(&TaskManager::HandleInitTaskCpuCgroup, this, sub_systems[i], _1)));
             continue;
-        } else if (sub_systems[i] == "memory"){
+        } else if (sub_systems[i] == "memory") {
             cgroup_funcs_.insert(std::make_pair("memory", 
                         boost::bind(&TaskManager::HandleInitTaskMemCgroup, this, sub_systems[i], _1)));
+        } else if (sub_systems[i] == "tcp_throt") {
+            InitTcpthrotEnv();
+            cgroup_funcs_.insert(std::make_pair("tcp_throt",
+                        boost::bind(&TaskManager::HandleInitTaskTcpCgroup, this, sub_systems[i], _1)));
         } else {
             cgroup_funcs_.insert(std::make_pair(sub_systems[i], 
              boost::bind(&TaskManager::HandleInitTaskComCgroup, this, sub_systems[i], _1)));
@@ -107,9 +110,6 @@ int TaskManager::Init() {
         hierarchies_[sub_systems[i]] = hierarchy;
     }
 
-    if (FLAGS_agent_deploy_hybrid) {
-        InitTcpthrotEnv();
-    }
     LOG(INFO, "support cgroups types %u", sub_systems.size());
     return 0;
 }
@@ -929,7 +929,21 @@ bool TaskManager::HandleInitTaskComCgroup(std::string& subsystem, TaskInfo* task
     task->cgroups[subsystem] = path;
     return true;
 }
-
+bool TaskManager::HandleInitTaskTcpCgroup(std::string& subsystem, TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
+    if (task == NULL) {
+        return false;
+    }
+    if (hierarchies_.find("tcp_throt") == hierarchies_.end()) {
+        LOG(WARNING, "tcp_throt subsystem is disabled");
+        return true;
+    }
+    std::string tcp_path = hierarchies_["tcp_throt"] + "/" + FLAGS_agent_global_cgroup_path;
+    LOG(INFO, "create cgroup %s, %s for task %s", subsystem.c_str(), tcp_path.c_str(),
+            task->task_id.c_str());
+    task->cgroups[subsystem] = tcp_path;
+    return true;
+}
 bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* task) {
     tasks_mutex_.AssertHeld();
     if (task == NULL) {

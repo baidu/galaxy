@@ -66,7 +66,6 @@ DEFINE_string(agent_global_softlimit_path, "softlimit", "agent cpu soft limit ro
 DEFINE_string(agent_global_cgroup_path, "galaxy", "agent cgroup global path");
 DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
 DEFINE_string(agent_default_user, "galaxy", "agent default run task user");
-DEFINE_bool(agent_deploy_hybrid, false, "agent deploy hybrid");
 DEFINE_int32(send_bps_quota, 200000000, "galaxy net send limit");
 DEFINE_int32(recv_bps_quota, 200000000, "galaxy new recv limit");
 
