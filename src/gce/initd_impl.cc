@@ -231,10 +231,15 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
                 assert(0);    
             }
         }
-        
+
         if (request->has_user() 
                 && !user::Su(request->user())) {
             assert(0); 
+        }
+
+        //change to session leader when request is from intid_cli
+        if (request->has_pty_file() && ::setsid() < 0) {
+            assert(0);
         }
     
         // prepare argv
