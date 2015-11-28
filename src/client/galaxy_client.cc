@@ -286,6 +286,10 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     task.envs.insert(task_envs[i].GetString());
                 }
             }
+            task.cpu_isolation_type= "kCpuIsolationHard";
+            if (tasks_json[i].HasMember("cpu_isolation_type")) {
+                task.cpu_isolation_type = tasks_json[i]["cpu_isolation_type"].GetString();
+            }
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
             ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);
@@ -324,7 +328,6 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
     return 0;
  
 }
-
 
 int AddJob() {
     std::string master_endpoint;
