@@ -32,7 +32,7 @@ struct TaskInfo {
 
     std::string cgroup_path;
     std::string task_workspace;
-
+    int64_t ctime;
     std::string task_chroot_path; // chroot path
     int fail_retry_times;
     int max_retry_times;
