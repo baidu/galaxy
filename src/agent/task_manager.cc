@@ -196,18 +196,17 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
         LOG(WARNING, "task %s already added",
                 task.task_id.c_str()); 
         return 0;
-    }
-
+    } 
     TaskInfo* task_info = new TaskInfo(task);
     tasks_[task.task_id] = task_info;
     task_info->status.set_state(kTaskPending);
     if (PrepareWorkspace(task_info) != 0) {
         LOG(WARNING, "task %s prepare workspace failed in reload",
                 task_info->task_id.c_str()); 
-        // TODO  should do some other prepare such as cgroups
         task_info->status.set_state(kTaskError);
         return 0;
     }
+
     if (PrepareCgroupEnv(task_info) != 0) {
         LOG(WARNING, "task %s prepare cgroup failed in reload",
                 task_info->task_id.c_str()); 
@@ -231,6 +230,12 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
                                      &(task_info->initd_stub))) {
         LOG(WARNING, "get stub failed");     
         task_info->status.set_state(kTaskError);
+        Trace::TraceTaskEvent(TWARNING, 
+                              task_info,
+                              "lost initd when reloading", 
+                              kTaskError,
+                              true,
+                              -1);
         return 0;
     }
     // check if in deploy stage
@@ -238,8 +243,7 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
         task_info->stage = kTaskStageDEPLOYING; 
         int ret = DeployProcessCheck(task_info);
         if (ret == -1) {
-            LOG(WARNING, "task %s check deploy failed",
-                    task_info->task_id.c_str());
+            LOG(WARNING, "task %s check deploy failed", task_info->task_id.c_str());
             break;
         } else if (ret == 0) {
             task_info->status.set_state(kTaskDeploy);
@@ -681,25 +685,38 @@ int TaskManager::PrepareWorkspace(TaskInfo* task) {
     std::string workspace_root = FLAGS_agent_work_dir;
     workspace_root.append("/");
     workspace_root.append(task->pod_id);
-    if (!file::Mkdir(workspace_root)) {
-        LOG(WARNING, "mkdir workspace root failed"); 
+    std::string err;
+    do {
+        if (!file::Mkdir(workspace_root)) {
+            err = "mkdir rootfs failed";
+            LOG(WARNING, "mkdir workspace root %s failed", workspace_root.c_str());
+            break;
+        }
+        std::string task_workspace(workspace_root);
+        task_workspace.append("/");
+        task_workspace.append(task->task_id);
+        if (!file::MkdirRecur(task_workspace)) {
+            err = "mkdir task workspace failed";
+            LOG(WARNING, "mkdir task workspace %s failed", task_workspace.c_str());
+            break;
+        }
+        task->task_workspace = task_workspace;
+        task->task_chroot_path = workspace_root;
+        LOG(INFO, "task %s workspace %s", task->task_id.c_str(), task->task_workspace.c_str());
+
+    } while(0);
+    if (!err.empty()) {
+        Trace::TraceTaskEvent(TWARNING, 
+                              task,
+                              err,
+                              kTaskError,
+                              true,
+                              -1);
         return -1;
     }
-
-    std::string task_workspace(workspace_root);
-    task_workspace.append("/");
-    task_workspace.append(task->task_id);
-    if (!file::MkdirRecur(task_workspace)) {
-        LOG(WARNING, "mkdir task workspace failed");
-        return -1;
-    }
-
-    task->task_workspace = task_workspace;
-    task->task_chroot_path = workspace_root;
-    LOG(INFO, "task %s workspace %s",
-            task->task_id.c_str(), task->task_workspace.c_str());
     return 0;
 }
+
 
 int TaskManager::CleanWorkspace(TaskInfo* /*task*/) {
     tasks_mutex_.AssertHeld();
@@ -742,7 +759,7 @@ int TaskManager::DeployProcessCheck(TaskInfo* task_info) {
     }
     // 2. check deploy process status 
     if (task_info->deploy_process.status() 
-                                    == kProcessRunning) {
+        == kProcessRunning) {
         LOG(DEBUG, "task %s deploy process still running",
                 task_info->task_id.c_str());
         return 0;
@@ -753,6 +770,12 @@ int TaskManager::DeployProcessCheck(TaskInfo* task_info) {
                 task_info->task_id.c_str(), 
                 task_info->deploy_process.exit_code());         
         task_info->status.set_state(kTaskError);
+        Trace::TraceTaskEvent(TWARNING, 
+                              task_info,
+                              "deploy process err exit", 
+                              kTaskError,
+                              true,
+                              task_info->deploy_process.exit_code());
         return -1;
     }
     return 1;     
@@ -816,6 +839,12 @@ int TaskManager::RunProcessCheck(TaskInfo* task_info) {
                 task_info->task_id.c_str(),
                 task_info->main_process.exit_code()); 
         task_info->status.set_state(kTaskError);
+        Trace::TraceTaskEvent(TERROR, 
+                              task_info,
+                              "main process err exit", 
+                              kTaskError,
+                              true,
+                              task_info->main_process.exit_code());
         return -1;
     }
     LOG(INFO, "task %s main process exit 0",
@@ -1068,11 +1097,16 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     if (cgroup_funcs_.size() == 0) {
         return 0; 
     } 
-
     std::map<std::string, CgroupFunc>::iterator func_it = cgroup_funcs_.begin();
     for (; func_it != cgroup_funcs_.end(); ++func_it) { 
         bool ok = func_it->second(task);
         if (!ok) {
+            Trace::TraceTaskEvent(TWARNING, 
+                                  task,
+                                  "prepare cgroup failed",
+                                  kTaskError,
+                                  true,
+                                  -1);
             return -1;
         }
         LOG(INFO, "create cgroup %s success",  task->task_id.c_str());

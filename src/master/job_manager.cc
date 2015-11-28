@@ -15,6 +15,7 @@
 #include "utils/resource_utils.h"
 #include "timer.h"
 #include <logging.h>
+#include "utils/trace.h"
 
 DECLARE_int32(master_agent_timeout);
 DECLARE_int32(master_agent_rpc_timeout);
@@ -26,6 +27,7 @@ DECLARE_string(safemode_store_key);
 DECLARE_string(labels_store_path);
 DECLARE_string(jobs_store_path);
 DECLARE_int32(master_pending_job_wait_timeout);
+DECLARE_int32(master_job_trace_interval);
 
 namespace baidu {
 namespace galaxy {
@@ -217,6 +219,7 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
       job_desc.deploy_step(),
       job_desc.replica(),
       job->latest_version.c_str());
+    trace_pool_.DelayTask(FLAGS_master_job_trace_interval, boost::bind(&JobManager::TraceJobStat, this, job_id));
     return kOk;
 }
 
@@ -382,6 +385,8 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     }
     MutexLock lock(&mutex_);
     jobs_[job_id] = job;
+    trace_pool_.DelayTask(FLAGS_master_job_trace_interval, 
+               boost::bind(&JobManager::TraceJobStat, this, job_id));
 }
 
 
@@ -1630,6 +1635,23 @@ void JobManager::HandleReusePod(const PodStatus& report_pod,
     pod->set_endpoint(report_pod.endpoint());
     pod->set_stage(kStageRunning);
     pods_on_agent_[report_pod.endpoint()][pod->jobid()][pod->podid()] = pod;
+}
+
+void JobManager::TraceJobStat(const std::string& jobid) {
+    MutexLock lock(&mutex_);
+    if (safe_mode_ != kSafeModeOff) {
+        trace_pool_.DelayTask(FLAGS_master_job_trace_interval, 
+               boost::bind(&JobManager::TraceJobStat, this, jobid));
+        return;
+    }
+    std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
+    if (it == jobs_.end()) {
+        LOG(INFO, "stop trace job %s stat", jobid.c_str());
+        return;
+    }
+    Trace::TraceJobStat(it->second);
+    trace_pool_.DelayTask(FLAGS_master_job_trace_interval, 
+               boost::bind(&JobManager::TraceJobStat, this, jobid));
 }
 
 }

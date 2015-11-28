@@ -21,6 +21,7 @@ namespace galaxy {
 struct TaskInfo {
     std::string task_id;    
     std::string pod_id;     // which pod belong to 
+    std::string job_id;
     TaskDescriptor desc;
     TaskStatus status;
     std::string initd_endpoint;

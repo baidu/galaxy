@@ -18,6 +18,7 @@ DEFINE_string(master_port, "7828", "Master service listen port");
 DEFINE_int32(master_agent_timeout, 40000, "Agent timeout");
 DEFINE_int32(master_agent_rpc_timeout, 10, "Agent RPC timeout (seconds)");
 DEFINE_int32(master_query_period, 30000, "Query period");
+DEFINE_int32(master_job_trace_interval, 60000, "the period of trace job state");
 DEFINE_string(master_lock_path, "/master_lock", "master lock name on nexus");
 DEFINE_string(master_path, "/master", "master path on nexus");
 DEFINE_string(safemode_store_path, "/safemode", "master safemode path on nexus");
