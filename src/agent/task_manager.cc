@@ -1090,7 +1090,7 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
     std::map<std::string, std::string>::iterator it = task->cgroups.begin();
 
     for (;it != task->cgroups.end(); ++it) {
-        if (it->first == "freezer") {
+        if (it->first == "freezer" || it->first == "tcp_throt") {
             continue; 
         }
         std::string cgroup_dir = it->second; 
