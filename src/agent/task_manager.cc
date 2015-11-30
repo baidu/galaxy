@@ -843,7 +843,7 @@ int TaskManager::RunProcessCheck(TaskInfo* task_info) {
                               task_info,
                               "main process err exit", 
                               kTaskError,
-                              true,
+                              false,
                               task_info->main_process.exit_code());
         return -1;
     }

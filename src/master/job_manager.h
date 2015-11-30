@@ -145,6 +145,7 @@ private:
     void HandleReusePod(const PodStatus& report_pod,
                         PodStatus* pod);
     void TraceJobStat(const std::string& jobid);
+    void TraceClusterStat();
 private:
     std::map<JobId, Job*> jobs_;
     // all jobs that need scale up
