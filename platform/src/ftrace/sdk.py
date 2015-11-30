@@ -13,6 +13,15 @@ class FtraceSDK(object):
     def __init__(self, addr):
         self.channel = client.Channel(addr)
 
+    def make_req(self, req):
+        ftrace = query_pb2.SearchEngineService_Stub(self.channel)
+        controller = client.Controller()
+        controller.SetTimeout(10)
+        LOG.info(req)
+        response = ftrace.Search(controller, req)
+        LOG.info(response.result_list)
+        return response.result_list, True
+
     def simple_query(self, db, 
                           table,
                           id,
@@ -32,6 +41,7 @@ class FtraceSDK(object):
         request.start_timestamp = time_from
         request.end_timestamp = time_to
         request.limit = limit
+        LOG.info(request)
         response = ftrace.Search(controller, request)
         return response.result_list, True
 

@@ -5,6 +5,8 @@ from google.protobuf.internal import enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
+from google.protobuf import service as _service
+from google.protobuf import service_reflection
 from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
@@ -15,7 +17,7 @@ import galaxy_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='master.proto',
   package='baidu.galaxy',
-  serialized_pb='\n\x0cmaster.proto\x12\x0c\x62\x61idu.galaxy\x1a\x0cgalaxy.proto\"\xc2\x01\n\rJobDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04user\x18\x02 \x01(\t\x12#\n\x04type\x18\x03 \x01(\x0e\x32\x15.baidu.galaxy.JobType\x12\x10\n\x08priority\x18\x04 \x01(\x05\x12(\n\x03pod\x18\x05 \x01(\x0b\x32\x1b.baidu.galaxy.PodDescriptor\x12\x0e\n\x06labels\x18\x06 \x03(\t\x12\x0f\n\x07replica\x18\x07 \x01(\x05\x12\x13\n\x0b\x64\x65ploy_step\x18\x08 \x01(\x05\"\x8d\x02\n\x07JobInfo\x12\r\n\x05jobid\x18\x01 \x01(\t\x12)\n\x04\x64\x65sc\x18\x02 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\x12%\n\x04pods\x18\x03 \x03(\x0b\x32\x17.baidu.galaxy.PodStatus\x12%\n\x05state\x18\x04 \x01(\x0e\x32\x16.baidu.galaxy.JobState\x12\x32\n\x0cupdate_state\x18\x05 \x01(\x0e\x32\x1c.baidu.galaxy.JobUpdateState\x12.\n\tpod_descs\x18\x06 \x03(\x0b\x32\x1b.baidu.galaxy.PodDescriptor\x12\x16\n\x0elatest_version\x18\x07 \x01(\t\"\x83\x01\n\x0cScheduleInfo\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\x12\r\n\x05jobid\x18\x02 \x01(\t\x12\r\n\x05podid\x18\x03 \x01(\t\x12,\n\x06\x61\x63tion\x18\x04 \x01(\x0e\x32\x1c.baidu.galaxy.ScheduleAction\x12\x15\n\ragent_version\x18\x05 \x01(\x05\"\"\n\x0eUserDescriptor\x12\x10\n\x08username\x18\x01 \x01(\t\"<\n\x10SubmitJobRequest\x12(\n\x03job\x18\x01 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\"H\n\x11SubmitJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\r\n\x05jobid\x18\x02 \x01(\t\"K\n\x10UpdateJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\x12(\n\x03job\x18\x02 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\"9\n\x11UpdateJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\"\n\x11SuspendJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\":\n\x12SuspendJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"!\n\x10ResumeJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\"9\n\x11ResumeJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"$\n\x13TerminateJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\"<\n\x14TerminateJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\x11\n\x0fListJobsRequest\"\xde\x01\n\x0bJobOverview\x12)\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\x12\r\n\x05jobid\x18\x02 \x01(\t\x12%\n\x05state\x18\x03 \x01(\x0e\x32\x16.baidu.galaxy.JobState\x12\x13\n\x0brunning_num\x18\x04 \x01(\x05\x12-\n\rresource_used\x18\x05 \x01(\x0b\x32\x16.baidu.galaxy.Resource\x12\x13\n\x0bpending_num\x18\x06 \x01(\x05\x12\x15\n\rdeploying_num\x18\x07 \x01(\x05\"a\n\x10ListJobsResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x04jobs\x18\x02 \x03(\x0b\x32\x19.baidu.galaxy.JobOverview\" \n\x0eShowJobRequest\x12\x0e\n\x06jobsid\x18\x01 \x03(\t\"\\\n\x0fShowJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12#\n\x04jobs\x18\x02 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\"$\n\x10HeartBeatRequest\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\"\x13\n\x11HeartBeatResponse\"/\n\x15SwitchSafeModeRequest\x12\x16\n\x0e\x65nter_or_leave\x18\x01 \x01(\x08\">\n\x16SwitchSafeModeResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"q\n\x15GetPendingJobsRequest\x12\x1b\n\x13max_scale_down_size\x18\x04 \x01(\x05\x12\x19\n\x11max_scale_up_size\x18\x05 \x01(\x05\x12 \n\x18max_need_update_job_size\x18\x06 \x01(\x05\"\xcd\x01\n\x16GetPendingJobsResponse\x12,\n\rscale_up_jobs\x18\x01 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\x12.\n\x0fscale_down_jobs\x18\x02 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\x12/\n\x10need_update_jobs\x18\x03 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\x12$\n\x06status\x18\x04 \x01(\x0e\x32\x14.baidu.galaxy.Status\"0\n\x0b\x44iffVersion\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12\x10\n\x08\x65ndpoint\x18\x02 \x01(\t\"I\n\x1aGetResourceSnapshotRequest\x12+\n\x08versions\x18\x01 \x03(\x0b\x32\x19.baidu.galaxy.DiffVersion\"\x84\x01\n\x1bGetResourceSnapshotResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x06\x61gents\x18\x02 \x03(\x0b\x32\x17.baidu.galaxy.AgentInfo\x12\x16\n\x0e\x64\x65leted_agents\x18\x03 \x03(\t\">\n\x0eProposeRequest\x12,\n\x08schedule\x18\x01 \x03(\x0b\x32\x1a.baidu.galaxy.ScheduleInfo\"`\n\x0fProposeResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x06\x61gents\x18\x02 \x03(\x0b\x32\x17.baidu.galaxy.AgentInfo\"\x13\n\x11ListAgentsRequest\"c\n\x12ListAgentsResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x06\x61gents\x18\x02 \x03(\x0b\x32\x17.baidu.galaxy.AgentInfo\"3\n\tLabelCell\x12\r\n\x05label\x18\x01 \x01(\t\x12\x17\n\x0f\x61gents_endpoint\x18\x02 \x03(\t\"<\n\x11LabelAgentRequest\x12\'\n\x06labels\x18\x01 \x01(\x0b\x32\x17.baidu.galaxy.LabelCell\":\n\x12LabelAgentResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\x1f\n\x0eShowPodRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\"\xec\x01\n\x0bPodOverview\x12\r\n\x05jobid\x18\x01 \x01(\t\x12\r\n\x05podid\x18\x02 \x01(\t\x12$\n\x04used\x18\x03 \x01(\x0b\x32\x16.baidu.galaxy.Resource\x12(\n\x08\x61ssigned\x18\x04 \x01(\x0b\x32\x16.baidu.galaxy.Resource\x12%\n\x05stage\x18\x05 \x01(\x0e\x32\x16.baidu.galaxy.PodStage\x12%\n\x05state\x18\x06 \x01(\x0e\x32\x16.baidu.galaxy.PodState\x12\x0f\n\x07version\x18\x07 \x01(\t\x12\x10\n\x08\x65ndpoint\x18\x08 \x01(\t\"`\n\x0fShowPodResponse\x12\'\n\x04pods\x18\x01 \x03(\x0b\x32\x19.baidu.galaxy.PodOverview\x12$\n\x06status\x18\x02 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\x18\n\x16GetMasterStatusRequest\"\x90\x03\n\x17GetMasterStatusResponse\x12\x11\n\tsafe_mode\x18\x02 \x01(\x08\x12\x13\n\x0b\x61gent_total\x18\x03 \x01(\x05\x12\x18\n\x10\x61gent_live_count\x18\x04 \x01(\x05\x12\x18\n\x10\x61gent_dead_count\x18\x05 \x01(\x05\x12\x11\n\tcpu_total\x18\x06 \x01(\x03\x12\x10\n\x08\x63pu_used\x18\x07 \x01(\x03\x12\x14\n\x0c\x63pu_assigned\x18\x08 \x01(\x03\x12\x11\n\tmem_total\x18\t \x01(\x03\x12\x10\n\x08mem_used\x18\n \x01(\x03\x12\x14\n\x0cmem_assigned\x18\x0b \x01(\x03\x12\x11\n\tjob_count\x18\x0c \x01(\x05\x12\x11\n\tpod_count\x18\r \x01(\x03\x12\x1a\n\x12scale_up_job_count\x18\x0e \x01(\x03\x12\x1c\n\x14scale_down_job_count\x18\x0f \x01(\x03\x12\x1d\n\x15need_update_job_count\x18\x10 \x01(\x03\x12$\n\x06status\x18\x11 \x01(\x0e\x32\x14.baidu.galaxy.Status*0\n\x07JobType\x12\x0c\n\x08kLongRun\x10\x00\x12\n\n\x06kBatch\x10\x01\x12\x0b\n\x07kSystem\x10\x02*G\n\x0bJobPriority\x12\x0c\n\x08kMonitor\x10K\x12\x0b\n\x07kOnline\x10\x32\x12\x0c\n\x08kOffline\x10\x19\x12\x0f\n\x0bkBestEffort\x10\x00*.\n\x08JobState\x12\x0e\n\nkJobNormal\x10\x00\x12\x12\n\x0ekJobTerminated\x10\x02*7\n\x0eJobUpdateState\x12\x11\n\rkUpdateNormal\x10\x00\x12\x12\n\x0ekUpdateSuspend\x10\x01*-\n\x0eScheduleAction\x12\x0b\n\x07kLaunch\x10\x00\x12\x0e\n\nkTerminate\x10\x01\x32\xae\n\n\x06Master\x12L\n\tSubmitJob\x12\x1e.baidu.galaxy.SubmitJobRequest\x1a\x1f.baidu.galaxy.SubmitJobResponse\x12L\n\tUpdateJob\x12\x1e.baidu.galaxy.UpdateJobRequest\x1a\x1f.baidu.galaxy.UpdateJobResponse\x12O\n\nSuspendJob\x12\x1f.baidu.galaxy.SuspendJobRequest\x1a .baidu.galaxy.SuspendJobResponse\x12L\n\tResumeJob\x12\x1e.baidu.galaxy.ResumeJobRequest\x1a\x1f.baidu.galaxy.ResumeJobResponse\x12U\n\x0cTerminateJob\x12!.baidu.galaxy.TerminateJobRequest\x1a\".baidu.galaxy.TerminateJobResponse\x12\x46\n\x07ShowJob\x12\x1c.baidu.galaxy.ShowJobRequest\x1a\x1d.baidu.galaxy.ShowJobResponse\x12\x46\n\x07ShowPod\x12\x1c.baidu.galaxy.ShowPodRequest\x1a\x1d.baidu.galaxy.ShowPodResponse\x12I\n\x08ListJobs\x12\x1d.baidu.galaxy.ListJobsRequest\x1a\x1e.baidu.galaxy.ListJobsResponse\x12X\n\tGetStatus\x12$.baidu.galaxy.GetMasterStatusRequest\x1a%.baidu.galaxy.GetMasterStatusResponse\x12L\n\tHeartBeat\x12\x1e.baidu.galaxy.HeartBeatRequest\x1a\x1f.baidu.galaxy.HeartBeatResponse\x12[\n\x0eSwitchSafeMode\x12#.baidu.galaxy.SwitchSafeModeRequest\x1a$.baidu.galaxy.SwitchSafeModeResponse\x12[\n\x0eGetPendingJobs\x12#.baidu.galaxy.GetPendingJobsRequest\x1a$.baidu.galaxy.GetPendingJobsResponse\x12j\n\x13GetResourceSnapshot\x12(.baidu.galaxy.GetResourceSnapshotRequest\x1a).baidu.galaxy.GetResourceSnapshotResponse\x12\x46\n\x07Propose\x12\x1c.baidu.galaxy.ProposeRequest\x1a\x1d.baidu.galaxy.ProposeResponse\x12O\n\nListAgents\x12\x1f.baidu.galaxy.ListAgentsRequest\x1a .baidu.galaxy.ListAgentsResponse\x12P\n\x0bLabelAgents\x12\x1f.baidu.galaxy.LabelAgentRequest\x1a .baidu.galaxy.LabelAgentResponseB\x03\x80\x01\x01')
+  serialized_pb='\n\x0cmaster.proto\x12\x0c\x62\x61idu.galaxy\x1a\x0cgalaxy.proto\"\xc2\x01\n\rJobDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04user\x18\x02 \x01(\t\x12#\n\x04type\x18\x03 \x01(\x0e\x32\x15.baidu.galaxy.JobType\x12\x10\n\x08priority\x18\x04 \x01(\x05\x12(\n\x03pod\x18\x05 \x01(\x0b\x32\x1b.baidu.galaxy.PodDescriptor\x12\x0e\n\x06labels\x18\x06 \x03(\t\x12\x0f\n\x07replica\x18\x07 \x01(\x05\x12\x13\n\x0b\x64\x65ploy_step\x18\x08 \x01(\x05\"\x8d\x02\n\x07JobInfo\x12\r\n\x05jobid\x18\x01 \x01(\t\x12)\n\x04\x64\x65sc\x18\x02 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\x12%\n\x04pods\x18\x03 \x03(\x0b\x32\x17.baidu.galaxy.PodStatus\x12%\n\x05state\x18\x04 \x01(\x0e\x32\x16.baidu.galaxy.JobState\x12\x32\n\x0cupdate_state\x18\x05 \x01(\x0e\x32\x1c.baidu.galaxy.JobUpdateState\x12.\n\tpod_descs\x18\x06 \x03(\x0b\x32\x1b.baidu.galaxy.PodDescriptor\x12\x16\n\x0elatest_version\x18\x07 \x01(\t\"\x83\x01\n\x0cScheduleInfo\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\x12\r\n\x05jobid\x18\x02 \x01(\t\x12\r\n\x05podid\x18\x03 \x01(\t\x12,\n\x06\x61\x63tion\x18\x04 \x01(\x0e\x32\x1c.baidu.galaxy.ScheduleAction\x12\x15\n\ragent_version\x18\x05 \x01(\x05\"\"\n\x0eUserDescriptor\x12\x10\n\x08username\x18\x01 \x01(\t\"<\n\x10SubmitJobRequest\x12(\n\x03job\x18\x01 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\"H\n\x11SubmitJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\r\n\x05jobid\x18\x02 \x01(\t\"K\n\x10UpdateJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\x12(\n\x03job\x18\x02 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\"9\n\x11UpdateJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\"\n\x11SuspendJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\":\n\x12SuspendJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"!\n\x10ResumeJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\"9\n\x11ResumeJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"$\n\x13TerminateJobRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\"<\n\x14TerminateJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\x11\n\x0fListJobsRequest\"\xde\x01\n\x0bJobOverview\x12)\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x1b.baidu.galaxy.JobDescriptor\x12\r\n\x05jobid\x18\x02 \x01(\t\x12%\n\x05state\x18\x03 \x01(\x0e\x32\x16.baidu.galaxy.JobState\x12\x13\n\x0brunning_num\x18\x04 \x01(\x05\x12-\n\rresource_used\x18\x05 \x01(\x0b\x32\x16.baidu.galaxy.Resource\x12\x13\n\x0bpending_num\x18\x06 \x01(\x05\x12\x15\n\rdeploying_num\x18\x07 \x01(\x05\"a\n\x10ListJobsResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x04jobs\x18\x02 \x03(\x0b\x32\x19.baidu.galaxy.JobOverview\" \n\x0eShowJobRequest\x12\x0e\n\x06jobsid\x18\x01 \x03(\t\"\\\n\x0fShowJobResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12#\n\x04jobs\x18\x02 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\"$\n\x10HeartBeatRequest\x12\x10\n\x08\x65ndpoint\x18\x01 \x01(\t\"\x13\n\x11HeartBeatResponse\"/\n\x15SwitchSafeModeRequest\x12\x16\n\x0e\x65nter_or_leave\x18\x01 \x01(\x08\">\n\x16SwitchSafeModeResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"q\n\x15GetPendingJobsRequest\x12\x1b\n\x13max_scale_down_size\x18\x04 \x01(\x05\x12\x19\n\x11max_scale_up_size\x18\x05 \x01(\x05\x12 \n\x18max_need_update_job_size\x18\x06 \x01(\x05\"\xcd\x01\n\x16GetPendingJobsResponse\x12,\n\rscale_up_jobs\x18\x01 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\x12.\n\x0fscale_down_jobs\x18\x02 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\x12/\n\x10need_update_jobs\x18\x03 \x03(\x0b\x32\x15.baidu.galaxy.JobInfo\x12$\n\x06status\x18\x04 \x01(\x0e\x32\x14.baidu.galaxy.Status\"0\n\x0b\x44iffVersion\x12\x0f\n\x07version\x18\x01 \x01(\x05\x12\x10\n\x08\x65ndpoint\x18\x02 \x01(\t\"I\n\x1aGetResourceSnapshotRequest\x12+\n\x08versions\x18\x01 \x03(\x0b\x32\x19.baidu.galaxy.DiffVersion\"\x84\x01\n\x1bGetResourceSnapshotResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x06\x61gents\x18\x02 \x03(\x0b\x32\x17.baidu.galaxy.AgentInfo\x12\x16\n\x0e\x64\x65leted_agents\x18\x03 \x03(\t\">\n\x0eProposeRequest\x12,\n\x08schedule\x18\x01 \x03(\x0b\x32\x1a.baidu.galaxy.ScheduleInfo\"`\n\x0fProposeResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x06\x61gents\x18\x02 \x03(\x0b\x32\x17.baidu.galaxy.AgentInfo\"\x13\n\x11ListAgentsRequest\"c\n\x12ListAgentsResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\x12\'\n\x06\x61gents\x18\x02 \x03(\x0b\x32\x17.baidu.galaxy.AgentInfo\"3\n\tLabelCell\x12\r\n\x05label\x18\x01 \x01(\t\x12\x17\n\x0f\x61gents_endpoint\x18\x02 \x03(\t\"<\n\x11LabelAgentRequest\x12\'\n\x06labels\x18\x01 \x01(\x0b\x32\x17.baidu.galaxy.LabelCell\":\n\x12LabelAgentResponse\x12$\n\x06status\x18\x01 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\x1f\n\x0eShowPodRequest\x12\r\n\x05jobid\x18\x01 \x01(\t\"\xec\x01\n\x0bPodOverview\x12\r\n\x05jobid\x18\x01 \x01(\t\x12\r\n\x05podid\x18\x02 \x01(\t\x12$\n\x04used\x18\x03 \x01(\x0b\x32\x16.baidu.galaxy.Resource\x12(\n\x08\x61ssigned\x18\x04 \x01(\x0b\x32\x16.baidu.galaxy.Resource\x12%\n\x05stage\x18\x05 \x01(\x0e\x32\x16.baidu.galaxy.PodStage\x12%\n\x05state\x18\x06 \x01(\x0e\x32\x16.baidu.galaxy.PodState\x12\x0f\n\x07version\x18\x07 \x01(\t\x12\x10\n\x08\x65ndpoint\x18\x08 \x01(\t\"`\n\x0fShowPodResponse\x12\'\n\x04pods\x18\x01 \x03(\x0b\x32\x19.baidu.galaxy.PodOverview\x12$\n\x06status\x18\x02 \x01(\x0e\x32\x14.baidu.galaxy.Status\"\x18\n\x16GetMasterStatusRequest\"\x90\x03\n\x17GetMasterStatusResponse\x12\x11\n\tsafe_mode\x18\x02 \x01(\x08\x12\x13\n\x0b\x61gent_total\x18\x03 \x01(\x05\x12\x18\n\x10\x61gent_live_count\x18\x04 \x01(\x05\x12\x18\n\x10\x61gent_dead_count\x18\x05 \x01(\x05\x12\x11\n\tcpu_total\x18\x06 \x01(\x03\x12\x10\n\x08\x63pu_used\x18\x07 \x01(\x03\x12\x14\n\x0c\x63pu_assigned\x18\x08 \x01(\x03\x12\x11\n\tmem_total\x18\t \x01(\x03\x12\x10\n\x08mem_used\x18\n \x01(\x03\x12\x14\n\x0cmem_assigned\x18\x0b \x01(\x03\x12\x11\n\tjob_count\x18\x0c \x01(\x05\x12\x11\n\tpod_count\x18\r \x01(\x03\x12\x1a\n\x12scale_up_job_count\x18\x0e \x01(\x03\x12\x1c\n\x14scale_down_job_count\x18\x0f \x01(\x03\x12\x1d\n\x15need_update_job_count\x18\x10 \x01(\x03\x12$\n\x06status\x18\x11 \x01(\x0e\x32\x14.baidu.galaxy.Status*0\n\x07JobType\x12\x0c\n\x08kLongRun\x10\x00\x12\n\n\x06kBatch\x10\x01\x12\x0b\n\x07kSystem\x10\x02*G\n\x0bJobPriority\x12\x0c\n\x08kMonitor\x10K\x12\x0b\n\x07kOnline\x10\x32\x12\x0c\n\x08kOffline\x10\x19\x12\x0f\n\x0bkBestEffort\x10\x00*.\n\x08JobState\x12\x0e\n\nkJobNormal\x10\x00\x12\x12\n\x0ekJobTerminated\x10\x02*7\n\x0eJobUpdateState\x12\x11\n\rkUpdateNormal\x10\x00\x12\x12\n\x0ekUpdateSuspend\x10\x01*-\n\x0eScheduleAction\x12\x0b\n\x07kLaunch\x10\x00\x12\x0e\n\nkTerminate\x10\x01\x32\xae\n\n\x06Master\x12L\n\tSubmitJob\x12\x1e.baidu.galaxy.SubmitJobRequest\x1a\x1f.baidu.galaxy.SubmitJobResponse\x12L\n\tUpdateJob\x12\x1e.baidu.galaxy.UpdateJobRequest\x1a\x1f.baidu.galaxy.UpdateJobResponse\x12O\n\nSuspendJob\x12\x1f.baidu.galaxy.SuspendJobRequest\x1a .baidu.galaxy.SuspendJobResponse\x12L\n\tResumeJob\x12\x1e.baidu.galaxy.ResumeJobRequest\x1a\x1f.baidu.galaxy.ResumeJobResponse\x12U\n\x0cTerminateJob\x12!.baidu.galaxy.TerminateJobRequest\x1a\".baidu.galaxy.TerminateJobResponse\x12\x46\n\x07ShowJob\x12\x1c.baidu.galaxy.ShowJobRequest\x1a\x1d.baidu.galaxy.ShowJobResponse\x12\x46\n\x07ShowPod\x12\x1c.baidu.galaxy.ShowPodRequest\x1a\x1d.baidu.galaxy.ShowPodResponse\x12I\n\x08ListJobs\x12\x1d.baidu.galaxy.ListJobsRequest\x1a\x1e.baidu.galaxy.ListJobsResponse\x12X\n\tGetStatus\x12$.baidu.galaxy.GetMasterStatusRequest\x1a%.baidu.galaxy.GetMasterStatusResponse\x12L\n\tHeartBeat\x12\x1e.baidu.galaxy.HeartBeatRequest\x1a\x1f.baidu.galaxy.HeartBeatResponse\x12[\n\x0eSwitchSafeMode\x12#.baidu.galaxy.SwitchSafeModeRequest\x1a$.baidu.galaxy.SwitchSafeModeResponse\x12[\n\x0eGetPendingJobs\x12#.baidu.galaxy.GetPendingJobsRequest\x1a$.baidu.galaxy.GetPendingJobsResponse\x12j\n\x13GetResourceSnapshot\x12(.baidu.galaxy.GetResourceSnapshotRequest\x1a).baidu.galaxy.GetResourceSnapshotResponse\x12\x46\n\x07Propose\x12\x1c.baidu.galaxy.ProposeRequest\x1a\x1d.baidu.galaxy.ProposeResponse\x12O\n\nListAgents\x12\x1f.baidu.galaxy.ListAgentsRequest\x1a .baidu.galaxy.ListAgentsResponse\x12P\n\x0bLabelAgents\x12\x1f.baidu.galaxy.LabelAgentRequest\x1a .baidu.galaxy.LabelAgentResponseB\x06\x80\x01\x01\x90\x01\x01')
 
 _JOBTYPE = _descriptor.EnumDescriptor(
   name='JobType',
@@ -2000,5 +2002,168 @@ class GetMasterStatusResponse(_message.Message):
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\200\001\001')
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\200\001\001\220\001\001')
+
+_MASTER = _descriptor.ServiceDescriptor(
+  name='Master',
+  full_name='baidu.galaxy.Master',
+  file=DESCRIPTOR,
+  index=0,
+  options=None,
+  serialized_start=4005,
+  serialized_end=5331,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='SubmitJob',
+    full_name='baidu.galaxy.Master.SubmitJob',
+    index=0,
+    containing_service=None,
+    input_type=_SUBMITJOBREQUEST,
+    output_type=_SUBMITJOBRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='UpdateJob',
+    full_name='baidu.galaxy.Master.UpdateJob',
+    index=1,
+    containing_service=None,
+    input_type=_UPDATEJOBREQUEST,
+    output_type=_UPDATEJOBRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='SuspendJob',
+    full_name='baidu.galaxy.Master.SuspendJob',
+    index=2,
+    containing_service=None,
+    input_type=_SUSPENDJOBREQUEST,
+    output_type=_SUSPENDJOBRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ResumeJob',
+    full_name='baidu.galaxy.Master.ResumeJob',
+    index=3,
+    containing_service=None,
+    input_type=_RESUMEJOBREQUEST,
+    output_type=_RESUMEJOBRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='TerminateJob',
+    full_name='baidu.galaxy.Master.TerminateJob',
+    index=4,
+    containing_service=None,
+    input_type=_TERMINATEJOBREQUEST,
+    output_type=_TERMINATEJOBRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ShowJob',
+    full_name='baidu.galaxy.Master.ShowJob',
+    index=5,
+    containing_service=None,
+    input_type=_SHOWJOBREQUEST,
+    output_type=_SHOWJOBRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ShowPod',
+    full_name='baidu.galaxy.Master.ShowPod',
+    index=6,
+    containing_service=None,
+    input_type=_SHOWPODREQUEST,
+    output_type=_SHOWPODRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ListJobs',
+    full_name='baidu.galaxy.Master.ListJobs',
+    index=7,
+    containing_service=None,
+    input_type=_LISTJOBSREQUEST,
+    output_type=_LISTJOBSRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetStatus',
+    full_name='baidu.galaxy.Master.GetStatus',
+    index=8,
+    containing_service=None,
+    input_type=_GETMASTERSTATUSREQUEST,
+    output_type=_GETMASTERSTATUSRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='HeartBeat',
+    full_name='baidu.galaxy.Master.HeartBeat',
+    index=9,
+    containing_service=None,
+    input_type=_HEARTBEATREQUEST,
+    output_type=_HEARTBEATRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='SwitchSafeMode',
+    full_name='baidu.galaxy.Master.SwitchSafeMode',
+    index=10,
+    containing_service=None,
+    input_type=_SWITCHSAFEMODEREQUEST,
+    output_type=_SWITCHSAFEMODERESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetPendingJobs',
+    full_name='baidu.galaxy.Master.GetPendingJobs',
+    index=11,
+    containing_service=None,
+    input_type=_GETPENDINGJOBSREQUEST,
+    output_type=_GETPENDINGJOBSRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetResourceSnapshot',
+    full_name='baidu.galaxy.Master.GetResourceSnapshot',
+    index=12,
+    containing_service=None,
+    input_type=_GETRESOURCESNAPSHOTREQUEST,
+    output_type=_GETRESOURCESNAPSHOTRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Propose',
+    full_name='baidu.galaxy.Master.Propose',
+    index=13,
+    containing_service=None,
+    input_type=_PROPOSEREQUEST,
+    output_type=_PROPOSERESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ListAgents',
+    full_name='baidu.galaxy.Master.ListAgents',
+    index=14,
+    containing_service=None,
+    input_type=_LISTAGENTSREQUEST,
+    output_type=_LISTAGENTSRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='LabelAgents',
+    full_name='baidu.galaxy.Master.LabelAgents',
+    index=15,
+    containing_service=None,
+    input_type=_LABELAGENTREQUEST,
+    output_type=_LABELAGENTRESPONSE,
+    options=None,
+  ),
+])
+
+class Master(_service.Service):
+  __metaclass__ = service_reflection.GeneratedServiceType
+  DESCRIPTOR = _MASTER
+class Master_Stub(Master):
+  __metaclass__ = service_reflection.GeneratedServiceStubType
+  DESCRIPTOR = _MASTER
+
 # @@protoc_insertion_point(module_scope)

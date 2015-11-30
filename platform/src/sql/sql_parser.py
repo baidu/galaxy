@@ -7,7 +7,6 @@
 class SimpleSqlParser(object):
     
     def parse(self, sql):
-        sql = sql.lower()
         select_index = sql.find("select")
         if select_index < 0:
             return {}, False
@@ -25,7 +24,7 @@ class SimpleSqlParser(object):
             if order_index < 0:
                 self.handle_where(context, sql[where_index + 5:])
             else:
-                self.handle_table(context, sql[where_index + 5: order_index])
+                self.handle_where(context, sql[where_index + 5: order_index])
                 self.handle_order(context, sql[order_index + 8:])
         return context, True
 
@@ -67,9 +66,23 @@ class SimpleSqlParser(object):
             context["conditions"].append((parts[0].strip(), "=", long(parts[1].strip())))
 
     def handle_str_cond(self, cond, context):
-        parts = cond.split("=")
-        context["conditions"].append((parts[0].strip(), "=", parts[1].strip()))
+        cond = cond.replace("'", "").replace('"',"")
+        if cond.find(">=") >= 0 :
+            parts = cond.split(">=")
+            context["conditions"].append((parts[0].strip(), ">=", parts[1].strip()))
+        elif cond.find(">") >= 0:
+            parts = cond.split(">")
+            context["conditions"].append((parts[0].strip(), ">", parts[1].strip()))
+        elif cond.find("<=") >= 0:
+            parts = cond.split("<=")
+            context["conditions"].append((parts[0].strip(), "<=", parts[1].strip()))
+        elif cond.find("<") >= 0:
+            parts = cond.split("<")
+            context["conditions"].append((parts[0].strip(), "<", parts[1].strip()))
+        elif cond.find("=") >= 0:
+            parts = cond.split("=")
+            context["conditions"].append((parts[0].strip(), "=", parts[1].strip()))
 
 if __name__ == "__main__":
     parser = SimpleSqlParser()
-    print parser.parse("select name,id from JobStat where id='dasasdas' order by time desc")
+    print parser.parse("select name,id from JobStat where id='dasasdas' and time >= '2015-11-10 20:56' and time <='2015-11-10 22:22' order by time desc")

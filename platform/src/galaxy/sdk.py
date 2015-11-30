@@ -52,3 +52,11 @@ class GalaxySDK(object):
         request = master_pb2.ListJobsRequest()
         response = master.ListJobs(controller, request)
         return response.jobs, True
+
+    def get_real_time_status(self):
+        controller = client.Controller()
+        controller.SetTimeout(5)
+        master = master_pb2.Master_Stub(self.channel)
+        request = master_pb2.GetMasterStatusRequest()
+        response = master.GetStatus(controller, request)
+        return response

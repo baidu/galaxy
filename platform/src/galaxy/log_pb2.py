@@ -18,7 +18,7 @@ import initd_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='log.proto',
   package='baidu.galaxy',
-  serialized_pb='\n\tlog.proto\x12\x0c\x62\x61idu.galaxy\x1a\x0cgalaxy.proto\x1a\x0cmaster.proto\x1a\x0b\x61gent.proto\x1a\x0binitd.proto\"\xb2\x01\n\x07PodStat\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05jobid\x18\x02 \x01(\t\x12\x10\n\x08\x63pu_used\x18\x03 \x01(\x05\x12\x10\n\x08mem_used\x18\x04 \x01(\x03\x12\x11\n\tcpu_quota\x18\x05 \x01(\x05\x12\x11\n\tmem_quota\x18\x06 \x01(\x03\x12\x19\n\x11\x64ynamic_cpu_quota\x18\x07 \x01(\x05\x12\x19\n\x11\x64ynamic_mem_quota\x18\x08 \x01(\x03\x12\x0c\n\x04time\x18\t \x01(\x03\"\xfd\x01\n\x08PodEvent\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05jobid\x18\x02 \x01(\t\x12%\n\x05stage\x18\x03 \x01(\x0e\x32\x16.baidu.galaxy.PodStage\x12%\n\x05state\x18\x04 \x01(\x0e\x32\x16.baidu.galaxy.PodState\x12\x0c\n\x04time\x18\x05 \x01(\x03\x12\x0c\n\x04\x66rom\x18\x06 \x01(\t\x12\x0e\n\x06reason\x18\x07 \x01(\t\x12\x12\n\nagent_addr\x18\x08 \x01(\t\x12\x0e\n\x06gc_dir\x18\t \x01(\t\x12\x0f\n\x07version\x18\n \x01(\t\x12\'\n\x05level\x18\x0b \x01(\x0e\x32\x18.baidu.galaxy.TraceLevel\"\xe5\x01\n\x07JobStat\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07replica\x18\x02 \x01(\x05\x12\x0f\n\x07running\x18\x03 \x01(\x05\x12\x0f\n\x07pending\x18\x04 \x01(\x05\x12\r\n\x05\x64\x65\x61th\x18\x05 \x01(\x05\x12\x11\n\tcpu_quota\x18\x06 \x01(\x03\x12\x11\n\tmem_quota\x18\x07 \x01(\x03\x12\x10\n\x08\x63pu_used\x18\x08 \x01(\x03\x12\x10\n\x08mem_used\x18\t \x01(\x03\x12\x19\n\x11\x64ynamic_cpu_quota\x18\n \x01(\x03\x12\x19\n\x11\x64ynamic_mem_quota\x18\x0b \x01(\x03\x12\x0c\n\x04time\x18\x0c \x01(\x03\"\xf4\x01\n\x08JobEvent\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\r\n\x05uname\x18\x03 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x05 \x01(\t\x12\x0c\n\x04\x64\x65sc\x18\x06 \x01(\x0c\x12\x0f\n\x07version\x18\x07 \x01(\t\x12%\n\x05state\x18\x08 \x01(\x0e\x32\x16.baidu.galaxy.JobState\x12\x32\n\x0cupdate_state\x18\t \x01(\x0e\x32\x1c.baidu.galaxy.JobUpdateState\x12\x0c\n\x04time\x18\n \x01(\x03\x12\'\n\x05level\x18\x0b \x01(\x0e\x32\x18.baidu.galaxy.TraceLevel\"\xaf\x03\n\tTaskEvent\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\nagent_addr\x18\x02 \x01(\t\x12\x0e\n\x06pod_id\x18\x03 \x01(\t\x12\x12\n\ninitd_addr\x18\x04 \x01(\t\x12&\n\x05state\x18\x05 \x01(\x0e\x32\x17.baidu.galaxy.TaskState\x12&\n\x05stage\x18\x06 \x01(\x0e\x32\x17.baidu.galaxy.TaskStage\x12\r\n\x05\x63time\x18\x07 \x01(\x03\x12\r\n\x05ttime\x18\x08 \x01(\x03\x12\x18\n\x10task_chroot_path\x18\t \x01(\t\x12\r\n\x05\x65rror\x18\n \x01(\t\x12\x11\n\texit_code\x18\x0b \x01(\x05\x12\x0b\n\x03\x63md\x18\x0c \x01(\t\x12\'\n\x05level\x18\r \x01(\x0e\x32\x18.baidu.galaxy.TraceLevel\x12\x0e\n\x06job_id\x18\x0e \x01(\t\x12\x16\n\x0einternal_error\x18\x0f \x01(\x08\x12+\n\x06\x64\x65ploy\x18\x10 \x01(\x0e\x32\x1b.baidu.galaxy.ProcessStatus\x12)\n\x04main\x18\x11 \x01(\x0e\x32\x1b.baidu.galaxy.ProcessStatus\"\xf3\x02\n\x0b\x43lusterStat\x12\x13\n\x0b\x64\x61ta_center\x18\x01 \x01(\t\x12\x18\n\x10total_node_count\x18\x02 \x01(\x03\x12\x19\n\x11\x61live_node_counts\x18\x03 \x01(\x03\x12\x18\n\x10\x64\x65\x61\x64_node_counts\x18\x04 \x01(\x03\x12\x17\n\x0ftotal_job_count\x18\x05 \x01(\x03\x12\x1a\n\x12scale_up_job_count\x18\x06 \x01(\x03\x12\x1c\n\x14scale_down_job_count\x18\x07 \x01(\x03\x12\x1c\n\x14total_cpu_millicores\x18\x08 \x01(\x03\x12!\n\x19total_cpu_used_millicores\x18\t \x01(\x03\x12\x17\n\x0ftotal_cpu_quota\x18\n \x01(\x03\x12\x14\n\x0ctotal_memory\x18\x0b \x01(\x03\x12\x16\n\x0etotal_mem_used\x18\x0c \x01(\x03\x12\x0c\n\x04time\x18\r \x01(\x03\x12\x17\n\x0ftotal_pod_count\x18\x0e \x01(\x03\"8\n\nAgentEvent\x12\x0c\n\x04\x61\x64\x64r\x18\x01 \x01(\t\x12\x0c\n\x04time\x18\x02 \x01(\x03\x12\x0e\n\x06\x61\x63tion\x18\x03 \x01(\t*1\n\nTraceLevel\x12\t\n\x05TINFO\x10\x00\x12\x0c\n\x08TWARNING\x10\x01\x12\n\n\x06TERROR\x10\x02\x42\x03\x80\x01\x01')
+  serialized_pb='\n\tlog.proto\x12\x0c\x62\x61idu.galaxy\x1a\x0cgalaxy.proto\x1a\x0cmaster.proto\x1a\x0b\x61gent.proto\x1a\x0binitd.proto\"\xc1\x01\n\x07PodStat\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05jobid\x18\x02 \x01(\t\x12\x10\n\x08\x63pu_used\x18\x03 \x01(\x05\x12\x10\n\x08mem_used\x18\x04 \x01(\x03\x12\x11\n\tcpu_quota\x18\x05 \x01(\x05\x12\x11\n\tmem_quota\x18\x06 \x01(\x03\x12\x19\n\x11\x64ynamic_cpu_quota\x18\x07 \x01(\x05\x12\x19\n\x11\x64ynamic_mem_quota\x18\x08 \x01(\x03\x12\x0c\n\x04time\x18\t \x01(\x03\x12\r\n\x05podid\x18\n \x01(\t\"\x8c\x02\n\x08PodEvent\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05jobid\x18\x02 \x01(\t\x12%\n\x05stage\x18\x03 \x01(\x0e\x32\x16.baidu.galaxy.PodStage\x12%\n\x05state\x18\x04 \x01(\x0e\x32\x16.baidu.galaxy.PodState\x12\x0c\n\x04time\x18\x05 \x01(\x03\x12\x0c\n\x04\x66rom\x18\x06 \x01(\t\x12\x0e\n\x06reason\x18\x07 \x01(\t\x12\x12\n\nagent_addr\x18\x08 \x01(\t\x12\x0e\n\x06gc_dir\x18\t \x01(\t\x12\x0f\n\x07version\x18\n \x01(\t\x12\'\n\x05level\x18\x0b \x01(\x0e\x32\x18.baidu.galaxy.TraceLevel\x12\r\n\x05podid\x18\x0c \x01(\t\"\xf4\x01\n\x07JobStat\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07replica\x18\x02 \x01(\x05\x12\x0f\n\x07running\x18\x03 \x01(\x05\x12\x0f\n\x07pending\x18\x04 \x01(\x05\x12\r\n\x05\x64\x65\x61th\x18\x05 \x01(\x05\x12\x11\n\tcpu_quota\x18\x06 \x01(\x03\x12\x11\n\tmem_quota\x18\x07 \x01(\x03\x12\x10\n\x08\x63pu_used\x18\x08 \x01(\x03\x12\x10\n\x08mem_used\x18\t \x01(\x03\x12\x19\n\x11\x64ynamic_cpu_quota\x18\n \x01(\x03\x12\x19\n\x11\x64ynamic_mem_quota\x18\x0b \x01(\x03\x12\x0c\n\x04time\x18\x0c \x01(\x03\x12\r\n\x05jobid\x18\r \x01(\t\"\x83\x02\n\x08JobEvent\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\r\n\x05uname\x18\x03 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x05 \x01(\t\x12\x0c\n\x04\x64\x65sc\x18\x06 \x01(\x0c\x12\x0f\n\x07version\x18\x07 \x01(\t\x12%\n\x05state\x18\x08 \x01(\x0e\x32\x16.baidu.galaxy.JobState\x12\x32\n\x0cupdate_state\x18\t \x01(\x0e\x32\x1c.baidu.galaxy.JobUpdateState\x12\x0c\n\x04time\x18\n \x01(\x03\x12\'\n\x05level\x18\x0b \x01(\x0e\x32\x18.baidu.galaxy.TraceLevel\x12\r\n\x05jobid\x18\x0c \x01(\t\"\xbf\x03\n\tTaskEvent\x12\n\n\x02id\x18\x01 \x01(\t\x12\x12\n\nagent_addr\x18\x02 \x01(\t\x12\x0e\n\x06pod_id\x18\x03 \x01(\t\x12\x12\n\ninitd_addr\x18\x04 \x01(\t\x12&\n\x05state\x18\x05 \x01(\x0e\x32\x17.baidu.galaxy.TaskState\x12&\n\x05stage\x18\x06 \x01(\x0e\x32\x17.baidu.galaxy.TaskStage\x12\r\n\x05\x63time\x18\x07 \x01(\x03\x12\r\n\x05ttime\x18\x08 \x01(\x03\x12\x18\n\x10task_chroot_path\x18\t \x01(\t\x12\r\n\x05\x65rror\x18\n \x01(\t\x12\x11\n\texit_code\x18\x0b \x01(\x05\x12\x0b\n\x03\x63md\x18\x0c \x01(\t\x12\'\n\x05level\x18\r \x01(\x0e\x32\x18.baidu.galaxy.TraceLevel\x12\x0e\n\x06job_id\x18\x0e \x01(\t\x12\x16\n\x0einternal_error\x18\x0f \x01(\x08\x12+\n\x06\x64\x65ploy\x18\x10 \x01(\x0e\x32\x1b.baidu.galaxy.ProcessStatus\x12)\n\x04main\x18\x11 \x01(\x0e\x32\x1b.baidu.galaxy.ProcessStatus\x12\x0e\n\x06gc_dir\x18\x12 \x01(\t\"\xa2\x03\n\x0b\x43lusterStat\x12\x13\n\x0b\x64\x61ta_center\x18\x01 \x01(\t\x12\x18\n\x10total_node_count\x18\x02 \x01(\x03\x12\x18\n\x10\x61live_node_count\x18\x03 \x01(\x03\x12\x17\n\x0f\x64\x65\x61\x64_node_count\x18\x04 \x01(\x03\x12\x17\n\x0ftotal_job_count\x18\x05 \x01(\x03\x12\x1a\n\x12scale_up_job_count\x18\x06 \x01(\x03\x12\x1c\n\x14scale_down_job_count\x18\x07 \x01(\x03\x12\x1c\n\x14total_cpu_millicores\x18\x08 \x01(\x03\x12!\n\x19total_cpu_used_millicores\x18\t \x01(\x03\x12\x1a\n\x12total_cpu_assigned\x18\n \x01(\x03\x12\x14\n\x0ctotal_memory\x18\x0b \x01(\x03\x12\x19\n\x11total_memory_used\x18\x0c \x01(\x03\x12\x0c\n\x04time\x18\r \x01(\x03\x12\x17\n\x0ftotal_pod_count\x18\x0e \x01(\x03\x12\x1d\n\x15total_memory_assigned\x18\x0f \x01(\x03\x12\n\n\x02id\x18\x10 \x01(\t\"Y\n\nAgentEvent\x12\x0c\n\x04\x61\x64\x64r\x18\x01 \x01(\t\x12\x0c\n\x04time\x18\x02 \x01(\x03\x12\x0e\n\x06\x61\x63tion\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x61ta_center\x18\x04 \x01(\t\x12\n\n\x02id\x18\x05 \x01(\t*1\n\nTraceLevel\x12\t\n\x05TINFO\x10\x00\x12\x0c\n\x08TWARNING\x10\x01\x12\n\n\x06TERROR\x10\x02\x42\x03\x80\x01\x01')
 
 _TRACELEVEL = _descriptor.EnumDescriptor(
   name='TraceLevel',
@@ -41,8 +41,8 @@ _TRACELEVEL = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1863,
-  serialized_end=1912,
+  serialized_start=2019,
+  serialized_end=2068,
 )
 
 TraceLevel = enum_type_wrapper.EnumTypeWrapper(_TRACELEVEL)
@@ -122,6 +122,13 @@ _PODSTAT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='podid', full_name='baidu.galaxy.PodStat.podid', index=9,
+      number=10, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -132,7 +139,7 @@ _PODSTAT = _descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=82,
-  serialized_end=260,
+  serialized_end=275,
 )
 
 
@@ -220,6 +227,13 @@ _PODEVENT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='podid', full_name='baidu.galaxy.PodEvent.podid', index=11,
+      number=12, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -229,8 +243,8 @@ _PODEVENT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=263,
-  serialized_end=516,
+  serialized_start=278,
+  serialized_end=546,
 )
 
 
@@ -325,6 +339,13 @@ _JOBSTAT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='jobid', full_name='baidu.galaxy.JobStat.jobid', index=12,
+      number=13, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -334,8 +355,8 @@ _JOBSTAT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=519,
-  serialized_end=748,
+  serialized_start=549,
+  serialized_end=793,
 )
 
 
@@ -416,6 +437,13 @@ _JOBEVENT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='jobid', full_name='baidu.galaxy.JobEvent.jobid', index=10,
+      number=12, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -425,8 +453,8 @@ _JOBEVENT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=751,
-  serialized_end=995,
+  serialized_start=796,
+  serialized_end=1055,
 )
 
 
@@ -556,6 +584,13 @@ _TASKEVENT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='gc_dir', full_name='baidu.galaxy.TaskEvent.gc_dir', index=17,
+      number=18, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -565,8 +600,8 @@ _TASKEVENT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=998,
-  serialized_end=1429,
+  serialized_start=1058,
+  serialized_end=1505,
 )
 
 
@@ -592,14 +627,14 @@ _CLUSTERSTAT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='alive_node_counts', full_name='baidu.galaxy.ClusterStat.alive_node_counts', index=2,
+      name='alive_node_count', full_name='baidu.galaxy.ClusterStat.alive_node_count', index=2,
       number=3, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='dead_node_counts', full_name='baidu.galaxy.ClusterStat.dead_node_counts', index=3,
+      name='dead_node_count', full_name='baidu.galaxy.ClusterStat.dead_node_count', index=3,
       number=4, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -641,7 +676,7 @@ _CLUSTERSTAT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='total_cpu_quota', full_name='baidu.galaxy.ClusterStat.total_cpu_quota', index=9,
+      name='total_cpu_assigned', full_name='baidu.galaxy.ClusterStat.total_cpu_assigned', index=9,
       number=10, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -655,7 +690,7 @@ _CLUSTERSTAT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='total_mem_used', full_name='baidu.galaxy.ClusterStat.total_mem_used', index=11,
+      name='total_memory_used', full_name='baidu.galaxy.ClusterStat.total_memory_used', index=11,
       number=12, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -675,6 +710,20 @@ _CLUSTERSTAT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='total_memory_assigned', full_name='baidu.galaxy.ClusterStat.total_memory_assigned', index=14,
+      number=15, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='baidu.galaxy.ClusterStat.id', index=15,
+      number=16, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -684,8 +733,8 @@ _CLUSTERSTAT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1432,
-  serialized_end=1803,
+  serialized_start=1508,
+  serialized_end=1926,
 )
 
 
@@ -717,6 +766,20 @@ _AGENTEVENT = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='data_center', full_name='baidu.galaxy.AgentEvent.data_center', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='baidu.galaxy.AgentEvent.id', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -726,8 +789,8 @@ _AGENTEVENT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1805,
-  serialized_end=1861,
+  serialized_start=1928,
+  serialized_end=2017,
 )
 
 _PODEVENT.fields_by_name['stage'].enum_type = galaxy_pb2._PODSTAGE
