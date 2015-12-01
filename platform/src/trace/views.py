@@ -116,6 +116,7 @@ def job_stat_processor(resultset, fields=[], limit=100):
             job_stat.ParseFromString(d)
             data = util.pb2dict(job_stat)
             stats.append(data_filter(data, fields))
+    stats = sorted(stats, key=lambda x:x["time"])
     return stats
 
 def pod_event_processor(resultset, fields=[], limit=100):
@@ -133,7 +134,7 @@ def pod_event_processor(resultset, fields=[], limit=100):
                 continue
             e["state"] = galaxy_pb2.PodState.Name(pod_event.state)
             events.append(data_filter(e, fields))
-    events = sorted(events, key=lambda x:x["time"], reverse = True)
+    events = sorted(events, key=lambda x:x["time"])
     return events[0:limit]
 
 def task_event_processor(resultset, fields=[], limit=100):
@@ -161,6 +162,7 @@ def cluster_stat_processor(resultset, fields=[], limit=100):
         for d in data.data_list:
             cluster_stat.ParseFromString(d)
             stats.append(data_filter(util.pb2dict(cluster_stat), fields))
+    stats = sorted(stats, key=lambda x:x["time"])
     return stats[0:limit]
 
 def agent_event_processor(resultset, fields=[], limit=100):

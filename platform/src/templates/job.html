@@ -104,7 +104,7 @@ $(function(){
         job_stat_stock.push({name:"pending", data:pending});
         return job_stat_stock;
     }
-    $.getJSON(ROOT_URL + "trace/squery?db=baidu.galaxy&limit=5000&sql="+encodeURIComponent(query_job), function(data){
+        $.getJSON(ROOT_URL + "trace/squery?db=baidu.galaxy&limit=5000&sql="+encodeURIComponent(query_job), function(data){
         $('#stable_stat').highcharts('StockChart', {
                 title: {
                     text: 'job stabiliztion stat'

@@ -19,7 +19,6 @@ class FtraceSDK(object):
         controller.SetTimeout(10)
         LOG.info(req)
         response = ftrace.Search(controller, req)
-        LOG.info(response.result_list)
         return response.result_list, True
 
     def simple_query(self, db, 
