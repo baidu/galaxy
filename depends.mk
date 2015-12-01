@@ -68,7 +68,7 @@ DEPS_LDPATH = -L$(TERA_LIBDIR) -L$(SOFA_PBRPC_LIBDIR) -L$(PROTOBUF_LIBDIR) \
 			  -L$(COMMON_LIBDIR)
 
 DEPS_LDFLAGS = -lins_sdk -lsofa-pbrpc -lprotobuf  \
-               -lgflags   -lcommon -lleveldb -lsnappy
+               -lgflags  -lftrace -lcommon -lleveldb -lsnappy
 
 DEPS_LIBRARIES = $(TERA_LIBDIR)/libtera.a $(INS_LIBDIR)/libins_sdk.a \
                  $(SOFA_PBRPC_LIBDIR)/libsofa-pbrpc.a $(PROTOBUF_LIBDIR)/libprotobuf.a \

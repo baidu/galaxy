@@ -86,13 +86,13 @@ $(SCHEDULER_OBJ): $(UTILS_HEADER)
 
 # Targets
 master: $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS)
-	$(CXX) $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@ $(FTRACE_LIBDIR)/libftrace.a $(LDFLAGS)
+	$(CXX) $(MASTER_OBJ) $(UTILS_OBJ) $(OBJS) -o $@  $(LDFLAGS)
 
 scheduler: $(SCHEDULER_OBJ) $(OBJS) $(WATCHER_OBJ) $(UTILS_OBJ) 
-	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@  $(FTRACE_LIBDIR)/libftrace.a $(LDFLAGS)
+	$(CXX) $(SCHEDULER_OBJ) $(UTILS_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@  $(LDFLAGS)
 
 agent: $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS)
-	$(CXX) $(UTILS_OBJ) $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@  $(FTRACE_LIBDIR)/libftrace.a $(LDFLAGS)
+	$(CXX) $(UTILS_OBJ) $(AGENT_OBJ) $(WATCHER_OBJ) $(OBJS) -o $@ $(LDFLAGS)
 
 test_agent: $(TEST_AGENT_OBJ) $(LIBS) $(OBJS)
 	$(CXX) $(TEST_AGENT_OBJ) $(LIBS) -o $@ $(LDFLAGS)
