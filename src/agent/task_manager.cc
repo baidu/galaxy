@@ -588,7 +588,10 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command = "wget "; 
         deploy_command.append(task_info->desc.binary());
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
-    } 
+    } else if (task_info->desc.source_type()
+            == kSourceTypeCommand) {
+        deploy_command = task_info->desc.binary(); 
+    }
     task_info->stage = kTaskStageDEPLOYING;
     SetupDeployProcessKey(task_info);
     task_info->status.set_state(kTaskDeploy);
