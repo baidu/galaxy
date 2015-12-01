@@ -16,7 +16,7 @@ GTEST_PREFIX=thirdparty
 GPERFTOOLS_PREFIX=thirdparty
 INS_PREFIX=thirdparty
 TERA_PREFIX=thirdparty
-RAPID_JSON_PREFIX=thirdparty
+RAPID_JSON_PREFIX=thirdparty/rapidjson
 COMMON_PREFIX=thirdparty
 FTRACE_PREFIX=thirdparty
 
