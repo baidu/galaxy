@@ -593,7 +593,10 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
         deploy_command = "wget "; 
         deploy_command.append(task_info->desc.binary());
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
-    } 
+    } else if (task_info->desc.source_type()
+            == kSourceTypeCommand) {
+        deploy_command = task_info->desc.binary(); 
+    }
     task_info->stage = kTaskStageDEPLOYING;
     SetupDeployProcessKey(task_info);
     task_info->status.set_state(kTaskDeploy);
@@ -1125,7 +1128,7 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
     std::map<std::string, std::string>::iterator it = task->cgroups.begin();
 
     for (;it != task->cgroups.end(); ++it) {
-        if (it->first == "freezer") {
+        if (it->first == "freezer" || it->first == "tcp_throt") {
             continue; 
         }
         std::string cgroup_dir = it->second; 
