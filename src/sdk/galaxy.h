@@ -150,6 +150,8 @@ public:
                          std::vector<PodInformation>* pods) = 0;
     virtual bool GetStatus(MasterStatus* status) = 0;
     virtual bool SwitchSafeMode(bool mode) = 0;
+    virtual bool ListLabels(std::vector<std::string>* labels) = 0;
+    virtual bool ListLabelledAgents(std::string label, std::vector<NodeDescription>* nodes) = 0;
 };
 
 } // namespace galaxy

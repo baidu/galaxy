@@ -65,6 +65,14 @@ public:
                               const ::baidu::galaxy::ListAgentsRequest* request,
                               ::baidu::galaxy::ListAgentsResponse* response,
                               ::google::protobuf::Closure* done);
+      virtual void ListLabelledAgents(::google::protobuf::RpcController* controller,
+                                      const ::baidu::galaxy::ListLabelledAgentsRequest* request,
+                                      ::baidu::galaxy::ListLabelledAgentsResponse* response,
+                                      ::google::protobuf::Closure* done);
+      virtual void ListLabels(::google::protobuf::RpcController* controller,
+                              const ::baidu::galaxy::ListLabelsRequest* request,
+                              ::baidu::galaxy::ListLabelsResponse* response,
+                              ::google::protobuf::Closure* done);
       virtual void LabelAgents(::google::protobuf::RpcController* controller,
                                const ::baidu::galaxy::LabelAgentRequest* request,
                                ::baidu::galaxy::LabelAgentResponse* response,

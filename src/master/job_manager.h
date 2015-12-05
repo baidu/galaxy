@@ -58,6 +58,7 @@ public:
                         int32_t max_need_update_job_size,
                         ::google::protobuf::Closure* done);
     Status Propose(const ScheduleInfo& sche_info);
+    void GetLabelledAgents(std::string label, AgentInfoList* agents_info);
     void GetAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsInfo(AgentInfoList* agents_info);
     void GetAliveAgentsByDiff(const DiffVersionList& versions,
@@ -73,6 +74,7 @@ public:
     Status LabelAgents(const LabelCell& label_cell);
     Status GetPods(const std::string& jobid, PodOverviewList* pods);
     Status GetStatus(::baidu::galaxy::GetMasterStatusResponse* response);
+    void GetLabels(StringList* labels);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);

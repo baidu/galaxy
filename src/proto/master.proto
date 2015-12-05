@@ -206,6 +206,23 @@ message ListAgentsResponse {
     repeated AgentInfo agents = 2;
 }
 
+message ListLabelledAgentsRequest {
+    optional string label = 1;
+}
+
+message ListLabelledAgentsResponse {
+    optional Status status = 1;
+    repeated AgentInfo agents = 2;
+}
+
+message ListLabelsRequest {
+    
+}
+
+message ListLabelsResponse {
+    optional Status status = 1;
+    repeated string labels = 2;
+}
 // for persistence
 message LabelCell {
     optional string label = 1;
@@ -285,6 +302,9 @@ service Master {
     rpc HeartBeat(HeartBeatRequest) returns (HeartBeatResponse);
 
     rpc SwitchSafeMode(SwitchSafeModeRequest) returns (SwitchSafeModeResponse);
+    
+    rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse);
+    rpc ListLabelledAgents(ListLabelledAgentsRequest) returns (ListLabelledAgentsResponse);
 
     // rpc AddUser() returns ();
     // rpc DeleteUser() returns ();

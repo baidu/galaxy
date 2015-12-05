@@ -24,6 +24,7 @@ public:
     bool UpdateJob(const std::string& jobid, const JobDescription& job);
     bool ListJobs(std::vector<JobInformation>* jobs);
     bool ListAgents(std::vector<NodeDescription>* nodes);
+    bool ListLabelledAgents(std::string label, std::vector<NodeDescription>* nodes);
     bool TerminateJob(const std::string& job_id);
     bool LabelAgents(const std::string& label, 
                      const std::vector<std::string>& agents);
@@ -31,6 +32,7 @@ public:
                  std::vector<PodInformation>* pods);
     bool GetStatus(MasterStatus* status);
     bool SwitchSafeMode(bool mode);
+    bool ListLabels(std::vector<std::string>* labels);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -38,6 +40,7 @@ private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
 };
+
 
 bool GalaxyImpl::LabelAgents(const std::string& label, 
                              const std::vector<std::string>& agents) {
@@ -296,6 +299,42 @@ bool GalaxyImpl::SwitchSafeMode(bool mode) {
                              &request, &response, 5, 1);
     if (response.status() != kOk) {
         return false;
+    }
+    return true;
+}
+
+bool GalaxyImpl::ListLabels(std::vector<std::string>* labels) {
+    ListLabelsRequest request;
+    ListLabelsResponse response;
+    rpc_client_->SendRequest(master_, &Master_Stub::ListLabels, 
+                             &request, &response, 5, 1);
+    if (response.status() != kOk) {
+        return false;
+    }
+    int label_num = response.labels_size();
+    for (int i = 0; i < label_num; i ++) {
+        labels->push_back(response.labels(i));
+    }
+    return true;
+}
+
+
+bool GalaxyImpl::ListLabelledAgents(std::string label, 
+        std::vector<NodeDescription>* nodes) {
+    ListLabelledAgentsRequest request;
+    ListLabelledAgentsResponse response;
+    
+    request.mutable_label()->assign(label);
+    rpc_client_->SendRequest(master_, &Master_Stub::ListLabelledAgents,
+                             &request, &response, 5, 1);
+    int node_num = response.agents_size();
+    for (int i = 0; i < node_num; i ++) {
+        const AgentInfo& node = response.agents(i);
+        NodeDescription node_desc;
+        node_desc.addr = node.endpoint();
+        node_desc.state = node.has_state() ?  
+                          AgentState_Name(node.state()) : "kUnknown";
+        nodes->push_back(node_desc);
     }
     return true;
 }

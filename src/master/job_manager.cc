@@ -1118,6 +1118,24 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
     return; 
 }
 
+void JobManager::GetLabelledAgents(std::string label, AgentInfoList* agents_info) {
+    MutexLock lock(&mutex_);
+    std::map<LabelName, AgentSet>::iterator labels_it = labels_.find(label);
+    if (labels_it== labels_.end()) {
+        return;
+    }
+    const AgentSet& agents = labels_it->second;
+    AgentSet::iterator it = agents.begin();
+    for (; it != agents.end(); ++it) {
+        std::map<AgentAddr, AgentInfo*>::iterator agent_it = agents_.find(*it);
+        AgentInfo* agent = agents_info->Add();
+        agent->set_endpoint(*it);
+        if (agent_it != agents_.end()) {
+            agent->set_state(agent_it->second->state());
+        }
+    }
+}
+
 void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     MutexLock lock(&mutex_);
     if (safe_mode_) {
@@ -1128,6 +1146,14 @@ void JobManager::GetAgentsInfo(AgentInfoList* agents_info) {
     for (it = agents_.begin(); it != agents_.end(); ++it) {
         AgentInfo* agent = it->second;
         agents_info->Add()->CopyFrom(*agent);
+    }
+}
+
+void JobManager::GetLabels(StringList* labels) {
+    MutexLock lock(&mutex_);
+    std::map<LabelName, AgentSet>::iterator it;
+    for (it = labels_.begin(); it != labels_.end(); ++it) {
+        labels->Add()->assign(it->first);
     }
 }
 
