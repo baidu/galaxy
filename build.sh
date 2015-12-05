@@ -94,7 +94,7 @@ fi
 
 if [ -f "zookeeper-3.4.7.tar.gz" ]
 then
-    echo zookeeper-3.4.7.tar.gz exist"
+    echo "zookeeper-3.4.7.tar.gz exist"
 else
     # zookeeper
     wget http://www.us.apache.org/dist/zookeeper/stable/zookeeper-3.4.7.tar.gz
