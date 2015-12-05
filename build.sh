@@ -98,8 +98,8 @@ then
 else
     # zookeeper
     wget http://www.us.apache.org/dist/zookeeper/stable/zookeeper-3.4.7.tar.gz
-    tar zxf zookeeper-3.4.6.tar.gz
-    cd zookeeper-3.4.6/src/c
+    tar zxf zookeeper-3.4.7.tar.gz
+    cd zookeeper-3.4.7/src/c
     ./configure ${DEPS_CONFIG}
     make -j4
     make install
