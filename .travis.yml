@@ -4,6 +4,7 @@ env:
     - PROTOBUF_VERSION=2.6.0
 install:
     - sudo apt-get install libreadline-dev
+    - sudo apt-get install libboost-all-dev
 script: 
     - sh build.sh
     - cd sandbox && ./quick_test.sh
