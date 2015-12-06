@@ -7,3 +7,5 @@ machine:
 test:
   pre:
     - sh build.sh
+  post:
+    - cd sandbox && sh quick_test.sh
