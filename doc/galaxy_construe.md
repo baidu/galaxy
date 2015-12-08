@@ -32,15 +32,15 @@ Gce从属于agent模块，主要负责task的命令行的启动
 ####具体步骤如下
  - 创建agent_service服务实例，agent_service创建时内部会生成MasterWatcher实例，用于监控master是否发生变化，并获取当前最新的master_stub
  - agent_service初始化
-    1. 运行环境初始化与隔离
-       (1) 根据flag配置文件对resource_capacity_赋值:
+     1. 运行环境初始化与隔离
+        (1) 根据flag配置文件对resource_capacity_赋值:
         ```
         resource_capacity_millicores = FLAGS_agent_millicores_share;
         resource_capacity_.memory = FLAGS_agent_mem_share;
-       ```
+        ```
         (2) 创建工作目录FLAGS_agent_work_dir
         (3) 持久化实例PersistenceHandler persistence_handler初始化，使用leverldb接口打开FLAGS_agent_persistence_path文件
-    2. pod_manager_初始化
+     2. pod_manager_初始化
         (1) 与gce模块通信用的端口初始化FLAGS_agent_initd_port_begin和FLAGS_agent_initd_port_end范围内的端口初始化IndexList<int> initd_free_ports_
         (2) 删除FLAGS_agent_gc_dir目录
         (3) task_manager_初始化
@@ -48,17 +48,17 @@ Gce从属于agent模块，主要负责task的命令行的启动
             - 每个task对应子系统目录的创建，cgroup中相关文件的配置操作，每个task的资源准备，各个子系统路径等
     3. RestorePods:使用persistence_handler_从本地文件中scan pod的信息存入到内存pods_descs_[pod.pod_id] = pod.pod_desc并load到pod_manager_中（pod_manager_.ReloadPod），调用AllocResource更新resource_capacity_中的资源信息：used_port，millicores，memory
         - task_manager_->ReloadTask,三种类型的进程：部署任务的进程：task_id_deploy，运行任务的进程：task_id，结束任务的进程：task_id_stop
-        - ![ReloadTask流程图](https://raw.githubusercontent.com/May2016/galaxy/work/images/reloadtask_flowchart.png)
+        ![ReloadTask流程图](https://raw.githubusercontent.com/May2016/galaxy/work/images/reloadtask_flowchart.png)
         - DelayCheckTaskStageChange函数会根据上面task的stage状态来部署、运行、或者stoping app的task
         - 对于kTaskStagePENDING则会判断是是否有压缩包，有则按照wget且解包或直接解包，没有则直接运行app的task启动程序
         - 对于kTaskStageDEPLOYING则判断是否部署完成，部署完成则直接运行app的task启动程序
         - 对于kTaskStageRUNNING，如果请求gce模块失败次数没达到最大尝试次数，则重新运行app的task启动程序
         - 对于kTaskStageSTOPPING则如果停止超时或获取状态错误，则释放该task相关的资源，cgroup环境清理等
-   4. 调用RegistToMaster函数
+    4. 调用RegistToMaster函数
         (1) 绑定HandleMasterChange函数，用来切换mater 
         (2) PingMaster，使用rpc_client_向master发送请求，调用Master_Stub::HeartBeat函数
-   5. 线程池加入AgentImpl::KeepHeartBeat，用于向master发送心跳
-   6. 线程池加入AgentImpl::LoopCheckPods
+    5. 线程池加入AgentImpl::KeepHeartBeat，用于向master发送心跳
+    6. 线程池加入AgentImpl::LoopCheckPods
 
 ###Master
 - Master启动
