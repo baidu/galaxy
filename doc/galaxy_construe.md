@@ -21,7 +21,7 @@ Nexus的作用进行选主、服务发现和元数据存储。
 ##主要模块
 主要模块分为三大块：agent、master、scheduler；agent负责pod管理和task管理，task的真正运是在agent上；master作为整个系统的中心，负责job管理；scheduler负责job优先级计算以及资源分配的可行性计算。他们之间的关系如下：
 
-请插入此图
+![Master,agent和scheduler关系图](https://raw.githubusercontent.com/May2016/galaxy/work/images/MAS.png)
 
 ###Gce
 Gce从属于agent模块，主要负责task的命令行的启动
@@ -32,6 +32,7 @@ Gce从属于agent模块，主要负责task的命令行的启动
 ####具体步骤如下
  - 创建agent_service服务实例，agent_service创建时内部会生成MasterWatcher实例，用于监控master是否发生变化，并获取当前最新的master_stub
  - agent_service初始化
+     ![agent_init流程图](https://raw.githubusercontent.com/May2016/galaxy/work/images/agent_init_flowchart.png)
      1. 运行环境初始化与隔离
         - 根据flag配置文件对resource_capacity_赋值:
         ```
