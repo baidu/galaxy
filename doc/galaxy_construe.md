@@ -84,7 +84,7 @@ Gce从属于agent模块，主要负责task的命令行的启动
         
     5. 等待终止信号
 
-###Schedule
+###Schedule模块
     1. scheduler从scheduler_main.cc启动
     2. 调用SchedulerIO io Init()函数
         master_watcher_初始化绑定HandleMasterChange函数，监听master是否发生变化
