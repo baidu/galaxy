@@ -13,7 +13,7 @@ ter-slave结构，主要由总控节点Master和执行节点Agent构成，Master
 ![架构图](https://github.com/bluebore/galaxy/blob/master/images/galaxy_arch.png?raw=true)
 
 Nexus的作用进行选主、服务发现和元数据存储。
- -多台机器向nexus机器注册，作为备选master机器；
+ - 多台机器向nexus机器注册，作为备选master机器；
  - 若当前的master宕机或者挂掉，则在nexus注册的某台正常的机器从nexus获取job的信息（因为提交job的时候就会写nexus，当job完成或kill时，则从nexus上抹去此job的信息）
  - 若部署的nexus机器出现问题，则无法恢复
  - Nexus存储的是全局的信息job信息以及label信息，每次重启master的时候会从nexus上reload job信息和label信息
