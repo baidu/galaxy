@@ -84,20 +84,21 @@ Gce从属于agent模块，主要负责task的命令行的启动
         
     5. 等待终止信号
 
-###Schedule模块
-    1. scheduler从scheduler_main.cc启动
-    2. 调用SchedulerIO io Init()函数
-        master_watcher_初始化绑定HandleMasterChange函数，监听master是否发生变化
-        使用rpc_client获取master_stub_
-    3.  调用io.Sync()函数
-        - SyncResources()同步资源
+###Schedule
+1. scheduler从scheduler_main.cc启动
+2. 调用SchedulerIO io Init()函数
+    -master_watcher_初始化绑定HandleMasterChange函数，监听master是否发生变化
+    -使用rpc_client获取master_stub_
+3.  调用io.Sync()函数
+    - SyncResources()同步资源
 
-            使用master_stub_里的函数Master_Stub::GetResourceSnapshot获取agents以及deleted_agents同步资源情况，并将SchedulerIO::SyncResources加入到线程池
+        -使用master_stub_里的函数Master_Stub::GetResourceSnapshot获取agents以及deleted_agents同步资源情况，并将SchedulerIO::SyncResources加入到线程池
 
-        - SyncPendingJob()同步jobs
-            使用master_stub_里的函数GetPendingJobs获取scale_up_jobs（JobManager::ProcessScaleUp函数），scale_down_jobs（JobManager::ProcessScaleDown函数）以及need_update_jobs（JobManager::ProcessUpdateJob）三个集合中的数据。
+    - SyncPendingJob()同步jobs
+        
+        -使用master_stub_里的函数GetPendingJobs获取scale_up_jobs（JobManager::ProcessScaleUp函数），scale_down_jobs（JobManager::ProcessScaleDown函数）以及need_update_jobs（JobManager::ProcessUpdateJob）三个集合中的数据。
 
-            对于scale_up_jobs调用scheduler_.ScheduleScaleUp计算job的优先级，计算feasibility（可行性），其他两个集合也是如此，最后返回到std::vector<ScheduleInfo*> propose
+        -对于scale_up_jobs调用scheduler_.ScheduleScaleUp计算job的优先级，计算feasibility（可行性），其他两个集合也是如此，最后返回到std::vector<ScheduleInfo*> propose
     
-            对于获得的propose，使用master_stub_向函数Master_Stub::Propose（调用job_manager_.Propose）发送请求，根据scheduler的计算结果propose来实际根据task的状态来启动、停止、更新task。
+        -对于获得的propose，使用master_stub_向函数Master_Stub::Propose（调用job_manager_.Propose）发送请求，根据scheduler的计算结果propose来实际根据task的状态来启动、停止、更新task。
 
