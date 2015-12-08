@@ -50,10 +50,10 @@ Gce从属于agent模块，主要负责task的命令行的启动
         - task_manager_->ReloadTask,三种类型的进程：部署任务的进程：task_id_deploy，运行任务的进程：task_id，结束任务的进程：task_id_stop
         ![ReloadTask流程图](https://raw.githubusercontent.com/May2016/galaxy/work/images/reloadtask_flowchart.png)
         - DelayCheckTaskStageChange函数会根据上面task的stage状态来部署、运行、或者stoping app的task
-        - 对于kTaskStagePENDING则会判断是是否有压缩包，有则按照wget且解包或直接解包，没有则直接运行app的task启动程序
-        - 对于kTaskStageDEPLOYING则判断是否部署完成，部署完成则直接运行app的task启动程序
-        - 对于kTaskStageRUNNING，如果请求gce模块失败次数没达到最大尝试次数，则重新运行app的task启动程序
-        - 对于kTaskStageSTOPPING则如果停止超时或获取状态错误，则释放该task相关的资源，cgroup环境清理等
+            - 对于kTaskStagePENDING则会判断是是否有压缩包，有则按照wget且解包或直接解包，没有则直接运行app的task启动程序
+            - 对于kTaskStageDEPLOYING则判断是否部署完成，部署完成则直接运行app的task启动程序
+            - 对于kTaskStageRUNNING，如果请求gce模块失败次数没达到最大尝试次数，则重新运行app的task启动程序
+            - 对于kTaskStageSTOPPING则如果停止超时或获取状态错误，则释放该task相关的资源，cgroup环境清理等
     4. 调用RegistToMaster函数
         - 绑定HandleMasterChange函数，用来切换mater 
         - PingMaster，使用rpc_client_向master发送请求，调用Master_Stub::HeartBeat函数
