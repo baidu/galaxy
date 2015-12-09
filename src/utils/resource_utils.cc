@@ -40,6 +40,19 @@ bool ResourceUtils::Alloc(const Resource& require,
     return true;
 }
 
+bool ResourceUtils::Free(Resource& target, Resource& to_be_freed) {
+    target.set_memory(target.memory() + to_be_freed.memory());
+    target.set_millicores(target.millicores() + to_be_freed.millicores());
+    for (int i = 0; i < to_be_freed.disks_size(); ++i) {
+        Volume* disk = target.mutable_disks().Add();
+        disk->CopyFrom(to_be_freed.disks(i));
+    }
+    for (int i = 0; i < to_be_freed.ssds_size(); ++i) {
+        Volume* ssd = target.mutable_ssds().Add();
+        ssd->CopyFrom(to_be_freed.ssds(i));
+    }
+}
+
 void ResourceUtils::VolumeAlloc(const VolumeList& total,
                                 const VolumeList& require,
                                 VolumeList* left) {

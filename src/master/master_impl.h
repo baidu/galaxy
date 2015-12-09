@@ -57,6 +57,10 @@ public:
                                        const ::baidu::galaxy::GetResourceSnapshotRequest* request,
                                        ::baidu::galaxy::GetResourceSnapshotResponse* response,
                                        ::google::protobuf::Closure* done);
+      virtual void GetJobDescriptor(::google::protobuf::RpcController* controller,
+                                    const ::baidu::galaxy::GetJobDescriptorRequest* request,
+                                    ::baidu::galaxy::GetJobDescriptorResponse* response,
+                                    ::google::protobuf::Closure* done); 
       virtual void Propose(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::ProposeRequest* request,
                            ::baidu::galaxy::ProposeResponse* response,

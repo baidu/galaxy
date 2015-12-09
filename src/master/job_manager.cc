@@ -1717,5 +1717,40 @@ void JobManager::TraceJobStat(const std::string& jobid) {
                boost::bind(&JobManager::TraceJobStat, this, jobid));
 }
 
+void JobManager::GetJobDescByDiff(const JobIdDiffList& jobids,
+                                  JobEntityList* jobs,
+                                  StringList* deleted_jobs) {
+    MutexLock lock(&mutex_);
+    if (safe_mode_ != kSafeModeOff) { 
+        return;
+    }
+    std::map<std::string, std::string> jobid_version;
+    for (int i = 0; i < jobids.size(); i++) {
+        jobid_version.insert(std::make_pair(jobids.Get(i).jobid(), jobids.Get(i).version()));
+    }
+    std::map<JobId, Job*>::iterator job_it = jobs_.begin();
+    for (; job_it !=  jobs_.end(); ++ job_it) {
+        Job* job = job_it->second;
+        if (job->state_ == kJobTerminated) {
+            deleted_jobs->Add()->assign(job->id_);
+            continue;
+        }
+        std::map<Version, PodDescriptor>::iterator pod_it = job->pod_desc_.find(job->latest_version);
+        if (pod_it == job->pod_desc_.end()) {
+            LOG(WARNING, "job %s has no pod desc with version %s", job->id_.c_str(), job->latest_version.c_str());
+            continue;
+        }
+        std::map<std::string, std::string>::iterator jobid_it = jobid_version.find(job->id_);
+        if (jobid_it == jobid_version.end() 
+            || jobid_it->second != job->latest_version) {
+            LOG(INFO, "sync job %s description", job->id_.c_str());
+            JobEntity* job_entity = jobs->Add();
+            job_entity->mutable_desc()->CopyFrom(job->desc_);
+            job_entity->set_jobid(job->id_);
+            job_entity->mutable_desc()->mutable_pod()->CopyFrom(pod_it->second);
+        }
+    }
+}
+
 }
 }

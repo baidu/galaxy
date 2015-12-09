@@ -108,6 +108,17 @@ void MasterImpl::ReloadJobInfo() {
     LOG(INFO, "reload all job desc finish, total#: %d", job_amount);
 }
 
+void MasterImpl::GetJobDescriptor(::google::protobuf::RpcController* controller,
+                                    const ::baidu::galaxy::GetJobDescriptorRequest* request,
+                                    ::baidu::galaxy::GetJobDescriptorResponse* response,
+                                    ::google::protobuf::Closure* done) {
+    job_manager_.GetJobDescByDiff(request->jobs(),
+                                  response->mutable_jobs(),
+                                  response->mutable_deleted_jobs());
+    response->set_status(kOk);
+    done->Run();
+}
+
 void MasterImpl::AcquireMasterLock() {
     std::string master_lock = FLAGS_nexus_root_path + FLAGS_master_lock_path;
     ::galaxy::ins::sdk::SDKError err;

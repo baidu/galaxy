@@ -30,7 +30,7 @@ public:
     static bool Alloc(const Resource& require, 
                       Resource& target);
 
-
+    static void Free(Resource& target, Resource& to_be_freed);
     // compare two resource object
     // the check options include cpu , mem ,disks , ssds
     // equal return 0
