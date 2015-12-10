@@ -38,6 +38,7 @@ public:
                               AgentInfo* agent);
     static void DeallocResource(const Resource& to_be_free,
                                AgentInfo* agent);
+
     // compare two resource object
     // the check options include cpu , mem ,disks , ssds
     // equal return 0

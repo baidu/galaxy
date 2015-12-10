@@ -112,6 +112,15 @@ int32_t Scheduler::ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
     return propose_count;
 }
 
+void Scheduler::CalcPreemptStep(AgentInfoExtend* agent,
+                               PodScaleUpCell* pods) {
+    Resource unassigned = agent->unassigned;
+    std::vector<>
+    for (int i = 0;  i < agent->agent_info->pods_size(); ++i) {
+    
+    }
+}
+
 int32_t Scheduler::ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc) {
     boost::unordered_map<std::string, AgentInfoExtend*>::iterator it = resources_.begin();
     std::vector<std::string> keys;
@@ -571,8 +580,14 @@ void Scheduler::HandleJobUpdate(JobInfo* job_info,
     }
 }
 
-
-
+void Scheduler::BuildSyncJobRequest(GetJobDescritporRequest* request) {
+    boost::unordered_map<std::string, JobDescriptor>::iterator it = jobs_->begin();
+    for (; it !=  jobs_->end(); ++it) {
+        JobIdDiff* diff = request->mutable_jobs()->Add();
+        diff->set_jobid(it->first);
+        diff->set_version(it->second.pod().version());
+    }
+}
 
 }// galaxy
 }// baidu

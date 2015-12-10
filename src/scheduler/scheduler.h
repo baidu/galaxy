@@ -79,13 +79,25 @@ struct PodScaleDownCell {
     int32_t Propose(std::vector<ScheduleInfo*>* propose);
 };
 
+
+struct PreemptStep {
+    std::string agent_addr;
+    // pods to be preempted
+    std::vector<boost::touple<std::string, std::string, int32_t> > pods;
+};
+
+
 class Scheduler {
 
 public:
     static double CalcLoad(const AgentInfo* agent);
 
-    Scheduler() : schedule_turns_(0){}
-    ~Scheduler() {}
+    Scheduler() : schedule_turns_(0){
+        jobs_ = new boost::unordered_map<std::string, JobDescriptor>();
+    }
+    ~Scheduler() {
+        delete jobs_;
+    }
 
     // @brief 调度算入口: scale u
     // @note 调用者负责销毁 propose
@@ -107,6 +119,8 @@ public:
 
     void BuildSyncRequest(GetResourceSnapshotRequest* request);
 
+    void BuildSyncJobRequest(GetJobDescritporRequest* request);
+    void SyncJobDescriptor(const GetJobDescritporResponse* response);
 private:
 
     int32_t ChoosePods(std::vector<JobInfo*>& pending_jobs,
@@ -116,7 +130,7 @@ private:
                 std::vector<PodScaleDownCell*>* reducing_pods);
 
     int32_t ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
-    
+
     void HandleJobUpdate(JobInfo* job_info, 
                         std::vector<ScheduleInfo*>* propose);
     template<class T>
@@ -129,9 +143,11 @@ private:
         }
     }
 
+    bool CalcPreemptStep(AgentInfoExtend* agent, PodScaleUpCell* pods);
 private:
     boost::unordered_map<std::string, AgentInfoExtend*> resources_;
     int64_t schedule_turns_;    // 当前调度轮数
+    boost::unordered_map<std::string, JobDescriptor>* jobs_;
 };
 
 

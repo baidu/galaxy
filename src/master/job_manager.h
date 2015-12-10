@@ -34,6 +34,8 @@ typedef google::protobuf::RepeatedPtrField<std::string> StringList;
 typedef std::string Version;
 typedef google::protobuf::RepeatedPtrField<baidu::galaxy::PodOverview> PodOverviewList;
 typedef std::map<JobId, std::map<PodId, PodStatus*> > PodMap;
+typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobIdDiff> JobIdDiffList;
+typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobEntity> JobEntityList;
 
 struct id_tag {};
 struct addr_tag {};
@@ -106,6 +108,9 @@ public:
                               AgentInfoList* agents_info,
                               StringList* deleted_agents,
                               ::google::protobuf::Closure* done);
+    void GetJobDescByDiff(const JobIdDiffList& jobids,
+                         JobEntityList* jobs,
+                         StringList* deleted_jobs);
     void GetJobsOverview(JobOverviewList* jobs_overview);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
     void KeepAlive(const std::string& agent_addr);

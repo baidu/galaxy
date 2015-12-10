@@ -100,8 +100,7 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
         if (status < 0) {
             LOG(WARNING, "fail to schedule scale up ");
             break;
-
-        } 
+        }
         status = scheduler_.ScheduleScaleDown(scale_down_jobs, &propose);
         if (status < 0) {
             LOG(WARNING, "fail to schedule scale down ");
@@ -112,7 +111,6 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
             LOG(WARNING, "fail to schedule scale down ");
             break;
         }
-
         if (propose.size() > 0) {
             ProposeRequest pro_request;
             ProposeResponse pro_response;
@@ -148,7 +146,6 @@ void SchedulerIO::SyncResources() {
                              request, response,
                              call_back,
                              FLAGS_scheduler_sync_resource_timeout, 0);
-
 }
 
 void SchedulerIO::SyncResourcesCallBack(const GetResourceSnapshotRequest* request,
