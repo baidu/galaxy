@@ -270,6 +270,20 @@ message GetMasterStatusResponse {
     optional Status status = 17;
 }
 
+message PreemptEntity {
+    optional string jobid = 1;
+    optional string podid = 2;
+}
+
+message PreemptRequest {
+    optional PreemptEntity pending_pod = 1;
+    repeated PreemptEntity preempted_pods = 2;
+    optional string addr = 3;
+}
+
+message PreemptResponse {
+    optional Status status = 1;
+}
 
 service Master {
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
@@ -294,7 +308,7 @@ service Master {
     rpc GetPendingJobs(GetPendingJobsRequest) returns (GetPendingJobsResponse);
     rpc GetResourceSnapshot(GetResourceSnapshotRequest) returns (GetResourceSnapshotResponse);
     rpc Propose(ProposeRequest) returns (ProposeResponse);
-
+    rpc Preempt(PreemptRequest) returns (PreemptResponse);
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
     rpc LabelAgents(LabelAgentRequest) returns (LabelAgentResponse);
 }

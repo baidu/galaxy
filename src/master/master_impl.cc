@@ -311,6 +311,24 @@ void MasterImpl::GetStatus(::google::protobuf::RpcController*,
     response->set_status(ok);
     done->Run();
 }
+void MasterImpl::Preempt(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::PreemptRequest* request,
+                           ::baidu::galaxy::PreemptResponse* response,
+                           ::google::protobuf::Closure* done) {
+    std::vector<PreemptEntity> preempted_pods;
+    for (int i = 0; i < request->preempted_pods_size(); i++) {
+        preempted_pods.push_back(request->preempted_pods(i));
+    }
+    bool ok = job_manager_.Preempt(request->pending_pod(),
+                                   preempted_pods,
+                                   request->addr());
+    if (ok) {
+        response->set_status(kOk);
+    }else {
+        response->set_status(kInputError);
+    }
+    done->Run();
+}
 
 }
 }

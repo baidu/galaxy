@@ -31,6 +31,7 @@ public:
                  std::vector<PodInformation>* pods);
     bool GetStatus(MasterStatus* status);
     bool SwitchSafeMode(bool mode);
+    bool Preempt(const PreemptPropose& propose);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -38,6 +39,29 @@ private:
     RpcClient* rpc_client_;
     Master_Stub* master_;
 };
+
+bool GalaxyImpl::Preempt(const PreemptPropose& propose) {
+    PreemptRequest request;
+    PreemptResponse response;
+    PreemptEntity* pending_pod = request.mutable_pending_pod();
+    pending_pod->set_jobid(propose.pending_pod.first);
+    pending_pod->set_podid(propose.pending_pod.second);
+    for (size_t i = 0; i < propose.preempted_pods.size(); i++) {
+        PreemptEntity* preempt_pod = request.add_preempted_pods();
+        preempt_pod->set_jobid(propose.preempted_pods[i].first);
+        preempt_pod->set_podid(propose.preempted_pods[i].second);
+    }
+    request.set_addr(propose.addr);
+    bool ret = rpc_client_->SendRequest(master_, &Master_Stub::Preempt,
+                                        &request, &response, 5, 1);
+    if (!ret || 
+            (response.has_status() 
+                    && response.status() != kOk)) {
+        return false;     
+    }    
+    return true;
+
+}
 
 bool GalaxyImpl::LabelAgents(const std::string& label, 
                              const std::vector<std::string>& agents) {

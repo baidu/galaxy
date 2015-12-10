@@ -46,6 +46,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
+                                 "    galaxy preempt -f <config>\n"
                                  "    galaxy status \n"
                                  "Options:\n"
                                  "    -f config    Specify config file ,eg job config file , label config file.\n"
@@ -168,6 +169,60 @@ void ReadBinary(const std::string& file, std::string* binary) {
     fclose(fp);
 }
 
+int BuildPreemptFromConfig(const std::string& config, ::baidu::galaxy::PreemptPropose* propose) {
+    FILE* fd = fopen(config.c_str(), "r");
+    char buffer[5120];
+    rapidjson::FileReadStream frs(fd, buffer, sizeof(buffer));
+    rapidjson::Document document;
+    document.ParseStream<0>(frs);
+    if (!document.IsObject()) {
+        fprintf(stderr, "invalidate config file\n");
+        return -1;
+    }
+    if (!document.HasMember("addr")) {
+        fprintf(stderr, "addr is required \n");
+        return -1;
+    }
+    propose->addr = document["addr"].GetString();
+
+    if (!document.HasMember("pending_pod")) {
+        fprintf(stderr, "pending_pod is required\n");
+        return -1;
+    } 
+    const rapidjson::Value& pending_pod = document["pending_pod"];
+    if (!pending_pod.HasMember("jobid")) {
+        fprintf(stderr, "jobid is required in pending_pod\n");
+        return -1;
+    }
+
+    if (!pending_pod.HasMember("podid")) {
+        fprintf(stderr, "podid is required in pending_pod\n");
+        return -1;
+    }
+    propose->pending_pod = std::make_pair(pending_pod["jobid"].GetString(),
+                                          pending_pod["podid"].GetString());
+    if (!document.HasMember("preempted_pods")) {
+        fprintf(stderr, "preempted_pods is required\n");
+        return -1;
+    }
+    const rapidjson::Value& preempted_pods = document["preempted_pods"];
+    for (rapidjson::SizeType i = 0; i < preempted_pods.Size(); i++) {
+        const rapidjson::Value& preempted_pod = preempted_pods[i];
+        if (!preempted_pod.HasMember("jobid")) {
+            fprintf(stderr, "job id is required");
+            return -1;
+        }
+        if (!preempted_pod.HasMember("podid")) {
+            fprintf(stderr, "pod id is required");
+            return -1;
+        }
+        propose->preempted_pods.push_back(std::make_pair(
+                    preempted_pod["jobid"].GetString(),
+                    preempted_pod["podid"].GetString()
+                    ));
+    }
+    return 0;
+}
 
 // build job description from json config
 // TODO do some validations
@@ -716,6 +771,33 @@ int ListJob() {
     return 0;
 }
 
+int PreemptPod() {
+    std::string master_endpoint;
+    bool ok = GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "Fail to get master endpoint\n");
+        return -1;
+    }
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    if (FLAGS_f.empty()) {
+        fprintf(stderr, "-f is required\n");
+        return -1;
+    }
+    ::baidu::galaxy::PreemptPropose propose;
+    int ret = BuildPreemptFromConfig(FLAGS_f, &propose);
+    if (ret != 0) {
+        fprintf(stderr, "fail to build preempt propose\n");
+        return -1;
+    }
+    ok = galaxy->Preempt(propose);
+    if (ok) {
+        fprintf(stdout, "submit preempt propose successfully\n");
+        return 0;
+    }
+    fprintf(stderr, "fail to submit preempt propose \n");
+    return -1;
+}
+
 int KillJob() {
     std::string master_endpoint;
     bool ok = GetMasterAddr(&master_endpoint);
@@ -765,7 +847,9 @@ int main(int argc, char* argv[]) {
             return SwitchSafeMode(false);
     } else if (strcmp(argv[1], "attach") == 0) {
         return AttachPod();
-    } else {
+    } else if (strcmp(argv[1], "preempt") == 0) {
+        return PreemptPod();
+    }else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
     }
