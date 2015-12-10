@@ -192,7 +192,6 @@ message ProposeRequest {
 
 message ProposeResponse {
     optional Status status = 1;
-    // 返回给调度器最新agent状态信息
     repeated AgentInfo agents = 2;
 }
 

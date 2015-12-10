@@ -54,6 +54,40 @@ void SchedulerIO::Sync() {
     SyncPendingJob();
 }
 
+void SchedulerIO::SyncJobDescriptor() {
+    MutexLock lock(&master_mutex_);
+    GetJobDescriptorRequest* request = new GetJobDescriptorRequest();
+    scheduler_.BuildSyncJobRequest(request);
+    GetJobDescriptorResponse* response = new GetJobDescriptorResponse();
+    rpc_client_.AsyncRequest(master_stub_,
+                            &Master_Stub::GetJobdescriptor,
+                            request,
+                            response,
+                            boost::bind(&SchedulerIO::SyncJobDescriptorCallBack, this, _1, _2, _3, _4),
+                            5, 0);
+}
+
+void SchedulerIO::SyncJobDescriptorCallBack(const GetJobdescriptorRequest* request,
+                                   GetJobdescriptorResponse* response,
+                                   bool failed, int) {
+    MutexLock lock(&master_mutex_);
+    boost::scoped_ptr<const GetJobDescriptorRequest> request_ptr(request);
+    boost::scoped_ptr<GetJobDescriptorResponse> response_ptr(response);
+    if (failed || response_ptr->status() != kOk) {
+        LOG(WARNING, "fail to sync job desc from master");
+        thread_pool_.DelayTask(FLAGS_scheduler_syn_job_period,
+                boost::bind(&SchedulerIO::SyncJobDescriptor, this));
+        return;
+    }
+    bool ok = scheduler_.SyncJobDescriptor(response);
+    if (!ok) {
+        LOG(WARNING, "fail syn job descriptor");
+    }
+    thread_pool_.DelayTask(FLAGS_scheduler_syn_job_period,
+                boost::bind(&SchedulerIO::SyncJobDescriptor, this));
+
+}
+
 void SchedulerIO::SyncPendingJob() {
     MutexLock lock(&master_mutex_);
     GetPendingJobsRequest* req = new GetPendingJobsRequest();
@@ -82,17 +116,17 @@ void SchedulerIO::SyncPendingJobCallBack(const GetPendingJobsRequest* request,
     }
     LOG(INFO, "get pending jobs from master , pending_size %d, scale_down_size %d", response_ptr->scale_up_jobs_size(),
          response_ptr->scale_down_jobs_size());
-    std::vector<JobInfo*> scale_up_jobs;
+    std::vector<JobInfo> scale_up_jobs;
     for (int i = 0; i < response_ptr->scale_up_jobs_size(); i++) {
-        scale_up_jobs.push_back(response_ptr->mutable_scale_up_jobs(i));
+        scale_up_jobs.push_back(response_ptr->scale_up_jobs(i));
     }
-    std::vector<JobInfo*> scale_down_jobs;
+    std::vector<JobInfo> scale_down_jobs;
     for (int i = 0; i < response_ptr->scale_down_jobs_size(); i++) {
-        scale_down_jobs.push_back(response_ptr->mutable_scale_down_jobs(i));
+        scale_down_jobs.push_back(response_ptr->scale_down_jobs(i));
     }
-    std::vector<JobInfo*> need_update_jobs;
+    std::vector<JobInfo> need_update_jobs;
     for(int i = 0; i < response_ptr->need_update_jobs_size(); i++) {
-        need_update_jobs.push_back(response_ptr->mutable_need_update_jobs(i));
+        need_update_jobs.push_back(response_ptr->need_update_jobs(i));
     }
     std::vector<ScheduleInfo*> propose;
     do{

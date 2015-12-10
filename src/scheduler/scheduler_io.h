@@ -38,9 +38,13 @@ private:
                           bool failed, int);
 
     void SyncResources();
+    void SyncJobDescriptor();
     void SyncResourcesCallBack(const GetResourceSnapshotRequest* request,
                                GetResourceSnapshotResponse* response,
                                bool failed, int);
+    void SyncJobDescriptorCallBack(const GetJobdescriptorRequest* request,
+                                   GetJobdescriptorResponse* response,
+                                   bool failed, int);
  
     void CleanPropse(std::vector<ScheduleInfo*>& propose);
 private:

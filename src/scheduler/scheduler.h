@@ -15,52 +15,28 @@
 namespace baidu {
 namespace galaxy {
 
-struct AgentInfoExtend {
-    Resource free;
-    Resource unassigned;
-    AgentInfo* agent_info;
-    boost::unordered_set<std::string> labels_set;
-    boost::unordered_set<int32_t> used_port_set;
-
-    AgentInfoExtend(AgentInfo* p_agent_info):free(),
-                                           unassigned(){
-        if (p_agent_info != NULL) {
-            agent_info = p_agent_info;
-        }else {
-            assert(false);
-        } 
-    }
-
-    void CalcExtend();
-    ~AgentInfoExtend(){
-        delete agent_info;
-    }
-};
-
-
 struct PodScaleUpCell {
-    PodDescriptor* pod;
-    JobInfo* job;
+    PodDescriptor pod;
+    JobInfo job;
     uint32_t schedule_count;
     uint32_t feasible_limit;
     std::vector<std::string> pod_ids;
-    std::vector<AgentInfoExtend*> feasible;
-    std::vector<std::pair<double, AgentInfo*> > sorted;
+    std::vector<AgentInfo> feasible;
+    std::vector<AgentInfo> preemption;
+    std::vector<std::pair<double, std::string> > sorted;
 
     PodScaleUpCell();
 
-
     bool FeasibilityCheck(const AgentInfoExtend* agent_info);
 
-    int32_t Score();
+    bool PreemptionCheck(const AgentInfoExtend* agent_info);
 
-    double ScoreAgent(const AgentInfo* agent_info,
-                       const PodDescriptor* desc);
+    void Score();
 
-    int32_t Propose(std::vector<ScheduleInfo*>* propose);
+    double ScoreAgent(const AgentInfo& agent_info,
+                      const PodDescriptor& desc);
 
-    bool VolumeFit(std::vector<Volume>& unassigned,
-                   std::vector<Volume>& required);
+    int32_t Propose(std::vector<ScheduleInfo>* propose);
 
 };
 
@@ -80,34 +56,25 @@ struct PodScaleDownCell {
 };
 
 
-struct PreemptStep {
-    std::string agent_addr;
-    // pods to be preempted
-    std::vector<boost::touple<std::string, std::string, int32_t> > pods;
-};
-
-
 class Scheduler {
 
 public:
-    static double CalcLoad(const AgentInfo* agent);
+    static double CalcLoad(const AgentInfo& agent);
 
-    Scheduler() : schedule_turns_(0){
+    Scheduler() {
         jobs_ = new boost::unordered_map<std::string, JobDescriptor>();
+        resources_ = new boost::unordered_map<std::string, AgentInfo>();
     }
     ~Scheduler() {
         delete jobs_;
     }
 
-    // @brief 调度算入口: scale u
-    // @note 调用者负责销毁 propose
-    int32_t ScheduleScaleUp(std::vector<JobInfo*>& pending_jobs,
-                     std::vector<ScheduleInfo*>* propose);
+    int32_t ScheduleScaleUp(const std::string& master_addr,
+                            std::vector<JobInfo*>& pending_jobs);
 
     // 调度算入口: scale down
     // @note 调用者负责销毁 propose
-    int32_t ScheduleScaleDown(std::vector<JobInfo*>& reducing_jobs,
-                     std::vector<ScheduleInfo*>* propose);
+    int32_t ScheduleScaleDown(std::vector<JobInfo>& reducing_jobs);
 
     int32_t ScheduleUpdate(std::vector<JobInfo*>& update_jobs,
                            std::vector<ScheduleInfo*>* propose);
@@ -119,17 +86,16 @@ public:
 
     void BuildSyncRequest(GetResourceSnapshotRequest* request);
 
-    void BuildSyncJobRequest(GetJobDescritporRequest* request);
-    void SyncJobDescriptor(const GetJobDescritporResponse* response);
+    void BuildSyncJobRequest(GetJobDescriptorRequest* request);
+    void SyncJobDescriptor(const GetJobDescriptorResponse* response);
 private:
 
-    int32_t ChoosePods(std::vector<JobInfo*>& pending_jobs,
+    int32_t ChoosePods(const std::vector<JobInfo>& pending_jobs,
                        std::vector<PodScaleUpCell*>* pending_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo*>& reducing_jobs,
-                std::vector<PodScaleDownCell*>* reducing_pods);
+                              std::vector<PodScaleDownCell*>* reducing_pods);
 
-    int32_t ChooseResourse(std::vector<AgentInfoExtend*>* resources_to_alloc);
 
     void HandleJobUpdate(JobInfo* job_info, 
                         std::vector<ScheduleInfo*>* propose);
@@ -144,10 +110,15 @@ private:
     }
 
     bool CalcPreemptStep(AgentInfoExtend* agent, PodScaleUpCell* pods);
+    void Propose(const std::vector<ScheduleInfo>& sched_infos, const std::string& master_addr);
+    void ProposeCallBack(const ProposeRequest* request,
+                         ProposeResponse* response,
+                         bool failed, int);
 private:
-    boost::unordered_map<std::string, AgentInfoExtend*> resources_;
-    int64_t schedule_turns_;    // 当前调度轮数
+    Mutex sched_mutex_;
+    boost::unordered_map<std::string, AgentInfo>* resources_;
     boost::unordered_map<std::string, JobDescriptor>* jobs_;
+    RpcClient rpc_client_;
 };
 
 

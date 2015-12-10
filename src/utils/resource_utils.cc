@@ -32,7 +32,6 @@ bool ResourceUtils::AllocResource(const Resource& require,
     // assign cpu memory
     bool ok = ResourceUtils::Alloc(agent->assigned(), unassigned);
     if (!ok) {
-        LOG(INFO, "cpu mem alloc fails on agent %s", agent->endpoint().c_str());
         return false;
     }
     ok = ResourceUtils::AllocPort(agent->assigned(), used_ports);
@@ -54,12 +53,30 @@ bool ResourceUtils::AllocResource(const Resource& require,
     }
     ok = ResourceUtils::Alloc(require, unassigned);
     if (!ok) {
-        LOG(INFO, "cpu mem alloc fails on agent %s", agent->endpoint().c_str());
+        LOG(WARNING, "cpu mem alloc fails on agent:mem_unassigned %ld, cpu_unassigned %d ,mem_require %ld, cpu_require %d",
+                  agent->endpoint().c_str(), unassigned.memory(), unassigned.millicores(),
+                  require.memory(),
+                  require.millicores());
         return false;
     }
     ok = ResourceUtils::AllocPort(require, used_ports);
     if (!ok) {
-        LOG(INFO, "port alloc fails on agent %s", agent->endpoint().c_str());
+        std::stringstream ss;
+        for (int i = 0; i < require.ports_size(); i++) {
+            if(i == 0) {
+                ss << "require ports:";
+            }
+            ss << require.ports(i) << " ";
+        }
+        for (int i = 0; i < used_ports.ports_size(); i++) {
+            if (i == 0) {
+                ss << " used ports:";
+            }
+            ss << user_ports.ports(i) << " "; 
+        }
+        LOG(WARNING, "port alloc fails on agent %s log %s", 
+                    agent->endpoint().c_str(),
+                    ss.str().c_str());
         return false;
     }
     Resource assigned;
@@ -137,19 +154,6 @@ bool ResourceUtils::Alloc(const Resource& require,
     VolumeAlloc(target.ssds(), require.ssds(),
                 target.mutable_ssds());
     return true;
-}
-
-bool ResourceUtils::Free(Resource& target, Resource& to_be_freed) {
-    target.set_memory(target.memory() + to_be_freed.memory());
-    target.set_millicores(target.millicores() + to_be_freed.millicores());
-    for (int i = 0; i < to_be_freed.disks_size(); ++i) {
-        Volume* disk = target.mutable_disks().Add();
-        disk->CopyFrom(to_be_freed.disks(i));
-    }
-    for (int i = 0; i < to_be_freed.ssds_size(); ++i) {
-        Volume* ssd = target.mutable_ssds().Add();
-        ssd->CopyFrom(to_be_freed.ssds(i));
-    }
 }
 
 void ResourceUtils::VolumeAlloc(const VolumeList& total,
