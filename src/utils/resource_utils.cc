@@ -72,7 +72,7 @@ bool ResourceUtils::AllocResource(const Resource& require,
             if (i == 0) {
                 ss << " used ports:";
             }
-            ss << user_ports.ports(i) << " "; 
+            ss << used_ports.ports(i) << " "; 
         }
         LOG(WARNING, "port alloc fails on agent %s log %s", 
                     agent->endpoint().c_str(),

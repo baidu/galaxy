@@ -42,11 +42,10 @@ private:
     void SyncResourcesCallBack(const GetResourceSnapshotRequest* request,
                                GetResourceSnapshotResponse* response,
                                bool failed, int);
-    void SyncJobDescriptorCallBack(const GetJobdescriptorRequest* request,
-                                   GetJobdescriptorResponse* response,
+    void SyncJobDescriptorCallBack(const GetJobDescriptorRequest* request,
+                                   GetJobDescriptorResponse* response,
                                    bool failed, int);
  
-    void CleanPropse(std::vector<ScheduleInfo*>& propose);
 private:
     std::string master_addr_;
     RpcClient rpc_client_;
