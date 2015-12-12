@@ -85,7 +85,7 @@ void Scheduler::ProposeCallBack(const ProposeRequest* request,
                                 ProposeResponse* response,
                                 bool failed, int) {
     std::string level = "unsuccessfully";
-    if (!failed && response->status() != kOk) {
+    if (!failed && response->status() == kOk) {
         level = "successfully";
     }
     for (int i = 0; i < request->schedule_size(); i++) {

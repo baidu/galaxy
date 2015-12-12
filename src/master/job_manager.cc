@@ -524,12 +524,11 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
             for (; pod_it != job->pods_.end() && scale_down_count > 0;
               ++pod_it) {
-                if (pod_it->second->stage() != kStagePending &&
-                        pod_it->second->stage() != kStageFinished) {
-                    continue;
+                if (pod_it->second->stage() == kStagePending ||
+                    pod_it->second->stage() == kStageFinished) {
+                    --scale_down_count;
+                    pods_will_been_removed.push_back(pod_it->second);
                 }
-                --scale_down_count;
-                pods_will_been_removed.push_back(pod_it->second);
             }
         }
         std::string reason = "job " + job->id_ + " scale down";
