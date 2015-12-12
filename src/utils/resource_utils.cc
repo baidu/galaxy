@@ -53,7 +53,7 @@ bool ResourceUtils::AllocResource(const Resource& require,
     }
     ok = ResourceUtils::Alloc(require, unassigned);
     if (!ok) {
-        LOG(WARNING, "cpu mem alloc fails on agent:mem_unassigned %ld, cpu_unassigned %d ,mem_require %ld, cpu_require %d",
+        LOG(WARNING, "cpu mem alloc fails on agent %s :mem_unassigned %ld, cpu_unassigned %d ,mem_require %ld, cpu_require %d",
                   agent->endpoint().c_str(), unassigned.memory(), unassigned.millicores(),
                   require.memory(),
                   require.millicores());
