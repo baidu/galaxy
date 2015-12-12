@@ -517,18 +517,14 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
             continue;
         } 
         int32_t scale_down_count = job->pods_.size() - job->desc_.replica();
-        std::set<JobId>::iterator su_jobid_it  = scale_up_jobs_.find(*jobid_it);
-        // scale down pods with pending stage 
         std::vector<PodStatus*> pods_will_been_removed;
-        if (su_jobid_it != scale_up_jobs_.end()) {
-            std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
-            for (; pod_it != job->pods_.end() && scale_down_count > 0;
+        std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+        for (; pod_it != job->pods_.end() && scale_down_count > 0;
               ++pod_it) {
-                if (pod_it->second->stage() == kStagePending ||
-                    pod_it->second->stage() == kStageFinished) {
-                    --scale_down_count;
-                    pods_will_been_removed.push_back(pod_it->second);
-                }
+            if (pod_it->second->stage() == kStagePending ||
+                pod_it->second->stage() == kStageFinished) {
+                --scale_down_count;
+                pods_will_been_removed.push_back(pod_it->second);
             }
         }
         std::string reason = "job " + job->id_ + " scale down";
