@@ -328,6 +328,8 @@ Status JobManager::Terminte(const JobId& jobid) {
     if (it == jobs_.end()) {
         return kJobNotFound;
     }
+    scale_up_jobs_.erase(it->second->id_);
+    need_update_jobs_.erase(it->second->id_);
     it->second->desc_.set_replica(0);
     scale_down_jobs_.insert(it->second->id_);
     it->second->state_ = kJobTerminated;

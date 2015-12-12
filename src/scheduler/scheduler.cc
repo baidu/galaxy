@@ -262,7 +262,7 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo>& pending_jobs,
         PodScaleUpCell* need_schedule_cell = new PodScaleUpCell();
         need_schedule_cell->proposed = false;
         need_schedule_cell->pod = pod_desc;
-        need_schedule_cell->job = *job_it;
+        need_schedule_cell->job.CopyFrom(*job_it);
         need_schedule_cell->pod_ids = need_schedule;
         need_schedule_cell->feasible_limit = need_schedule.size() * FLAGS_scheduler_feasibility_factor;
         all_pod_needs += need_schedule_cell->feasible_limit;
@@ -358,7 +358,6 @@ void PodScaleUpCell::Score() {
 }
 
 void PodScaleUpCell::Propose(std::vector<ScheduleInfo>* propose) {
-    LOG(INFO, "CALL CHILD");
     std::vector<std::pair<double, std::string> >::iterator sorted_it = sorted.begin();
     for (size_t i = 0; i < pod_ids.size(); ++i) {
         if (sorted_it == sorted.end()) {
