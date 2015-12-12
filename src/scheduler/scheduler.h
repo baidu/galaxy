@@ -22,7 +22,7 @@ struct PodScaleCell {
     PodScaleCell();
     virtual void Score(){}
     virtual void Propose(std::vector<ScheduleInfo>* propose){}
-    ~PodScaleCell();
+    virtual ~PodScaleCell();
 };
 
 struct PodScaleUpCell : PodScaleCell {
