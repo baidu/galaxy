@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <boost/unordered_map.hpp>
 #include <boost/unordered_set.hpp>
+#include <boost/shared_ptr.hpp>
 #include "proto/master.pb.h"
 #include "mutex.h"
 #include "rpc/rpc_client.h"
@@ -111,14 +112,11 @@ public:
 private:
 
     int32_t ChoosePods(std::vector<JobInfo>& pending_jobs,
-                       std::vector<PodScaleUpCell*>& pending_pods);
+                       std::vector<boost::shared_ptr<PodScaleUpCell> >& pending_pods);
 
     int32_t ChooseReducingPod(std::vector<JobInfo>& reducing_jobs,
-                              std::vector<PodScaleDownCell*>& reducing_pods);
+                              std::vector<boost::shared_ptr<PodScaleDownCell> >& reducing_pods);
 
-
-    void HandleJobUpdate(JobInfo* job_info, 
-                        std::vector<ScheduleInfo*>* propose);
     template<class T>
     void Shuffle(std::vector<T>& list) {
         for (size_t i = list.size(); i > 1; i--) {
@@ -129,7 +127,8 @@ private:
         }
     }
 
-    void Propose(PodScaleCell* cell, const std::string& master_addr);
+    void Propose(boost::shared_ptr<PodScaleCell> cell, 
+                 const std::string& master_addr);
     void ProposeCallBack(const ProposeRequest* request,
                          ProposeResponse* response,
                          bool failed, int);

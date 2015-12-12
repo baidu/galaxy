@@ -51,12 +51,11 @@ static bool AgentCompare(const std::pair<double, std::string>& left,
 PodScaleCell::PodScaleCell(){}
 PodScaleCell::~PodScaleCell(){}
 
-void Scheduler::Propose(PodScaleCell* cell,
+void Scheduler::Propose(boost::shared_ptr<PodScaleCell> cell,
                         const std::string& master_addr) {
     cell->Score();
     std::vector<ScheduleInfo> propose_pods;
     cell->Propose(&propose_pods);
-    delete cell;
     LOG(INFO, "propose sched info count %d", propose_pods.size());
     Master_Stub* master_stub;
     bool ok = rpc_client_.GetStub(master_addr, &master_stub);
@@ -104,7 +103,7 @@ void Scheduler::ProposeCallBack(const ProposeRequest* request,
 void Scheduler::ScheduleScaleUp(const std::string& master_addr,
                                 std::vector<JobInfo>& pending_jobs) {
     MutexLock lock(&sched_mutex_);
-    std::vector<PodScaleUpCell*> pending_pods;
+    std::vector<boost::shared_ptr<PodScaleUpCell> > pending_pods;
     // sort job by priority
     int32_t all_pod_needs = ChoosePods(pending_jobs, pending_pods);
     // shuffle agent
@@ -119,9 +118,9 @@ void Scheduler::ScheduleScaleUp(const std::string& master_addr,
     for (; key_it != keys.end() &&
          cur_pod_count < all_pod_needs; ++key_it) {
         AgentInfo agent = resources_->find(*key_it)->second;
-        for (std::vector<PodScaleUpCell*>::iterator pod_it = pending_pods.begin();
+        for (std::vector<boost::shared_ptr<PodScaleUpCell> >::iterator pod_it = pending_pods.begin();
                 pod_it != pending_pods.end(); ++pod_it) {
-            PodScaleUpCell* cell = *pod_it;
+            boost::shared_ptr<PodScaleUpCell> cell = *pod_it;
             LOG(INFO, "checking: %s on %s",
                     cell->job.jobid().c_str(),
                     agent.endpoint().c_str());
@@ -145,10 +144,9 @@ void Scheduler::ScheduleScaleUp(const std::string& master_addr,
         }
     } 
     for (size_t i = 0; i < pending_pods.size(); i++) {
-        PodScaleUpCell* cell = pending_pods[i];
+        boost::shared_ptr<PodScaleUpCell> cell = pending_pods[i];
         if (cell->proposed || cell->feasible.size() <=0) {
             LOG(INFO, "job %s has no feasibie agent to deploy", cell->job.jobid().c_str());
-            delete cell;
             continue;
         }
         thread_pool_.AddTask(boost::bind(&Scheduler::Propose, this, cell, master_addr));
@@ -159,7 +157,7 @@ void Scheduler::ScheduleScaleUp(const std::string& master_addr,
 void Scheduler::ScheduleScaleDown(const std::string& master_addr,
                                   std::vector<JobInfo>& reducing_jobs) {
     MutexLock lock(&sched_mutex_);
-    std::vector<PodScaleDownCell*> reducing_pods;
+    std::vector<boost::shared_ptr<PodScaleDownCell> > reducing_pods;
     int32_t total_reducing_count = ChooseReducingPod(reducing_jobs,
                                                      reducing_pods);
 
@@ -167,11 +165,10 @@ void Scheduler::ScheduleScaleDown(const std::string& master_addr,
         return;
     }
 
-    for (std::vector<PodScaleDownCell*>::iterator pod_it = reducing_pods.begin();
+    for (std::vector<boost::shared_ptr<PodScaleDownCell> >::iterator pod_it = reducing_pods.begin();
             pod_it != reducing_pods.end(); ++pod_it) {
-        PodScaleDownCell* cell = *pod_it;
+        boost::shared_ptr<PodScaleDownCell> cell = *pod_it;
         if (cell->scale_down_count <= 0) {
-            delete cell;
             continue;
         }
         thread_pool_.AddTask(boost::bind(&Scheduler::Propose, this, cell, master_addr));
@@ -209,7 +206,7 @@ int32_t Scheduler::SyncResources(const GetResourceSnapshotResponse* response) {
 }
 
 int32_t Scheduler::ChoosePods(std::vector<JobInfo>& pending_jobs,
-                              std::vector<PodScaleUpCell*>& pending_pods) {
+                              std::vector<boost::shared_ptr<PodScaleUpCell> >& pending_pods) {
 
     // 按照Job优先级进行排序
     std::sort(pending_jobs.begin(), pending_jobs.end(), JobCompare);
@@ -259,7 +256,7 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo>& pending_jobs,
               job_it->jobid().c_str(), job_it->latest_version().c_str());
             continue;
         }
-        PodScaleUpCell* need_schedule_cell = new PodScaleUpCell();
+        boost::shared_ptr<PodScaleUpCell> need_schedule_cell(new PodScaleUpCell());
         need_schedule_cell->proposed = false;
         need_schedule_cell->pod = pod_desc;
         need_schedule_cell->job.CopyFrom(*job_it);
@@ -274,11 +271,11 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo>& pending_jobs,
 }
 
 int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo>& reducing_jobs,
-                                     std::vector<PodScaleDownCell*>& reducing_pods) {
+                                     std::vector<boost::shared_ptr<PodScaleDownCell> >& reducing_pods) {
     int reducing_count = 0;
     std::vector<JobInfo>::const_iterator job_it = reducing_jobs.begin();
     for (; job_it != reducing_jobs.end(); ++job_it) {
-        PodScaleDownCell* cell = new PodScaleDownCell();
+        boost::shared_ptr<PodScaleDownCell> cell(new PodScaleDownCell());
         cell->pod = job_it->desc().pod();
         cell->job = *job_it;
         for (int i = 0; i < job_it->pods_size(); ++i) {
@@ -451,7 +448,7 @@ void Scheduler::ScheduleUpdate(const std::string& master_addr,
     std::vector<JobInfo>::const_iterator job_it = update_jobs.begin();
     for(; job_it != update_jobs.end(); ++job_it) {
         const JobInfo& job_info = *job_it;
-        PodUpdateCell* cell = new PodUpdateCell();
+        boost::shared_ptr<PodUpdateCell> cell(new PodUpdateCell());
         cell->job = job_info;
         thread_pool_.AddTask(boost::bind(&Scheduler::Propose, this, cell, master_addr));
     }
