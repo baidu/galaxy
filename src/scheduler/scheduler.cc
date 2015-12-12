@@ -148,6 +148,7 @@ void Scheduler::ScheduleScaleUp(const std::string& master_addr,
         PodScaleUpCell* cell = pending_pods[i];
         if (cell->proposed || cell->feasible.size() <=0) {
             LOG(INFO, "job %s has no feasibie agent to deploy", cell->job.jobid().c_str());
+            delete cell;
             continue;
         }
         thread_pool_.AddTask(boost::bind(&Scheduler::Propose, this, cell, master_addr));
@@ -170,6 +171,7 @@ void Scheduler::ScheduleScaleDown(const std::string& master_addr,
             pod_it != reducing_pods.end(); ++pod_it) {
         PodScaleDownCell* cell = *pod_it;
         if (cell->scale_down_count <= 0) {
+            delete cell;
             continue;
         }
         thread_pool_.AddTask(boost::bind(&Scheduler::Propose, this, cell, master_addr));
