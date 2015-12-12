@@ -115,9 +115,11 @@ void Scheduler::ScheduleScaleUp(const std::string& master_addr,
     Shuffle(keys);
     std::vector<std::string>::iterator key_it = keys.begin();
     int cur_pod_count = 0;
+    boost::unordered_map<std::string, AgentInfo> changed_resource;
     for (; key_it != keys.end() &&
          cur_pod_count < all_pod_needs; ++key_it) {
         AgentInfo agent = resources_->find(*key_it)->second;
+        bool changed = false;
         for (std::vector<boost::shared_ptr<PodScaleUpCell> >::iterator pod_it = pending_pods.begin();
                 pod_it != pending_pods.end(); ++pod_it) {
             boost::shared_ptr<PodScaleUpCell> cell = *pod_it;
@@ -139,20 +141,207 @@ void Scheduler::ScheduleScaleUp(const std::string& master_addr,
                 if (ok) {
                     cell->feasible.push_back(agent);
                     cur_pod_count++;
+                    changed = true;
                 }
             }
         }
-    } 
+        if (changed) {
+            changed_resource.insert(std::make_pair(*key_it, agent));
+        }
+    }
+
+    std::vector<JobInfo> need_preempt_jobs;
     for (size_t i = 0; i < pending_pods.size(); i++) {
         boost::shared_ptr<PodScaleUpCell> cell = pending_pods[i];
-        if (cell->proposed || cell->feasible.size() <=0) {
+        if (cell->proposed) {
+            continue;
+        }
+        if (cell->feasible.size() <=0) {
             LOG(INFO, "job %s has no feasibie agent to deploy", cell->job.jobid().c_str());
+            if (cell->job.desc().type() == kLongRun) {
+                LOG(INFO, "move job %s to preempt queue", cell->job.jobid().c_str());
+                need_preempt_jobs.push_back(cell->job);
+            }
             continue;
         }
         thread_pool_.AddTask(boost::bind(&Scheduler::Propose, this, cell, master_addr));
     }
+    SchedulePreempt(master_addr, 
+                    changed_resource,
+                    need_preempt_jobs);
+
 }
 
+
+bool PodPreemptCell::TryPreempt(AgentInfo* agent_info, boost::unordered_map<std::string, JobDescriptor>* jobs) {
+    if (agent_info == NULL) {
+        return false;
+    }
+    std::set<std::string> labels_set;
+    for (int i = 0; i < agent_info->tags_size(); i++) {
+        labels_set.insert(agent_info->tags(i));
+    } 
+    if (pod.labels_size() > 0) {
+        std::string label = pod.labels(0);
+        if (!label.empty() && labels_set.find(label) 
+             == labels_set.end()) {
+            LOG(INFO, "agent %s with version %d does not fit job %s label check %s", 
+                      agent_info->endpoint().c_str(),
+                      agent_info->version(),
+                      job.jobid().c_str(),
+                      label.c_str());
+            return false;
+        }
+    }
+    AgentInfo agent = *agent_info;
+    preempted_pods.clear();
+    for (int i = 0; i < agent_info->pods_size(); i++) {
+        const PodStatus& pod = agent_info->pods(i);
+        boost::unordered_map<std::string, JobDescriptor>::iterator job_it = jobs->find(pod.jobid());
+        if (job_it == jobs->end() || job_it->second.type() != kBatch) {
+            continue;
+        }
+        ResourceUtils::DeallocResource(job_it->second.pod().requirement(), &agent);
+        PreemptEntity entity;
+        entity.set_podid(pod.podid());
+        entity.set_jobid(pod.jobid());
+        preempted_pods.push_back(entity);
+    }
+    std::vector<Resource> alloc_set;
+    bool ok = ResourceUtils::AllocResource(pod.requirement(), alloc_set, &agent);
+    return ok;
+}
+
+void Scheduler::SchedulePreempt(const std::string& master_addr,
+                                 const boost::unordered_map<std::string, AgentInfo>& changed_resource,
+                                 std::vector<JobInfo>& jobs) {
+    sched_mutex_.AssertHeld();
+    boost::unordered_map<std::string, AgentInfo>::iterator it = resources_->begin();
+    std::vector<std::string> keys;
+    for (; it != resources_->end(); ++it) {
+        keys.push_back(it->first);
+    }
+    Shuffle(keys);
+    std::vector<std::string>::iterator key_it = keys.begin();
+    std::vector<boost::shared_ptr<PodPreemptCell> > cells;
+    for (size_t i = 0; i < jobs.size(); i++) {
+        std::vector<std::string> job_pending_pods;
+        uint32_t deploying_num = 0;
+        for (int j = 0; j < jobs[i].pods_size(); j++) {
+            if (jobs[i].pods(j).state() == kPodDeploying) {
+                deploying_num ++;
+                continue;
+            }
+            if (jobs[i].pods(i).stage() == kStagePending) {
+                job_pending_pods.push_back(jobs[i].pods(j).podid());
+            }
+        }
+        uint32_t max_deploy_pods = job_pending_pods.size();
+        if (jobs[i].desc().deploy_step() > 0 && 
+            (uint32_t)jobs[i].desc().deploy_step() < max_deploy_pods) { 
+            max_deploy_pods = jobs[i].desc().deploy_step();
+        }
+        if (job_pending_pods.size() <= 0 
+           || deploying_num >= max_deploy_pods) {
+            continue;
+        }
+        boost::shared_ptr<PodPreemptCell> cell(new PodPreemptCell);
+        cell->job = jobs[i];
+        for (uint32_t j = 0; j < job_pending_pods.size() && deploying_num < max_deploy_pods; j++) {
+            cell->podid = job_pending_pods[j];
+            break;
+        }
+        cell->preempted = false;
+        PodDescriptor pod_desc;
+        bool find_desc = false;
+        for (int j = 0; j < cell->job.pod_descs_size(); ++j) {
+            if (cell->job.pod_descs(j).version() != cell->job.latest_version()) {
+                continue;
+            }
+            pod_desc.CopyFrom(cell->job.pod_descs(i));
+            find_desc = true;
+            break;
+        }
+        if (find_desc) {
+            cell->pod = pod_desc;
+            cells.push_back(cell);
+        }
+    }
+ 
+    for (; key_it != keys.end(); ++key_it) {
+        AgentInfo agent = resources_->find(*key_it)->second;
+        boost::unordered_map<std::string, AgentInfo>::const_iterator changed_it = changed_resource.find(*key_it);
+        if (changed_it !=  changed_resource.end()) {
+            agent = changed_it->second;
+        }
+        if (!CanPreempt(agent)) {
+            continue;
+        }
+        for (size_t i = 0; i < cells.size(); i++) {
+            boost::shared_ptr<PodPreemptCell> cell = cells[i];
+            if (cell->preempted) {
+                continue;
+            }
+            bool ok = cell->TryPreempt(&agent, jobs_);
+            if (ok) {
+                LOG(INFO ,"pod %s of job %s preempt on agent %s",
+                        cell->podid.c_str(), cell->job.jobid().c_str(), cell->agent.c_str());
+            }
+        }
+    }
+}
+
+void Scheduler::PreemptCallBack(const PreemptRequest* request,
+                         PreemptResponse* response,
+                         bool failed, int) {
+    delete request;
+    delete response;
+
+}
+
+void Scheduler::Preempt(boost::shared_ptr<PodPreemptCell> cell,
+                        const std::string& master_addr) {
+    Master_Stub* master_stub;
+    bool ok = rpc_client_.GetStub(master_addr, &master_stub);
+    if (!ok) {
+        LOG(WARNING, "fail to prepare master stub");
+        return;
+    }
+
+    PreemptRequest* request = new PreemptRequest();
+    PreemptResponse* response = new PreemptResponse();
+    PreemptEntity* pending_pod = request->mutable_pending_pod();
+    pending_pod->set_jobid(cell->job.jobid());
+    pending_pod->set_podid(cell->podid);
+    for (size_t i = 0; i < cell->preempted_pods.size(); i++) {
+        PreemptEntity* preempt_pod = request->add_preempted_pods();
+        preempt_pod->set_jobid(cell->preempted_pods[i].jobid());
+        preempt_pod->set_podid(cell->preempted_pods[i].podid());
+    }
+    request->set_addr(cell->agent);
+    boost::function<void (const PreemptRequest*, PreemptResponse*, bool, int)> call_back;
+    call_back = boost::bind(&Scheduler::PreemptCallBack, this, _1, _2, _3, _4);
+    rpc_client_.AsyncRequest(master_stub,
+                            &Master_Stub::Preempt,
+                            request,
+                            response,
+                            call_back,
+                            5, 1);
+    delete master_stub;
+
+}
+
+bool Scheduler::CanPreempt(const AgentInfo& agent_info) {
+    sched_mutex_.AssertHeld();
+    for (int i = 0; i <agent_info.pods_size(); i++) {
+        const PodStatus& pod = agent_info.pods(i);
+        boost::unordered_map<std::string, JobDescriptor>::iterator job_it = jobs_->find(pod.jobid());
+        if (job_it !=  jobs_->end() && job_it->second.type() == kBatch) {
+            return true;
+        }
+    }
+    return false;
+}
 
 void Scheduler::ScheduleScaleDown(const std::string& master_addr,
                                   std::vector<JobInfo>& reducing_jobs) {
@@ -272,6 +461,7 @@ int32_t Scheduler::ChoosePods(std::vector<JobInfo>& pending_jobs,
 
 int32_t Scheduler::ChooseReducingPod(std::vector<JobInfo>& reducing_jobs,
                                      std::vector<boost::shared_ptr<PodScaleDownCell> >& reducing_pods) {
+    sched_mutex_.AssertHeld();
     int reducing_count = 0;
     std::vector<JobInfo>::const_iterator job_it = reducing_jobs.begin();
     for (; job_it != reducing_jobs.end(); ++job_it) {

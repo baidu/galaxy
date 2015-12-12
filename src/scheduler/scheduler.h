@@ -33,14 +33,11 @@ struct PodScaleUpCell : PodScaleCell {
     uint32_t feasible_limit;
     std::vector<std::string> pod_ids;
     std::vector<AgentInfo> feasible;
-    std::vector<AgentInfo> preemption;
     std::vector<std::pair<double, std::string> > sorted;
     bool proposed;
     PodScaleUpCell();
 
     bool AllocFrom(AgentInfo* agent_info);
-
-    bool PreemptionAlloc(AgentInfo* agent_info);
 
     void Score();
 
@@ -49,6 +46,19 @@ struct PodScaleUpCell : PodScaleCell {
 
     void Propose(std::vector<ScheduleInfo>* propose);
     ~PodScaleUpCell();
+};
+
+struct PodPreemptCell  {
+    PodDescriptor pod;
+    JobInfo job;
+    std::string podid;
+    bool preempted;
+    PreemptEntity pending_pods;
+    std::vector<PreemptEntity> preempted_pods;
+    std::string agent;
+    PodPreemptCell() {}
+    bool TryPreempt(AgentInfo* agent_info, boost::unordered_map<std::string, JobDescriptor>* jobs);
+    ~PodPreemptCell(){}
 };
 
 struct PodUpdateCell : PodScaleCell {
@@ -74,8 +84,6 @@ struct PodScaleDownCell : PodScaleCell{
     void Propose(std::vector<ScheduleInfo>* propose);
     ~PodScaleDownCell();
 };
-
-
 
 class Scheduler {
 
@@ -111,6 +119,10 @@ public:
     void SyncJobDescriptor(const GetJobDescriptorResponse* response);
 private:
 
+    bool CanPreempt(const AgentInfo& agent_info);
+    void SchedulePreempt(const std::string& master_addr,
+                         const boost::unordered_map<std::string, AgentInfo>& changed_resource,
+                         std::vector<JobInfo>& jobs);
     int32_t ChoosePods(std::vector<JobInfo>& pending_jobs,
                        std::vector<boost::shared_ptr<PodScaleUpCell> >& pending_pods);
 
@@ -131,6 +143,11 @@ private:
                  const std::string& master_addr);
     void ProposeCallBack(const ProposeRequest* request,
                          ProposeResponse* response,
+                         bool failed, int);
+    void Preempt(boost::shared_ptr<PodPreemptCell> cell,
+                const std::string& master_addr);
+    void PreemptCallBack(const PreemptRequest* request,
+                         PreemptResponse* response,
                          bool failed, int);
 private:
     Mutex sched_mutex_;
