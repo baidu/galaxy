@@ -274,8 +274,11 @@ void Scheduler::SchedulePreempt(const std::string& master_addr,
             cells.push_back(cell);
         }
     }
- 
+    uint32_t total_count = 0;
     for (; key_it != keys.end(); ++key_it) {
+        if (total_count >= cells.size()) {
+            break;
+        }
         LOG(INFO, "try preempt on agent %s", (*key_it).c_str());
         AgentInfo agent = resources_->find(*key_it)->second;
         boost::unordered_map<std::string, AgentInfo>::const_iterator changed_it = changed_resource.find(*key_it);
@@ -297,6 +300,7 @@ void Scheduler::SchedulePreempt(const std::string& master_addr,
                         cell->podid.c_str(), cell->job.jobid().c_str(), cell->agent.c_str());
                 Preempt(cell, master_addr);
                 cell->preempted = true;
+                total_count ++;
             }else {
                 LOG(WARNING, "agent %s can no be preempted by pod %s", (*key_it).c_str(), cell->podid.c_str());
             }
