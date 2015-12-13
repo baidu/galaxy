@@ -193,29 +193,36 @@ bool PodPreemptCell::TryPreempt(AgentInfo* agent_info, boost::unordered_map<std:
             return false;
         }
     }
-    AgentInfo agent = *agent_info;
+    AgentInfo copied_agent = *agent_info;
     preempted_pods.clear();
+    std::vector<Resource> alloc_set;
     for (int i = 0; i < agent_info->pods_size(); i++) {
-        const PodStatus& pod = agent_info->pods(i);
-        boost::unordered_map<std::string, JobDescriptor>::iterator job_it = jobs->find(pod.jobid());
+        const PodStatus& ipod = agent_info->pods(i);
+        boost::unordered_map<std::string, JobDescriptor>::iterator job_it = jobs->find(ipod.jobid());
         if (job_it == jobs->end() || job_it->second.type() != kBatch) {
             continue;
         }
-        ResourceUtils::DeallocResource(job_it->second.pod().requirement(), &agent);
+        LOG(INFO, "release pod %s resource for pod %s", ipod.podid().c_str(), podid.c_str());
+        ResourceUtils::DeallocResource(job_it->second.pod().requirement(), &copied_agent);
         PreemptEntity entity;
-        entity.set_podid(pod.podid());
-        entity.set_jobid(pod.jobid());
+        entity.set_podid(ipod.podid());
+        entity.set_jobid(ipod.jobid());
         preempted_pods.push_back(entity);
+        bool ok = ResourceUtils::AllocResource(pod.requirement(), alloc_set, &copied_agent);
+        if (ok) {
+            LOG(INFO, "agent %s satisfy pod %s requirement after release source ", copied_agent.endpoint().c_str(), podid.c_str());
+            agent = copied_agent.endpoint();
+            return ok;
+        }
     }
-    std::vector<Resource> alloc_set;
-    bool ok = ResourceUtils::AllocResource(pod.requirement(), alloc_set, &agent);
-    return ok;
+    return false;
 }
 
 void Scheduler::SchedulePreempt(const std::string& master_addr,
                                  const boost::unordered_map<std::string, AgentInfo>& changed_resource,
                                  std::vector<JobInfo>& jobs) {
     sched_mutex_.AssertHeld();
+    LOG(INFO, "start preemption process job count %u changed agents %u", jobs.size(), changed_resource.size());
     boost::unordered_map<std::string, AgentInfo>::iterator it = resources_->begin();
     std::vector<std::string> keys;
     for (; it != resources_->end(); ++it) {
@@ -232,7 +239,7 @@ void Scheduler::SchedulePreempt(const std::string& master_addr,
                 deploying_num ++;
                 continue;
             }
-            if (jobs[i].pods(i).stage() == kStagePending) {
+            if (jobs[i].pods(j).stage() == kStagePending) {
                 job_pending_pods.push_back(jobs[i].pods(j).podid());
             }
         }
@@ -258,7 +265,7 @@ void Scheduler::SchedulePreempt(const std::string& master_addr,
             if (cell->job.pod_descs(j).version() != cell->job.latest_version()) {
                 continue;
             }
-            pod_desc.CopyFrom(cell->job.pod_descs(i));
+            pod_desc.CopyFrom(cell->job.pod_descs(j));
             find_desc = true;
             break;
         }
@@ -269,12 +276,14 @@ void Scheduler::SchedulePreempt(const std::string& master_addr,
     }
  
     for (; key_it != keys.end(); ++key_it) {
+        LOG(INFO, "try preempt on agent %s", (*key_it).c_str());
         AgentInfo agent = resources_->find(*key_it)->second;
         boost::unordered_map<std::string, AgentInfo>::const_iterator changed_it = changed_resource.find(*key_it);
         if (changed_it !=  changed_resource.end()) {
             agent = changed_it->second;
         }
         if (!CanPreempt(agent)) {
+            LOG(INFO, "agent %s can not be preempted", (*key_it).c_str());
             continue;
         }
         for (size_t i = 0; i < cells.size(); i++) {
@@ -286,6 +295,10 @@ void Scheduler::SchedulePreempt(const std::string& master_addr,
             if (ok) {
                 LOG(INFO ,"pod %s of job %s preempt on agent %s",
                         cell->podid.c_str(), cell->job.jobid().c_str(), cell->agent.c_str());
+                Preempt(cell, master_addr);
+                cell->preempted = true;
+            }else {
+                LOG(WARNING, "agent %s can no be preempted by pod %s", (*key_it).c_str(), cell->podid.c_str());
             }
         }
     }
