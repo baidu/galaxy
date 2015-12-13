@@ -706,7 +706,7 @@ void Scheduler::BuildSyncJobRequest(GetJobDescriptorRequest* request) {
 void Scheduler::SyncJobDescriptor(const GetJobDescriptorResponse* response) {
     MutexLock lock(&sched_mutex_);
     for (int i = 0; i < response->jobs_size(); ++i) {
-        LOG(INFO, "update job %s desc", response->jobs(i).jobid().c_str());
+        LOG(INFO, "update job %s desc type %s", response->jobs(i).jobid().c_str(), JobType_Name(response->jobs(i).desc().type()).c_str());
         boost::unordered_map<std::string, JobDescriptor>::iterator it = jobs_->find(response->jobs(i).jobid());
         if (it == jobs_->end()) {
             jobs_->insert(std::make_pair(response->jobs(i).jobid(), response->jobs(i).desc()));

@@ -1104,6 +1104,9 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
             agent_in_master->set_version(old_version + 1);
             break;
         }
+        if (agent_in_master->pods_size() != agent.pods_size()) {
+            agent_in_master->set_version(old_version + 1);
+        }
     } while(0);
     agent_in_master->mutable_total()->CopyFrom(agent.total()); 
     agent_in_master->mutable_assigned()->CopyFrom(agent.assigned());
@@ -1930,6 +1933,7 @@ void JobManager::GetJobDescByDiff(const JobIdDiffList& jobids,
     for (; job_it !=  jobs_.end(); ++ job_it) {
         Job* job = job_it->second;
         if (job->state_ == kJobTerminated) {
+            LOG(INFO, "delete job %s in scheduler", job->id_.c_str());
             deleted_jobs->Add()->assign(job->id_);
             continue;
         }
