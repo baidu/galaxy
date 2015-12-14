@@ -7,7 +7,6 @@
 #include <set>
 #include <map>
 #include <vector>
-
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -40,6 +39,33 @@ typedef google::protobuf::RepeatedPtrField<baidu::galaxy::JobEntity> JobEntityLi
 struct id_tag {};
 struct addr_tag {};
 struct pod_id_tag {};
+struct name_tag{};
+
+// the index of job, uid index will be added latter 
+// so multi index is needed
+struct JobIndex {
+    std::string id_;
+    std::string name_;
+};
+
+// the name and id should be unique
+typedef boost::multi_index_container<
+     JobIndex,
+     boost::multi_index::indexed_by<
+          boost::multi_index::hashed_unique<
+             boost::multi_index::tag<id_tag>,
+             BOOST_MULTI_INDEX_MEMBER(JobIndex , std::string, id_)
+         >,
+         boost::multi_index::hashed_unique<
+             boost::multi_index::tag<name_tag>,
+             BOOST_MULTI_INDEX_MEMBER(JobIndex, std::string, name_)
+        >
+    >
+> JobSet;
+
+typedef boost::multi_index::index<JobSet, id_tag>::type JobSetIdIndex;
+typedef boost::multi_index::index<JobSet, name_tag>::type JobSetNameIndex;
+
 struct Job {
     JobState state_;
     std::map<PodId, PodStatus*> pods_;
@@ -118,6 +144,7 @@ public:
     void ReloadJobInfo(const JobInfo& job_info);
     Status SetSafeMode(bool mode);
     Status LabelAgents(const LabelCell& label_cell);
+    bool GetJobIdByName(const std::string& job_name, std::string* jobid);
     Status GetPods(const std::string& jobid, PodOverviewList* pods);
     Status GetStatus(::baidu::galaxy::GetMasterStatusResponse* response);
     bool Preempt(const PreemptEntity& pending_pod,
@@ -198,6 +225,7 @@ private:
     void ProcessPreemptTask(const std::string& task_id);
 private:
     std::map<JobId, Job*> jobs_;
+    JobSet* job_index_;
     // all jobs that need scale up
     std::set<JobId> scale_up_jobs_;
     // all jobs that need scale down
@@ -238,6 +266,7 @@ private:
     ::galaxy::ins::sdk::InsSDK* nexus_;
 
     CondVar pod_cv_;
+   
 };
 
 }
