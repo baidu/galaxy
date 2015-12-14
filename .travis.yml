@@ -3,6 +3,7 @@ compiler: gcc
 env:
     - PROTOBUF_VERSION=2.6.0
 install:
+    - sudo apt-get update
     - sudo apt-get install libreadline-dev
 script: 
     - sh build.sh

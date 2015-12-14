@@ -45,6 +45,7 @@ JobManager::JobManager()
     BuildPodFsm();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
     preempt_task_set_ = new PreemptTaskSet();
+    job_index_ = new JobSet();
     bool safe_mode_manual = false;
     if (!CheckSafeModeManual(safe_mode_manual)) {
         assert(0);
@@ -184,7 +185,7 @@ Status JobManager::LabelAgents(const LabelCell& label_cell) {
     return kOk;
 }
 
-Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
+Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) { 
     Job* job = new Job();
     job->state_ = kJobNormal;
     job->desc_.CopyFrom(job_desc);
@@ -214,7 +215,12 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     if (!save_ok) {
         return kJobSubmitFail;
     }
+    JobIndex index;
+    index.id_ = job->id_;
+    index.name_ = job->desc_.name();
     MutexLock lock(&mutex_); 
+    //TODO solve name collision 
+    job_index_->insert(index);
     jobs_[job_id] = job;
     FillPodsToJob(job);
     pod_cv_.Signal();
@@ -390,12 +396,35 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
         const PodDescriptor& desc = job_info.pod_descs(i);
         job->pod_desc_[desc.version()] = desc;
     }
+    JobIndex index;
+    index.id_ = job_id;
+    index.name_ = job->desc_.name();
     MutexLock lock(&mutex_);
+    const JobSetNameIndex& name_index = job_index_->get<name_tag>();
+    if (name_index.find(index.name_) != name_index.end()) {
+        LOG(WARNING, "job with name %s has being existing, ignore it", index.name_.c_str());
+    } else {
+        job_index_->insert(index);
+    }
     jobs_[job_id] = job;
     trace_pool_.DelayTask(FLAGS_master_job_trace_interval, 
                boost::bind(&JobManager::TraceJobStat, this, job_id));
 }
 
+bool JobManager::GetJobIdByName(const std::string& job_name, 
+                                std::string* jobid) {
+    if (jobid == NULL) {
+        return false;
+    }
+    MutexLock lock(&mutex_);
+    const JobSetNameIndex& name_index = job_index_->get<name_tag>();
+    JobSetNameIndex::const_iterator it = name_index.find(job_name);
+    if (it == name_index.end()) {
+        return false;
+    }
+    *jobid = it->id_;
+    return true;
+}
 
 void JobManager::KillPodCallback(const std::string& podid, const std::string& jobid,
                                  const std::string& endpoint,
@@ -566,6 +595,11 @@ void JobManager::ProcessScaleDown(JobInfoList* scale_down_pods,
 void JobManager::CleanJob(const JobId& jobid) {
     mutex_.AssertHeld();
     LOG(INFO, "clean job %s from master", jobid.c_str());
+    const JobSetIdIndex& id_index = job_index_->get<id_tag>();
+    JobSetIdIndex::const_iterator id_it = id_index.find(jobid);
+    if (id_it != id_index.end()) {
+        job_index_->erase(id_it);
+    }
     std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
     if (it != jobs_.end()) {
         Job* job = it->second;
@@ -1103,6 +1137,9 @@ void JobManager::UpdateAgent(const AgentInfo& agent,
             }
             agent_in_master->set_version(old_version + 1);
             break;
+        }
+        if (agent_in_master->pods_size() != agent.pods_size()) {
+            agent_in_master->set_version(old_version + 1);
         }
     } while(0);
     agent_in_master->mutable_total()->CopyFrom(agent.total()); 
@@ -1930,6 +1967,7 @@ void JobManager::GetJobDescByDiff(const JobIdDiffList& jobids,
     for (; job_it !=  jobs_.end(); ++ job_it) {
         Job* job = job_it->second;
         if (job->state_ == kJobTerminated) {
+            LOG(INFO, "delete job %s in scheduler", job->id_.c_str());
             deleted_jobs->Add()->assign(job->id_);
             continue;
         }

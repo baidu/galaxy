@@ -53,6 +53,7 @@ bool SchedulerIO::Init() {
 void SchedulerIO::Sync() {
     SyncResources();
     SyncPendingJob();
+    SyncJobDescriptor();
 }
 
 void SchedulerIO::SyncJobDescriptor() {
@@ -82,6 +83,7 @@ void SchedulerIO::SyncJobDescriptorCallBack(const GetJobDescriptorRequest* reque
                 boost::bind(&SchedulerIO::SyncJobDescriptor, this));
         return;
     }
+    LOG(INFO, "sync jobs from master successfully");
     scheduler_.SyncJobDescriptor(response);
     thread_pool_.DelayTask(FLAGS_scheduler_sync_job_period,
                 boost::bind(&SchedulerIO::SyncJobDescriptor, this));
