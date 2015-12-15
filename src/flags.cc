@@ -46,6 +46,7 @@ DEFINE_int32(scheduler_agent_overload_turns_threashold, 3, "agent overload times
 
 // agent
 DEFINE_string(agent_port, "8080", "agent listen port");
+DEFINE_int32(agent_http_port, 8222, "agent http server port");
 DEFINE_int32(agent_background_threads_num, 2, "agent background threads");
 DEFINE_int32(agent_heartbeat_interval, 1000, "agent haertbeat interval ms");
 DEFINE_string(agent_ip, "127.0.0.1", "agent host ip");
@@ -54,6 +55,7 @@ DEFINE_int64(agent_mem_share, 68719476736, "agent memory");
 DEFINE_string(agent_initd_bin, "./initd", "initd bin path");
 DEFINE_string(agent_work_dir, "./work_dir", "the work dir for storaging job package and runtime dir");
 DEFINE_string(agent_gc_dir, "./gc_dir", "the gc dir for pod env");
+DEFINE_string(agent_coredump_dir, "./core_dir", "the core dump dir for pod env");
 DEFINE_int64(agent_gc_timeout, 1000 * 60 * 60 * 5, "gc timeout");
 DEFINE_bool(agent_namespace_isolation_switch, false, "agent namespace isolate");
 
