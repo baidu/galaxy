@@ -36,6 +36,7 @@ DECLARE_string(agent_global_hardlimit_path);
 DECLARE_string(agent_global_softlimit_path);
 DECLARE_int32(agent_detect_interval);
 DECLARE_int32(agent_millicores_share);
+DECLARE_int32(agent_task_oom_delay_restart_time);
 DECLARE_int64(agent_mem_share);
 DECLARE_string(agent_default_user);
 DECLARE_bool(agent_namespace_isolation_switch);
@@ -866,6 +867,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
 
     TaskInfo* task_info = it->second;
     SetResourceUsage(task_info);
+    int32_t task_delay_check_time = FLAGS_agent_detect_interval;
     // switch task stage
     if (task_info->stage == kTaskStagePENDING 
             && task_info->status.state() != kTaskError) {
@@ -905,11 +907,23 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     } else if (task_info->stage == kTaskStageRUNNING
             && task_info->status.state() != kTaskError) {
         int chk_res = RunProcessCheck(task_info);
-        if (chk_res == -1 && 
+        // make a delay to restart task for oom
+        if (chk_res == -1 
+            && task_info->main_process.status() == kProcessKilled
+            && !task_info->delay_restarted) {
+            // avoid task migration
+            task_info->main_process.set_status(kProcessRunning);
+            task_info->delay_restarted = true;
+            task_delay_check_time = FLAGS_agent_task_oom_delay_restart_time;
+            LOG(WARNING, "task %s of pod %s  in job %s delay restart for oom",
+                    task_info->task_id.c_str(), task_info->pod_id.c_str(), task_info->job_id.c_str());
+
+        } else if (chk_res == -1 && 
                 task_info->fail_retry_times 
-                    < task_info->max_retry_times) {
+                < task_info->max_retry_times) {
             task_info->fail_retry_times++;
-            RunTask(task_info);         
+            RunTask(task_info);
+            task_info->delay_restarted = false;
         }
     } else if (task_info->stage == kTaskStageSTOPPING) {
         int chk_res = TerminateProcessCheck(task_info);
@@ -935,11 +949,10 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
                 TaskState_Name(task_info->status.state()).c_str());
     }
     background_thread_.DelayTask(
-                    FLAGS_agent_detect_interval, 
+                    task_delay_check_time, 
                     boost::bind(
                         &TaskManager::DelayCheckTaskStageChange,
                         this, task_id));
-    return; 
 }
 
 bool TaskManager::HandleInitTaskComCgroup(std::string& subsystem, TaskInfo* task) {
