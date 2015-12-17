@@ -913,6 +913,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
             && !task_info->delay_restarted) {
             // avoid task migration
             task_info->main_process.set_status(kProcessRunning);
+            task_info->status.set_state(kTaskRunning);
             task_info->delay_restarted = true;
             task_delay_check_time = FLAGS_agent_task_oom_delay_restart_time;
             LOG(WARNING, "task %s of pod %s  in job %s delay restart for oom",
