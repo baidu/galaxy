@@ -35,6 +35,7 @@ DECLARE_string(agent_global_cgroup_path);
 DECLARE_string(agent_global_hardlimit_path);
 DECLARE_string(agent_global_softlimit_path);
 DECLARE_int32(agent_detect_interval);
+DECLARE_int32(agent_memory_check_interval);
 DECLARE_int32(agent_millicores_share);
 DECLARE_int32(agent_task_oom_delay_restart_time);
 DECLARE_int64(agent_mem_share);
@@ -50,6 +51,7 @@ TaskManager::TaskManager() :
     tasks_mutex_(),
     tasks_(),
     background_thread_(5), 
+    killer_pool_(20), 
     cgroup_root_(FLAGS_gce_cgroup_root),
     hierarchies_(),
     rpc_client_(NULL),
@@ -272,7 +274,13 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
         }
         task_info->status.set_state(kTaskFinish);
     } while (0);
-
+    if (task_info->desc.has_mem_isolation_type() && 
+               task_info->desc.mem_isolation_type() == 
+                    kMemIsolationGlimit){
+        LOG(INFO, "task %s use galaxy memory killer ", task_info->task_id.c_str());
+        killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
+                          boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
+    }
     LOG(INFO, "task %s is reload", task_info->task_id.c_str());
     background_thread_.DelayTask(
                     50, 
@@ -314,6 +322,13 @@ int TaskManager::CreateTask(const TaskInfo& task) {
                 task_info->task_id.c_str());
         task_info->status.set_state(kTaskError);
         return -1;
+    }
+    if (task_info->desc.has_mem_isolation_type() && 
+               task_info->desc.mem_isolation_type() == 
+                    kMemIsolationGlimit){
+        LOG(INFO, "task %s use galaxy memory killer ", task_info->task_id.c_str());
+        killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
+                          boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
     }
     LOG(INFO, "task %s is add", task.task_id.c_str());
     background_thread_.DelayTask(
@@ -1021,7 +1036,14 @@ bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* tas
                     memory_limit, mem_path.c_str()); 
             return false;
         }
-    } else {
+    } else if (task->desc.has_mem_isolation_type() && 
+               task->desc.mem_isolation_type() == 
+                    kMemIsolationUlimit){
+        std::string start_command = "ulimit -m " + boost::lexical_cast<std::string>(task->desc.requirement().memory() / 1024) + " && " ;
+        start_command += task->desc.start_command();
+        task->desc.set_start_command(start_command);
+        LOG(INFO, "task use ulimit to limit memory with start command %s", start_command.c_str());
+    }else {
         if (cgroups::Write(mem_path,
                     "memory.limit_in_bytes",
                     boost::lexical_cast<std::string>(memory_limit)
@@ -1030,16 +1052,6 @@ bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* tas
                     memory_limit, mem_path.c_str()); 
             return false;
         }
-    }
-    const int GROUP_KILL_MODE = 1;
-    if (file::IsExists(mem_path + "/memory.kill_mode") 
-            && cgroups::Write(mem_path,
-                "memory.kill_mode", 
-                boost::lexical_cast<std::string>(GROUP_KILL_MODE)
-                ) != 0) {
-        LOG(WARNING, "set memory kill mode failed for %s", 
-                mem_path.c_str()); 
-        return false;
     }
     return true; 
 }
@@ -1107,6 +1119,53 @@ bool TaskManager::HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task
     return true;
 }
 
+bool TaskManager::KillTask(TaskInfo* task) {
+    if (task == NULL) {
+        LOG(WARNING, "task info is NULL");
+        return false;
+    }
+    LOG(INFO, "[galaxy killer] kill task %s of pod %s in job %s", 
+            task->task_id.c_str(), task->pod_id.c_str(),
+            task->job_id.c_str());
+    std::string freezer_path;
+    if (task->cgroups.find("freezer") != task->cgroups.end()) {
+        freezer_path = task->cgroups["freezer"];
+    }
+    std::map<std::string, std::string>::iterator it = task->cgroups.begin();
+    for (;it != task->cgroups.end(); ++it) {
+        if (it->first == "freezer" || it->first == "tcp_throt") {
+            continue; 
+        }
+        std::string cgroup_dir = it->second; 
+        if (!file::IsExists(cgroup_dir)) {
+            LOG(INFO, "%s not exists", cgroup_dir.c_str()); 
+            continue;
+        }
+        if (!cgroups::FreezerSwitch(freezer_path, "FROZEN")) {
+            LOG(WARNING, "%s frozen failed", freezer_path.c_str()); 
+            return false;
+        }
+        std::vector<int> pids;
+        if (!cgroups::GetPidsFromCgroup(cgroup_dir, &pids)) {
+            LOG(WARNING, "get pids from %s failed",
+                    cgroup_dir.c_str());  
+            return false;
+        }
+        std::vector<int>::iterator pid_it = pids.begin();
+        for (; pid_it != pids.end(); ++pid_it) {
+            int pid = *pid_it;
+            if (pid != 0) {
+                ::kill(pid, SIGKILL); 
+            }
+        }
+        if (!cgroups::FreezerSwitch(freezer_path, "THAWED")) {
+            LOG(WARNING, "%s thawed failed", freezer_path.c_str()); 
+            return false;
+        }
+    } 
+    return true;
+}
+
 int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     if (task == NULL) {
         return -1; 
@@ -1132,49 +1191,41 @@ int TaskManager::PrepareCgroupEnv(TaskInfo* task) {
     return 0;    
 }
 
+void TaskManager::MemoryCheck(const std::string& task_id) {
+    MutexLock lock(&tasks_mutex_);
+    std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id);
+    if (it == tasks_.end()) {
+        return;
+    }
+    TaskInfo* task = it->second;
+    SetResourceUsage(task);
+    LOG(INFO, "[galaxy memory monitor] task %s mem used %ld mem limit %ld", 
+    task->status.resource_used().memory(),
+    task->desc.requirement().memory());
+    if (task->status.resource_used().memory()+ 100 * 1024 * 1024 >= task->desc.requirement().memory()) {
+        bool ok = KillTask(task);
+        LOG(INFO, "[galaxy killer] task %s of pod %s of job %s is oom and kill it with ret %d",
+                task->task_id.c_str(), task->pod_id.c_str(), task->job_id.c_str(),
+                ok);
+    }
+    killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
+                          boost::bind(&TaskManager::MemoryCheck, this, task_id));
+}
+
 int TaskManager::CleanCgroupEnv(TaskInfo* task) {
     if (task == NULL) {
         return -1; 
     }
-    std::string freezer_path;
-    if (task->cgroups.find("freezer") != task->cgroups.end()) {
-        freezer_path = task->cgroups["freezer"];
+    bool ok =  KillTask(task);
+    if (!ok) {
+        return -1;
     }
     std::map<std::string, std::string>::iterator it = task->cgroups.begin();
-
     for (;it != task->cgroups.end(); ++it) {
-        if (it->first == "freezer" || it->first == "tcp_throt") {
+        if (it->first == "tcp_throt") {
             continue; 
         }
         std::string cgroup_dir = it->second; 
-        if (!file::IsExists(cgroup_dir)) {
-            LOG(INFO, "%s not exists", cgroup_dir.c_str()); 
-            continue;
-        }
-
-        if (!cgroups::FreezerSwitch(freezer_path, "FROZEN")) {
-            LOG(WARNING, "%s frozen failed", freezer_path.c_str()); 
-            return -1;
-        }
-        std::vector<int> pids;
-        if (!cgroups::GetPidsFromCgroup(cgroup_dir, &pids)) {
-            LOG(WARNING, "get pids from %s failed",
-                    cgroup_dir.c_str());  
-            return -1;
-        }
-
-        std::vector<int>::iterator pid_it = pids.begin();
-        for (; pid_it != pids.end(); ++pid_it) {
-            int pid = *pid_it;
-            if (pid != 0) {
-                ::kill(pid, SIGKILL); 
-            }
-        }
-        if (!cgroups::FreezerSwitch(freezer_path, "THAWED")) {
-            LOG(WARNING, "%s thawed failed", freezer_path.c_str()); 
-            return -1;
-        }
-
         if (::rmdir(cgroup_dir.c_str()) != 0
                 && errno != ENOENT) {
             LOG(WARNING, "rmdir %s failed err[%d: %s]",
@@ -1182,16 +1233,8 @@ int TaskManager::CleanCgroupEnv(TaskInfo* task) {
             return -1;
         }
     }
-    if (::rmdir(freezer_path.c_str()) != 0
-            && errno != ENOENT) {
-        LOG(WARNING, "rmdir %sfailed err[%d: %s]",
-                freezer_path.c_str(), 
-                errno, strerror(errno)); 
-        return -1;
-    }
     return 0;
 }
-
 
 int TaskManager::PrepareResourceCollector(TaskInfo* task_info) {
     if (task_info == NULL) {

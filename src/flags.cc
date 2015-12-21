@@ -73,6 +73,7 @@ DEFINE_string(agent_global_hardlimit_path, "galaxy", "agent cpu hard limit root"
 DEFINE_string(agent_global_softlimit_path, "softlimit", "agent cpu soft limit root");
 DEFINE_string(agent_global_cgroup_path, "galaxy", "agent cgroup global path");
 DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
+DEFINE_int32(agent_memory_check_interval, 200, "agent check task memory interval");
 DEFINE_int32(agent_task_oom_delay_restart_time, 30000, "agent task oom delay restart time");
 DEFINE_string(agent_default_user, "galaxy", "agent default run task user");
 DEFINE_int32(send_bps_quota, 200000000, "galaxy net send limit");
