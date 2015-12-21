@@ -1143,7 +1143,7 @@ bool TaskManager::KillTask(TaskInfo* task) {
         std::vector<int>::iterator pid_it = pids.begin();
         for (; pid_it != pids.end(); ++pid_it) {
             int pid = *pid_it;
-            if (pid != 0) {
+            if (pid > 1) {
                 ::kill(pid, SIGKILL); 
             }
         }
