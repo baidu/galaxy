@@ -884,7 +884,6 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     }
 
     TaskInfo* task_info = it->second;
-    SetResourceUsage(task_info);
     int32_t task_delay_check_time = FLAGS_agent_detect_interval;
     // switch task stage
     if (task_info->stage == kTaskStagePENDING 
@@ -1038,6 +1037,16 @@ bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* tas
                     memory_limit, mem_path.c_str()); 
             return false;
         }
+    }
+	const int GROUP_KILL_MODE = 0;
+    if (file::IsExists(mem_path + "/memory.kill_mode") 
+          && cgroups::Write(mem_path,
+                "memory.kill_mode", 
+                boost::lexical_cast<std::string>(GROUP_KILL_MODE)
+                ) != 0) {
+        LOG(WARNING, "set memory kill mode failed for %s", 
+                mem_path.c_str()); 
+        return false;
     }
     return true; 
 }
