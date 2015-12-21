@@ -279,7 +279,7 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
     } while (0);
     if (task_info->desc.has_mem_isolation_type() && 
         task_info->desc.mem_isolation_type() == kMemIsolationCgroup && FLAGS_agent_use_galaxy_oom_killer){
-        LOG(INFO, "task %s use galaxy memory killer ", task_info->task_id.c_str());
+        LOG(INFO, "task %s use galaxy oom killer ", task_info->task_id.c_str());
         killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
                           boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
     }
@@ -328,7 +328,7 @@ int TaskManager::CreateTask(const TaskInfo& task) {
     if (task_info->desc.has_mem_isolation_type() && 
                task_info->desc.mem_isolation_type() == 
                     kMemIsolationCgroup && FLAGS_agent_use_galaxy_oom_killer){
-        LOG(INFO, "task %s use galaxy memory killer ", task_info->task_id.c_str());
+        LOG(INFO, "task %s use galaxy oom killer ", task_info->task_id.c_str());
         killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
                           boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
     }
@@ -1188,9 +1188,6 @@ void TaskManager::MemoryCheck(const std::string& task_id) {
     }
     TaskInfo* task = it->second;
     SetResourceUsage(task);
-    LOG(INFO, "[galaxy memory monitor] task %s mem used %ld mem limit %ld", task_id.c_str(), 
-        task->status.resource_used().memory(),
-        task->desc.requirement().memory());
     if (task->status.resource_used().memory()+ GALAXY_OOM_KILLER_OFFSET >= task->desc.requirement().memory()) {
         bool ok = KillTask(task);
         LOG(INFO, "[galaxy killer] task %s of pod %s of job %s is oom and kill it with ret %d",
