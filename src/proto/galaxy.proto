@@ -77,10 +77,6 @@ enum MemIsolationType {
     kMemIsolationCgroup = 0;
     // user custom limit
     kMemIsolationLimit = 1;
-    // ulimit
-    kMemIsolationUlimit = 2;
-    // galaxy limit
-    kMemIsolationGlimit = 3;
 }
 
 enum CpuIsolationType {
