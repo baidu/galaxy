@@ -40,6 +40,8 @@ DECLARE_int32(agent_millicores_share);
 DECLARE_int32(agent_task_oom_delay_restart_time);
 DECLARE_int64(agent_mem_share);
 DECLARE_string(agent_default_user);
+DECLARE_int32(agent_download_package_timeout);
+DECLARE_int32(agent_download_package_retry_times);
 DECLARE_bool(agent_namespace_isolation_switch);
 DECLARE_bool(agent_use_galaxy_oom_killer);
 DECLARE_int32(send_bps_quota);
@@ -609,7 +611,8 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     } else if (task_info->desc.source_type() 
             == kSourceTypeFTP) {
         // TODO add speed limit
-        deploy_command = "wget "; 
+        deploy_command = "wget  --timeout=" + boost::lexical_cast<std::string>(FLAGS_agent_download_package_timeout) + 
+            " --tries="+ boost::lexical_cast<std::string>(FLAGS_agent_download_package_retry_times) + " ";
         deploy_command.append(task_info->desc.binary());
         deploy_command.append(" -O tmp.tar.gz && tar -xzf tmp.tar.gz");
     } else if (task_info->desc.source_type()
