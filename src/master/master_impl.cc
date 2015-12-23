@@ -96,7 +96,7 @@ void MasterImpl::ReloadAgent() {
     std::string end_key = start_key + "~"; 
     ::galaxy::ins::sdk::ScanResult* result = nexus_->Scan(start_key, end_key);
     int agent_amount = 0;
-    while (result->Done()) { 
+    while (!result->Done()) { 
         assert(result->Error() == ::galaxy::ins::sdk::kOK);
         std::string key = result->Key();
         std::string value = result->Value();

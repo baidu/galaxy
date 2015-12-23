@@ -805,7 +805,7 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         if (agent_custom_infos_it != agent_custom_infos_.end()) {
             agent->set_state(agent_custom_infos_it->second->state());
         }
-        LOG(INFO, "agent %s comes back with state %s", AgentState_Name(agent->state()).c_str());
+        LOG(INFO, "agent %s comes back with state %s", agent_addr.c_str(), AgentState_Name(agent->state()).c_str());
     }
 
     MutexLock lock(&mutex_timer_);
@@ -956,11 +956,7 @@ void JobManager::Query() {
 void JobManager::QueryAgent(AgentInfo* agent) {
     mutex_.AssertHeld();
     const AgentAddr& endpoint = agent->endpoint();
-    int64_t seq_id = agent_sequence_ids_[endpoint];
-    if (agent->state() != kAlive) {
-        LOG(DEBUG, "ignore dead agent [%s]", endpoint.c_str());
-        return;
-    }
+    int64_t seq_id = agent_sequence_ids_[endpoint]; 
     QueryRequest* request = new QueryRequest;
     QueryResponse* response = new QueryResponse;
 
@@ -2066,6 +2062,7 @@ bool JobManager::OfflineAgent(const std::string& endpoint) {
         AgentPersistenceInfo* agent = new AgentPersistenceInfo();
         agent->set_endpoint(endpoint);
         agent->set_state(kOffline);
+        agent_custom_infos_.insert(std::make_pair(endpoint, agent));
     }
     return true;
 }
