@@ -363,8 +363,8 @@ void MasterImpl::OfflineAgent(::google::protobuf::RpcController* controller,
     bool ok = job_manager_.OfflineAgent(request->endpoint());
     if (!ok) {
         response->set_status(kAgentError);
-        done->Run();
-        return;
+    }else {
+    
     }
 }
 
