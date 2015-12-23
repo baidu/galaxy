@@ -2011,8 +2011,10 @@ bool JobManager::OnlineAgent(const std::string& endpoint) {
     if (agent_it != agents_.end()) {
         AgentInfo* agent = agent_it->second;
         // let agent heart beat change it's state to kAlive
-        agent->set_state(kDead);
-        agent->set_version(agent->version() + 1);
+        if (agent->state() == kOffline) { 
+            agent->set_state(kDead);
+            agent->set_version(agent->version() + 1);
+        }
     }
     std::map<AgentAddr, AgentPersistenceInfo*>::iterator agent_custom_infos_it = agent_custom_infos_.find(endpoint);
     if (agent_custom_infos_it != agent_custom_infos_.end()) {

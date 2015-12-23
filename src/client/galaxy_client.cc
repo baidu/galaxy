@@ -34,6 +34,7 @@ DEFINE_string(n, "", "specify job name to query pods");
 DEFINE_string(j, "", "specify job id");
 DEFINE_string(l, "", "add a label to agent");
 DEFINE_string(p, "", "specify pod id");
+DEFINE_string(a, "", "specify agent addr");
 DEFINE_int32(d, 0, "specify delay time to query");
 DEFINE_int32(cli_server_port, 8775, "cli server listen port");
 DECLARE_string(flagfile);
@@ -48,6 +49,8 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
                                  "    galaxy preempt -f <config>\n"
+                                 "    galaxy offline -a <agent_addr>\n"
+                                 "    galaxy online -a <agent_addr>\n"
                                  "    galaxy status \n"
                                  "    galaxy enter safemode \n"
                                  "    galaxy leave safemode \n"
@@ -56,6 +59,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
                                  "    -d delay     Specify delay in second to update infomation.\n"
                                  "    -l label     Add label to list of agents.\n"
+                                 "    -a agent     Specify agent addr.\n"
                                  "    -n name      Specify job name to query pods.\n";
 
 int ReadableStringToInt(const std::string& input, int64_t* output) {
@@ -764,6 +768,38 @@ int KillJob() {
     return 1;
 }
 
+int OnlineAgent() {
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
+    if (FLAGS_a.empty()) {
+        fprintf(stderr, "-a is required when online agent\n");
+        return -1;
+    }
+    bool ok = galaxy->OnlineAgent(FLAGS_a);
+    if (ok) {
+        fprintf(stdout, "online agent %s successfully \n", FLAGS_a.c_str());
+        return 0;
+    }
+    fprintf(stderr, "fail to online agent %s \n", FLAGS_a.c_str());
+    return -1;
+}
+
+int OfflineAgent() {
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
+    if (FLAGS_a.empty()) {
+        fprintf(stderr, "-a is required when offline agent\n");
+        return -1;
+    }
+    bool ok = galaxy->OfflineAgent(FLAGS_a);
+    if (ok) {
+        fprintf(stdout, "offline agent %s successfully \n", FLAGS_a.c_str());
+        return 0;
+    }
+    fprintf(stderr, "fail to offline agent %s \n", FLAGS_a.c_str());
+    return -1;
+}
+
 int main(int argc, char* argv[]) {
     FLAGS_flagfile = "./galaxy.flag";
     ::google::SetUsageMessage(kGalaxyUsage);
@@ -797,7 +833,11 @@ int main(int argc, char* argv[]) {
         return AttachPod();
     } else if (strcmp(argv[1], "preempt") == 0) {
         return PreemptPod();
-    }else {
+    } else if (strcmp(argv[1], "online") == 0) {
+        return OnlineAgent();
+    } else if (strcmp(argv[1], "offline") == 0) {
+        return OfflineAgent();
+    } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
     }

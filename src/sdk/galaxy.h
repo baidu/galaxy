@@ -164,6 +164,8 @@ public:
     virtual bool SwitchSafeMode(bool mode) = 0;
     virtual bool Preempt(const PreemptPropose& propose) = 0;
     virtual bool GetMasterAddr(std::string* master_addr) = 0;
+    virtual bool OfflineAgent(const std::string& agent_addr) = 0;
+    virtual bool OnlineAgent(const std::string& agent_addr) = 0;
 };
 
 } // namespace galaxy
