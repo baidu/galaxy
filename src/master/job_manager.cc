@@ -26,6 +26,7 @@ DECLARE_string(safemode_store_path);
 DECLARE_string(safemode_store_key);
 DECLARE_string(labels_store_path);
 DECLARE_string(jobs_store_path);
+DECLARE_string(agents_store_path);
 DECLARE_string(data_center);
 DECLARE_int32(master_pending_job_wait_timeout);
 DECLARE_int32(master_job_trace_interval);
@@ -789,7 +790,6 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
     {
         MutexLock lock(&mutex_);
         if (agents_.find(agent_addr) == agents_.end()) {
-            LOG(INFO, "new agent added: %s", agent_addr.c_str());
             AgentInfo* agent = new AgentInfo();
             agent->set_version(0);
             agents_[agent_addr] = agent;
@@ -798,6 +798,11 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         AgentInfo* agent = agents_[agent_addr];
         agent->set_state(kAlive);
         agent->set_endpoint(agent_addr);
+        std::map<AgentAddr, AgentPersistenceInfo*>::iterator agent_custom_infos_it = agent_custom_infos_.find(agent_addr);
+        if (agent_custom_infos_it != agent_custom_infos_.end()) {
+            agent->set_state(agent_custom_infos_it->second->state());
+        }
+        LOG(INFO, "agent %s comes back with state %s", AgentState_Name(agent->state()).c_str());
     }
 
     MutexLock lock(&mutex_timer_);
@@ -807,19 +812,18 @@ void JobManager::KeepAlive(const std::string& agent_addr) {
         timer_id = agent_timer_[agent_addr];
         bool cancel_ok = death_checker_.CancelTask(timer_id);
         if (!cancel_ok) {
-            LOG(WARNING, "agent is offline, agent: %s", agent_addr.c_str());
-            
+            LOG(WARNING, "agent is dead, agent: %s", agent_addr.c_str());
         }
     }
     timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
-                                        boost::bind(&JobManager::HandleAgentOffline,
+                                        boost::bind(&JobManager::HandleAgentDead,
                                                     this,
                                                     agent_addr));
     agent_timer_[agent_addr] = timer_id;
 }
 
-void JobManager::HandleAgentOffline(const std::string agent_addr) {
-    LOG(WARNING, "agent is offline: %s", agent_addr.c_str());
+void JobManager::HandleAgentDead(const std::string agent_addr) {
+    LOG(WARNING, "agent is dead: %s", agent_addr.c_str());
     MutexLock lock(&mutex_);
     std::map<AgentAddr, AgentInfo*>::iterator a_it = agents_.find(agent_addr);
     if (a_it == agents_.end()) {
@@ -831,7 +835,7 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
         MutexLock lock(&mutex_timer_);
         int64_t timer_id;
         timer_id = death_checker_.DelayTask(FLAGS_master_agent_timeout,
-                                            boost::bind(&JobManager::HandleAgentOffline,
+                                            boost::bind(&JobManager::HandleAgentDead,
                                                         this,
                                                         agent_addr));
         agent_timer_[agent_addr] = timer_id;
@@ -841,7 +845,7 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
     e.set_addr(agent_addr);
     e.set_data_center(FLAGS_data_center);
     e.set_time(::baidu::common::timer::get_micros());
-    e.set_action("offline");
+    e.set_action("kDead");
     Trace::TraceAgentEvent(e);
     PodMap& agent_pods = pods_on_agent_[agent_addr];
     PodMap::iterator it = agent_pods.begin();
@@ -849,7 +853,7 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
     for (; it != agent_pods.end(); ++it) {
         std::map<PodId, PodStatus*>::iterator jt = it->second.begin();
         for (; jt != it->second.end(); ++jt) {
-            PodStatus* pod = jt->second; 
+            PodStatus* pod = jt->second;
             std::map<JobId, Job*>::iterator job_it = jobs_.find(pod->jobid());
             if (job_it ==  jobs_.end()) {
                 continue;
@@ -864,7 +868,6 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
         ChangeStage(reason, kStagePending, pending_it->second, pending_it->first);
     }
     pods_on_agent_.erase(agent_addr);
-    LOG(INFO, "agent is dead: %s", agent_addr.c_str());
 }
 
 void JobManager::RunPod(const PodDescriptor& desc, Job* job, PodStatus* pod) {
@@ -1984,6 +1987,112 @@ void JobManager::GetJobDescByDiff(const JobIdDiffList& jobids,
             job_entity->mutable_desc()->CopyFrom(job->desc_);
             job_entity->set_jobid(job->id_);
             job_entity->mutable_desc()->mutable_pod()->CopyFrom(pod_it->second);
+        }
+    }
+}
+bool JobManager::OnlineAgent(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return false;
+    }
+    {
+        AgentPersistenceInfo agent;
+        agent.set_endpoint(endpoint);
+        agent.set_state(kAlive);
+        bool ok = SaveAgentToNexus(agent);
+        if (!ok) {
+            return false;
+        }
+    } 
+    return true;
+}
+
+bool JobManager::OfflineAgent(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return false;
+    }
+    {
+        AgentPersistenceInfo agent;
+        agent.set_endpoint(endpoint);
+        agent.set_state(kOffline);
+        bool ok = SaveAgentToNexus(agent);
+        if (!ok) {
+            return false;
+        }
+    }
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, AgentInfo*>::iterator agent_it = agents_.find(endpoint);
+    if (agent_it != agents_.end()) {
+        AgentInfo* agent = agent_it->second;
+        if (agent->state() == kAlive) {
+            StopPodsOnAgent(endpoint);
+        }
+        agent->set_state(kOffline);
+        agent->set_version(agent->version() + 1);
+        LOG(INFO, "agent %s is offline", endpoint.c_str());
+        AgentEvent e;
+        e.set_addr(agent_addr);
+        e.set_data_center(FLAGS_data_center);
+        e.set_time(::baidu::common::timer::get_micros());
+        e.set_action("kOffline");
+        Trace::TraceAgentEvent(e);
+    }
+    std::map<AgentAddr, AgentPersistenceInfo*>::iterator agent_custom_infos_it = agent_custom_infos_.find(endpoint);
+    if (agent_custom_infos_it != agent_custom_infos_.end()) {
+        AgentPersistenceInfo* agent = agent_custom_infos_it->second;
+        agent->set_state(kOffline);
+    }else {
+        AgentPersistenceInfo* agent = new AgentPersistenceInfo();
+        agent->set_endpoint(endpoint);
+        agent->set_state(kOffline);
+    }
+    return true;
+}
+
+bool JobManager::SaveAgentToNexus(const AgentPersistenceInfo& agent) {
+    if (agent.endpoint().empty()) {
+        return false;
+    }
+    std::string agent_raw_data;
+    std::string agent_key = FLAGS_nexus_root_path + FLAGS_agents_store_path 
+                          + "/" + agent.endpoint();
+    agent.SerializeToString(&agent_raw_data);
+    ::galaxy::ins::sdk::SDKError err;
+    bool ok = nexus_->Put(agent_key, agent_raw_data, &err);
+    if (ok && err == ::galaxy::ins::sdk::kOk) {
+        LOG(INFO, "save agent %s state successfully ", agent.endpoint().c_str());
+        return true;
+    }
+    LOG(WARNING, "fail to save agent %s state for %s", 
+            agent.endpoint().c_str(),
+           ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+    return false;
+}
+
+void JobManager::StopPodsOnAgent(const std::string& endpoint) {
+    mutex_.AssertHeld();
+    std::map<AgentAddr, PodMap>::iterator pods_on_agent_it = pods_on_agent_.find(endpoint);
+    if (pods_on_agent_it == pods_on_agent_.end()) {
+        return;
+    }
+    LOG(INFO, "stop all pods on agent %s", endpoint.c_str());
+    PodMap::iterator job_it = pods_on_agent_it->second.begin();
+    std::string reason = "offline agent " + endpoint;
+    for (; job_it != pods_on_agent_it->second.end(); ++job_it) {
+        std::map<JobId, Job*>::iterator real_job_it = jobs_.find(job_it->first);
+        if (real_job_it == jobs_.end()) {
+            LOG(WARNING, "job %s does exist but it exists on agent %s, leave it alone",
+                    job_it->first.c_str(), endpoint.c_str());
+            continue;
+        }
+        Job* job = real_job_it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it = job_it->second.begin();
+        for (; pod_it !=  job_it->second.end(); ++pod_it) {
+            PodStatus* pod = pod_it->second;
+            LOG(INFO, "stop pod %s of job %s for agent %s offline",
+                    pod->pod_id().c_str(),
+                    job->id_.c_str(),
+                    endpoint.c_str());
+            ChangeStage(reason, kStageDeath, pod, job);
         }
     }
 }

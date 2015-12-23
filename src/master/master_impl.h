@@ -91,6 +91,16 @@ public:
                            ::baidu::galaxy::SwitchSafeModeResponse* response,
                            ::google::protobuf::Closure* done);
 
+      virtual void OfflineAgent(::google::protobuf::RpcController* controller,
+                                 const ::baidu::galaxy::OfflineAgentRequest* request,
+                                 ::baidu::galaxy::OfflineAgentResponse* response,
+                                 ::google::protobuf::Closure* done);
+
+      virtual void OnlineAgent(::google::protobuf::RpcController* controller,
+                                const ::baidu::galaxy::OnlineAgentRequest* request,
+                                ::baidu::galaxy::OnlineAgentResponse* response,
+                                ::google::protobuf::Closure* done);
+
       void OnSessionTimeout();
       void OnLockChange(std::string lock_session_id);
 private:

@@ -304,6 +304,22 @@ message PreemptResponse {
     optional Status status = 1;
 }
 
+message OfflineAgentRequest {
+    optional string endpoint = 1;
+}
+
+message OfflineAgentResponse {
+    optional Status status = 1;
+}
+
+message OnlineAgentRequest {
+    optional string endpoint = 1;
+}
+
+message OnlineAgentResponse {
+    optional Status status = 1;
+}
+
 service Master {
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
@@ -329,6 +345,9 @@ service Master {
     rpc GetJobDescriptor(GetJobDescriptorRequest) returns (GetJobDescriptorResponse);
     rpc Propose(ProposeRequest) returns (ProposeResponse);
     rpc Preempt(PreemptRequest) returns (PreemptResponse);
+
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
     rpc LabelAgents(LabelAgentRequest) returns (LabelAgentResponse);
+    rpc OfflineAgent(OfflineAgentRequest) returns (OfflineAgentResponse);
+    rpc OnlineAgent(OnlineAgentRequest) returns (OnlineAgentResponse);
 }

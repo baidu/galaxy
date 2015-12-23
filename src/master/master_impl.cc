@@ -355,5 +355,18 @@ void MasterImpl::Preempt(::google::protobuf::RpcController* controller,
     done->Run();
 }
 
+void MasterImpl::OfflineAgent(::google::protobuf::RpcController* controller,
+                              const ::baidu::galaxy::OfflineAgentRequest* request,
+                              ::baidu::galaxy::OfflineAgentResponse* response,
+                              ::google::protobuf::Closure* done) {
+
+    bool ok = job_manager_.OfflineAgent(request->endpoint());
+    if (!ok) {
+        response->set_status(kAgentError);
+        done->Run();
+        return;
+    }
+}
+
 }
 }
