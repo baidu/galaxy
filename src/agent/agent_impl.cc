@@ -5,7 +5,7 @@
 #include "agent/agent_impl.h"
 
 #include "gflags/gflags.h"
-
+#include <fstream>
 #include "boost/bind.hpp"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/split.hpp"
@@ -43,6 +43,8 @@ DECLARE_double(max_soft_intr_rate);
 
 namespace baidu {
 namespace galaxy {
+    
+static const uint64_t MIN_COLLECT_TIME = 4;
 
 AgentImpl::AgentImpl() : 
     master_endpoint_(),
@@ -226,6 +228,17 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
     return;
 }
 
+void AgentImpl::KillAllPods() {
+    lock_.AssertHeld();
+    for (std::map<std::string, PodDescriptor>::iterator it = pods_descs_.begin();
+            it != pods_descs_.end(); it++) {
+        std::string pod_id = it->first;
+        pod_manager_.DeletePod(pod_id);
+        LOG(WARNING, "fork to kill %s", pod_id.c_str());
+    }
+    return;
+}
+
 void AgentImpl::KeepHeartBeat() {
     MutexLock lock(&mutex_master_endpoint_);
     if (!PingMaster()) {
@@ -309,7 +322,9 @@ bool AgentImpl::PingMaster() {
     mutex_master_endpoint_.AssertHeld();
     HeartBeatRequest request;
     HeartBeatResponse response;
-    request.set_endpoint(endpoint_); 
+    request.set_endpoint(endpoint_);
+    MutexLock scope_lock(&lock_);
+    request.set_state(state_);
     return rpc_client_->SendRequest(master_,
                                     &Master_Stub::HeartBeat,
                                     &request,
@@ -470,7 +485,6 @@ void AgentImpl::ShowPods(::google::protobuf::RpcController* /*cntl*/,
 }
 
 void AgentImpl::CollectSysStat() {
-    MutexLock lock(&lock_);
     do {
         LOG(INFO, "start collect sys stat");
         ResourceStatistics tmp_statistics;
@@ -507,10 +521,13 @@ void AgentImpl::CollectSysStat() {
         if (CheckSysHealth()) {
             break;
         }else {
-   
+            MutexLock scope_lock(&lock_);
+            state_ = kOffline;
+            KillAllPods();
+            LOG(WARNING, "sys health checker kill all pods");
         }
     } while(0); 
-    stat_pool_.DelayTask(FLAGS_stat_check_period, boost::bind(&AgentImpl::CollectSysStat, this));
+    background_threads_.DelayTask(FLAGS_stat_check_period, boost::bind(&AgentImpl::CollectSysStat, this));
     return;
 }
 
@@ -571,7 +588,6 @@ bool AgentImpl::CheckSysHealth() {
 }
 
 bool AgentImpl::GetGlobalCpuStat() {
-    lock_.AssertHeld();
     ResourceStatistics statistics;
     std::string path = "/proc/stat";
     FILE* fin = fopen(path.c_str(), "r");
@@ -667,8 +683,7 @@ bool AgentImpl::GetGlobalCpuStat() {
 }
 
 bool AgentImpl::GetGlobalMemStat(){
-    lock_.AssertHeld();
-    FILE* fp = fopeGetGlobalCpuStatn("/proc/meminfo", "rb");
+    FILE* fp = fopen("/proc/meminfo", "rb");
     if (fp == NULL) {
         return false;
     }
@@ -720,12 +735,15 @@ bool AgentImpl::GetGlobalMemStat(){
     }
     fclose(fp);
     
-    std::stringstream ss;
-    int exit_code = -1;
-    bool ok = SyncExec("df -h", ss, &exit_code);
-    if (ok && exit_code == 0) {
+    FILE* fin = popen("df -h", "r");
+    if (fin != NULL) {
+        std::string content;
+        char buf[1024];
+        int len = 0;
+        while ((len = fread(buf, 1, sizeof(buf), fin)) > 0) {
+            content.append(buf, len);
+        }
         std::vector<std::string> lines;
-        std::string content = ss.str();
         boost::split(lines, content, boost::is_any_of("\n"));
         for (size_t n = 0; n < lines.size(); n++) {
             std::string line = lines[n];
@@ -741,7 +759,10 @@ bool AgentImpl::GetGlobalMemStat(){
             }
         }
     } else {
-        LOG(WARNING, "exec df fail err_code %d", exit_code);
+        LOG(WARNING, "popen df -h err");
+    }
+    if (pclose(fin) == -1) {
+        LOG(WARNING, "pclose err");
     }
     stat_->mem_used_ = (total_mem - free_mem - buffer_mem - cache_mem + tmpfs_mem) / boost::lexical_cast<double>(total_mem);
  
@@ -749,7 +770,6 @@ bool AgentImpl::GetGlobalMemStat(){
 }
 
 bool AgentImpl::GetGlobalIntrStat() {
-    lock_.AssertHeld();
     uint64_t intr_cnt = 0;
     uint64_t softintr_cnt = 0;
     std::string path = "/proc/stat";
@@ -757,11 +777,11 @@ bool AgentImpl::GetGlobalIntrStat() {
     if (!stat.is_open()) {
         LOG(WARNING, "open proc stat fail.");
         return false;
-    }
-    
+    } 
     std::vector<std::string> lines;
     std::string content; 
     stat >> content;
+    stat.close();
     boost::split(lines, content, boost::is_any_of("\n"));
     for (size_t n = 0; n < lines.size(); n++) {
         std::string line = lines[n];
@@ -785,13 +805,14 @@ bool AgentImpl::GetGlobalIntrStat() {
 }
 
 bool AgentImpl::GetGlobalIOStat() {
-    lock_.AssertHeld();
-    std::string cmd = "iostat -x";
-    std::stringstream ss;
-    std::string content = ss.str();
-    int exit_code = -1;
-    bool ok = SyncExec(cmd, ss, &exit_code);
-    if (ok && exit_code == 0) {
+    FILE *fin = popen("iostat -x", "r");
+    if (fin != NULL) {
+        char buf[1024];
+        int len = 0;
+        std::string content;
+        while ((len = fread(buf, 1, sizeof(buf), fin)) > 0) {
+            content.append(buf, len);
+        }
         std::vector<std::string> lines;
         boost::split(lines, content, boost::is_any_of("\n"));
         for (size_t n = 0; n < lines.size(); n++) {
@@ -810,13 +831,15 @@ bool AgentImpl::GetGlobalIOStat() {
             }
         }
     }else {
-        LOG(WARNING, "exec df fail err_code %d", exit_code);
+        LOG(WARNING, "popen iostat fail err_code");
+    }
+    if (pclose(fin) == -1) {
+        LOG(WARNING, "pclose err");
     }
     return true;
 }
 
 bool AgentImpl::GetGlobalNetStat() {
-    lock_.AssertHeld();
     std::string path = "/proc/net/dev";
     std::ifstream stat(path.c_str());
     if (!stat.is_open()) {
@@ -825,6 +848,7 @@ bool AgentImpl::GetGlobalNetStat() {
     }
     std::string content;
     stat >> content;
+    stat.close();
     stat_->last_stat_ = stat_->cur_stat_;
     std::vector<std::string> lines;
     boost::split(lines, content, boost::is_any_of("\n"));

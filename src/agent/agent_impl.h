@@ -63,6 +63,8 @@ private:
     bool RestorePods();
     
     void LoopCheckPods();
+    
+    void KillAllPods();
     // ret ==  0 alloc success
     //        -1 alloc failed
     int AllocResource(const Resource& requirement);
