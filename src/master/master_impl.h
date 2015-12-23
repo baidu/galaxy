@@ -17,6 +17,7 @@ public:
       MasterImpl();
       virtual ~MasterImpl();
       void Init();
+      void Start();
       virtual void SubmitJob(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::SubmitJobRequest* request,
                             ::baidu::galaxy::SubmitJobResponse* response,
@@ -107,7 +108,9 @@ private:
       void AcquireMasterLock();
       // TODO should return value
       void ReloadJobInfo();
-      void ReloadLabelInfo(); private:
+      void ReloadLabelInfo();
+      void ReloadAgent();
+private:
       JobManager job_manager_;
       InsSDK* nexus_;
 

@@ -113,6 +113,7 @@ typedef boost::multi_index::index<PreemptTaskSet, addr_tag>::type PreemptTaskAdd
 
 class JobManager {
 public:
+    void Start();
     Status Add(const JobId& job_id, const JobDescriptor& job_desc);
     Status Update(const JobId& job_id, const JobDescriptor& job_desc);
     Status Suspend(const JobId& jobid);
@@ -142,6 +143,7 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
+    void ReloadAgent(const AgentPersistenceInfo& agent);
     Status SetSafeMode(bool mode);
     Status LabelAgents(const LabelCell& label_cell);
     bool GetJobIdByName(const std::string& job_name, std::string* jobid);
@@ -159,7 +161,7 @@ private:
     void GetPodRequirement(const PodStatus* pod, Resource* requirement);
     void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
     void HandleAgentOffline(const std::string& agent_addr);
-    void HandleAgentDead(const std::string& agent_addr);
+    void HandleAgentDead(const std::string agent_addr);
     void ReschedulePod(PodStatus* pod_status);
     bool CheckSafeModeManual(bool& mode);
     bool SaveSafeMode(bool mode);

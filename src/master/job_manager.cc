@@ -37,7 +37,6 @@ namespace galaxy {
 JobManager::JobManager()
     : on_query_num_(0),
     pod_cv_(&mutex_){
-    ScheduleNextQuery();
     state_to_stage_[kPodPending] = kStageRunning;
     state_to_stage_[kPodDeploying] = kStageRunning;
     state_to_stage_[kPodRunning] = kStageRunning;
@@ -57,12 +56,16 @@ JobManager::JobManager()
     else {
         safe_mode_ = kSafeModeAutomatic;
     }
-    trace_pool_.DelayTask(FLAGS_master_cluster_trace_interval, 
-               boost::bind(&JobManager::TraceClusterStat, this));
 }
 
 JobManager::~JobManager() {
     delete nexus_;
+}
+
+void JobManager::Start() {
+    trace_pool_.DelayTask(FLAGS_master_cluster_trace_interval, 
+               boost::bind(&JobManager::TraceClusterStat, this));
+    ScheduleNextQuery();
 }
 
 bool JobManager::CheckSafeModeManual(bool& mode) {
@@ -2003,6 +2006,23 @@ bool JobManager::OnlineAgent(const std::string& endpoint) {
             return false;
         }
     } 
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, AgentInfo*>::iterator agent_it = agents_.find(endpoint);
+    if (agent_it != agents_.end()) {
+        AgentInfo* agent = agent_it->second;
+        // let agent heart beat change it's state to kAlive
+        agent->set_state(kDead);
+        agent->set_version(agent->version() + 1);
+    }
+    std::map<AgentAddr, AgentPersistenceInfo*>::iterator agent_custom_infos_it = agent_custom_infos_.find(endpoint);
+    if (agent_custom_infos_it != agent_custom_infos_.end()) {
+        AgentPersistenceInfo* agent = agent_custom_infos_it->second;
+        agent->set_state(kAlive);
+    }else {
+        AgentPersistenceInfo* agent = new AgentPersistenceInfo();
+        agent->set_endpoint(endpoint);
+        agent->set_state(kAlive);
+    }
     return true;
 }
 
@@ -2030,7 +2050,7 @@ bool JobManager::OfflineAgent(const std::string& endpoint) {
         agent->set_version(agent->version() + 1);
         LOG(INFO, "agent %s is offline", endpoint.c_str());
         AgentEvent e;
-        e.set_addr(agent_addr);
+        e.set_addr(endpoint);
         e.set_data_center(FLAGS_data_center);
         e.set_time(::baidu::common::timer::get_micros());
         e.set_action("kOffline");
@@ -2058,7 +2078,7 @@ bool JobManager::SaveAgentToNexus(const AgentPersistenceInfo& agent) {
     agent.SerializeToString(&agent_raw_data);
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Put(agent_key, agent_raw_data, &err);
-    if (ok && err == ::galaxy::ins::sdk::kOk) {
+    if (ok && err == ::galaxy::ins::sdk::kOK) {
         LOG(INFO, "save agent %s state successfully ", agent.endpoint().c_str());
         return true;
     }
@@ -2089,12 +2109,22 @@ void JobManager::StopPodsOnAgent(const std::string& endpoint) {
         for (; pod_it !=  job_it->second.end(); ++pod_it) {
             PodStatus* pod = pod_it->second;
             LOG(INFO, "stop pod %s of job %s for agent %s offline",
-                    pod->pod_id().c_str(),
+                    pod->podid().c_str(),
                     job->id_.c_str(),
                     endpoint.c_str());
             ChangeStage(reason, kStageDeath, pod, job);
         }
     }
+}
+
+void JobManager::ReloadAgent(const AgentPersistenceInfo& agent) {
+    MutexLock lock(&mutex_);
+    if (agent_custom_infos_.find(agent.endpoint()) != agent_custom_infos_.end()) {
+        return;
+    }
+    AgentPersistenceInfo* agent_info = new AgentPersistenceInfo();
+    agent_info->CopyFrom(agent);
+    agent_custom_infos_.insert(std::make_pair(agent.endpoint(), agent_info));
 }
 
 }
