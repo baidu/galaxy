@@ -15,7 +15,6 @@ enum JobType {
 enum JobPriority {
     kMonitor = 75;
     kOnline = 50;
-    kOffline = 25;
     kBestEffort = 0;
 }
 
@@ -143,6 +142,7 @@ message ShowJobResponse {
 
 message HeartBeatRequest {
     optional string endpoint = 1;
+    optional AgentState state = 2;
 }
 
 message HeartBeatResponse {
