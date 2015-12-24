@@ -74,6 +74,8 @@ struct Job {
     std::map<Version, PodDescriptor> pod_desc_;
     JobUpdateState update_state_;
     Version latest_version;
+    int64_t create_time;
+    int64_t update_time;
 };
 
 struct PreemptTask {
@@ -84,7 +86,6 @@ struct PreemptTask {
     std::string addr_;
     Resource resource_;
     bool running_;
-
 };
 
 

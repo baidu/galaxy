@@ -418,11 +418,12 @@ int PodManager::AddPod(const PodInfo& info) {
     std::string gc_dir = FLAGS_agent_gc_dir + "/" 
         + internal_info.pod_id + "_" + time_str;
     internal_info.pod_status.set_pod_gc_path(gc_dir);
+    internal_info.pod_status.set_start_time(::baidu::common::timer::get_micros());
     LOG(WARNING, "pod gc path %s", pods_[info.pod_id].pod_status.pod_gc_path().c_str());
 
     if (AllocPortForInitd(internal_info.initd_port) != 0){
         LOG(WARNING, "pod %s alloc port for initd failed",
-                internal_info.pod_id.c_str());            
+                internal_info.pod_id.c_str()); 
         return -1;
     }
     int lanuch_initd_ret = -1;
@@ -436,7 +437,7 @@ int PodManager::AddPod(const PodInfo& info) {
         LOG(WARNING, "lanuch initd for %s failed",
                 internal_info.pod_id.c_str()); 
         return -1;
-    }                    
+    } 
     std::map<std::string, TaskInfo>::iterator task_it = 
         internal_info.tasks.begin();
     for (; task_it != internal_info.tasks.end(); ++task_it) {

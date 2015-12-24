@@ -117,6 +117,9 @@ message TaskStatus {
     optional Resource resource_used = 3;
     optional string version = 4;
     optional TaskState state = 5;
+    optional int64 deploy_time = 6;
+    optional int64 start_time = 7;
+    optional string cmd = 8;
 }
 
 message PodStatus {
@@ -130,6 +133,9 @@ message PodStatus {
     optional string pod_gc_path = 9;
     optional string version = 10;
     optional int32 priority = 11;
+    optional int64 pending_time = 12;
+    optional int64 sched_time = 13;
+    optional int64 start_time = 14;
 }
 
 message AgentInfo {
@@ -141,5 +147,6 @@ message AgentInfo {
     optional AgentState state = 8;
     optional int32 version = 9;
     repeated string tags = 10;
+    optional int64 time = 11;
 }
 

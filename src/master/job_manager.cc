@@ -210,6 +210,8 @@ Status JobManager::Add(const JobId& job_id, const JobDescriptor& job_desc) {
     job->latest_version = job->desc_.pod().version();
     // disable update default
     job->update_state_ = kUpdateSuspend;
+    job->create_time = ::baidu::common::timer::get_micros();
+    job->update_time = ::baidu::common::timer::get_micros();
     // TODO add nexus lock
     bool save_ok = SaveToNexus(job);
     if (!save_ok) {
@@ -265,6 +267,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
         LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
         return kJobNotFound;
     }
+    it->second->update_time = ::baidu::common::timer::get_micros();
     int32_t old_replica = it->second->desc_.replica();
     bool ok = HandleUpdateJob(job_desc, it->second, 
                       &replica_changed, &pod_desc_changed);
@@ -360,6 +363,9 @@ void JobManager::FillPodsToJob(Job* job) {
         pod_status->set_state(kPodPending);
         pod_status->set_stage(kStagePending);
         pod_status->set_version(job->latest_version);
+        pod_status->set_pending_time(::baidu::common::timer::get_micros());
+        pod_status->set_sched_time(-1);
+        pod_status->set_start_time(-1);
         job->pods_[pod_id] = pod_status;
         need_scale_up = true;
     }
@@ -367,7 +373,6 @@ void JobManager::FillPodsToJob(Job* job) {
         LOG(INFO, "move job %s to scale up queue", job->id_.c_str());
         scale_up_jobs_.insert(job->id_);
     }
-   
 }
 
 void JobManager::FillAllJobs() {
@@ -396,6 +401,10 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
         const PodDescriptor& desc = job_info.pod_descs(i);
         job->pod_desc_[desc.version()] = desc;
     }
+    if (job_info.has_create_time()) {
+        job->create_time = job_info.create_time();
+    }
+    job->update_time = ::baidu::common::timer::get_micros();
     JobIndex index;
     index.id_ = job_id;
     index.name_ = job->desc_.name();
@@ -408,7 +417,7 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     }
     jobs_[job_id] = job;
     trace_pool_.DelayTask(FLAGS_master_job_trace_interval, 
-               boost::bind(&JobManager::TraceJobStat, this, job_id));
+                          boost::bind(&JobManager::TraceJobStat, this, job_id));
 }
 
 bool JobManager::GetJobIdByName(const std::string& job_name, 
@@ -706,6 +715,7 @@ Status JobManager::Propose(const ScheduleInfo& sche_info) {
         }
         agent->set_version(agent->version() + 1);
         pod->set_endpoint(sche_info.endpoint());
+        pod->set_sched_time(::baidu::common::timer::get_micros());
         ChangeStage("scheduler propose ",kStageRunning, pod, job_it->second);
         LOG(INFO, "propose success, %s will be run on %s",
         podid.c_str(), endpoint.c_str());
@@ -1075,6 +1085,9 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
             pod->mutable_resource_used()->CopyFrom(report_pod_info.resource_used());
             pod->set_state(report_pod_info.state());
             pod->set_endpoint(report_agent_info.endpoint());
+            if (report_pod_info.has_start_time()) {
+                pod->set_start_time(report_pod_info.start_time());
+            }
             pods_on_agent[jobid].erase(podid);
             if (pods_on_agent[jobid].size() == 0) {
                 pods_on_agent.erase(jobid);
@@ -1236,6 +1249,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         uint32_t running_num = 0;
         uint32_t pending_num = 0;
         uint32_t deploying_num = 0;
+        uint32_t death_num = 0;
         std::map<PodId, PodStatus*>& pods = job->pods_;
         std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
         for (; pod_it != pods.end(); ++pod_it) {
@@ -1248,11 +1262,16 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
                 pending_num++;
             } else if(pod->state() == kPodDeploying) {
                 deploying_num++;
+            } else {
+                death_num++;
             } 
         }
         overview->set_running_num(running_num);
         overview->set_pending_num(pending_num);
         overview->set_deploying_num(deploying_num);
+        overview->set_death_num(death_num);
+        overview->set_create_time(job->create_time);
+        overview->set_update_time(job->update_time);
     }
 }
 
@@ -1499,7 +1518,7 @@ bool JobManager::SaveToNexus(const Job* job) {
         PodDescriptor* pod_desc = job_info.add_pod_descs();
         pod_desc->CopyFrom(it->second);
     }
-
+    job_info.set_create_time(job->create_time);
     std::string job_raw_data;
     std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
                           + "/" + job->id_;
@@ -1571,6 +1590,9 @@ Status JobManager::GetPods(const std::string& jobid,
         pod->set_endpoint(pod_status->endpoint());
         pod->mutable_used()->CopyFrom(pod_status->resource_used());
         pod->mutable_assigned()->CopyFrom(desc_it->second.requirement());
+        pod->set_pending_time(pod_status->pending_time());
+        pod->set_sched_time(pod_status->sched_time());
+        pod->set_start_time(pod_status->start_time());
     }
     return kOk;
 }

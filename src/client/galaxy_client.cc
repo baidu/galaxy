@@ -17,7 +17,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <signal.h>
-
+#include <time.h>
 #include <gflags/gflags.h>
 #include <tprinter.h>
 #include <string_util.h>
@@ -57,6 +57,18 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    -d delay     Specify delay in second to update infomation.\n"
                                  "    -l label     Add label to list of agents.\n"
                                  "    -n name      Specify job name to query pods.\n";
+std::string FormatDate(int64_t datetime) {
+    if (datetime < 100) {
+        return "-";
+    }
+    char buffer[100];
+    time_t time = datetime / 1000000;
+    struct tm *tmp;
+    tmp = localtime(&time);
+    strftime(buffer, 100, "%F %X", tmp);
+    std::string ret(buffer);
+    return ret;
+}
 
 int ReadableStringToInt(const std::string& input, int64_t* output) {
     if (output == NULL) {
@@ -475,13 +487,12 @@ int ShowPod() {
                 return -1;
             }
         } 
-        baidu::common::TPrinter tp(8);
-        tp.AddRow(8, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)", "endpoint", "version");
+        baidu::common::TPrinter tp(10);
+        tp.AddRow(10, "", "id", "state", "cpu(u/a)", "mem(u/a)", "endpoint", "version", "pending","sched","start");
         for (size_t i = 0; i < pods.size(); i++) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString((int32_t)i + 1));
             vs.push_back(pods[i].podid);
-            vs.push_back(pods[i].stage);
             vs.push_back(pods[i].state);
             std::string cpu = baidu::common::NumToString(pods[i].used.millicores) + "/" +\
                               baidu::common::NumToString(pods[i].assigned.millicores);
@@ -491,6 +502,9 @@ int ShowPod() {
             vs.push_back(mem);
             vs.push_back(pods[i].endpoint);
             vs.push_back(pods[i].version);
+            vs.push_back(FormatDate(pods[i].pending_time));
+            vs.push_back(FormatDate(pods[i].sched_time));
+            vs.push_back(FormatDate(pods[i].start_time));
             tp.AddRow(vs);
         }
         printf("%s\n", tp.ToString().c_str());
@@ -699,8 +713,8 @@ int ListJob() {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while(true) {
         std::vector<baidu::galaxy::JobInformation> infos;
-        baidu::common::TPrinter tp(9);
-        tp.AddRow(9, "", "id", "name", "state", "stat(r/p/d)", "replica", "batch", "cpu", "memory");
+        baidu::common::TPrinter tp(11);
+        tp.AddRow(11, "", "id", "name", "state", "stat(r/p/d/e)", "replica", "batch", "cpu", "memory","create", "update");
         if (galaxy->ListJobs(&infos)) {
             for (uint32_t i = 0; i < infos.size(); i++) {
                 std::vector<std::string> vs;
@@ -710,11 +724,14 @@ int ListJob() {
                 vs.push_back(infos[i].state);
                 vs.push_back(baidu::common::NumToString(infos[i].running_num) + "/" + 
                              baidu::common::NumToString(infos[i].pending_num) + "/" +
-                             baidu::common::NumToString(infos[i].deploying_num));
+                             baidu::common::NumToString(infos[i].deploying_num) + "/"+
+                             baidu::common::NumToString(infos[i].death_num));
                 vs.push_back(baidu::common::NumToString(infos[i].replica));
                             vs.push_back(infos[i].is_batch ? "batch" : "");
                 vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
                 vs.push_back(baidu::common::HumanReadableString(infos[i].mem_used));
+                vs.push_back(FormatDate(infos[i].create_time));
+                vs.push_back(FormatDate(infos[i].update_time));
                 tp.AddRow(vs);
             }
             printf("%s\n", tp.ToString().c_str());

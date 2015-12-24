@@ -317,6 +317,9 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.mem_used = job.resource_used().memory();
         job_info.is_batch = (job.desc().type() == kBatch);
         job_info.state = JobState_Name(job.state());
+        job_info.death_num = job.death_num();
+        job_info.create_time = job.create_time();
+        job_info.update_time = job.update_time();
         jobs->push_back(job_info);
     }
     return true;
@@ -346,6 +349,9 @@ bool GalaxyImpl::ShowPod(const std::string& jobid,
         pod_info.state = PodState_Name(pod_overview.state());
         pod_info.version = pod_overview.version();
         pod_info.endpoint = pod_overview.endpoint();
+        pod_info.pending_time = pod_overview.pending_time();
+        pod_info.sched_time = pod_overview.sched_time();
+        pod_info.start_time = pod_overview.start_time();
         FillResource(pod_overview.used(), &pod_info.used);
         FillResource(pod_overview.assigned(), &pod_info.assigned);
         pods->push_back(pod_info);

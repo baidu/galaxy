@@ -55,6 +55,7 @@ message JobInfo {
     repeated PodDescriptor pod_descs = 6;
     // pod latest pod descriptor
     optional string latest_version = 7;
+    optional int64 create_time = 8;
 }
 
 message ScheduleInfo {
@@ -124,6 +125,9 @@ message JobOverview {
     optional Resource resource_used = 5;
     optional int32 pending_num = 6;
     optional int32 deploying_num = 7;
+    optional int32 death_num = 8;
+    optional int64 create_time = 9;
+    optional int64 update_time = 10;
 }
 
 message ListJobsResponse {
@@ -232,6 +236,18 @@ message PodOverview {
     optional PodState state = 6;
     optional string version = 7;
     optional string endpoint = 8;
+    optional int64 pending_time = 9;
+    optional int64 sched_time = 10;
+    optional int64 start_time = 11;
+}
+
+message TaskOverview {
+    optional string podid = 1;
+    optional TaskState state = 2;
+    optional string endpoint = 3;
+    optional int64 deploy_time = 4;
+    optional int64 start_time = 5;
+    optional string cmd = 6;
 }
 
 message ShowPodResponse {

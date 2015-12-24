@@ -65,6 +65,9 @@ struct JobInformation {
     int64_t mem_used;
     int32_t pending_num;
     int32_t deploying_num;
+    int32_t death_num;
+    int64_t create_time;
+    int64_t update_time;
     std::string state;
 };
 
@@ -90,6 +93,9 @@ struct PodInformation {
     std::string state;
     std::string version;
     std::string endpoint;
+    int64_t pending_time;
+    int64_t sched_time;
+    int64_t start_time;
 };
 
 struct MasterStatus {
