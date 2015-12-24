@@ -17,6 +17,7 @@ enum Status {
     kJobTerminateFail = 19;
     kRpcError = 20;
     kLabelAgentFail = 21;
+    kAgentOffline = 22;
 }
 
 enum PodState {

@@ -40,6 +40,7 @@ DECLARE_double(max_net_in_pps);
 DECLARE_double(max_net_out_pps);
 DECLARE_double(max_intr_rate);
 DECLARE_double(max_soft_intr_rate);
+DECLARE_int32(agent_recover_threshold);
 
 namespace baidu {
 namespace galaxy {
@@ -55,8 +56,9 @@ AgentImpl::AgentImpl() :
     master_(NULL),
     resource_capacity_(),
     master_watcher_(NULL),
-    mutex_master_endpoint_() { 
-
+    mutex_master_endpoint_(),
+    state_(kAlive),
+    recover_threshold_(0) {
     rpc_client_ = new RpcClient();    
     endpoint_ = FLAGS_agent_ip;
     endpoint_.append(":");
@@ -159,6 +161,22 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
                        ::google::protobuf::Closure* done) {
     do {
         MutexLock scope_lock(&lock_);
+        if (state_ == kOffline) {
+            resp->set_status(kAgentOffline);
+            lock_.Unlock();
+            OfflineAgentRequest request;
+            OfflineAgentResponse response;
+            MutexLock lock(&mutex_master_endpoint_);
+            request.set_endpoint(endpoint_);
+            if (!rpc_client_->SendRequest(master_,
+                                          &Master_Stub::OfflineAgent,
+                                          &request,
+                                          &response,
+                                          5, 1)) {
+                LOG(WARNING, "send offline request fail");
+            }
+            break;
+        }
         if (!req->has_podid()
                 || !req->has_pod()) {
             resp->set_status(kInputError);  
@@ -323,8 +341,6 @@ bool AgentImpl::PingMaster() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     request.set_endpoint(endpoint_);
-    MutexLock scope_lock(&lock_);
-    request.set_state(state_);
     return rpc_client_->SendRequest(master_,
                                     &Master_Stub::HeartBeat,
                                     &request,
@@ -519,12 +535,48 @@ void AgentImpl::CollectSysStat() {
             break;
         }
         if (CheckSysHealth()) {
+            MutexLock scope_lock(&lock_);
+            if (state_ == kAlive) {
+                break;
+            }
+            recover_threshold_++;
+            if (recover_threshold_ > FLAGS_agent_recover_threshold) {
+                state_ = kAlive;
+                lock_.Unlock();
+                OnlineAgentRequest request;
+                OnlineAgentResponse response;
+                MutexLock lock(&mutex_master_endpoint_);
+                request.set_endpoint(endpoint_);
+                if (!rpc_client_->SendRequest(master_,
+                                              &Master_Stub::OnlineAgent,
+                                              &request,
+                                              &response,
+                                              5, 1)) {
+                    LOG(WARNING, "send online request fail");
+                }
+            }
             break;
         }else {
             MutexLock scope_lock(&lock_);
+            if (state_ == kOffline) {
+                break;
+            }
             state_ = kOffline;
+            recover_threshold_ = 0;
             KillAllPods();
             LOG(WARNING, "sys health checker kill all pods");
+            lock_.Unlock();
+            OfflineAgentRequest request;
+            OfflineAgentResponse response;
+            MutexLock lock(&mutex_master_endpoint_);
+            request.set_endpoint(endpoint_);
+            if (!rpc_client_->SendRequest(master_,
+                                         &Master_Stub::OfflineAgent,
+                                         &request,
+                                         &response,
+                                         5, 1)) {
+                LOG(WARNING, "send offline request fail");
+            }
         }
     } while(0); 
     background_threads_.DelayTask(FLAGS_stat_check_period, boost::bind(&AgentImpl::CollectSysStat, this));

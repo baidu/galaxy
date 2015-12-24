@@ -93,6 +93,7 @@ DEFINE_int32(cli_server_port, 8775, "cli server listen port");
 DEFINE_string(trace_conf, "", "the conf of trace");
 DEFINE_bool(enable_trace, false, "open trace");
 DEFINE_int32(stat_check_period, 1000, "agent check health period(ms)");
+DEFINE_int32(agent_recover_threshold, 3600, "threshold for agent recover from offline(stat times)");
 DEFINE_double(max_cpu_usage, 0.8, "max cpu usage");
 DEFINE_double(max_mem_usage, 0.8, "max mem usage");
 DEFINE_double(max_disk_r_bps, 0.0, "max disk read bytes per second");

@@ -199,8 +199,7 @@ private:
     PersistenceHandler persistence_handler_;
     SysStat* stat_;
     AgentState state_;
-    
-    
+    int32_t recover_threshold_;
 };
 
 }   // ending namespace galaxy
