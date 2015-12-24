@@ -57,6 +57,7 @@ AgentImpl::AgentImpl() :
     resource_capacity_(),
     master_watcher_(NULL),
     mutex_master_endpoint_(),
+    stat_(NULL),
     state_(kAlive),
     recover_threshold_(0) {
     rpc_client_ = new RpcClient();    
@@ -64,6 +65,7 @@ AgentImpl::AgentImpl() :
     endpoint_.append(":");
     endpoint_.append(FLAGS_agent_port);
     master_watcher_ = new MasterWatcher();
+    stat_ = new SysStat();
 }
 
 AgentImpl::~AgentImpl() {
@@ -584,55 +586,55 @@ void AgentImpl::CollectSysStat() {
 }
 
 bool AgentImpl::CheckSysHealth() {
-    if (fabs(FLAGS_max_cpu_usage) <= 1e-6 && stat_->cpu_used_ > FLAGS_max_cpu_usage) {
+    if (fabs(FLAGS_max_cpu_usage) >= 1e-6 && stat_->cpu_used_ > FLAGS_max_cpu_usage) {
         LOG(WARNING, "cpu uage %f reach threshold %f", stat_->cpu_used_, FLAGS_max_cpu_usage);
         return false;
     }
-    if (fabs(FLAGS_max_mem_usage) <= 1e-6 && stat_->mem_used_ > FLAGS_max_mem_usage) {
+    if (fabs(FLAGS_max_mem_usage) >= 1e-6 && stat_->mem_used_ > FLAGS_max_mem_usage) {
         LOG(WARNING, "mem usage %f reach threshold %f", stat_->mem_used_, FLAGS_max_mem_usage);
         return false;
     }
-    if (fabs(FLAGS_max_disk_r_bps) <= 1e-6 && stat_->disk_read_Bps_ > FLAGS_max_disk_r_bps) {
+    if (fabs(FLAGS_max_disk_r_bps) >= 1e-6 && stat_->disk_read_Bps_ > FLAGS_max_disk_r_bps) {
         LOG(WARNING, "disk read Bps %f reach threshold %f", stat_->disk_read_Bps_, FLAGS_max_disk_r_bps);
         return false;
     }
-    if (fabs(FLAGS_max_disk_w_bps) <= 1e-6 && stat_->disk_write_Bps_ > FLAGS_max_disk_w_bps) {
+    if (fabs(FLAGS_max_disk_w_bps) >= 1e-6 && stat_->disk_write_Bps_ > FLAGS_max_disk_w_bps) {
         LOG(WARNING, "disk write Bps %f reach threshold %f", stat_->disk_write_Bps_, FLAGS_max_disk_w_bps);
         return false;
     }
-    if (fabs(FLAGS_max_disk_r_rate) <= 1e-6 && stat_->disk_read_times_ > FLAGS_max_disk_r_rate) {
+    if (fabs(FLAGS_max_disk_r_rate) >= 1e-6 && stat_->disk_read_times_ > FLAGS_max_disk_r_rate) {
         LOG(WARNING, "disk write rate %f reach threshold %f", stat_->disk_read_times_, FLAGS_max_disk_r_rate);
         return false;
     }
-    if (fabs(FLAGS_max_disk_w_rate) <= 1e-6 && stat_->disk_write_times_ > FLAGS_max_disk_w_rate) {
+    if (fabs(FLAGS_max_disk_w_rate) >= 1e-6 && stat_->disk_write_times_ > FLAGS_max_disk_w_rate) {
         LOG(WARNING, "disk write rate %f reach threshold %f", stat_->disk_write_times_, FLAGS_max_disk_w_rate);
         return false;
     }
-    if (fabs(FLAGS_max_disk_util) <= 1e-6 && stat_->disk_io_util_ > FLAGS_max_disk_util) {
+    if (fabs(FLAGS_max_disk_util) >= 1e-6 && stat_->disk_io_util_ > FLAGS_max_disk_util) {
         LOG(WARNING, "disk io util %f reach threshold %f", stat_->disk_io_util_, FLAGS_max_disk_util);
         return false;
     }
-    if (fabs(FLAGS_max_net_in_bps) <= 1e-6 != 0 && stat_->net_in_bps_ > FLAGS_max_net_in_bps) {
+    if (fabs(FLAGS_max_net_in_bps) >= 1e-6 != 0 && stat_->net_in_bps_ > FLAGS_max_net_in_bps) {
         LOG(WARNING, "net in bps %f reach threshold %f", stat_->net_in_bps_, FLAGS_max_net_in_bps);
         return false;
     }
-    if (fabs(FLAGS_max_net_out_bps) <= 1e-6 && stat_->net_out_bps_ > FLAGS_max_net_out_bps) {
+    if (fabs(FLAGS_max_net_out_bps) >= 1e-6 && stat_->net_out_bps_ > FLAGS_max_net_out_bps) {
         LOG(WARNING, "net out bps %f reach threshold %f", stat_->net_out_bps_, FLAGS_max_net_out_bps);
         return false;
     }
-    if (fabs(FLAGS_max_net_in_pps) <= 1e-6 && stat_->net_in_pps_ > FLAGS_max_net_in_pps) {
+    if (fabs(FLAGS_max_net_in_pps) >= 1e-6 && stat_->net_in_pps_ > FLAGS_max_net_in_pps) {
         LOG(WARNING, "net in pps %f reach threshold %f", stat_->net_in_bps_, FLAGS_max_net_in_pps);
         return false;
     }
-    if (fabs(FLAGS_max_net_out_pps) <= 1e-6 && stat_->net_out_pps_ > FLAGS_max_net_out_pps) {
+    if (fabs(FLAGS_max_net_out_pps) >= 1e-6 && stat_->net_out_pps_ > FLAGS_max_net_out_pps) {
         LOG(WARNING, "net out pps %f reach threshold %f", stat_->net_out_pps_, FLAGS_max_net_out_pps);
         return false;
     }
-    if (fabs(FLAGS_max_intr_rate) <= 1e-6  && stat_->intr_rate_ > FLAGS_max_intr_rate) {
+    if (fabs(FLAGS_max_intr_rate) >= 1e-6  && stat_->intr_rate_ > FLAGS_max_intr_rate) {
         LOG(WARNING, "interupt rate %f reach threshold %f", stat_->intr_rate_, FLAGS_max_intr_rate);
         return false;
     }
-    if (fabs(FLAGS_max_soft_intr_rate) <= 1e-6 && stat_->soft_intr_rate_ > FLAGS_max_soft_intr_rate) {
+    if (fabs(FLAGS_max_soft_intr_rate) >= 1e-6 && stat_->soft_intr_rate_ > FLAGS_max_soft_intr_rate) {
         LOG(WARNING, "soft interupt rate %f reach threshold %f", stat_->soft_intr_rate_, FLAGS_max_soft_intr_rate);
         return false;
     }
@@ -756,28 +758,28 @@ bool AgentImpl::GetGlobalMemStat(){
         std::string line = lines[i];
         std::vector<std::string> parts;
         if (line.find("MemTotal:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             if (parts.size() < 2) {
                 fclose(fp);
                 return false;
             }
             total_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
         }else if (line.find("MemFree:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             if (parts.size() < 2) {
                 fclose(fp);
                 return false;
             }
             free_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
         }else if (line.find("Buffers:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             if (parts.size() < 2) {
                 fclose(fp);
                 return false;
             }
             buffer_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
         }else if (line.find("Cached:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             if (parts.size() < 2) {
                 fclose(fp);
                 return false;
@@ -799,9 +801,9 @@ bool AgentImpl::GetGlobalMemStat(){
         boost::split(lines, content, boost::is_any_of("\n"));
         for (size_t n = 0; n < lines.size(); n++) {
             std::string line = lines[n];
-            if (line.find("tmpfs")) {
+            if (line.find("tmpfs") != std::string::npos) {
                 std::vector<std::string> parts;
-                boost::split(parts, line, boost::is_any_of(" "));
+                boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
                 tmpfs_mem = boost::lexical_cast<int64_t>(parts[1]);
                 LOG(WARNING, "detect tmpfs %s %d", parts[1].c_str(), tmpfs_mem);
                 tmpfs_mem = tmpfs_mem * 1024 * 1024 * 1024;
@@ -837,13 +839,13 @@ bool AgentImpl::GetGlobalIntrStat() {
     boost::split(lines, content, boost::is_any_of("\n"));
     for (size_t n = 0; n < lines.size(); n++) {
         std::string line = lines[n];
-        if (line.find("intr")) {
+        if (line.find("intr") != std::string::npos) {
             std::vector<std::string> parts;
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             intr_cnt = boost::lexical_cast<int64_t>(parts[1]);
-        } else if (line.find("softirq")) {
+        } else if (line.find("softirq") != std::string::npos) {
             std::vector<std::string> parts;
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             softintr_cnt = boost::lexical_cast<int64_t>(parts[1]);
         }
         continue;
@@ -869,14 +871,14 @@ bool AgentImpl::GetGlobalIOStat() {
         boost::split(lines, content, boost::is_any_of("\n"));
         for (size_t n = 0; n < lines.size(); n++) {
             std::string line = lines[n];
-            if (line.find("sda")) {
+            if (line.find("sda") != std::string::npos) {
                 std::vector<std::string> parts;
-                boost::split(parts, line, boost::is_any_of(" "));
+                boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
                 stat_->disk_read_times_ = boost::lexical_cast<double>(parts[3]);
                 stat_->disk_write_times_ = boost::lexical_cast<double>(parts[4]);
                 stat_->disk_read_Bps_ = boost::lexical_cast<double>(parts[5]);
                 stat_->disk_write_Bps_ = boost::lexical_cast<double>(parts[6]);
-                stat_->disk_io_util_ = boost::lexical_cast<double>(parts[lines.size() - 1]);
+                stat_->disk_io_util_ = boost::lexical_cast<double>(parts[parts.size() - 1]);
                 break;
             } else {
                 continue;
@@ -906,9 +908,10 @@ bool AgentImpl::GetGlobalNetStat() {
     boost::split(lines, content, boost::is_any_of("\n"));
     for (size_t n = 0; n < lines.size(); n++) {
         std::string line = lines[n];
-        if (line.find("eth0") || line.find("xgbe0")) {
+        if (line.find("eth0") != std::string::npos || 
+                line.find("xgbe0") != std::string::npos) {
             std::vector<std::string> parts;
-            boost::split(parts, line, boost::is_any_of(" "));
+            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             std::vector<std::string> tokens;
             boost::split(tokens, parts[0], boost::is_any_of(":"));
             stat_->cur_stat_.net_in_bits = boost::lexical_cast<int64_t>(tokens[1]);
