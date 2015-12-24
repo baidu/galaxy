@@ -513,12 +513,15 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
                 task_info->task_id.c_str()); 
         return -1;
     }
-    LOG(INFO, "stop command [%s] execute success for %s",
-            stop_command.c_str(),
-            task_info->task_id.c_str());
     int32_t now_time = common::timer::now_time();
     // TODO config stop timeout len
     task_info->stop_timeout_point = now_time + 100;
+    LOG(INFO, "stop command [%s] start success for %s and forceing to kill will be %d , now is %d ",
+            stop_command.c_str(),
+            task_info->task_id.c_str(),
+            task_info->stop_timeout_point,
+            now_time);
+
     return 0;
 }
 
@@ -760,10 +763,16 @@ int TaskManager::TerminateProcessCheck(TaskInfo* task_info) {
     }
     // 1. check stop process status
     if (task_info->stop_process.status() == kProcessRunning) {
-        LOG(DEBUG, "task %s stop process is still running",
+        LOG(INFO, "task %s stop process is still running",
                 task_info->task_id.c_str()); 
         int32_t now_time = common::timer::now_time();
-        if (task_info->stop_timeout_point >= now_time) {
+        if (task_info->stop_timeout_point <= now_time) {
+            LOG(WARNING, "task %s stop cmd running timeout stop_time %d now_time %d pod %s job %s", 
+                    task_info->task_id.c_str(),
+                    task_info->stop_timeout_point,
+                    now_time,
+                    task_info->pod_id.c_str(),
+                    task_info->job_id.c_str());
             return -1; 
         }
         return 0;
