@@ -73,7 +73,9 @@ message Resource {
 }
 
 enum MemIsolationType {
+    // cgroup
     kMemIsolationCgroup = 0;
+    // user custom limit
     kMemIsolationLimit = 1;
 }
 
@@ -127,6 +129,7 @@ message PodStatus {
     optional PodStage stage = 8;
     optional string pod_gc_path = 9;
     optional string version = 10;
+    optional int32 priority = 11;
 }
 
 message AgentInfo {
@@ -137,6 +140,6 @@ message AgentInfo {
     repeated PodStatus pods = 7;
     optional AgentState state = 8;
     optional int32 version = 9;
-
     repeated string tags = 10;
 }
+

@@ -102,7 +102,7 @@ struct TaskInfo {
           stop_timeout_point(0),
           initd_check_failed(0),
           initd_stub(NULL),
-          resource_collector(NULL) {
+          resource_collector(NULL){
     }
 
     void CopyFrom(const TaskInfo& task) {

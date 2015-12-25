@@ -47,7 +47,7 @@ struct PodDescription {
 struct JobDescription {
     std::string job_name;
     std::string type;
-    std::string priority;
+    int32_t priority;
     int32_t replica;
     int32_t deploy_step;
     std::string label;
@@ -131,9 +131,19 @@ struct MasterStatus {
     need_update_job_count(0){}
 };
 
+struct PreemptPropose {
+    std::pair<std::string, std::string> pending_pod;
+    std::vector<std::pair<std::string, std::string> > preempted_pods;
+    std::string addr;
+};
+
 class Galaxy {
 public:
-    static Galaxy* ConnectGalaxy(const std::string& master_addr);
+    // args:
+    //     nexus_servers : eg "xxxx:8787,aaaaa:8787"
+    //     master_key    : /baidu/galaxy/yq01-master
+    static Galaxy* ConnectGalaxy(const std::string& nexus_servers,
+                                 const std::string& master_key);
     //create a new job
     virtual bool SubmitJob(const JobDescription& job, std::string* job_id) = 0;
     //update job for example update the replicate_count
@@ -148,8 +158,12 @@ public:
                              const std::vector<std::string>& agents) = 0;
     virtual bool ShowPod(const std::string& jobid,
                          std::vector<PodInformation>* pods) = 0;
+    virtual bool GetPodsByName(const std::string& jobname, 
+                               std::vector<PodInformation>* pods) = 0;
     virtual bool GetStatus(MasterStatus* status) = 0;
     virtual bool SwitchSafeMode(bool mode) = 0;
+    virtual bool Preempt(const PreemptPropose& propose) = 0;
+    virtual bool GetMasterAddr(std::string* master_addr) = 0;
 };
 
 } // namespace galaxy

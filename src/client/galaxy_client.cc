@@ -30,6 +30,7 @@ DEFINE_string(nexus_servers, "", "server list of nexus, e.g abc.com:1234,def.com
 DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on nexus, e.g /ps/galaxy");
 DEFINE_string(master_path, "/master", "master path on nexus");
 DEFINE_string(f, "", "specify config file ,job config file or label config file");
+DEFINE_string(n, "", "specify job name to query pods");
 DEFINE_string(j, "", "specify job id");
 DEFINE_string(l, "", "add a label to agent");
 DEFINE_string(p, "", "specify pod id");
@@ -46,23 +47,16 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
+                                 "    galaxy preempt -f <config>\n"
                                  "    galaxy status \n"
+                                 "    galaxy enter safemode \n"
+                                 "    galaxy leave safemode \n"
                                  "Options:\n"
                                  "    -f config    Specify config file ,eg job config file , label config file.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
                                  "    -d delay     Specify delay in second to update infomation.\n"
-                                 "    -l label     Add label to list of agents.\n";
-
-bool GetMasterAddr(std::string* master_addr) {
-    if (master_addr == NULL) {
-        return false;
-    }
-    ::galaxy::ins::sdk::SDKError err;
-    ::galaxy::ins::sdk::InsSDK nexus(FLAGS_nexus_servers);
-    std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
-    bool ok = nexus.Get(master_path_key, master_addr, &err);
-    return ok;
-}
+                                 "    -l label     Add label to list of agents.\n"
+                                 "    -n name      Specify job name to query pods.\n";
 
 int ReadableStringToInt(const std::string& input, int64_t* output) {
     if (output == NULL) {
@@ -141,13 +135,8 @@ int LabelAgent() {
     if (LoadAgentEndpointsFromFile(FLAGS_f, &agent_endpoints)) {
         return -1;     
     }
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     if (!galaxy->LabelAgents(FLAGS_l, agent_endpoints)) {
         return -1; 
     }
@@ -168,6 +157,60 @@ void ReadBinary(const std::string& file, std::string* binary) {
     fclose(fp);
 }
 
+int BuildPreemptFromConfig(const std::string& config, ::baidu::galaxy::PreemptPropose* propose) {
+    FILE* fd = fopen(config.c_str(), "r");
+    char buffer[5120];
+    rapidjson::FileReadStream frs(fd, buffer, sizeof(buffer));
+    rapidjson::Document document;
+    document.ParseStream<0>(frs);
+    if (!document.IsObject()) {
+        fprintf(stderr, "invalidate config file\n");
+        return -1;
+    }
+    if (!document.HasMember("addr")) {
+        fprintf(stderr, "addr is required \n");
+        return -1;
+    }
+    propose->addr = document["addr"].GetString();
+
+    if (!document.HasMember("pending_pod")) {
+        fprintf(stderr, "pending_pod is required\n");
+        return -1;
+    } 
+    const rapidjson::Value& pending_pod = document["pending_pod"];
+    if (!pending_pod.HasMember("jobid")) {
+        fprintf(stderr, "jobid is required in pending_pod\n");
+        return -1;
+    }
+
+    if (!pending_pod.HasMember("podid")) {
+        fprintf(stderr, "podid is required in pending_pod\n");
+        return -1;
+    }
+    propose->pending_pod = std::make_pair(pending_pod["jobid"].GetString(),
+                                          pending_pod["podid"].GetString());
+    if (!document.HasMember("preempted_pods")) {
+        fprintf(stderr, "preempted_pods is required\n");
+        return -1;
+    }
+    const rapidjson::Value& preempted_pods = document["preempted_pods"];
+    for (rapidjson::SizeType i = 0; i < preempted_pods.Size(); i++) {
+        const rapidjson::Value& preempted_pod = preempted_pods[i];
+        if (!preempted_pod.HasMember("jobid")) {
+            fprintf(stderr, "job id is required");
+            return -1;
+        }
+        if (!preempted_pod.HasMember("podid")) {
+            fprintf(stderr, "pod id is required");
+            return -1;
+        }
+        propose->preempted_pods.push_back(std::make_pair(
+                    preempted_pod["jobid"].GetString(),
+                    preempted_pod["podid"].GetString()
+                    ));
+    }
+    return 0;
+}
 
 // build job description from json config
 // TODO do some validations
@@ -194,9 +237,9 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         return -1;
     }
     job->type = document["type"].GetString();
-    if (document.HasMember("priority")) {
-        job->priority = document["priority"].GetString();
-    }
+    /*if (document.HasMember("priority")) {
+        job->priority = document["priority"].GetInt();
+    }*/
     if (document.HasMember("labels")) {
         job->label = document["labels"].GetString();
     }
@@ -329,18 +372,13 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
  
 }
 
-int AddJob() {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
+int AddJob() { 
     if (FLAGS_f.empty()) {
         fprintf(stderr, "-f is required\n");
         return -1;
     }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     baidu::galaxy::JobDescription job;
     int build_job_ok = BuildJobFromConfig(FLAGS_f, &job);
     if (build_job_ok != 0) {
@@ -348,7 +386,7 @@ int AddJob() {
         return -1;
     }
     std::string jobid;
-    ok = galaxy->SubmitJob(job, &jobid);
+    bool ok = galaxy->SubmitJob(job, &jobid);
     if (!ok) {
         fprintf(stderr, "Submit job fail\n");
         return 1;
@@ -357,21 +395,16 @@ int AddJob() {
     return 0;
 }
 
-int UpdateJob() { 
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+int UpdateJob() {  
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     baidu::galaxy::JobDescription job;
     int build_job_ok = BuildJobFromConfig(FLAGS_f, &job);
     if (build_job_ok != 0) {
         fprintf(stderr, "Fail to build job\n");
         return -1;
     }
-    ok = galaxy->UpdateJob(FLAGS_j, job);
+    bool ok = galaxy->UpdateJob(FLAGS_j, job);
     if (ok) {
         printf("Update job %s ok\n", FLAGS_j.c_str());
         return 0;
@@ -382,14 +415,9 @@ int UpdateJob() {
 }
 
 
-int ListAgent() {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+int ListAgent() { 
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while (true) {
         std::vector<baidu::galaxy::NodeDescription> agents;
         baidu::common::TPrinter tp(11);
@@ -426,24 +454,27 @@ int ListAgent() {
 }
 
 int ShowPod() {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
+    if (FLAGS_j.empty() && FLAGS_n.empty()) {
+        fprintf(stderr, "-j or -n option is required\n");
         return -1;
     }
-    if (FLAGS_j.empty()) {
-        fprintf(stderr, "-j option is required\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while (true) {
         std::vector<baidu::galaxy::PodInformation> pods;
-        ok = galaxy->ShowPod(FLAGS_j, &pods);
-        if (!ok) {
-            fprintf(stderr, "Fail to get pods\n");
-            return -1;
-        }
+        if (!FLAGS_j.empty()) {
+            bool ok = galaxy->ShowPod(FLAGS_j, &pods);
+            if (!ok) {
+                fprintf(stderr, "Fail to get pods\n");
+                return -1;
+            }
+        } else if (!FLAGS_n.empty()) {
+            bool ok = galaxy->GetPodsByName(FLAGS_n, &pods);
+            if (!ok) {
+                fprintf(stderr, "Fail to get pods\n");
+                return -1;
+            }
+        } 
         baidu::common::TPrinter tp(8);
         tp.AddRow(8, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)", "endpoint", "version");
         for (size_t i = 0; i < pods.size(); i++) {
@@ -475,12 +506,6 @@ int ShowPod() {
 }
 
 std::string GetAgentById(std::string job_id, std::string pod_id) {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return "";   
-    }
     if (FLAGS_p.empty()) {
         fprintf(stderr, "-p option is required\n");
         return "";
@@ -489,9 +514,10 @@ std::string GetAgentById(std::string job_id, std::string pod_id) {
         fprintf(stderr, "-j option is required\n");
         return "";
     }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     std::vector<baidu::galaxy::PodInformation> pods;
-    ok = galaxy->ShowPod(job_id, &pods);
+    bool ok = galaxy->ShowPod(job_id, &pods);
     if (!ok) {
         fprintf(stderr, "Fail to query job\n");
         return "";
@@ -594,16 +620,11 @@ int AttachPod() {
     }
     return 0;
 }
-int SwitchSafeMode(bool mode) {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+int SwitchSafeMode(bool mode) { 
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     ::baidu::galaxy::MasterStatus status;
-    ok = galaxy->SwitchSafeMode(mode);
+    bool ok = galaxy->SwitchSafeMode(mode);
     if (!ok) {
         fprintf(stderr, "fail to switch safemode\n");
         return -1;
@@ -613,17 +634,18 @@ int SwitchSafeMode(bool mode) {
 }
 
 int GetMasterStatus() {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     ::baidu::galaxy::MasterStatus status;
-    ok = galaxy->GetStatus(&status);
+    bool ok = galaxy->GetStatus(&status);
     if (!ok) {
         fprintf(stderr, "fail to get status\n");
+        return -1;
+    }
+    std::string master_endpoint;
+    ok = galaxy->GetMasterAddr(&master_endpoint);
+    if (!ok) {
+        fprintf(stderr, "fail to get master addr\n");
         return -1;
     }
     baidu::common::TPrinter master(2);
@@ -672,14 +694,9 @@ int GetMasterStatus() {
 }
 
 
-int ListJob() {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
-        return -1;
-    }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+int ListJob() { 
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while(true) {
         std::vector<baidu::galaxy::JobInformation> infos;
         baidu::common::TPrinter tp(9);
@@ -716,14 +733,27 @@ int ListJob() {
     return 0;
 }
 
-int KillJob() {
-    std::string master_endpoint;
-    bool ok = GetMasterAddr(&master_endpoint);
-    if (!ok) {
-        fprintf(stderr, "Fail to get master endpoint\n");
+int PreemptPod() { 
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
+    ::baidu::galaxy::PreemptPropose propose;
+    int ret = BuildPreemptFromConfig(FLAGS_f, &propose);
+    if (ret != 0) {
+        fprintf(stderr, "fail to build preempt propose\n");
         return -1;
     }
-    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(master_endpoint);
+    bool ok = galaxy->Preempt(propose);
+    if (ok) {
+        fprintf(stdout, "submit preempt propose successfully\n");
+        return 0;
+    }
+    fprintf(stderr, "fail to submit preempt propose \n");
+    return -1;
+}
+
+int KillJob() {
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     if (FLAGS_j.empty()) {
         return 1;
     }
@@ -765,7 +795,9 @@ int main(int argc, char* argv[]) {
             return SwitchSafeMode(false);
     } else if (strcmp(argv[1], "attach") == 0) {
         return AttachPod();
-    } else {
+    } else if (strcmp(argv[1], "preempt") == 0) {
+        return PreemptPod();
+    }else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
     }
