@@ -475,8 +475,8 @@ int ShowPod() {
                 return -1;
             }
         } 
-        baidu::common::TPrinter tp(8);
-        tp.AddRow(8, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)", "endpoint", "version");
+        baidu::common::TPrinter tp(10);
+        tp.AddRow(10, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)","disk(r/w)","rwsyscall(r/w)", "endpoint", "version");
         for (size_t i = 0; i < pods.size(); i++) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString((int32_t)i + 1));
@@ -489,6 +489,12 @@ int ShowPod() {
             std::string mem = baidu::common::HumanReadableString(pods[i].used.memory) + "/" +\
                               baidu::common::HumanReadableString(pods[i].assigned.memory);
             vs.push_back(mem);
+            std::string disk_io = baidu::common::HumanReadableString(pods[i].used.read_bytes_ps) +"/s" + " / " 
+                                  + baidu::common::HumanReadableString(pods[i].used.write_bytes_ps) +"/s";
+            vs.push_back(disk_io);
+            std::string io_call = baidu::common::NumToString(pods[i].used.syscr_ps) + "/s / "
+                                + baidu::common::NumToString(pods[i].used.syscw_ps) + "/s";
+            vs.push_back(io_call);
             vs.push_back(pods[i].endpoint);
             vs.push_back(pods[i].version);
             tp.AddRow(vs);
@@ -699,8 +705,8 @@ int ListJob() {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while(true) {
         std::vector<baidu::galaxy::JobInformation> infos;
-        baidu::common::TPrinter tp(9);
-        tp.AddRow(9, "", "id", "name", "state", "stat(r/p/d)", "replica", "batch", "cpu", "memory");
+        baidu::common::TPrinter tp(11);
+        tp.AddRow(11, "", "id", "name", "state", "stat(r/p/d)", "replica", "batch", "cpu", "memory", "disk(r/w)", "iosyscall(r/w)");
         if (galaxy->ListJobs(&infos)) {
             for (uint32_t i = 0; i < infos.size(); i++) {
                 std::vector<std::string> vs;
@@ -715,6 +721,10 @@ int ListJob() {
                             vs.push_back(infos[i].is_batch ? "batch" : "");
                 vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
                 vs.push_back(baidu::common::HumanReadableString(infos[i].mem_used));
+                vs.push_back(baidu::common::HumanReadableString(infos[i].read_bytes_ps) + "/s / " + 
+                             baidu::common::HumanReadableString(infos[i].write_bytes_ps)+"/s");
+                vs.push_back(baidu::common::NumToString(infos[i].syscr_ps) + "/s / "+
+                             baidu::common::NumToString(infos[i].syscw_ps) + "/s");
                 tp.AddRow(vs);
             }
             printf("%s\n", tp.ToString().c_str());

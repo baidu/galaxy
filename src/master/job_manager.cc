@@ -1011,12 +1011,16 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
         const PodStatus& report_pod_info = report_agent_info.pods(i);
         const JobId& jobid = report_pod_info.jobid();
         const PodId& podid = report_pod_info.podid(); 
-        LOG(INFO, "the pod %s of job %s on agent %s state %s version %s",
+        LOG(INFO, "the pod %s of job %s on agent %s state %s version %s, mem %ld cpu %ld  io(r/w) %ld / %ld",
                   podid.c_str(), 
                   jobid.c_str(), 
                   report_agent_info.endpoint().c_str(),
                   PodState_Name(report_pod_info.state()).c_str(),
-                  report_pod_info.version().c_str()); 
+                  report_pod_info.version().c_str(),
+                  report_pod_info.resource_used().memory(),
+                  report_pod_info.resource_used().millicores(),
+                  report_pod_info.resource_used().read_bytes_ps(),
+                  report_pod_info.resource_used().write_bytes_ps()); 
         std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
         // job does not exist in master
         if (job_it == jobs_.end()) {
@@ -1235,7 +1239,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
 
         uint32_t running_num = 0;
         uint32_t pending_num = 0;
-        uint32_t deploying_num = 0;
+        uint32_t deploying_num = 0;    
         std::map<PodId, PodStatus*>& pods = job->pods_;
         std::map<PodId, PodStatus*>::iterator pod_it = pods.begin();
         for (; pod_it != pods.end(); ++pod_it) {
