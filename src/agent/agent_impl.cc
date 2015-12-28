@@ -5,7 +5,6 @@
 #include "agent/agent_impl.h"
 
 #include "gflags/gflags.h"
-#include <fstream>
 #include "boost/bind.hpp"
 #include "boost/algorithm/string.hpp"
 #include "boost/algorithm/string/split.hpp"
@@ -57,15 +56,13 @@ AgentImpl::AgentImpl() :
     resource_capacity_(),
     master_watcher_(NULL),
     mutex_master_endpoint_(),
-    stat_(NULL),
-    state_(kAlive),
-    recover_threshold_(0) {
+    state_(kAlive) {
     rpc_client_ = new RpcClient();    
     endpoint_ = FLAGS_agent_ip;
     endpoint_.append(":");
     endpoint_.append(FLAGS_agent_port);
     master_watcher_ = new MasterWatcher();
-    stat_ = new SysStat();
+    recover_threshold_ = 0;
 }
 
 AgentImpl::~AgentImpl() {
@@ -334,7 +331,7 @@ bool AgentImpl::Init() {
                 500, 
                 boost::bind(&AgentImpl::LoopCheckPods, this)); 
     
-    background_threads_.AddTask(boost::bind(&AgentImpl::CollectSysStat, this));
+    background_threads_.AddTask(boost::bind(&AgentImpl::CheckSysHealth, this));
     return true;
 }
 
@@ -502,67 +499,98 @@ void AgentImpl::ShowPods(::google::protobuf::RpcController* /*cntl*/,
     return;
 }
 
-void AgentImpl::CollectSysStat() {
-    do {
-        LOG(INFO, "start collect sys stat");
-        ResourceStatistics tmp_statistics;
-        bool ok = GetGlobalCpuStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get cpu usage");
-            break;
-        }
-        ok = GetGlobalMemStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get mem usage");
-            break;
-        }
-        ok = GetGlobalIntrStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get interupt usage");
-            break;
-        }
-        ok = GetGlobalIOStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get IO usage");
-            break;
-        }
-        ok = GetGlobalNetStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get Net usage");
-            break;
-        }
-        stat_->collect_times_++;
-        if (stat_->collect_times_ < MIN_COLLECT_TIME) {
-            LOG(WARNING, "collect times not reach %d", MIN_COLLECT_TIME);
-            break;
-        }
-        if (CheckSysHealth()) {
-            MutexLock scope_lock(&lock_);
-            if (state_ == kAlive) {
-                break;
+void AgentImpl::CheckSysHealth() {
+    bool ret = true;
+    if (false == resource_collector_.CollectStatistics()) {
+        LOG(WARNING, "Collect sys stat fail.");
+        ret = false;
+    } else if (fabs(FLAGS_max_cpu_usage) >= 1e-6 
+            && resource_collector_.GetStat()->cpu_used_ > FLAGS_max_cpu_usage) {
+        LOG(WARNING, "cpu uage %f reach threshold %f",
+                resource_collector_.GetStat()->cpu_used_, FLAGS_max_cpu_usage);
+        ret = false;
+    } else if (fabs(FLAGS_max_mem_usage) >= 1e-6 
+            && resource_collector_.GetStat()->mem_used_ > FLAGS_max_mem_usage) {
+        LOG(WARNING, "mem usage %f reach threshold %f",
+                resource_collector_.GetStat()->mem_used_, FLAGS_max_mem_usage);
+        ret = false;
+    } else if (fabs(FLAGS_max_disk_r_bps) >= 1e-6
+            && resource_collector_.GetStat()->disk_read_Bps_ > FLAGS_max_disk_r_bps) {
+        LOG(WARNING, "disk read Bps %f reach threshold %f",
+                resource_collector_.GetStat()->disk_read_Bps_, FLAGS_max_disk_r_bps);
+        ret = false;
+    } else if (fabs(FLAGS_max_disk_w_bps) >= 1e-6 
+            && resource_collector_.GetStat()->disk_write_Bps_ > FLAGS_max_disk_w_bps) {
+        LOG(WARNING, "disk write Bps %f reach threshold %f",
+                resource_collector_.GetStat()->disk_write_Bps_, FLAGS_max_disk_w_bps);
+        ret = false;
+    } else if (fabs(FLAGS_max_disk_r_rate) >= 1e-6
+            && resource_collector_.GetStat()->disk_read_times_ > FLAGS_max_disk_r_rate) {
+        LOG(WARNING, "disk write rate %f reach threshold %f",
+                resource_collector_.GetStat()->disk_read_times_, FLAGS_max_disk_r_rate);
+        ret = false;
+    } else if (fabs(FLAGS_max_disk_w_rate) >= 1e-6 &&
+            resource_collector_.GetStat()->disk_write_times_ > FLAGS_max_disk_w_rate) {
+        LOG(WARNING, "disk write rate %f reach threshold %f", 
+                resource_collector_.GetStat()->disk_write_times_, FLAGS_max_disk_w_rate);
+        ret = false;
+    } else if (fabs(FLAGS_max_disk_util) >= 1e-6
+            && resource_collector_.GetStat()->disk_io_util_ > FLAGS_max_disk_util) {
+        LOG(WARNING, "disk io util %f reach threshold %f", 
+                resource_collector_.GetStat()->disk_io_util_, FLAGS_max_disk_util);
+        ret = false;
+    } else if (fabs(FLAGS_max_net_in_bps) >= 1e-6 != 0
+            && resource_collector_.GetStat()->net_in_bps_ > FLAGS_max_net_in_bps) {
+        LOG(WARNING, "net in bps %f reach threshold %f",
+                resource_collector_.GetStat()->net_in_bps_, FLAGS_max_net_in_bps);
+        ret = false;
+    } else if (fabs(FLAGS_max_net_out_bps) >= 1e-6
+            && resource_collector_.GetStat()->net_out_bps_ > FLAGS_max_net_out_bps) {
+        LOG(WARNING, "net out bps %f reach threshold %f", 
+                resource_collector_.GetStat()->net_out_bps_, FLAGS_max_net_out_bps);
+        ret = false;
+    } else if (fabs(FLAGS_max_net_in_pps) >= 1e-6 
+            && resource_collector_.GetStat()->net_in_pps_ > FLAGS_max_net_in_pps) {
+        LOG(WARNING, "net in pps %f reach threshold %f", 
+                resource_collector_.GetStat()->net_in_bps_, FLAGS_max_net_in_pps);
+        ret = false;
+    } else if (fabs(FLAGS_max_net_out_pps) >= 1e-6 &&
+            resource_collector_.GetStat()->net_out_pps_ > FLAGS_max_net_out_pps) {
+        LOG(WARNING, "net out pps %f reach threshold %f",
+                resource_collector_.GetStat()->net_out_pps_, FLAGS_max_net_out_pps);
+        ret = false;
+    } else if (fabs(FLAGS_max_intr_rate) >= 1e-6  && 
+            resource_collector_.GetStat()->intr_rate_ > FLAGS_max_intr_rate) {
+        LOG(WARNING, "interupt rate %f reach threshold %f", 
+                resource_collector_.GetStat()->intr_rate_, FLAGS_max_intr_rate);
+        ret = false;
+    } else if (fabs(FLAGS_max_soft_intr_rate) >= 1e-6 &&
+            resource_collector_.GetStat()->soft_intr_rate_ > FLAGS_max_soft_intr_rate) {
+        LOG(WARNING, "soft interupt rate %f reach threshold %f",
+                resource_collector_.GetStat()->soft_intr_rate_, FLAGS_max_soft_intr_rate);
+        ret = false;
+    }
+    recover_threshold_++;
+    if (ret) {
+        MutexLock scope_lock(&lock_);
+        if (recover_threshold_ > FLAGS_agent_recover_threshold && state_ != kAlive) {
+            state_ = kAlive;
+            lock_.Unlock();
+            OnlineAgentRequest request;
+            OnlineAgentResponse response;
+            MutexLock lock(&mutex_master_endpoint_);
+            request.set_endpoint(endpoint_);
+            if (!rpc_client_->SendRequest(master_,
+                                          &Master_Stub::OnlineAgent,
+                                          &request,
+                                          &response,
+                                          5, 1)) {
+                LOG(WARNING, "send online request fail");
             }
-            recover_threshold_++;
-            if (recover_threshold_ > FLAGS_agent_recover_threshold) {
-                state_ = kAlive;
-                lock_.Unlock();
-                OnlineAgentRequest request;
-                OnlineAgentResponse response;
-                MutexLock lock(&mutex_master_endpoint_);
-                request.set_endpoint(endpoint_);
-                if (!rpc_client_->SendRequest(master_,
-                                              &Master_Stub::OnlineAgent,
-                                              &request,
-                                              &response,
-                                              5, 1)) {
-                    LOG(WARNING, "send online request fail");
-                }
-            }
-            break;
-        }else {
-            MutexLock scope_lock(&lock_);
-            if (state_ == kOffline) {
-                break;
-            }
+        }
+    }else {
+        MutexLock scope_lock(&lock_);
+        if (state_ != kOffline) {
             state_ = kOffline;
             recover_threshold_ = 0;
             KillAllPods();
@@ -580,352 +608,9 @@ void AgentImpl::CollectSysStat() {
                 LOG(WARNING, "send offline request fail");
             }
         }
-    } while(0); 
-    background_threads_.DelayTask(FLAGS_stat_check_period, boost::bind(&AgentImpl::CollectSysStat, this));
-    return;
+    }
+    background_threads_.DelayTask(FLAGS_stat_check_period, boost::bind(&AgentImpl::CheckSysHealth, this));
 }
 
-bool AgentImpl::CheckSysHealth() {
-    if (fabs(FLAGS_max_cpu_usage) >= 1e-6 && stat_->cpu_used_ > FLAGS_max_cpu_usage) {
-        LOG(WARNING, "cpu uage %f reach threshold %f", stat_->cpu_used_, FLAGS_max_cpu_usage);
-        return false;
-    }
-    if (fabs(FLAGS_max_mem_usage) >= 1e-6 && stat_->mem_used_ > FLAGS_max_mem_usage) {
-        LOG(WARNING, "mem usage %f reach threshold %f", stat_->mem_used_, FLAGS_max_mem_usage);
-        return false;
-    }
-    if (fabs(FLAGS_max_disk_r_bps) >= 1e-6 && stat_->disk_read_Bps_ > FLAGS_max_disk_r_bps) {
-        LOG(WARNING, "disk read Bps %f reach threshold %f", stat_->disk_read_Bps_, FLAGS_max_disk_r_bps);
-        return false;
-    }
-    if (fabs(FLAGS_max_disk_w_bps) >= 1e-6 && stat_->disk_write_Bps_ > FLAGS_max_disk_w_bps) {
-        LOG(WARNING, "disk write Bps %f reach threshold %f", stat_->disk_write_Bps_, FLAGS_max_disk_w_bps);
-        return false;
-    }
-    if (fabs(FLAGS_max_disk_r_rate) >= 1e-6 && stat_->disk_read_times_ > FLAGS_max_disk_r_rate) {
-        LOG(WARNING, "disk write rate %f reach threshold %f", stat_->disk_read_times_, FLAGS_max_disk_r_rate);
-        return false;
-    }
-    if (fabs(FLAGS_max_disk_w_rate) >= 1e-6 && stat_->disk_write_times_ > FLAGS_max_disk_w_rate) {
-        LOG(WARNING, "disk write rate %f reach threshold %f", stat_->disk_write_times_, FLAGS_max_disk_w_rate);
-        return false;
-    }
-    if (fabs(FLAGS_max_disk_util) >= 1e-6 && stat_->disk_io_util_ > FLAGS_max_disk_util) {
-        LOG(WARNING, "disk io util %f reach threshold %f", stat_->disk_io_util_, FLAGS_max_disk_util);
-        return false;
-    }
-    if (fabs(FLAGS_max_net_in_bps) >= 1e-6 != 0 && stat_->net_in_bps_ > FLAGS_max_net_in_bps) {
-        LOG(WARNING, "net in bps %f reach threshold %f", stat_->net_in_bps_, FLAGS_max_net_in_bps);
-        return false;
-    }
-    if (fabs(FLAGS_max_net_out_bps) >= 1e-6 && stat_->net_out_bps_ > FLAGS_max_net_out_bps) {
-        LOG(WARNING, "net out bps %f reach threshold %f", stat_->net_out_bps_, FLAGS_max_net_out_bps);
-        return false;
-    }
-    if (fabs(FLAGS_max_net_in_pps) >= 1e-6 && stat_->net_in_pps_ > FLAGS_max_net_in_pps) {
-        LOG(WARNING, "net in pps %f reach threshold %f", stat_->net_in_bps_, FLAGS_max_net_in_pps);
-        return false;
-    }
-    if (fabs(FLAGS_max_net_out_pps) >= 1e-6 && stat_->net_out_pps_ > FLAGS_max_net_out_pps) {
-        LOG(WARNING, "net out pps %f reach threshold %f", stat_->net_out_pps_, FLAGS_max_net_out_pps);
-        return false;
-    }
-    if (fabs(FLAGS_max_intr_rate) >= 1e-6  && stat_->intr_rate_ > FLAGS_max_intr_rate) {
-        LOG(WARNING, "interupt rate %f reach threshold %f", stat_->intr_rate_, FLAGS_max_intr_rate);
-        return false;
-    }
-    if (fabs(FLAGS_max_soft_intr_rate) >= 1e-6 && stat_->soft_intr_rate_ > FLAGS_max_soft_intr_rate) {
-        LOG(WARNING, "soft interupt rate %f reach threshold %f", stat_->soft_intr_rate_, FLAGS_max_soft_intr_rate);
-        return false;
-    }
-    return true;
-}
-
-bool AgentImpl::GetGlobalCpuStat() {
-    ResourceStatistics statistics;
-    std::string path = "/proc/stat";
-    FILE* fin = fopen(path.c_str(), "r");
-    if (fin == NULL) {
-        LOG(WARNING, "open %s failed", path.c_str());
-        return false; 
-    }
-
-    ssize_t read;
-    size_t len = 0;
-    char* line = NULL;
-    if ((read = getline(&line, &len, fin)) == -1) {
-        LOG(WARNING, "read line failed err[%d: %s]", 
-                errno, strerror(errno)); 
-        fclose(fin);
-        return false;
-    }
-    fclose(fin);
-
-    char cpu[5];
-    int item_size = sscanf(line, 
-                           "%s %ld %ld %ld %ld %ld %ld %ld %ld %ld", 
-                           cpu,
-                           &(statistics.cpu_user_time),
-                           &(statistics.cpu_nice_time),
-                           &(statistics.cpu_system_time),
-                           &(statistics.cpu_idle_time),
-                           &(statistics.cpu_iowait_time),
-                           &(statistics.cpu_irq_time),
-                           &(statistics.cpu_softirq_time),
-                           &(statistics.cpu_stealstolen),
-                           &(statistics.cpu_guest)); 
-
-    free(line); 
-    line = NULL;
-    if (item_size != 10) {
-        LOG(WARNING, "read from /proc/stat format err"); 
-        return false;
-    }
-    stat_->last_stat_ = stat_->cur_stat_;
-    stat_->cur_stat_ = statistics;
-    long total_cpu_time_last = 
-    stat_->last_stat_.cpu_user_time
-    + stat_->last_stat_.cpu_nice_time
-    + stat_->last_stat_.cpu_system_time
-    + stat_->last_stat_.cpu_idle_time
-    + stat_->last_stat_.cpu_iowait_time
-    + stat_->last_stat_.cpu_irq_time
-    + stat_->last_stat_.cpu_softirq_time
-    + stat_->last_stat_.cpu_stealstolen
-    + stat_->last_stat_.cpu_guest;
-    long total_cpu_time_cur =
-    stat_->cur_stat_.cpu_user_time
-    + stat_->cur_stat_.cpu_nice_time
-    + stat_->cur_stat_.cpu_system_time
-    + stat_->cur_stat_.cpu_idle_time
-    + stat_->cur_stat_.cpu_iowait_time
-    + stat_->cur_stat_.cpu_irq_time
-    + stat_->cur_stat_.cpu_softirq_time
-    + stat_->cur_stat_.cpu_stealstolen
-    + stat_->cur_stat_.cpu_guest;
-    long total_cpu_time = total_cpu_time_cur - total_cpu_time_last;
-    if (total_cpu_time < 0) {
-        LOG(WARNING, "invalide total cpu time cur %ld last %ld", total_cpu_time_cur, total_cpu_time_last);
-        return false;
-    }     
-
-    long total_used_time_last = 
-    stat_->last_stat_.cpu_user_time 
-    + stat_->last_stat_.cpu_system_time
-    + stat_->last_stat_.cpu_nice_time
-    + stat_->last_stat_.cpu_irq_time
-    + stat_->last_stat_.cpu_softirq_time
-    + stat_->last_stat_.cpu_stealstolen
-    + stat_->last_stat_.cpu_guest;
-
-    long total_used_time_cur =
-    stat_->cur_stat_.cpu_user_time
-    + stat_->cur_stat_.cpu_nice_time
-    + stat_->cur_stat_.cpu_system_time
-    + stat_->cur_stat_.cpu_irq_time
-    + stat_->cur_stat_.cpu_softirq_time
-    + stat_->cur_stat_.cpu_stealstolen
-    + stat_->cur_stat_.cpu_guest;
-    long total_cpu_used_time = total_used_time_cur - total_used_time_last;
-    if (total_cpu_used_time < 0)  {
-        LOG(WARNING, "invalude total cpu used time cur %ld last %ld", total_used_time_cur, total_used_time_last);
-        return false;
-    }
-    double rs = total_cpu_used_time / static_cast<double>(total_cpu_time);
-    stat_->cpu_used_ = rs;
-    return true;
-}
-
-bool AgentImpl::GetGlobalMemStat(){
-    FILE* fp = fopen("/proc/meminfo", "rb");
-    if (fp == NULL) {
-        return false;
-    }
-    std::string content;
- 	char buf[1024];
- 	int len = 0;
-    while ((len = fread(buf, 1, sizeof(buf), fp)) > 0) {
-        content.append(buf, len);
-    }
-    std::vector<std::string> lines;
-    boost::split(lines, content, boost::is_any_of("\n"));
-    int64_t total_mem = 0;
-    int64_t free_mem = 0;
-    int64_t buffer_mem = 0;
-    int64_t cache_mem = 0;
-    int64_t tmpfs_mem = 0;
-    for (size_t i = 0; i < lines.size(); i++) {
-        std::string line = lines[i];
-        std::vector<std::string> parts;
-        if (line.find("MemTotal:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            if (parts.size() < 2) {
-                fclose(fp);
-                return false;
-            }
-            total_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
-        }else if (line.find("MemFree:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            if (parts.size() < 2) {
-                fclose(fp);
-                return false;
-            }
-            free_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
-        }else if (line.find("Buffers:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            if (parts.size() < 2) {
-                fclose(fp);
-                return false;
-            }
-            buffer_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
-        }else if (line.find("Cached:") == 0) {
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            if (parts.size() < 2) {
-                fclose(fp);
-                return false;
-            }
-            cache_mem = boost::lexical_cast<int64_t>(parts[parts.size() - 2]);
-        }
-    }
-    fclose(fp);
-    
-    FILE* fin = popen("df -h", "r");
-    if (fin != NULL) {
-        std::string content;
-        char buf[1024];
-        int len = 0;
-        while ((len = fread(buf, 1, sizeof(buf), fin)) > 0) {
-            content.append(buf, len);
-        }
-        std::vector<std::string> lines;
-        boost::split(lines, content, boost::is_any_of("\n"));
-        for (size_t n = 0; n < lines.size(); n++) {
-            std::string line = lines[n];
-            if (line.find("tmpfs") != std::string::npos) {
-                std::vector<std::string> parts;
-                boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-                tmpfs_mem = boost::lexical_cast<int64_t>(parts[1]);
-                LOG(WARNING, "detect tmpfs %s %d", parts[1].c_str(), tmpfs_mem);
-                tmpfs_mem = tmpfs_mem * 1024 * 1024 * 1024;
-                break;
-            } else {
-                continue;
-            }
-        }
-    } else {
-        LOG(WARNING, "popen df -h err");
-    }
-    if (pclose(fin) == -1) {
-        LOG(WARNING, "pclose err");
-    }
-    stat_->mem_used_ = (total_mem - free_mem - buffer_mem - cache_mem + tmpfs_mem) / boost::lexical_cast<double>(total_mem);
- 
-    return true;
-}
-
-bool AgentImpl::GetGlobalIntrStat() {
-    uint64_t intr_cnt = 0;
-    uint64_t softintr_cnt = 0;
-    std::string path = "/proc/stat";
-    std::ifstream stat(path.c_str());
-    if (!stat.is_open()) {
-        LOG(WARNING, "open proc stat fail.");
-        return false;
-    } 
-    std::vector<std::string> lines;
-    std::string content; 
-    stat >> content;
-    stat.close();
-    boost::split(lines, content, boost::is_any_of("\n"));
-    for (size_t n = 0; n < lines.size(); n++) {
-        std::string line = lines[n];
-        if (line.find("intr") != std::string::npos) {
-            std::vector<std::string> parts;
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            intr_cnt = boost::lexical_cast<int64_t>(parts[1]);
-        } else if (line.find("softirq") != std::string::npos) {
-            std::vector<std::string> parts;
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            softintr_cnt = boost::lexical_cast<int64_t>(parts[1]);
-        }
-        continue;
-    }
-    stat_->last_stat_ = stat_->cur_stat_;
-    stat_->cur_stat_.interupt_times = intr_cnt;
-    stat_->cur_stat_.soft_interupt_times = softintr_cnt;
-    stat_->intr_rate_ = (stat_->cur_stat_.interupt_times - stat_->last_stat_.interupt_times) / FLAGS_stat_check_period * 1000; 
-    stat_->soft_intr_rate_ = (stat_->cur_stat_.soft_interupt_times - stat_->last_stat_.soft_interupt_times) / FLAGS_stat_check_period * 1000;
-    return true;
-}
-
-bool AgentImpl::GetGlobalIOStat() {
-    FILE *fin = popen("iostat -x", "r");
-    if (fin != NULL) {
-        char buf[1024];
-        int len = 0;
-        std::string content;
-        while ((len = fread(buf, 1, sizeof(buf), fin)) > 0) {
-            content.append(buf, len);
-        }
-        std::vector<std::string> lines;
-        boost::split(lines, content, boost::is_any_of("\n"));
-        for (size_t n = 0; n < lines.size(); n++) {
-            std::string line = lines[n];
-            if (line.find("sda") != std::string::npos) {
-                std::vector<std::string> parts;
-                boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-                stat_->disk_read_times_ = boost::lexical_cast<double>(parts[3]);
-                stat_->disk_write_times_ = boost::lexical_cast<double>(parts[4]);
-                stat_->disk_read_Bps_ = boost::lexical_cast<double>(parts[5]);
-                stat_->disk_write_Bps_ = boost::lexical_cast<double>(parts[6]);
-                stat_->disk_io_util_ = boost::lexical_cast<double>(parts[parts.size() - 1]);
-                break;
-            } else {
-                continue;
-            }
-        }
-    }else {
-        LOG(WARNING, "popen iostat fail err_code");
-    }
-    if (pclose(fin) == -1) {
-        LOG(WARNING, "pclose err");
-    }
-    return true;
-}
-
-bool AgentImpl::GetGlobalNetStat() {
-    std::string path = "/proc/net/dev";
-    std::ifstream stat(path.c_str());
-    if (!stat.is_open()) {
-        LOG(WARNING, "open dev stat fail.");
-        return false;
-    }
-    std::string content;
-    stat >> content;
-    stat.close();
-    stat_->last_stat_ = stat_->cur_stat_;
-    std::vector<std::string> lines;
-    boost::split(lines, content, boost::is_any_of("\n"));
-    for (size_t n = 0; n < lines.size(); n++) {
-        std::string line = lines[n];
-        if (line.find("eth0") != std::string::npos || 
-                line.find("xgbe0") != std::string::npos) {
-            std::vector<std::string> parts;
-            boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-            std::vector<std::string> tokens;
-            boost::split(tokens, parts[0], boost::is_any_of(":"));
-            stat_->cur_stat_.net_in_bits = boost::lexical_cast<int64_t>(tokens[1]);
-            stat_->cur_stat_.net_in_packets = boost::lexical_cast<int64_t>(parts[1]);
-            stat_->cur_stat_.net_out_bits = boost::lexical_cast<int64_t>(tokens[8]);
-            stat_->cur_stat_.net_out_packets = boost::lexical_cast<int64_t>(parts[9]);
-        }
-        continue;
-    }
-    stat_->net_in_bps_ = (stat_->cur_stat_.net_in_bits - stat_->last_stat_.net_in_bits) / FLAGS_stat_check_period * 1000;
-    stat_->net_out_bps_ = (stat_->cur_stat_.net_out_bits - stat_->last_stat_.net_out_bits) / FLAGS_stat_check_period * 1000;
-    stat_->net_in_pps_ = (stat_->cur_stat_.net_in_packets - stat_->last_stat_.net_in_packets) / FLAGS_stat_check_period * 1000;
-    stat_->net_out_pps_ = (stat_->cur_stat_.net_out_packets - stat_->last_stat_.net_out_packets) / FLAGS_stat_check_period * 1000;
-    return true;
-}
 }   // ending namespace galaxy
 }   // ending namespace baidu
