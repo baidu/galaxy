@@ -446,7 +446,7 @@ int PodManager::AddPod(const PodInfo& info) {
         LOG(WARNING, "lanuch initd for %s failed",
                 internal_info.pod_id.c_str()); 
         return -1;
-    }                    
+    } 
     std::map<std::string, TaskInfo>::iterator task_it = 
         internal_info.tasks.begin();
     for (; task_it != internal_info.tasks.end(); ++task_it) {

@@ -389,10 +389,9 @@ void TaskManager::CollectIO(const std::string& task_id) {
                     // wait the next turn to statistics
                     continue;
                 }
-                read_bytes_ps += proc_it->second.rchar + proc_it->second.read_bytes
-                    - old_proc_it->second.rchar - old_proc_it->second.read_bytes; 
-                write_bytes_ps += proc_it->second.wchar + proc_it->second.write_bytes
-                    - old_proc_it->second.wchar - old_proc_it->second.write_bytes;
+                read_bytes_ps +=  proc_it->second.read_bytes - old_proc_it->second.read_bytes; 
+                write_bytes_ps += proc_it->second.write_bytes - proc_it->second.cancelled_write_bytes
+                    - old_proc_it->second.write_bytes + old_proc_it->second.cancelled_write_bytes;
                 syscr_ps += proc_it->second.syscr - old_proc_it->second.syscr;
                 syscw_ps += proc_it->second.wchar - old_proc_it->second.syscw;
             }
