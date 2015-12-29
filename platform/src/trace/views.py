@@ -160,6 +160,7 @@ def agent_event_processor(resultset, fields=[], limit=100):
             e = util.pb2dict(agent_event)
             e['ftime'] = datetime.datetime.fromtimestamp(e['time']/1000000).strftime("%Y-%m-%d %H:%M:%S")
             stats.append(data_filter(e , fields))
+    stats = sorted(stats, key=lambda x:x["time"])
     return stats[0:limit]
 
 def pod_stat_processor(resultset, fields=[], limit=100):
