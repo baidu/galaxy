@@ -436,6 +436,7 @@ void AgentImpl::CollectPodStat(const std::string& podid) {
         LOG(WARNING, "pod %s does not exist", podid.c_str());
         return;
     }
+    LOG(INFO, "trace pod %s", podid.c_str());
     Trace::TracePodStat(&pod_info.pod_status,
                         pod_info.pod_desc.requirement().millicores(),
                         pod_info.pod_desc.requirement().memory());

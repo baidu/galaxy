@@ -151,6 +151,11 @@ message ClusterStat {
     optional string id = 16;
 }
 
+message JobPodPair {
+    optional string jobid = 1;
+    optional string podid = 2;
+}
+
 message AgentEvent {
     // index pk
     optional string addr = 1;
@@ -160,5 +165,6 @@ message AgentEvent {
     // index 
     optional string data_center = 4;
     optional string id = 5;
+    repeated JobPodPair pods = 6;
 } 
 

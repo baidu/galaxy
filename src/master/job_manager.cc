@@ -842,7 +842,6 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
     e.set_data_center(FLAGS_data_center);
     e.set_time(::baidu::common::timer::get_micros());
     e.set_action("offline");
-    Trace::TraceAgentEvent(e);
     PodMap& agent_pods = pods_on_agent_[agent_addr];
     PodMap::iterator it = agent_pods.begin();
     std::vector<std::pair<Job*, PodStatus*> > wait_to_pending;
@@ -854,9 +853,13 @@ void JobManager::HandleAgentOffline(const std::string agent_addr) {
             if (job_it ==  jobs_.end()) {
                 continue;
             }
-            wait_to_pending.push_back(std::make_pair(job_it->second, pod)); 
+            wait_to_pending.push_back(std::make_pair(job_it->second, pod));
+            JobPodPair* job_pod = e.add_pods();
+            job_pod->set_jobid(pod->jobid());
+            job_pod->set_podid(pod->podid());
         }
     }
+    Trace::TraceAgentEvent(e);
     std::vector<std::pair<Job*, PodStatus*> >::iterator pending_it = wait_to_pending.begin();
     for (; pending_it != wait_to_pending.end(); ++pending_it) {
         pending_it->second->set_stage(kStageDeath);
