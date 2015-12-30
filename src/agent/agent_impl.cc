@@ -600,9 +600,6 @@ void AgentImpl::CheckSysHealth() {
     if (ret) {
         if ((recover_threshold_ > FLAGS_agent_recover_threshold 
                 && state_ == kOffline) || state_ == kInit) {
-            MutexLock scope_lock(&lock_);
-            state_ = kAlive;
-            lock_.Unlock();
             OnlineAgentRequest request;
             OnlineAgentResponse response;
             MutexLock lock(&mutex_master_endpoint_);
@@ -613,6 +610,10 @@ void AgentImpl::CheckSysHealth() {
                                           &response,
                                           5, 1)) {
                 LOG(WARNING, "send online request fail");
+            } else {
+                mutex_master_endpoint_.Unlock();
+                MutexLock scope_lock(&lock_);
+                state_ = kAlive;
             }
         }
     } else {
