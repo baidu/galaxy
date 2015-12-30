@@ -18,6 +18,7 @@
 #include "boost/algorithm/string/predicate.hpp"
 #include "logging.h"
 #include "agent/cgroups.h"
+#include "agent/utils.h"
 
 DECLARE_string(gce_cgroup_root);
 DECLARE_int32(stat_check_period);
@@ -868,6 +869,71 @@ bool GetCgroupMemoryUsage(const std::string& group_path,
     return false;
 }
 
+CGroupIOCollector::CGroupIOCollector(){}
+
+CGroupIOCollector::~CGroupIOCollector(){}
+
+bool CGroupIOCollector::Collect(const std::string& cgroup_path,
+                                 CGroupIOStatistics* stat) {
+    std::vector<int> pids;
+    bool ok = ::baidu::galaxy::cgroups::GetPidsFromCgroup(cgroup_path, &pids);
+    if (!ok) {
+        LOG(WARNING, "fail to get pid from cgroup %s", cgroup_path.c_str());
+        return false;
+    }
+
+    std::vector<int>::iterator pid_it = pids.begin();
+    for (; pid_it != pids.end(); ++pid_it) {
+        ProcIOStatistics proc_stat;
+        ok = GetProcIOStat(*pid_it, &proc_stat);
+        if (!ok) {
+            LOG(WARNING, "fail to get pid %d io stat", *pid_it);
+            continue;
+        }
+        stat->processes.insert(std::make_pair(*pid_it, proc_stat));
+    }
+    return true;
+}
+
+bool CGroupIOCollector::GetProcIOStat(int pid, ProcIOStatistics* stat) {
+    std::string io_path = "/proc/" + boost::lexical_cast<std::string>(pid) + "/io";
+    bool ok = ::baidu::galaxy::file::IsExists(io_path);
+    if (!ok) {
+        LOG(WARNING, "io %s does not exist", io_path.c_str());
+        return false;
+    }
+    std::ifstream ifs;
+    ifs.open(io_path.c_str(), std::ifstream::binary);
+    while (ifs.good()) {
+        if (ifs.eof()) {
+            break;
+        }
+        std::string line;
+        std::getline(ifs, line);
+        std::vector<std::string> parts;
+        boost::split(parts, line, boost::is_any_of(": "));
+        if (parts.size() != 3) {
+            continue;
+        }
+        if (parts[0] == "rchar") {
+            stat->rchar = boost::lexical_cast<int64_t>(parts[2]);
+        } else if (parts[0] == "wchar") { 
+            stat->wchar = boost::lexical_cast<int64_t>(parts[2]);
+        } else if (parts[0] == "syscr") { 
+            stat->syscr = boost::lexical_cast<int64_t>(parts[2]);
+        } else if (parts[0] == "syscw") { 
+            stat->syscw = boost::lexical_cast<int64_t>(parts[2]);
+        } else if (parts[0] == "read_bytes") { 
+            stat->read_bytes = boost::lexical_cast<int64_t>(parts[2]);
+        } else if (parts[0] == "write_bytes") { 
+            stat->write_bytes = boost::lexical_cast<int64_t>(parts[2]);
+        } else if (parts[0] == "cancelled_write_bytes") { 
+            stat->cancelled_write_bytes = boost::lexical_cast<int64_t>(parts[2]);
+        }
+    }
+    ifs.close();
+    return true;
+}
 
 }   // ending namespace galaxy
 }   // ending namespace baidu

@@ -82,18 +82,18 @@ private:
         int64_t memory;
         // TODO initd port not included
         boost::unordered_set<int32_t> used_port;
-        ResourceCapacity() 
+        ResourceCapacity()
             : millicores(0),
               memory(0),
               used_port() {
         }
     };
-    
+    void CollectPodStat(const std::string& podid);
 private:
-    std::string master_endpoint_;
-    
+    std::string master_endpoint_; 
     Mutex lock_;
     ThreadPool background_threads_;
+    ThreadPool trace_pool_;
     RpcClient* rpc_client_;
     std::string endpoint_;
     Master_Stub* master_;

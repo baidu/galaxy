@@ -24,6 +24,10 @@ struct ResDescription {
     std::vector<int32_t> ports;
     std::vector<VolumeDescription> ssds;
     std::vector<VolumeDescription> disks;
+    int64_t read_bytes_ps;
+    int64_t write_bytes_ps;
+    int64_t syscr_ps;
+    int64_t syscw_ps;
 };
 
 struct TaskDescription {
@@ -66,6 +70,10 @@ struct JobInformation {
     int32_t pending_num;
     int32_t deploying_num;
     std::string state;
+    int64_t read_bytes_ps;
+    int64_t write_bytes_ps;
+    int64_t syscr_ps;
+    int64_t syscw_ps;
 };
 
 struct NodeDescription {
@@ -164,6 +172,8 @@ public:
     virtual bool SwitchSafeMode(bool mode) = 0;
     virtual bool Preempt(const PreemptPropose& propose) = 0;
     virtual bool GetMasterAddr(std::string* master_addr) = 0;
+    virtual bool OfflineAgent(const std::string& agent_addr) = 0;
+    virtual bool OnlineAgent(const std::string& agent_addr) = 0;
 };
 
 } // namespace galaxy

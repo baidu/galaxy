@@ -11,12 +11,14 @@
 #include "proto/master.pb.h"
 #include "logging.h"
 #include "agent/agent_internal_infos.h"
+#include "utils/trace.h"
 #include "agent/utils.h"
 
 DECLARE_string(master_host);
 DECLARE_string(master_port);
 DECLARE_int32(agent_background_threads_num);
 DECLARE_int32(agent_heartbeat_interval);
+DECLARE_int32(agent_trace_pod_interval);
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 DECLARE_string(agent_work_dir);
@@ -48,6 +50,7 @@ AgentImpl::AgentImpl() :
     master_endpoint_(),
     lock_(),
     background_threads_(FLAGS_agent_background_threads_num),
+    trace_pool_(10),
     rpc_client_(NULL),
     endpoint_(),
     master_(NULL),
@@ -208,7 +211,9 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
             break;
         }
         LOG(INFO, "run pod %s", req->podid().c_str());
-        resp->set_status(kOk); 
+        resp->set_status(kOk);
+        trace_pool_.DelayTask(FLAGS_agent_trace_pod_interval,
+                boost::bind(&AgentImpl::CollectPodStat, this, req->podid()));
     } while (0);
     done->Run();
     return;
@@ -289,6 +294,9 @@ bool AgentImpl::RestorePods() {
                     pod.pod_id.c_str()); 
             return false;
         }
+        trace_pool_.DelayTask(FLAGS_agent_trace_pod_interval,
+                boost::bind(&AgentImpl::CollectPodStat, this, pod.pod_id));
+
     }
     return true;
 }
@@ -461,6 +469,22 @@ void AgentImpl::ConvertToPodPropertiy(const PodInfo& show_pod_info, PodPropertiy
     pod_propertiy->set_pod_path(show_pod_info.pod_path);
     pod_propertiy->set_job_name(show_pod_info.job_name);
     return;
+}
+
+void AgentImpl::CollectPodStat(const std::string& podid) {
+    MutexLock scope_lock(&lock_);
+    PodInfo pod_info;
+    int ok = pod_manager_.ShowPod(podid, &pod_info);
+    if (ok != 0) {
+        LOG(WARNING, "pod %s does not exist", podid.c_str());
+        return;
+    }
+    LOG(INFO, "trace pod %s", podid.c_str());
+    Trace::TracePodStat(&pod_info.pod_status,
+                        pod_info.pod_desc.requirement().millicores(),
+                        pod_info.pod_desc.requirement().memory());
+    trace_pool_.DelayTask(FLAGS_agent_trace_pod_interval,
+            boost::bind(&AgentImpl::CollectPodStat, this, podid));
 }
 
 void AgentImpl::ShowPods(::google::protobuf::RpcController* /*cntl*/,

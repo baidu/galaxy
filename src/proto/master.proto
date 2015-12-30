@@ -124,6 +124,10 @@ message JobOverview {
     optional Resource resource_used = 5;
     optional int32 pending_num = 6;
     optional int32 deploying_num = 7;
+    optional int64 read_bytes_ps = 8;
+    optional int64 write_bytes_ps = 9;
+    optional int64 syscr_ps = 10;
+    optional int64 syscw_ps = 11;
 }
 
 message ListJobsResponse {
@@ -346,6 +350,7 @@ service Master {
     rpc GetJobDescriptor(GetJobDescriptorRequest) returns (GetJobDescriptorResponse);
     rpc Propose(ProposeRequest) returns (ProposeResponse);
     rpc Preempt(PreemptRequest) returns (PreemptResponse);
+
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
     rpc LabelAgents(LabelAgentRequest) returns (LabelAgentResponse);
     rpc OfflineAgent(OfflineAgentRequest) returns (OfflineAgentResponse);

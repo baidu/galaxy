@@ -34,6 +34,7 @@ DEFINE_string(n, "", "specify job name to query pods");
 DEFINE_string(j, "", "specify job id");
 DEFINE_string(l, "", "add a label to agent");
 DEFINE_string(p, "", "specify pod id");
+DEFINE_string(a, "", "specify agent addr");
 DEFINE_int32(d, 0, "specify delay time to query");
 DEFINE_int32(cli_server_port, 8775, "cli server listen port");
 DECLARE_string(flagfile);
@@ -48,6 +49,8 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
                                  "    galaxy preempt -f <config>\n"
+                                 "    galaxy offline -a <agent_addr>\n"
+                                 "    galaxy online -a <agent_addr>\n"
                                  "    galaxy status \n"
                                  "    galaxy enter safemode \n"
                                  "    galaxy leave safemode \n"
@@ -56,6 +59,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
                                  "    -d delay     Specify delay in second to update infomation.\n"
                                  "    -l label     Add label to list of agents.\n"
+                                 "    -a agent     Specify agent addr.\n"
                                  "    -n name      Specify job name to query pods.\n";
 
 int ReadableStringToInt(const std::string& input, int64_t* output) {
@@ -475,8 +479,8 @@ int ShowPod() {
                 return -1;
             }
         } 
-        baidu::common::TPrinter tp(8);
-        tp.AddRow(8, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)", "endpoint", "version");
+        baidu::common::TPrinter tp(10);
+        tp.AddRow(10, "", "id", "stage", "state", "cpu(used/assigned)", "mem(used/assigned)","disk(r/w)", "endpoint", "version");
         for (size_t i = 0; i < pods.size(); i++) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString((int32_t)i + 1));
@@ -489,6 +493,9 @@ int ShowPod() {
             std::string mem = baidu::common::HumanReadableString(pods[i].used.memory) + "/" +\
                               baidu::common::HumanReadableString(pods[i].assigned.memory);
             vs.push_back(mem);
+            std::string disk_io = baidu::common::HumanReadableString(pods[i].used.read_bytes_ps) +"/s" + " / " 
+                                  + baidu::common::HumanReadableString(pods[i].used.write_bytes_ps) +"/s";
+            vs.push_back(disk_io);
             vs.push_back(pods[i].endpoint);
             vs.push_back(pods[i].version);
             tp.AddRow(vs);
@@ -699,8 +706,8 @@ int ListJob() {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while(true) {
         std::vector<baidu::galaxy::JobInformation> infos;
-        baidu::common::TPrinter tp(9);
-        tp.AddRow(9, "", "id", "name", "state", "stat(r/p/d)", "replica", "batch", "cpu", "memory");
+        baidu::common::TPrinter tp(10);
+        tp.AddRow(10, "", "id", "name", "state", "stat(r/p/d)", "replica", "batch", "cpu", "memory", "disk(r/w)");
         if (galaxy->ListJobs(&infos)) {
             for (uint32_t i = 0; i < infos.size(); i++) {
                 std::vector<std::string> vs;
@@ -715,6 +722,8 @@ int ListJob() {
                             vs.push_back(infos[i].is_batch ? "batch" : "");
                 vs.push_back(baidu::common::NumToString(infos[i].cpu_used));
                 vs.push_back(baidu::common::HumanReadableString(infos[i].mem_used));
+                vs.push_back(baidu::common::HumanReadableString(infos[i].read_bytes_ps) + "/s / " + 
+                             baidu::common::HumanReadableString(infos[i].write_bytes_ps)+"/s");
                 tp.AddRow(vs);
             }
             printf("%s\n", tp.ToString().c_str());
@@ -764,6 +773,38 @@ int KillJob() {
     return 1;
 }
 
+int OnlineAgent() {
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
+    if (FLAGS_a.empty()) {
+        fprintf(stderr, "-a is required when online agent\n");
+        return -1;
+    }
+    bool ok = galaxy->OnlineAgent(FLAGS_a);
+    if (ok) {
+        fprintf(stdout, "online agent %s successfully \n", FLAGS_a.c_str());
+        return 0;
+    }
+    fprintf(stderr, "fail to online agent %s \n", FLAGS_a.c_str());
+    return -1;
+}
+
+int OfflineAgent() {
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
+    if (FLAGS_a.empty()) {
+        fprintf(stderr, "-a is required when offline agent\n");
+        return -1;
+    }
+    bool ok = galaxy->OfflineAgent(FLAGS_a);
+    if (ok) {
+        fprintf(stdout, "offline agent %s successfully \n", FLAGS_a.c_str());
+        return 0;
+    }
+    fprintf(stderr, "fail to offline agent %s \n", FLAGS_a.c_str());
+    return -1;
+}
+
 int main(int argc, char* argv[]) {
     FLAGS_flagfile = "./galaxy.flag";
     ::google::SetUsageMessage(kGalaxyUsage);
@@ -797,7 +838,11 @@ int main(int argc, char* argv[]) {
         return AttachPod();
     } else if (strcmp(argv[1], "preempt") == 0) {
         return PreemptPod();
-    }else {
+    } else if (strcmp(argv[1], "online") == 0) {
+        return OnlineAgent();
+    } else if (strcmp(argv[1], "offline") == 0) {
+        return OfflineAgent();
+    } else {
         fprintf(stderr,"%s", kGalaxyUsage.c_str());
         return -1;
     }
