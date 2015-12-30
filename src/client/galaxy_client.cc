@@ -45,6 +45,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy jobs \n"
                                  "    galaxy agents\n"
                                  "    galaxy pods -j <jobid>\n"
+                                 "    galaxy pods -a <endpoint>\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
@@ -470,7 +471,7 @@ int ListAgent() {
 }
 
 int ShowPod() {
-    if (FLAGS_j.empty() && FLAGS_n.empty()) {
+    if (FLAGS_j.empty() && FLAGS_n.empty() && FLAGS_a.empty()) {
         fprintf(stderr, "-j or -n option is required\n");
         return -1;
     }
@@ -490,6 +491,13 @@ int ShowPod() {
                 fprintf(stderr, "Fail to get pods\n");
                 return -1;
             }
+        } else if (!FLAGS_a.empty()) {
+            bool ok = galaxy->GetPodsByAgent(FLAGS_a, &pods);
+            if (!ok) {
+                fprintf(stderr, "Fail to get pods\n");
+                return -1;
+            }
+
         } 
         baidu::common::TPrinter tp(11);
         tp.AddRow(11, "", "id", "state", "cpu(u/a)", "mem(u/a)", "disk(r/w)","endpoint", "version", "pending","sched","start");

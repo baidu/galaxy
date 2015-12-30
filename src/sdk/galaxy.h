@@ -174,6 +174,8 @@ public:
                          std::vector<PodInformation>* pods) = 0;
     virtual bool GetPodsByName(const std::string& jobname, 
                                std::vector<PodInformation>* pods) = 0;
+    virtual bool GetPodsByAgent(const std::string& endpoint,
+                                std::vector<PodInformation>* pods) = 0;
     virtual bool GetStatus(MasterStatus* status) = 0;
     virtual bool SwitchSafeMode(bool mode) = 0;
     virtual bool Preempt(const PreemptPropose& propose) = 0;

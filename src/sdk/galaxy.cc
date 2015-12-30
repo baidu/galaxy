@@ -33,6 +33,8 @@ public:
                  std::vector<PodInformation>* pods);
     bool GetPodsByName(const std::string& jobname,
                  std::vector<PodInformation>* pods);
+    bool GetPodsByAgent(const std::string& endpoint,
+                        std::vector<PodInformation>* pods);
     bool GetStatus(MasterStatus* status);
     bool SwitchSafeMode(bool mode);
     bool Preempt(const PreemptPropose& propose);
@@ -408,6 +410,41 @@ bool GalaxyImpl::ShowPod(const std::string& jobid,
 
 }
 
+bool GalaxyImpl::GetPodsByAgent(const std::string& endpoint,
+                                std::vector<PodInformation>* pods) {
+    ShowPodRequest request;
+    request.set_endpoint(endpoint);
+    ShowPodResponse response;
+    Master_Stub* master = NULL;
+    bool ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    boost::scoped_ptr<Master_Stub> scoped_master(master);
+    ok = rpc_client_->SendRequest(master, &Master_Stub::ShowPod,
+                             &request,&response, 5, 1);
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.pods_size(); i++) {
+        const PodOverview& pod_overview = response.pods(i);
+        PodInformation pod_info;
+        pod_info.jobid = pod_overview.jobid();
+        pod_info.podid = pod_overview.podid();
+        pod_info.stage = PodStage_Name(pod_overview.stage());
+        pod_info.state = PodState_Name(pod_overview.state());
+        pod_info.version = pod_overview.version();
+        pod_info.endpoint = pod_overview.endpoint();
+        pod_info.pending_time = pod_overview.pending_time();
+        pod_info.sched_time = pod_overview.sched_time();
+        pod_info.start_time = pod_overview.start_time(); 
+        FillResource(pod_overview.used(), &pod_info.used);
+        FillResource(pod_overview.assigned(), &pod_info.assigned);
+        pods->push_back(pod_info);
+    }
+    return true;
+}
+
 bool GalaxyImpl::GetPodsByName(const std::string& jobname,
                          std::vector<PodInformation>* pods){
     ShowPodRequest request;
@@ -432,7 +469,10 @@ bool GalaxyImpl::GetPodsByName(const std::string& jobname,
         pod_info.stage = PodStage_Name(pod_overview.stage());
         pod_info.state = PodState_Name(pod_overview.state());
         pod_info.version = pod_overview.version();
-        pod_info.endpoint = pod_overview.endpoint();
+        pod_info.endpoint = pod_overview.endpoint(); 
+        pod_info.pending_time = pod_overview.pending_time();
+        pod_info.sched_time = pod_overview.sched_time();
+        pod_info.start_time = pod_overview.start_time(); 
         FillResource(pod_overview.used(), &pod_info.used);
         FillResource(pod_overview.assigned(), &pod_info.assigned);
         pods->push_back(pod_info);

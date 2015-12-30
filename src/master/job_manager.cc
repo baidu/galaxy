@@ -1607,6 +1607,45 @@ Status JobManager::GetPods(const std::string& jobid,
     return kOk;
 }
 
+Status JobManager::GetPodsByAgent(const std::string& endpoint,
+                                  PodOverviewList* pods) {
+    MutexLock lock(&mutex_);
+    std::map<AgentAddr, PodMap>::iterator agent_it = pods_on_agent_.find(endpoint);
+    if (agent_it == pods_on_agent_.end()) {
+        return kOk;
+    }
+    PodMap& pod_map = agent_it->second;
+    std::map<JobId, std::map<PodId, PodStatus*> >::iterator job_it = pod_map.begin();
+    for (; job_it != pod_map.end(); ++job_it) {
+        std::map<JobId, Job*>::iterator ijob_it = jobs_.find(job_it->first);
+        if (ijob_it == jobs_.end()) {
+            continue;
+        }
+        Job* job = ijob_it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it = job_it->second.begin();
+        for (; pod_it != job_it->second.end(); ++pod_it) {
+            PodStatus* pod_status = pod_it->second;
+            std::map<Version, PodDescriptor>::iterator desc_it = job->pod_desc_.find(pod_status->version());
+            if (desc_it == job->pod_desc_.end()) {
+                continue;
+            }
+            PodOverview* pod = pods->Add();
+            pod->set_jobid(pod_status->jobid());
+            pod->set_podid(pod_status->podid());
+            pod->set_stage(pod_status->stage());
+            pod->set_state(pod_status->state());
+            pod->set_version(pod_status->version());
+            pod->set_endpoint(pod_status->endpoint());
+            pod->mutable_used()->CopyFrom(pod_status->resource_used());
+            pod->mutable_assigned()->CopyFrom(desc_it->second.requirement());
+            pod->set_pending_time(pod_status->pending_time());
+            pod->set_sched_time(pod_status->sched_time());
+            pod->set_start_time(pod_status->start_time());
+        } 
+    }
+    return kOk;
+}
+
 Status JobManager::GetStatus(::baidu::galaxy::GetMasterStatusResponse* response) {
     MutexLock lock(&mutex_);
     response->set_safe_mode(safe_mode_);

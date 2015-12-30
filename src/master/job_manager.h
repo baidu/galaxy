@@ -149,6 +149,7 @@ public:
     Status LabelAgents(const LabelCell& label_cell);
     bool GetJobIdByName(const std::string& job_name, std::string* jobid);
     Status GetPods(const std::string& jobid, PodOverviewList* pods);
+    Status GetPodsByAgent(const std::string& endpoint, PodOverviewList* pods);
     Status GetStatus(::baidu::galaxy::GetMasterStatusResponse* response);
     bool Preempt(const PreemptEntity& pending_pod,
                  const std::vector<PreemptEntity>& preempted_pods,
