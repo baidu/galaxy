@@ -66,6 +66,7 @@ DEFINE_int64(agent_gc_timeout, 1000 * 60 * 60 * 5, "gc timeout");
 DEFINE_bool(agent_namespace_isolation_switch, false, "agent namespace isolate");
 
 DEFINE_int32(agent_monitor_pods_interval, 10, "agent monitor pods interval, unit seconds");
+DEFINE_int32(agent_trace_pod_interval, 30000, "agent trace pod stat interval");
 DEFINE_int32(agent_rpc_initd_timeout, 2, "agent monitor initd interval, unit seconds");
 DEFINE_int32(agent_initd_port_begin, 9000, "agent initd port used begin");
 DEFINE_int32(agent_initd_port_end, 9500, "agent initd port used end");
@@ -76,6 +77,7 @@ DEFINE_string(agent_global_hardlimit_path, "galaxy", "agent cpu hard limit root"
 DEFINE_string(agent_global_softlimit_path, "softlimit", "agent cpu soft limit root");
 DEFINE_string(agent_global_cgroup_path, "galaxy", "agent cgroup global path");
 DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval");
+DEFINE_int32(agent_io_collect_interval, 1000, "agent collect io interval");
 DEFINE_int32(agent_memory_check_interval, 200, "agent check task memory interval");
 DEFINE_bool(agent_use_galaxy_oom_killer, false, "use galaxy oom killer default false, use cgroup oom killer");
 DEFINE_string(agent_default_user, "galaxy", "agent default run task user");

@@ -74,7 +74,11 @@ message Resource {
     optional int64 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;
-    repeated Volume ssds = 5; 
+    repeated Volume ssds = 5;
+    optional int64 read_bytes_ps = 6;
+    optional int64 write_bytes_ps = 7;
+    optional int64 syscr_ps = 8;
+    optional int64 syscw_ps = 9;
 }
 
 enum MemIsolationType {
@@ -123,6 +127,7 @@ message TaskStatus {
     optional string version = 4;
     optional TaskState state = 5;
 }
+
 
 message PodStatus {
     optional string podid = 1;

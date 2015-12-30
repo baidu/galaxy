@@ -278,6 +278,10 @@ void GalaxyImpl::FillResource(const Resource& res, ResDescription* res_desc) {
         vol.path = res.disks(j).path();
         res_desc->disks.push_back(vol);
     }
+    res_desc->read_bytes_ps = res.read_bytes_ps();
+    res_desc->write_bytes_ps = res.write_bytes_ps();
+    res_desc->syscr_ps = res.syscr_ps();
+    res_desc->syscw_ps = res.syscw_ps();
 }
 
 
@@ -356,6 +360,10 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.cpu_used = job.resource_used().millicores();
         job_info.mem_used = job.resource_used().memory();
         job_info.is_batch = (job.desc().type() == kBatch);
+        job_info.read_bytes_ps = job.resource_used().read_bytes_ps();
+        job_info.write_bytes_ps = job.resource_used().write_bytes_ps();
+        job_info.syscr_ps = job.resource_used().syscr_ps();
+        job_info.syscw_ps = job.resource_used().syscw_ps();
         job_info.state = JobState_Name(job.state());
         jobs->push_back(job_info);
     }
