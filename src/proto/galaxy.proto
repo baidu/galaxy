@@ -17,6 +17,7 @@ enum Status {
     kJobTerminateFail = 19;
     kRpcError = 20;
     kLabelAgentFail = 21;
+    kAgentError = 22;
 }
 
 enum PodState {
@@ -55,8 +56,12 @@ enum SourceType {
 }
 
 enum AgentState {
+    // in service
     kAlive = 0;
-    kDead = 1;    
+    // agent is dead
+    kDead = 1;
+    // out of service
+    kOffline = 2;
 }
 
 message Volume {
@@ -130,6 +135,11 @@ message PodStatus {
     optional string pod_gc_path = 9;
     optional string version = 10;
     optional int32 priority = 11;
+}
+
+message AgentPersistenceInfo {
+    optional string endpoint = 1;
+    optional AgentState state = 8;
 }
 
 message AgentInfo {
