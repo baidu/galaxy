@@ -301,6 +301,10 @@ def job_all(request):
                                      "trace":request.trace}, "index.html")
 
 @data_center_decorator
+def pod_all(request):
+    galaxy = sdk.GalaxySDK(request.master)
+    galaxy.
+@data_center_decorator
 def job_detail(request):
 
     return util.render_tpl(request, {"dc":request.data_center,"master":request.master,"trace":request.trace, "jobid":request.GET.get("jobid", None)},
