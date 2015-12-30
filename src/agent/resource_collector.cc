@@ -282,8 +282,8 @@ SysStat* GlobalResourceCollector::GetStat() {
     return stat_;
 }
 
-bool GlobalResourceCollector::CollectStatistics() {
-    bool ret = false;
+int GlobalResourceCollector::CollectStatistics() {
+    bool ret = -1;
     do {
         LOG(INFO, "start collect sys stat");
         ResourceStatistics tmp_statistics;
@@ -313,12 +313,12 @@ bool GlobalResourceCollector::CollectStatistics() {
             break;
         }
         stat_->collect_times_++;
-        ret = true;
         if (stat_->collect_times_ < MIN_COLLECT_TIME) {
             LOG(WARNING, "collect times not reach %d", MIN_COLLECT_TIME);
-            ret = true;
+            ret = 1;
             break;
         }
+        ret = 0;
     } while(0); 
     return ret;
 }
@@ -520,9 +520,9 @@ bool GlobalResourceCollector::GetGlobalMemStat(){
             std::vector<std::string> parts;
             boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             if (0 != sscanf(parts[3].c_str(), "rw,size=%dG", &tmpfs_size)) {
-                tmpfs_mem += tmpfs_size * 1024 * 1024 * 1024;
-            } else if (0 != sscanf(parts[3].c_str(), "rw,size=%dM", &tmpfs_size)) {
                 tmpfs_mem += tmpfs_size * 1024 * 1024;
+            } else if (0 != sscanf(parts[3].c_str(), "rw,size=%dM", &tmpfs_size)) {
+                tmpfs_mem += tmpfs_size * 1024;
             }
         }
     }

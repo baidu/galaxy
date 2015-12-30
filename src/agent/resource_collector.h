@@ -182,11 +182,11 @@ private:
     int collector_times_;
 };
 
-class GlobalResourceCollector : public ResourceCollector {
+class GlobalResourceCollector {
 public:
     explicit GlobalResourceCollector();
     virtual ~GlobalResourceCollector();
-    bool CollectStatistics();
+    int CollectStatistics();
     SysStat* GetStat(); 
 private:
     bool GetGlobalCpuStat();

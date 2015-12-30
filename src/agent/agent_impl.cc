@@ -44,8 +44,6 @@ DECLARE_int32(agent_recover_threshold);
 namespace baidu {
 namespace galaxy {
     
-static const uint64_t MIN_COLLECT_TIME = 4;
-
 AgentImpl::AgentImpl() : 
     master_endpoint_(),
     lock_(),
@@ -56,7 +54,7 @@ AgentImpl::AgentImpl() :
     resource_capacity_(),
     master_watcher_(NULL),
     mutex_master_endpoint_(),
-    state_(kAlive) {
+    state_(kInit) {
     rpc_client_ = new RpcClient();    
     endpoint_ = FLAGS_agent_ip;
     endpoint_.append(":");
@@ -259,11 +257,10 @@ void AgentImpl::KillAllPods() {
 void AgentImpl::KeepHeartBeat() {
     MutexLock lock(&mutex_master_endpoint_);
     if (!PingMaster()) {
-        LOG(WARNING, "ping master %s failed", 
-                     master_endpoint_.c_str());
+        LOG(WARNING, "ping master %s failed",master_endpoint_.c_str());
     }
     background_threads_.DelayTask(FLAGS_agent_heartbeat_interval,
-                                  boost::bind(&AgentImpl::KeepHeartBeat, this));
+            boost::bind(&AgentImpl::KeepHeartBeat, this));
     return;
 }
 
@@ -340,6 +337,7 @@ bool AgentImpl::PingMaster() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     request.set_endpoint(endpoint_);
+    LOG(WARNING, "agent %s ping master : %s", endpoint_.c_str(), master_endpoint_.c_str());
     return rpc_client_->SendRequest(master_,
                                     &Master_Stub::HeartBeat,
                                     &request,
@@ -501,9 +499,13 @@ void AgentImpl::ShowPods(::google::protobuf::RpcController* /*cntl*/,
 
 void AgentImpl::CheckSysHealth() {
     bool ret = true;
-    if (false == resource_collector_.CollectStatistics()) {
+    int coll_rlt = resource_collector_.CollectStatistics();
+    if (coll_rlt == -1) {
         LOG(WARNING, "Collect sys stat fail.");
         ret = false;
+    } else if (coll_rlt == 1)  {
+        background_threads_.DelayTask(FLAGS_stat_check_period, boost::bind(&AgentImpl::CheckSysHealth, this));
+        return;
     } else if (fabs(FLAGS_max_cpu_usage) >= 1e-6 
             && resource_collector_.GetStat()->cpu_used_ > FLAGS_max_cpu_usage) {
         LOG(WARNING, "cpu uage %f reach threshold %f",
@@ -572,8 +574,9 @@ void AgentImpl::CheckSysHealth() {
     }
     recover_threshold_++;
     if (ret) {
-        MutexLock scope_lock(&lock_);
-        if (recover_threshold_ > FLAGS_agent_recover_threshold && state_ != kAlive) {
+        if ((recover_threshold_ > FLAGS_agent_recover_threshold 
+                && state_ == kOffline) || state_ == kInit) {
+            MutexLock scope_lock(&lock_);
             state_ = kAlive;
             lock_.Unlock();
             OnlineAgentRequest request;
@@ -588,9 +591,9 @@ void AgentImpl::CheckSysHealth() {
                 LOG(WARNING, "send online request fail");
             }
         }
-    }else {
-        MutexLock scope_lock(&lock_);
+    } else {
         if (state_ != kOffline) {
+            MutexLock scope_lock(&lock_);
             state_ = kOffline;
             recover_threshold_ = 0;
             KillAllPods();
