@@ -162,7 +162,7 @@ void AgentImpl::RunPod(::google::protobuf::RpcController* /*cntl*/,
     do {
         MutexLock scope_lock(&lock_);
         if (state_ == kOffline) {
-            resp->set_status(kAgentOffline);
+            resp->set_status(kAgentError);
             lock_.Unlock();
             OfflineAgentRequest request;
             OfflineAgentResponse response;
