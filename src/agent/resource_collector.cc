@@ -313,6 +313,7 @@ bool GlobalResourceCollector::CollectStatistics() {
             break;
         }
         stat_->collect_times_++;
+        ret = true;
         if (stat_->collect_times_ < MIN_COLLECT_TIME) {
             LOG(WARNING, "collect times not reach %d", MIN_COLLECT_TIME);
             ret = true;
@@ -506,13 +507,15 @@ bool GlobalResourceCollector::GetGlobalMemStat(){
         LOG(WARNING, "open proc stat fail.");
         return false;
     }
-    std::string mtab;
-    stat >> mtab;
+    std::ostringstream tmp;
+    tmp << stat.rdbuf();
+    std::string mtab = tmp.str();
     stat.close();
     boost::split(lines, mtab, boost::is_any_of("\n"));
     for (size_t n = 0; n < lines.size(); n++) {
         std::string line = lines[n];
         if (line.find("tmpfs") == 0) {
+            boost::trim(line);
             int tmpfs_size = 0;
             std::vector<std::string> parts;
             boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
@@ -546,6 +549,7 @@ bool GlobalResourceCollector::GetGlobalIntrStat() {
     for (size_t n = 0; n < lines.size(); n++) {
         std::string line = lines[n];
         if (line.find("intr") != std::string::npos) {
+            boost::trim(line);
             std::vector<std::string> parts;
             boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             intr_cnt = boost::lexical_cast<int64_t>(parts[1]);
@@ -571,9 +575,11 @@ bool GlobalResourceCollector::GetGlobalIOStat() {
         LOG(WARNING, "open proc stat fail.");
         return false;
     }
-    std::string content;
-    stat >> content;
+    std::ostringstream tmp;
+    tmp << stat.rdbuf(); 
+    std::string content = tmp.str();
     stat.close();
+    boost::trim(content);
     std::vector<std::string> parts;
     boost::split(parts, content, boost::is_any_of(" "), boost::token_compress_on);
     stat_->last_stat_ = stat_->cur_stat_;
@@ -632,8 +638,9 @@ bool GlobalResourceCollector::GetGlobalNetStat() {
         LOG(WARNING, "open dev stat fail.");
         return false;
     }
-    std::string content;
-    stat >> content;
+    std::ostringstream tmp;
+    tmp << stat.rdbuf();
+    std::string content = tmp.str();
     stat.close();
     stat_->last_stat_ = stat_->cur_stat_;
     std::vector<std::string> lines;
@@ -642,13 +649,14 @@ bool GlobalResourceCollector::GetGlobalNetStat() {
         std::string line = lines[n];
         if (line.find("eth0") != std::string::npos || 
                 line.find("xgbe0") != std::string::npos) {
+            boost::trim(line);
             std::vector<std::string> parts;
             boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
             std::vector<std::string> tokens;
             boost::split(tokens, parts[0], boost::is_any_of(":"));
             stat_->cur_stat_.net_in_bits = boost::lexical_cast<int64_t>(tokens[1]);
             stat_->cur_stat_.net_in_packets = boost::lexical_cast<int64_t>(parts[1]);
-            stat_->cur_stat_.net_out_bits = boost::lexical_cast<int64_t>(tokens[8]);
+            stat_->cur_stat_.net_out_bits = boost::lexical_cast<int64_t>(parts[8]);
             stat_->cur_stat_.net_out_packets = boost::lexical_cast<int64_t>(parts[9]);
         }
         continue;
