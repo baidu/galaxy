@@ -8,7 +8,7 @@
 #
 # processname: galaxy
 
-
+PROD_ADDR=ftp://xxxxxx/tmp/galaxy.tar.gz
 . /etc/rc.d/init.d/functions
 AGENT_IP=`hostname -i`
 AGENT_HOME=/home/galaxy/agent
@@ -38,7 +38,7 @@ init() {
 
 download_pkg() {
     cd $AGENT_HOME
-    wget -O tmp.tar.gz ftp://yq01-tera1.yq01.baidu.com/tmp/galaxy.tar.gz
+    wget -O tmp.tar.gz $PROD_ADDR
     tar -zxvf tmp.tar.gz
     cpu_count=`cat /proc/cpuinfo | grep processor | wc -l`
     cpu_share_count=`echo $(($cpu_count * 78 / 100 *1000))`
