@@ -37,6 +37,8 @@ public:
     bool SwitchSafeMode(bool mode);
     bool Preempt(const PreemptPropose& propose);
     bool GetMasterAddr(std::string* master_addr);
+    bool OfflineAgent(const std::string& agent_addr);
+    bool OnlineAgent(const std::string& agent_addr);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -46,6 +48,44 @@ private:
     std::string master_key_;
     ::galaxy::ins::sdk::InsSDK* nexus_; 
 };
+
+bool GalaxyImpl::OnlineAgent(const std::string& agent_addr) {
+    OnlineAgentRequest request;
+    OnlineAgentResponse response;
+    request.set_endpoint(agent_addr);
+    Master_Stub* master = NULL;
+    bool  ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    bool ret = rpc_client_->SendRequest(master, &Master_Stub::OnlineAgent,
+                                        &request, &response, 5, 1);
+    if (!ret || 
+            (response.has_status() 
+            && response.status() != kOk)) {
+        return false;     
+    }    
+    return true;
+}
+
+bool GalaxyImpl::OfflineAgent(const std::string& agent_addr) {
+    OfflineAgentRequest request;
+    OfflineAgentResponse response;
+    request.set_endpoint(agent_addr);
+    Master_Stub* master = NULL;
+    bool  ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    bool ret = rpc_client_->SendRequest(master, &Master_Stub::OfflineAgent,
+                                        &request, &response, 5, 1);
+    if (!ret || 
+            (response.has_status() 
+            && response.status() != kOk)) {
+        return false;     
+    }    
+    return true;
+}
 
 bool GalaxyImpl::Preempt(const PreemptPropose& propose) {
     PreemptRequest request;

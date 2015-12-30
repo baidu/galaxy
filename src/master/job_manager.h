@@ -113,6 +113,7 @@ typedef boost::multi_index::index<PreemptTaskSet, addr_tag>::type PreemptTaskAdd
 
 class JobManager {
 public:
+    void Start();
     Status Add(const JobId& job_id, const JobDescriptor& job_desc);
     Status Update(const JobId& job_id, const JobDescriptor& job_desc);
     Status Suspend(const JobId& jobid);
@@ -142,6 +143,7 @@ public:
     void KeepAlive(const std::string& agent_addr);
     void DeployPod();
     void ReloadJobInfo(const JobInfo& job_info);
+    void ReloadAgent(const AgentPersistenceInfo& agent);
     Status SetSafeMode(bool mode);
     Status LabelAgents(const LabelCell& label_cell);
     bool GetJobIdByName(const std::string& job_name, std::string* jobid);
@@ -150,13 +152,16 @@ public:
     bool Preempt(const PreemptEntity& pending_pod,
                  const std::vector<PreemptEntity>& preempted_pods,
                  const std::string& addr);
+    bool OfflineAgent(const std::string& endpoints);
+    bool OnlineAgent(const std::string& endpoints);
 private:
     void SuspendPod(PodStatus* pod);
     void ResumePod(PodStatus* pod);
     Status AcquireResource(const PodStatus* pod, AgentInfo* agent);
     void GetPodRequirement(const PodStatus* pod, Resource* requirement);
     void CalculatePodRequirement(const PodDescriptor& pod_desc, Resource* pod_requirement);
-    void HandleAgentOffline(const std::string agent_addr);
+    void HandleAgentOffline(const std::string& agent_addr);
+    void HandleAgentDead(const std::string agent_addr);
     void ReschedulePod(PodStatus* pod_status);
     bool CheckSafeModeManual(bool& mode);
     bool SaveSafeMode(bool mode);
@@ -210,6 +215,7 @@ private:
 
     void CleanJob(const JobId& jobid);
     bool SaveToNexus(const Job* job);
+    bool SaveAgentToNexus(const AgentPersistenceInfo& agent);
     bool SaveLabelToNexus(const LabelCell& label_cell);
     bool DeleteFromNexus(const JobId& jobid);
 
@@ -223,6 +229,7 @@ private:
     void TraceJobStat(const std::string& jobid);
     void TraceClusterStat();
     void ProcessPreemptTask(const std::string& task_id);
+    void StopPodsOnAgent(const std::string& endpoint);
 private:
     std::map<JobId, Job*> jobs_;
     JobSet* job_index_;
@@ -235,11 +242,13 @@ private:
     std::map<AgentAddr, PodMap> pods_on_agent_;
     std::map<AgentAddr, AgentInfo*> agents_;
     std::map<AgentAddr, int64_t> agent_timer_;
+    // agent some custom settings eg mark agent offline
+    std::map<AgentAddr, AgentPersistenceInfo*> agent_custom_infos_;
     ThreadPool death_checker_;
     ThreadPool thread_pool_;
     ThreadPool trace_pool_;
     ThreadPool preempt_pool_;
-    Mutex mutex_;   
+    Mutex mutex_;
     Mutex mutex_timer_;
     RpcClient rpc_client_;
     int64_t on_query_num_;
@@ -265,8 +274,7 @@ private:
     // nexus
     ::galaxy::ins::sdk::InsSDK* nexus_;
 
-    CondVar pod_cv_;
-   
+    CondVar pod_cv_; 
 };
 
 }
