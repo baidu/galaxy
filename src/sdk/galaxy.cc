@@ -37,6 +37,8 @@ public:
     bool SwitchSafeMode(bool mode);
     bool Preempt(const PreemptPropose& propose);
     bool GetMasterAddr(std::string* master_addr);
+    bool OfflineAgent(const std::string& agent_addr);
+    bool OnlineAgent(const std::string& agent_addr);
 private:
     bool FillJobDescriptor(const JobDescription& sdk_job, JobDescriptor* job);
     void FillResource(const Resource& res, ResDescription* res_desc);
@@ -46,6 +48,44 @@ private:
     std::string master_key_;
     ::galaxy::ins::sdk::InsSDK* nexus_; 
 };
+
+bool GalaxyImpl::OnlineAgent(const std::string& agent_addr) {
+    OnlineAgentRequest request;
+    OnlineAgentResponse response;
+    request.set_endpoint(agent_addr);
+    Master_Stub* master = NULL;
+    bool  ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    bool ret = rpc_client_->SendRequest(master, &Master_Stub::OnlineAgent,
+                                        &request, &response, 5, 1);
+    if (!ret || 
+            (response.has_status() 
+            && response.status() != kOk)) {
+        return false;     
+    }    
+    return true;
+}
+
+bool GalaxyImpl::OfflineAgent(const std::string& agent_addr) {
+    OfflineAgentRequest request;
+    OfflineAgentResponse response;
+    request.set_endpoint(agent_addr);
+    Master_Stub* master = NULL;
+    bool  ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    bool ret = rpc_client_->SendRequest(master, &Master_Stub::OfflineAgent,
+                                        &request, &response, 5, 1);
+    if (!ret || 
+            (response.has_status() 
+            && response.status() != kOk)) {
+        return false;     
+    }    
+    return true;
+}
 
 bool GalaxyImpl::Preempt(const PreemptPropose& propose) {
     PreemptRequest request;
@@ -238,6 +278,10 @@ void GalaxyImpl::FillResource(const Resource& res, ResDescription* res_desc) {
         vol.path = res.disks(j).path();
         res_desc->disks.push_back(vol);
     }
+    res_desc->read_bytes_ps = res.read_bytes_ps();
+    res_desc->write_bytes_ps = res.write_bytes_ps();
+    res_desc->syscr_ps = res.syscr_ps();
+    res_desc->syscw_ps = res.syscw_ps();
 }
 
 
@@ -316,6 +360,10 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.cpu_used = job.resource_used().millicores();
         job_info.mem_used = job.resource_used().memory();
         job_info.is_batch = (job.desc().type() == kBatch);
+        job_info.read_bytes_ps = job.resource_used().read_bytes_ps();
+        job_info.write_bytes_ps = job.resource_used().write_bytes_ps();
+        job_info.syscr_ps = job.resource_used().syscr_ps();
+        job_info.syscw_ps = job.resource_used().syscw_ps();
         job_info.state = JobState_Name(job.state());
         job_info.death_num = job.death_num();
         job_info.create_time = job.create_time();

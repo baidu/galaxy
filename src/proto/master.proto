@@ -128,6 +128,11 @@ message JobOverview {
     optional int32 death_num = 8;
     optional int64 create_time = 9;
     optional int64 update_time = 10;
+    optional int64 read_bytes_ps = 11;
+    optional int64 write_bytes_ps = 12;
+    optional int64 syscr_ps = 13;
+    optional int64 syscw_ps = 14;
+
 }
 
 message ListJobsResponse {
@@ -320,6 +325,22 @@ message PreemptResponse {
     optional Status status = 1;
 }
 
+message OfflineAgentRequest {
+    optional string endpoint = 1;
+}
+
+message OfflineAgentResponse {
+    optional Status status = 1;
+}
+
+message OnlineAgentRequest {
+    optional string endpoint = 1;
+}
+
+message OnlineAgentResponse {
+    optional Status status = 1;
+}
+
 service Master {
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
@@ -345,6 +366,9 @@ service Master {
     rpc GetJobDescriptor(GetJobDescriptorRequest) returns (GetJobDescriptorResponse);
     rpc Propose(ProposeRequest) returns (ProposeResponse);
     rpc Preempt(PreemptRequest) returns (PreemptResponse);
+
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
     rpc LabelAgents(LabelAgentRequest) returns (LabelAgentResponse);
+    rpc OfflineAgent(OfflineAgentRequest) returns (OfflineAgentResponse);
+    rpc OnlineAgent(OnlineAgentRequest) returns (OnlineAgentResponse);
 }

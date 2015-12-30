@@ -34,6 +34,7 @@
             <th>replica</th> 
             <th>cpu</th> 
             <th>memory</th> 
+            <th>disk(r/w)</th> 
           </tr>
        </thead> 
         {% for job in jobs%}
@@ -46,6 +47,7 @@
                <td>{{job.desc.replica}}</td>
                <td>{{job.resource_used.millicores}}</td>
                <td>{{job.resource_used.memory | filesizeformat}}</td>
+               <td>{{job.resource_used.read_bytes_ps | filesizeformat}}/s / {{job.resource_used.write_bytes_ps | filesizeformat}}/s</td>
            </tr>
         {%endfor%}
     </table>
