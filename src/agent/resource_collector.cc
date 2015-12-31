@@ -422,8 +422,8 @@ bool GlobalResourceCollector::GetGlobalMemStat(){
         return false;
     }
     std::string content;
- 	char buf[1024];
- 	int len = 0;
+    char buf[1024];
+    int len = 0;
     while ((len = fread(buf, 1, sizeof(buf), fp)) > 0) {
         content.append(buf, len);
     }
@@ -468,37 +468,7 @@ bool GlobalResourceCollector::GetGlobalMemStat(){
         }
     }
     fclose(fp);
-#if 0    
-    FILE* fin = popen("df -h", "r");
-    if (fin != NULL) {
-        std::string content;
-        char buf[1024];
-        int len = 0;
-        while ((len = fread(buf, 1, sizeof(buf), fin)) > 0) {
-            content.append(buf, len);
-        }
-        std::vector<std::string> lines;
-        boost::split(lines, content, boost::is_any_of("\n"));
-        for (size_t n = 0; n < lines.size(); n++) {
-            std::string line = lines[n];
-            if (line.find("tmpfs") != std::string::npos) {
-                std::vector<std::string> parts;
-                boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-                tmpfs_mem = boost::lexical_cast<int64_t>(parts[1]);
-                LOG(WARNING, "detect tmpfs %s %d", parts[1].c_str(), tmpfs_mem);
-                tmpfs_mem = tmpfs_mem * 1024 * 1024 * 1024;
-                break;
-            } else {
-                continue;
-            }
-        }
-    } else {
-        LOG(WARNING, "popen df -h err");
-    }
-    if (pclose(fin) == -1) {
-        LOG(WARNING, "pclose err");
-    }
-#endif 
+    
     std::string path = "/etc/mtab";
     std::ifstream stat(path.c_str());
     if (!stat.is_open()) {
@@ -526,7 +496,6 @@ bool GlobalResourceCollector::GetGlobalMemStat(){
     }
 
     stat_->mem_used_ = (total_mem - free_mem - buffer_mem - cache_mem + tmpfs_mem) / boost::lexical_cast<double>(total_mem);
-
     return true;
 }
 
@@ -589,43 +558,6 @@ bool GlobalResourceCollector::GetGlobalIOStat() {
     stat_->disk_write_Bps_ = (stat_->cur_stat_.wr_sectors - stat_->last_stat_.wr_sectors) / FLAGS_stat_check_period * 1000;
     return true;
 }
-
-#if 0
-bool AgentImpl::GetGlobalIOStat() {
-    FILE *fin = popen("iostat -x", "r");
-    if (fin != NULL) {
-        char buf[1024];
-        int len = 0;
-        std::string content;
-        while ((len = fread(buf, 1, sizeof(buf), fin)) > 0) {
-            content.append(buf, len);
-        }
-        std::vector<std::string> lines;
-        boost::split(lines, content, boost::is_any_of("\n"));
-        for (size_t n = 0; n < lines.size(); n++) {
-            std::string line = lines[n];
-            if (line.find("sda") != std::string::npos) {
-                std::vector<std::string> parts;
-                boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
-                stat_->disk_read_times_ = boost::lexical_cast<double>(parts[3]);
-                stat_->disk_write_times_ = boost::lexical_cast<double>(parts[4]);
-                stat_->disk_read_Bps_ = boost::lexical_cast<double>(parts[5]);
-                stat_->disk_write_Bps_ = boost::lexical_cast<double>(parts[6]);
-                stat_->disk_io_util_ = boost::lexical_cast<double>(parts[parts.size() - 1]);
-                break;
-            } else {
-                continue;
-            }
-        }
-    }else {
-        LOG(WARNING, "popen iostat fail err_code");
-    }
-    if (pclose(fin) == -1) {
-        LOG(WARNING, "pclose err");
-    }
-    return true;
-}
-#endif
 
 bool GlobalResourceCollector::GetGlobalNetStat() {
     std::string path = "/proc/net/dev";

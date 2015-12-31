@@ -27,6 +27,7 @@ DECLARE_int32(agent_millicores_share);
 DECLARE_int64(agent_mem_share);
 
 DECLARE_string(agent_persistence_path);
+DECLARE_bool(enable_resource_minitor);
 DECLARE_int32(stat_check_period);
 DECLARE_double(max_cpu_usage);
 DECLARE_double(max_mem_usage);
@@ -335,8 +336,9 @@ bool AgentImpl::Init() {
     background_threads_.DelayTask(
                 500, 
                 boost::bind(&AgentImpl::LoopCheckPods, this)); 
-    
-    background_threads_.AddTask(boost::bind(&AgentImpl::CheckSysHealth, this));
+    if (FLAGS_enable_resource_minitor) {
+        background_threads_.AddTask(boost::bind(&AgentImpl::CheckSysHealth, this));
+    }
     return true;
 }
 
