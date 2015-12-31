@@ -1769,6 +1769,7 @@ void JobManager::HandleLostPod(const AgentAddr& addr, const PodMap& pods_not_on_
             if (p_it->second->stage() == kStageFinished) {
                 ChangeStage(reason, kStageDeath, p_it->second, job_it->second);
             } else {
+                p_it->second->set_stage(kStageDeath);
                 ChangeStage(reason, kStagePending, p_it->second, job_it->second);
             }
         }
