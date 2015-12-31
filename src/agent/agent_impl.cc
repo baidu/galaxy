@@ -565,7 +565,7 @@ void AgentImpl::CheckSysHealth() {
         LOG(WARNING, "disk io util %f reach threshold %f", 
                 resource_collector_.GetStat()->disk_io_util_, FLAGS_max_disk_util);
         ret = false;
-    } else if (fabs(FLAGS_max_net_in_bps) >= 1e-6 != 0
+    } else if (fabs(FLAGS_max_net_in_bps) >= 1e-6
             && resource_collector_.GetStat()->net_in_bps_ > FLAGS_max_net_in_bps) {
         LOG(WARNING, "net in bps %f reach threshold %f",
                 resource_collector_.GetStat()->net_in_bps_, FLAGS_max_net_in_bps);
