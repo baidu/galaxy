@@ -17,6 +17,7 @@ enum Status {
     kJobTerminateFail = 19;
     kRpcError = 20;
     kLabelAgentFail = 21;
+    kAgentError = 22;
 }
 
 enum PodState {
@@ -55,8 +56,12 @@ enum SourceType {
 }
 
 enum AgentState {
+    // in service
     kAlive = 0;
-    kDead = 1;    
+    // agent is dead
+    kDead = 1;
+    // out of service
+    kOffline = 2;
 }
 
 message Volume {
@@ -69,7 +74,11 @@ message Resource {
     optional int64 memory = 2;
     repeated int32 ports = 3;
     repeated Volume disks = 4;
-    repeated Volume ssds = 5; 
+    repeated Volume ssds = 5;
+    optional int64 read_bytes_ps = 6;
+    optional int64 write_bytes_ps = 7;
+    optional int64 syscr_ps = 8;
+    optional int64 syscw_ps = 9;
 }
 
 enum MemIsolationType {
@@ -119,6 +128,7 @@ message TaskStatus {
     optional TaskState state = 5;
 }
 
+
 message PodStatus {
     optional string podid = 1;
     optional string jobid = 2;
@@ -130,6 +140,11 @@ message PodStatus {
     optional string pod_gc_path = 9;
     optional string version = 10;
     optional int32 priority = 11;
+}
+
+message AgentPersistenceInfo {
+    optional string endpoint = 1;
+    optional AgentState state = 8;
 }
 
 message AgentInfo {

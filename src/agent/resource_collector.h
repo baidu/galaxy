@@ -6,7 +6,9 @@
 #define _SRC_AGENT_RESOURCE_COLLECTOR_H
 
 #include <string>
-
+#include <stdint.h>
+#include <map>
+#include <vector>
 namespace baidu {
 namespace galaxy {
 
@@ -64,6 +66,32 @@ struct CgroupResourceStatistics {
     }
 };
 
+//
+struct ProcIOStatistics {
+    int64_t rchar;
+    int64_t wchar;
+    int64_t syscr;
+    int64_t syscw;
+    int64_t read_bytes;
+    int64_t write_bytes;
+    int64_t cancelled_write_bytes;
+};
+
+struct CGroupIOStatistics{
+    std::map<int, ProcIOStatistics> processes;
+};
+
+class CGroupIOCollector{
+
+public:
+    CGroupIOCollector();
+    ~CGroupIOCollector();
+    static bool Collect(const std::string& cgroup_path,
+                        CGroupIOStatistics* stat);
+private:
+    static bool GetProcIOStat(int pid, ProcIOStatistics* stat);
+};
+
 class CGroupResourceCollector : public ResourceCollector {
 public:
     explicit CGroupResourceCollector(const std::string& mem_path, 
@@ -113,6 +141,9 @@ private:
     double timestamp_cur_;
     int collector_times_;
 };
+
+
+
 
 }   // ending namespace galaxy
 }   // ending namespace baidu

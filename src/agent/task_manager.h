@@ -32,6 +32,7 @@ protected:
     int PrepareWorkspace(TaskInfo* task_info);
     int PrepareCgroupEnv(TaskInfo* task_info); 
     int PrepareResourceCollector(TaskInfo* task_info);
+    int PrepareIOCollector(TaskInfo* task_info);
     int PrepareVolumeEnv(TaskInfo* task_info);
 
     int CleanWorkspace(TaskInfo* task_info);
@@ -81,6 +82,7 @@ protected:
     bool KillTask(TaskInfo* task);
 
     void MemoryCheck(const std::string& task_id);
+    void CollectIO(const std::string& task_id);
 protected:
     Mutex tasks_mutex_;
     std::map<std::string, TaskInfo*> tasks_;
