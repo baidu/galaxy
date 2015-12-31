@@ -146,7 +146,6 @@ message ShowJobResponse {
 
 message HeartBeatRequest {
     optional string endpoint = 1;
-    optional AgentState state = 2;
 }
 
 message HeartBeatResponse {

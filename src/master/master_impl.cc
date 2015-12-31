@@ -245,10 +245,6 @@ void MasterImpl::HeartBeat(::google::protobuf::RpcController* /*controller*/,
                           ::baidu::galaxy::HeartBeatResponse*,
                           ::google::protobuf::Closure* done) {
     std::string agent_addr = request->endpoint();
-    if (request->state() == kOffline) {
-        //todo
-        return;
-    }
     job_manager_.KeepAlive(agent_addr);
     done->Run();
 }

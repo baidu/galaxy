@@ -56,14 +56,14 @@ enum SourceType {
 }
 
 enum AgentState {
-    // init
-    kInit = 0;
     // in service
-    kAlive = 1;
+    kAlive = 0;
     // agent is dead
-    kDead = 2;
+    kDead = 1;
     // out of service
-    kOffline = 3;
+    kOffline = 2;
+    // init
+    kInit = 3;
 }
 
 message Volume {

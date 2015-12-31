@@ -287,7 +287,7 @@ int GlobalResourceCollector::CollectStatistics() {
     bool ret = -1;
     do {
         LOG(INFO, "start collect sys stat");
-        ResourceStatistics tmp_statistics;
+        stat_->last_stat_ = stat_->cur_stat_;        
         bool ok = GetGlobalCpuStat();
         if (!ok) {
             LOG(WARNING, "fail to get cpu usage");
@@ -343,20 +343,19 @@ bool GlobalResourceCollector::GetGlobalCpuStat() {
         return false;
     }
     fclose(fin);
-
     char cpu[5];
     int item_size = sscanf(line, 
                            "%s %ld %ld %ld %ld %ld %ld %ld %ld %ld", 
                            cpu,
-                           &(statistics.cpu_user_time),
-                           &(statistics.cpu_nice_time),
-                           &(statistics.cpu_system_time),
-                           &(statistics.cpu_idle_time),
-                           &(statistics.cpu_iowait_time),
-                           &(statistics.cpu_irq_time),
-                           &(statistics.cpu_softirq_time),
-                           &(statistics.cpu_stealstolen),
-                           &(statistics.cpu_guest)); 
+                           &(stat_->cur_stat_.cpu_user_time),
+                           &(stat_->cur_stat_.cpu_nice_time),
+                           &(stat_->cur_stat_.cpu_system_time),
+                           &(stat_->cur_stat_.cpu_idle_time),
+                           &(stat_->cur_stat_.cpu_iowait_time),
+                           &(stat_->cur_stat_.cpu_irq_time),
+                           &(stat_->cur_stat_.cpu_softirq_time),
+                           &(stat_->cur_stat_.cpu_stealstolen),
+                           &(stat_->cur_stat_.cpu_guest)); 
 
     free(line); 
     line = NULL;
@@ -364,8 +363,6 @@ bool GlobalResourceCollector::GetGlobalCpuStat() {
         LOG(WARNING, "read from /proc/stat format err"); 
         return false;
     }
-    stat_->last_stat_ = stat_->cur_stat_;
-    stat_->cur_stat_ = statistics;
     long total_cpu_time_last = 
     stat_->last_stat_.cpu_user_time
     + stat_->last_stat_.cpu_nice_time
@@ -561,7 +558,6 @@ bool GlobalResourceCollector::GetGlobalIntrStat() {
         }
         continue;
     }
-    stat_->last_stat_ = stat_->cur_stat_;
     stat_->cur_stat_.interupt_times = intr_cnt;
     stat_->cur_stat_.soft_interupt_times = softintr_cnt;
     stat_->intr_rate_ = (stat_->cur_stat_.interupt_times - stat_->last_stat_.interupt_times) / FLAGS_stat_check_period * 1000; 
@@ -583,15 +579,14 @@ bool GlobalResourceCollector::GetGlobalIOStat() {
     boost::trim(content);
     std::vector<std::string> parts;
     boost::split(parts, content, boost::is_any_of(" "), boost::token_compress_on);
-    stat_->last_stat_ = stat_->cur_stat_;
     stat_->cur_stat_.rd_ios = boost::lexical_cast<int64_t>(parts[0]);
     stat_->cur_stat_.rd_sectors = boost::lexical_cast<int64_t>(parts[2]);
     stat_->cur_stat_.wr_ios = boost::lexical_cast<int64_t>(parts[4]);
     stat_->cur_stat_.wr_sectors = boost::lexical_cast<int64_t>(parts[6]);
-    stat_->disk_read_times_ = (stat_->cur_stat_.rd_ios - stat_->last_stat_.rd_ios) / FLAGS_stat_check_period;
-    stat_->disk_write_times_ = (stat_->cur_stat_.wr_ios - stat_->last_stat_.wr_ios) / FLAGS_stat_check_period;
-    stat_->disk_read_Bps_ = (stat_->cur_stat_.rd_sectors - stat_->last_stat_.rd_sectors) / FLAGS_stat_check_period;
-    stat_->disk_write_Bps_ = (stat_->cur_stat_.wr_sectors - stat_->last_stat_.wr_sectors) / FLAGS_stat_check_period;
+    stat_->disk_read_times_ = (stat_->cur_stat_.rd_ios - stat_->last_stat_.rd_ios) / FLAGS_stat_check_period * 1000;
+    stat_->disk_write_times_ = (stat_->cur_stat_.wr_ios - stat_->last_stat_.wr_ios) / FLAGS_stat_check_period * 1000;
+    stat_->disk_read_Bps_ = (stat_->cur_stat_.rd_sectors - stat_->last_stat_.rd_sectors) / FLAGS_stat_check_period * 1000;
+    stat_->disk_write_Bps_ = (stat_->cur_stat_.wr_sectors - stat_->last_stat_.wr_sectors) / FLAGS_stat_check_period * 1000;
     return true;
 }
 
@@ -643,7 +638,6 @@ bool GlobalResourceCollector::GetGlobalNetStat() {
     tmp << stat.rdbuf();
     std::string content = tmp.str();
     stat.close();
-    stat_->last_stat_ = stat_->cur_stat_;
     std::vector<std::string> lines;
     boost::split(lines, content, boost::is_any_of("\n"));
     for (size_t n = 0; n < lines.size(); n++) {

@@ -614,15 +614,16 @@ void AgentImpl::CheckSysHealth() {
                 mutex_master_endpoint_.Unlock();
                 MutexLock scope_lock(&lock_);
                 state_ = kAlive;
+                LOG(WARNING, "agent state Alive.");
             }
         }
     } else {
+        recover_threshold_ = 0;
         if (state_ != kOffline) {
             MutexLock scope_lock(&lock_);
             state_ = kOffline;
-            recover_threshold_ = 0;
             KillAllPods();
-            LOG(WARNING, "sys health checker kill all pods");
+            LOG(WARNING, "agent state offline, sys health checker kill all pods");
             lock_.Unlock();
             OfflineAgentRequest request;
             OfflineAgentResponse response;
