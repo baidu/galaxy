@@ -18,3 +18,7 @@ sh build.sh
 
 ## 使用client
 参照[galaxy-cli.md](doc/galaxy-cli.md)
+
+## 欢迎加入
+如果你热爱开源，热爱分布式技术，可以把你的信息发送至： 
+dist-lab@baidu.com
