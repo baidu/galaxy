@@ -340,6 +340,7 @@ void MasterImpl::ShowPod(::google::protobuf::RpcController* /*controller*/,
     response->set_status(kInputError);
     do {
         std::string job_id;
+        std::string agent_addr;
         if (request->has_jobid()) {
             job_id = request->jobid();
         } else if (request->has_name()) {
@@ -347,14 +348,49 @@ void MasterImpl::ShowPod(::google::protobuf::RpcController* /*controller*/,
             if (!ok) {
                 break;
             }
+        } else if (request->has_endpoint()) {
+            agent_addr = request->endpoint();
         }
         if (!job_id.empty()) {
             Status ok = job_manager_.GetPods(job_id, 
                                      response->mutable_pods());
             response->set_status(ok);
+        }else if (!agent_addr.empty()) {
+            Status ok = job_manager_.GetPodsByAgent(agent_addr, 
+                                     response->mutable_pods());
+            response->set_status(ok);
         }
     }while(0);
     done->Run(); 
+}
+
+
+void MasterImpl::ShowTask(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::ShowTaskRequest* request,
+                           ::baidu::galaxy::ShowTaskResponse* response,
+                           ::google::protobuf::Closure* done) {
+    response->set_status(kInputError);
+    do {
+        std::string job_id;
+        std::string agent_addr;
+        if (request->has_jobid()) {
+            job_id = request->jobid();
+        }else if (request->has_endpoint()) {
+            agent_addr = request->endpoint();
+        }
+        if (!job_id.empty()) {
+            Status ok = job_manager_.GetTaskByJob(job_id, 
+                                     response->mutable_tasks());
+            response->set_status(ok);
+        }else if (!agent_addr.empty()) {
+            Status ok = job_manager_.GetTaskByAgent(agent_addr, 
+                                     response->mutable_tasks());
+            response->set_status(ok);
+        }
+    }while(0);
+    done->Run(); 
+
+
 }
 
 void MasterImpl::GetStatus(::google::protobuf::RpcController*,

@@ -33,6 +33,13 @@ public:
                  std::vector<PodInformation>* pods);
     bool GetPodsByName(const std::string& jobname,
                  std::vector<PodInformation>* pods);
+    bool GetPodsByAgent(const std::string& endpoint,
+                        std::vector<PodInformation>* pods);
+    bool GetTasksByJob(const std::string& jobid,
+                      std::vector<TaskInformation>* tasks);
+    bool GetTasksByAgent(const std::string& endpoint,
+                      std::vector<TaskInformation>* tasks);
+
     bool GetStatus(MasterStatus* status);
     bool SwitchSafeMode(bool mode);
     bool Preempt(const PreemptPropose& propose);
@@ -260,6 +267,69 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     return true;
 }
 
+bool GalaxyImpl::GetTasksByJob(const std::string& jobid,
+                               std::vector<TaskInformation>* tasks) {
+    ShowTaskRequest request;
+    request.set_jobid(jobid);
+    ShowTaskResponse response;
+    Master_Stub* master = NULL;
+    bool ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    boost::scoped_ptr<Master_Stub> scoped_master(master);
+    ok = rpc_client_->SendRequest(master, &Master_Stub::ShowTask,
+                                  &request,&response, 5, 1);
+
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.tasks_size(); i++) {
+        const TaskOverview& task_overview = response.tasks(i);
+        TaskInformation task_info;
+        task_info.podid = task_overview.podid();
+        task_info.state = TaskState_Name(task_overview.state());
+        task_info.endpoint = task_overview.endpoint();
+        task_info.deploy_time = task_overview.deploy_time();
+        task_info.start_time = task_overview.start_time(); 
+        FillResource(task_overview.used(), &task_info.used);
+        tasks->push_back(task_info);
+    }
+    return true;
+
+}
+
+bool GalaxyImpl::GetTasksByAgent(const std::string& endpoint,
+                                 std::vector<TaskInformation>* tasks) {
+    ShowTaskRequest request;
+    request.set_endpoint(endpoint);
+    ShowTaskResponse response;
+    Master_Stub* master = NULL;
+    bool ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    boost::scoped_ptr<Master_Stub> scoped_master(master);
+    ok = rpc_client_->SendRequest(master, &Master_Stub::ShowTask,
+                             &request,&response, 5, 1);
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.tasks_size(); i++) {
+        const TaskOverview& task_overview = response.tasks(i);
+        TaskInformation task_info;
+        task_info.podid = task_overview.podid();
+        task_info.state = TaskState_Name(task_overview.state());
+        task_info.endpoint = task_overview.endpoint();
+        task_info.deploy_time = task_overview.deploy_time();
+        task_info.start_time = task_overview.start_time(); 
+        FillResource(task_overview.used(), &task_info.used);
+        tasks->push_back(task_info);
+    }
+    return true;
+}
+
+
 void GalaxyImpl::FillResource(const Resource& res, ResDescription* res_desc) {
     res_desc->millicores = res.millicores();
     res_desc->memory = res.memory();
@@ -365,6 +435,9 @@ bool GalaxyImpl::ListJobs(std::vector<JobInformation>* jobs) {
         job_info.syscr_ps = job.resource_used().syscr_ps();
         job_info.syscw_ps = job.resource_used().syscw_ps();
         job_info.state = JobState_Name(job.state());
+        job_info.death_num = job.death_num();
+        job_info.create_time = job.create_time();
+        job_info.update_time = job.update_time();
         jobs->push_back(job_info);
     }
     return true;
@@ -394,12 +467,50 @@ bool GalaxyImpl::ShowPod(const std::string& jobid,
         pod_info.state = PodState_Name(pod_overview.state());
         pod_info.version = pod_overview.version();
         pod_info.endpoint = pod_overview.endpoint();
+        pod_info.pending_time = pod_overview.pending_time();
+        pod_info.sched_time = pod_overview.sched_time();
+        pod_info.start_time = pod_overview.start_time();
         FillResource(pod_overview.used(), &pod_info.used);
         FillResource(pod_overview.assigned(), &pod_info.assigned);
         pods->push_back(pod_info);
     }
     return true;
 
+}
+
+bool GalaxyImpl::GetPodsByAgent(const std::string& endpoint,
+                                std::vector<PodInformation>* pods) {
+    ShowPodRequest request;
+    request.set_endpoint(endpoint);
+    ShowPodResponse response;
+    Master_Stub* master = NULL;
+    bool ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    boost::scoped_ptr<Master_Stub> scoped_master(master);
+    ok = rpc_client_->SendRequest(master, &Master_Stub::ShowPod,
+                             &request,&response, 5, 1);
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.pods_size(); i++) {
+        const PodOverview& pod_overview = response.pods(i);
+        PodInformation pod_info;
+        pod_info.jobid = pod_overview.jobid();
+        pod_info.podid = pod_overview.podid();
+        pod_info.stage = PodStage_Name(pod_overview.stage());
+        pod_info.state = PodState_Name(pod_overview.state());
+        pod_info.version = pod_overview.version();
+        pod_info.endpoint = pod_overview.endpoint();
+        pod_info.pending_time = pod_overview.pending_time();
+        pod_info.sched_time = pod_overview.sched_time();
+        pod_info.start_time = pod_overview.start_time(); 
+        FillResource(pod_overview.used(), &pod_info.used);
+        FillResource(pod_overview.assigned(), &pod_info.assigned);
+        pods->push_back(pod_info);
+    }
+    return true;
 }
 
 bool GalaxyImpl::GetPodsByName(const std::string& jobname,
@@ -426,7 +537,10 @@ bool GalaxyImpl::GetPodsByName(const std::string& jobname,
         pod_info.stage = PodStage_Name(pod_overview.stage());
         pod_info.state = PodState_Name(pod_overview.state());
         pod_info.version = pod_overview.version();
-        pod_info.endpoint = pod_overview.endpoint();
+        pod_info.endpoint = pod_overview.endpoint(); 
+        pod_info.pending_time = pod_overview.pending_time();
+        pod_info.sched_time = pod_overview.sched_time();
+        pod_info.start_time = pod_overview.start_time(); 
         FillResource(pod_overview.used(), &pod_info.used);
         FillResource(pod_overview.assigned(), &pod_info.assigned);
         pods->push_back(pod_info);

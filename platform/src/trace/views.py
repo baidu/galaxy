@@ -303,7 +303,6 @@ def job_all(request):
 @data_center_decorator
 def pod_all(request):
     galaxy = sdk.GalaxySDK(request.master)
-    galaxy.
 @data_center_decorator
 def job_detail(request):
 

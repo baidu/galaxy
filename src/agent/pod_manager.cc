@@ -309,6 +309,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
         pod_info.tasks.begin();
     TaskState pod_state = kTaskRunning; 
     std::vector<std::string> to_del_task;
+    pod_info.pod_status.mutable_status()->Clear();
     for (; task_it != pod_info.tasks.end(); ++task_it) {
         if (task_manager_->QueryTask(&(task_it->second)) != 0) {
             to_del_task.push_back(task_it->first);
@@ -326,6 +327,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
             } else if (task_it->second.status.state() > pod_state){
                 pod_state = task_it->second.status.state(); 
             }
+            pod_info.pod_status.mutable_status()->Add()->CopyFrom(task_it->second.status);
         }
     }
     pod_info.pod_status.mutable_resource_used()->set_millicores(millicores);
@@ -428,11 +430,12 @@ int PodManager::AddPod(const PodInfo& info) {
     std::string gc_dir = FLAGS_agent_gc_dir + "/" 
         + internal_info.pod_id + "_" + time_str;
     internal_info.pod_status.set_pod_gc_path(gc_dir);
+    internal_info.pod_status.set_start_time(::baidu::common::timer::get_micros());
     LOG(WARNING, "pod gc path %s", pods_[info.pod_id].pod_status.pod_gc_path().c_str());
 
     if (AllocPortForInitd(internal_info.initd_port) != 0){
         LOG(WARNING, "pod %s alloc port for initd failed",
-                internal_info.pod_id.c_str());            
+                internal_info.pod_id.c_str()); 
         return -1;
     }
     int lanuch_initd_ret = -1;
