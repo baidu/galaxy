@@ -35,6 +35,11 @@ public:
                  std::vector<PodInformation>* pods);
     bool GetPodsByAgent(const std::string& endpoint,
                         std::vector<PodInformation>* pods);
+    bool GetTasksByJob(const std::string& jobid,
+                      std::vector<TaskInformation>* tasks);
+    bool GetTasksByAgent(const std::string& endpoint,
+                      std::vector<TaskInformation>* tasks);
+
     bool GetStatus(MasterStatus* status);
     bool SwitchSafeMode(bool mode);
     bool Preempt(const PreemptPropose& propose);
@@ -261,6 +266,69 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     }
     return true;
 }
+
+bool GalaxyImpl::GetTasksByJob(const std::string& jobid,
+                               std::vector<TaskInformation>* tasks) {
+    ShowTaskRequest request;
+    request.set_jobid(jobid);
+    ShowTaskResponse response;
+    Master_Stub* master = NULL;
+    bool ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    boost::scoped_ptr<Master_Stub> scoped_master(master);
+    ok = rpc_client_->SendRequest(master, &Master_Stub::ShowTask,
+                                  &request,&response, 5, 1);
+
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.tasks_size(); i++) {
+        const TaskOverview& task_overview = response.tasks(i);
+        TaskInformation task_info;
+        task_info.podid = task_overview.podid();
+        task_info.state = TaskState_Name(task_overview.state());
+        task_info.endpoint = task_overview.endpoint();
+        task_info.deploy_time = task_overview.deploy_time();
+        task_info.start_time = task_overview.start_time(); 
+        FillResource(task_overview.used(), &task_info.used);
+        tasks->push_back(task_info);
+    }
+    return true;
+
+}
+
+bool GalaxyImpl::GetTasksByAgent(const std::string& endpoint,
+                                 std::vector<TaskInformation>* tasks) {
+    ShowTaskRequest request;
+    request.set_endpoint(endpoint);
+    ShowTaskResponse response;
+    Master_Stub* master = NULL;
+    bool ok = BuildMasterClient(&master);
+    if (!ok) {
+        return false;
+    }
+    boost::scoped_ptr<Master_Stub> scoped_master(master);
+    ok = rpc_client_->SendRequest(master, &Master_Stub::ShowTask,
+                             &request,&response, 5, 1);
+    if (!ok || response.status() != kOk) {
+        return false;
+    }
+    for (int i = 0; i < response.tasks_size(); i++) {
+        const TaskOverview& task_overview = response.tasks(i);
+        TaskInformation task_info;
+        task_info.podid = task_overview.podid();
+        task_info.state = TaskState_Name(task_overview.state());
+        task_info.endpoint = task_overview.endpoint();
+        task_info.deploy_time = task_overview.deploy_time();
+        task_info.start_time = task_overview.start_time(); 
+        FillResource(task_overview.used(), &task_info.used);
+        tasks->push_back(task_info);
+    }
+    return true;
+}
+
 
 void GalaxyImpl::FillResource(const Resource& res, ResDescription* res_desc) {
     res_desc->millicores = res.millicores();

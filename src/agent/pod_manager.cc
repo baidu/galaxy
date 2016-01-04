@@ -309,6 +309,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
         pod_info.tasks.begin();
     TaskState pod_state = kTaskRunning; 
     std::vector<std::string> to_del_task;
+    pod_info.pod_status.mutable_status()->Clear();
     for (; task_it != pod_info.tasks.end(); ++task_it) {
         if (task_manager_->QueryTask(&(task_it->second)) != 0) {
             to_del_task.push_back(task_it->first);
@@ -326,6 +327,7 @@ int PodManager::CheckPod(const std::string& pod_id) {
             } else if (task_it->second.status.state() > pod_state){
                 pod_state = task_it->second.status.state(); 
             }
+            pod_info.pod_status.mutable_status()->Add()->CopyFrom(task_it->second.status);
         }
     }
     pod_info.pod_status.mutable_resource_used()->set_millicores(millicores);

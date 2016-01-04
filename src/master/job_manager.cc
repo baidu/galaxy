@@ -2196,5 +2196,74 @@ void JobManager::ReloadAgent(const AgentPersistenceInfo& agent) {
     agent_custom_infos_.insert(std::make_pair(agent.endpoint(), agent_info));
 }
 
+Status JobManager::GetTaskByJob(const std::string& jobid,
+                                TaskOverviewList* tasks) { 
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    Job* job = job_it->second;
+    std::map<PodId, PodStatus*>::iterator pod_it = job->pods_.begin();
+    for (; pod_it != job->pods_.end(); ++pod_it) {
+        PodStatus* pod_status = pod_it->second;
+        std::map<Version, PodDescriptor>::iterator desc_it = job->pod_desc_.find(pod_status->version());
+        if (desc_it == job->pod_desc_.end()) {
+            continue;
+        }
+        for (int i = 0; i < pod_status->status_size(); i++) {
+            TaskOverview* task = tasks->Add();
+            task->set_podid(pod_status->podid());
+            task->set_state(pod_status->status(i).state());
+            task->set_endpoint(pod_status->endpoint());
+            task->set_deploy_time(pod_status->status(i).deploy_time());
+            task->set_start_time(pod_status->status(i).start_time());
+            task->set_cmd(pod_status->status(i).cmd());
+            task->mutable_used()->CopyFrom(pod_status->status(i).resource_used());
+        } 
+    }
+    LOG(INFO, "get %d task from job %s", tasks->size(), jobid.c_str());
+    return kOk;
+}
+
+Status JobManager::GetTaskByAgent(const std::string& endpoint,
+                                TaskOverviewList* tasks) {
+    MutexLock lock(&mutex_);
+    LOG(INFO, "get task from agent %s", endpoint.c_str());
+    std::map<AgentAddr, PodMap>::iterator agent_it = pods_on_agent_.find(endpoint);
+    if (agent_it == pods_on_agent_.end()) {
+        return kOk;
+    }
+    PodMap& pod_map = agent_it->second;
+    std::map<JobId, std::map<PodId, PodStatus*> >::iterator job_it = pod_map.begin();
+    for (; job_it != pod_map.end(); ++job_it) {
+        std::map<JobId, Job*>::iterator ijob_it = jobs_.find(job_it->first);
+        if (ijob_it == jobs_.end()) {
+            continue;
+        }
+        Job* job = ijob_it->second;
+        std::map<PodId, PodStatus*>::iterator pod_it = job_it->second.begin();
+        for (; pod_it != job_it->second.end(); ++pod_it) {
+            PodStatus* pod_status = pod_it->second;
+            std::map<Version, PodDescriptor>::iterator desc_it = job->pod_desc_.find(pod_status->version());
+            if (desc_it == job->pod_desc_.end()) {
+                continue;
+            }
+            for (int i = 0; i < pod_status->status_size(); i++) {
+                TaskOverview* task = tasks->Add();
+                task->set_podid(pod_status->podid());
+                task->set_state(pod_status->status(i).state());
+                task->set_endpoint(pod_status->endpoint());
+                task->set_deploy_time(pod_status->status(i).deploy_time());
+                task->set_start_time(pod_status->status(i).start_time());
+                task->set_cmd(pod_status->status(i).cmd());
+                task->mutable_used()->CopyFrom(pod_status->status(i).resource_used());
+            } 
+        } 
+    }
+    return kOk;
+
+}
+
 }
 }

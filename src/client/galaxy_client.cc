@@ -46,6 +46,8 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy agents\n"
                                  "    galaxy pods -j <jobid>\n"
                                  "    galaxy pods -a <endpoint>\n"
+                                 "    galaxy tasks -j <jobid>\n"
+                                 "    galaxy tasks -a <endpoint>\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
@@ -469,6 +471,57 @@ int ListAgent() {
     }
     return 0;
 }
+int ShowTask() {
+     if (FLAGS_j.empty() && FLAGS_a.empty()) {
+        fprintf(stderr, "-j or -a option is required\n");
+        return -1;
+    }
+    std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
+    baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
+    while (true) {
+        std::vector<baidu::galaxy::TaskInformation> tasks;
+        if (!FLAGS_j.empty()) {
+            bool ok = galaxy->GetTasksByJob(FLAGS_j, &tasks);
+            if (!ok) {
+                fprintf(stderr, "Fail to get tasks\n");
+                return -1;
+            }
+        } else if (!FLAGS_a.empty()) {
+            bool ok = galaxy->GetTasksByAgent(FLAGS_a, &tasks);
+            if (!ok) {
+                fprintf(stderr, "Fail to get tasks\n");
+                return -1;
+            }
+        }
+        baidu::common::TPrinter tp(9);
+        tp.AddRow(9, "", "podid", "state", "cpu", "mem", "disk(r/w)","endpoint", "deploy","start");
+        for (size_t i = 0; i < tasks.size(); i++) {
+            std::vector<std::string> vs;
+            vs.push_back(baidu::common::NumToString((int32_t)i + 1));
+            vs.push_back(tasks[i].podid);
+            vs.push_back(tasks[i].state);
+            std::string cpu = baidu::common::NumToString(tasks[i].used.millicores);
+            vs.push_back(cpu);
+            std::string mem = baidu::common::HumanReadableString(tasks[i].used.memory);
+            vs.push_back(mem);
+            std::string disk_io = baidu::common::HumanReadableString(tasks[i].used.read_bytes_ps) +"/s" + " / " 
+                                  + baidu::common::HumanReadableString(tasks[i].used.write_bytes_ps) +"/s";
+            vs.push_back(disk_io);
+            vs.push_back(tasks[i].endpoint);
+            vs.push_back(FormatDate(tasks[i].deploy_time));
+            vs.push_back(FormatDate(tasks[i].start_time));
+            tp.AddRow(vs);
+        }
+        printf("%s\n", tp.ToString().c_str());
+        if (FLAGS_d <=0) {
+            break;
+        }else{
+            ::sleep(FLAGS_d);
+            ::system("clear");
+        }
+    }
+    return 0;
+}
 
 int ShowPod() {
     if (FLAGS_j.empty() && FLAGS_n.empty() && FLAGS_a.empty()) {
@@ -852,6 +905,8 @@ int main(int argc, char* argv[]) {
         return KillJob();
     } else if (strcmp(argv[1], "pods") ==0){
         return ShowPod();
+    } else if (strcmp(argv[1], "tasks") ==0){
+        return ShowTask();
     } else if (strcmp(argv[1], "status") == 0) {
         return GetMasterStatus();
     } else if (argc > 2 && strcmp(argv[2], "safemode") == 0) {

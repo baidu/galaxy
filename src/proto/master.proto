@@ -247,6 +247,11 @@ message PodOverview {
     optional int64 start_time = 11;
 }
 
+message ShowTaskRequest {
+    optional string jobid = 1;
+    optional string endpoint = 2;
+}
+
 message TaskOverview {
     optional string podid = 1;
     optional TaskState state = 2;
@@ -254,6 +259,12 @@ message TaskOverview {
     optional int64 deploy_time = 4;
     optional int64 start_time = 5;
     optional string cmd = 6;
+    optional Resource used = 7;
+}
+
+message ShowTaskResponse {
+    repeated TaskOverview tasks = 1;
+    optional Status status = 2;
 }
 
 message ShowPodResponse {
@@ -350,6 +361,7 @@ service Master {
     rpc TerminateJob(TerminateJobRequest) returns (TerminateJobResponse);
     rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
     rpc ShowPod(ShowPodRequest) returns (ShowPodResponse);
+    rpc ShowTask(ShowTaskRequest) returns (ShowTaskResponse);
     rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
     rpc GetStatus(GetMasterStatusRequest) returns (GetMasterStatusResponse);
 
