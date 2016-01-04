@@ -62,7 +62,7 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    -j jobid     Specify job id to kill or update.\n"
                                  "    -d delay     Specify delay in second to update infomation.\n"
                                  "    -l label     Add label to list of agents.\n"
-                                 "    -a agent     Specify agent addr.\n"
+                                 "    -e agent     Specify endpoint.\n"
                                  "    -n name      Specify job name to query pods.\n";
 std::string FormatDate(int64_t datetime) {
     if (datetime < 100) {
