@@ -56,6 +56,7 @@ message JobInfo {
     // pod latest pod descriptor
     optional string latest_version = 7;
     optional int64 create_time = 8;
+    optional int64 update_time = 9;
 }
 
 message ScheduleInfo {

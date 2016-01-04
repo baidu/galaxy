@@ -258,6 +258,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescriptor& job_desc) {
             LOG(WARNING, "update job %s failed for handle update job error", job_id.c_str());
             return kJobUpdateFail;
         }
+        job.update_time = ::baidu::common::timer::get_micros();
     }
     // TODO add nexus lock
     bool save_ok = SaveToNexus(&job);
@@ -407,8 +408,11 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     }
     if (job_info.has_create_time()) {
         job->create_time = job_info.create_time();
+    } 
+
+    if (job_info.has_update_time()) {
+        job->update_time = job_info.update_time();
     }
-    job->update_time = ::baidu::common::timer::get_micros();
     JobIndex index;
     index.id_ = job_id;
     index.name_ = job->desc_.name();
@@ -1529,6 +1533,7 @@ bool JobManager::SaveToNexus(const Job* job) {
         pod_desc->CopyFrom(it->second);
     }
     job_info.set_create_time(job->create_time);
+    job_info.set_update_time(job->update_time);
     std::string job_raw_data;
     std::string job_key = FLAGS_nexus_root_path + FLAGS_jobs_store_path 
                           + "/" + job->id_;

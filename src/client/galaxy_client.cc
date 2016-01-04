@@ -34,7 +34,7 @@ DEFINE_string(n, "", "specify job name to query pods");
 DEFINE_string(j, "", "specify job id");
 DEFINE_string(l, "", "add a label to agent");
 DEFINE_string(p, "", "specify pod id");
-DEFINE_string(a, "", "specify agent addr");
+DEFINE_string(e, "", "specify agent endpoint");
 DEFINE_int32(d, 0, "specify delay time to query");
 DEFINE_int32(cli_server_port, 8775, "cli server listen port");
 DECLARE_string(flagfile);
@@ -45,15 +45,15 @@ const std::string kGalaxyUsage = "galaxy client.\n"
                                  "    galaxy jobs \n"
                                  "    galaxy agents\n"
                                  "    galaxy pods -j <jobid>\n"
-                                 "    galaxy pods -a <endpoint>\n"
+                                 "    galaxy pods -e <endpoint>\n"
                                  "    galaxy tasks -j <jobid>\n"
-                                 "    galaxy tasks -a <endpoint>\n"
+                                 "    galaxy tasks -e <endpoint>\n"
                                  "    galaxy kill -j <jobid>\n"
                                  "    galaxy update -j <jobid> -f <jobconfig>\n"
                                  "    galaxy label -l <label> -f <lableconfig>\n"
                                  "    galaxy preempt -f <config>\n"
-                                 "    galaxy offline -a <agent_addr>\n"
-                                 "    galaxy online -a <agent_addr>\n"
+                                 "    galaxy offline -e <endpoint>\n"
+                                 "    galaxy online -e <endpoint>\n"
                                  "    galaxy status \n"
                                  "    galaxy enter safemode \n"
                                  "    galaxy leave safemode \n"
@@ -472,8 +472,8 @@ int ListAgent() {
     return 0;
 }
 int ShowTask() {
-     if (FLAGS_j.empty() && FLAGS_a.empty()) {
-        fprintf(stderr, "-j or -a option is required\n");
+     if (FLAGS_j.empty() && FLAGS_e.empty()) {
+        fprintf(stderr, "-j or -e option is required\n");
         return -1;
     }
     std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
@@ -486,8 +486,8 @@ int ShowTask() {
                 fprintf(stderr, "Fail to get tasks\n");
                 return -1;
             }
-        } else if (!FLAGS_a.empty()) {
-            bool ok = galaxy->GetTasksByAgent(FLAGS_a, &tasks);
+        } else if (!FLAGS_e.empty()) {
+            bool ok = galaxy->GetTasksByAgent(FLAGS_e, &tasks);
             if (!ok) {
                 fprintf(stderr, "Fail to get tasks\n");
                 return -1;
@@ -524,8 +524,8 @@ int ShowTask() {
 }
 
 int ShowPod() {
-    if (FLAGS_j.empty() && FLAGS_n.empty() && FLAGS_a.empty()) {
-        fprintf(stderr, "-j or -n option is required\n");
+    if (FLAGS_j.empty() && FLAGS_n.empty() && FLAGS_e.empty()) {
+        fprintf(stderr, "-j ,-n or -e  option is required\n");
         return -1;
     }
     std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
@@ -544,8 +544,8 @@ int ShowPod() {
                 fprintf(stderr, "Fail to get pods\n");
                 return -1;
             }
-        } else if (!FLAGS_a.empty()) {
-            bool ok = galaxy->GetPodsByAgent(FLAGS_a, &pods);
+        } else if (!FLAGS_e.empty()) {
+            bool ok = galaxy->GetPodsByAgent(FLAGS_e, &pods);
             if (!ok) {
                 fprintf(stderr, "Fail to get pods\n");
                 return -1;
@@ -854,32 +854,32 @@ int KillJob() {
 int OnlineAgent() {
     std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
-    if (FLAGS_a.empty()) {
-        fprintf(stderr, "-a is required when online agent\n");
+    if (FLAGS_e.empty()) {
+        fprintf(stderr, "-e is required when online agent\n");
         return -1;
     }
-    bool ok = galaxy->OnlineAgent(FLAGS_a);
+    bool ok = galaxy->OnlineAgent(FLAGS_e);
     if (ok) {
-        fprintf(stdout, "online agent %s successfully \n", FLAGS_a.c_str());
+        fprintf(stdout, "online agent %s successfully \n", FLAGS_e.c_str());
         return 0;
     }
-    fprintf(stderr, "fail to online agent %s \n", FLAGS_a.c_str());
+    fprintf(stderr, "fail to online agent %s \n", FLAGS_e.c_str());
     return -1;
 }
 
 int OfflineAgent() {
     std::string master_key = FLAGS_nexus_root_path + FLAGS_master_path; 
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
-    if (FLAGS_a.empty()) {
-        fprintf(stderr, "-a is required when offline agent\n");
+    if (FLAGS_e.empty()) {
+        fprintf(stderr, "-e is required when offline agent\n");
         return -1;
     }
-    bool ok = galaxy->OfflineAgent(FLAGS_a);
+    bool ok = galaxy->OfflineAgent(FLAGS_e);
     if (ok) {
-        fprintf(stdout, "offline agent %s successfully \n", FLAGS_a.c_str());
+        fprintf(stdout, "offline agent %s successfully \n", FLAGS_e.c_str());
         return 0;
     }
-    fprintf(stderr, "fail to offline agent %s \n", FLAGS_a.c_str());
+    fprintf(stderr, "fail to offline agent %s \n", FLAGS_e.c_str());
     return -1;
 }
 
