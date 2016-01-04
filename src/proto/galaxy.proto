@@ -62,6 +62,8 @@ enum AgentState {
     kDead = 1;
     // out of service
     kOffline = 2;
+    // init
+    kInit = 3;
 }
 
 message Volume {
