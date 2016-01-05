@@ -22,7 +22,7 @@ then
     echo "boost exist"
 else
     wget http://superb-dca2.dl.sourceforge.net/project/boost/boost/1.57.0/boost_1_57_0.tar.gz
-    tar zxf boost_1_57_0.tar.gz
+    tar zxf boost_1_57_0.tar.gz >/dev/null
     rm -rf ${DEPS_PREFIX}/boost_1_57_0
     mv boost_1_57_0 ${DEPS_PREFIX}
 fi
@@ -48,7 +48,7 @@ else
     tar zxf protobuf-2.6.1.tar.gz
     cd protobuf-2.6.1
     ./configure ${DEPS_CONFIG}
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -64,7 +64,7 @@ else
     tar zxf snappy-1.1.1.tar.gz
     cd snappy-1.1.1
     ./configure ${DEPS_CONFIG}
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -87,7 +87,7 @@ else
     cd src
     PROTOBUF_DIR=${DEPS_PREFIX} sh compile_proto.sh
     cd ..
-    make -j4
+    make -j4 >/dev/null
     make install
     cd ..
 fi
@@ -101,7 +101,7 @@ else
     tar zxf zookeeper-3.4.7.tar.gz
     cd zookeeper-3.4.7/src/c
     ./configure ${DEPS_CONFIG}
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -115,7 +115,7 @@ else
     tar zxf CMake-3.2.1.tar.gz
     cd CMake-3.2.1
     ./configure --prefix=${DEPS_PREFIX}
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -129,7 +129,7 @@ else
     tar zxf gflags-2.1.1.tar.gz
     cd gflags-2.1.1
     cmake -DCMAKE_INSTALL_PREFIX=${DEPS_PREFIX} -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -143,7 +143,7 @@ else
     tar zxf glog-0.3.3.tar.gz
     cd glog-0.3.3
     ./configure ${DEPS_CONFIG} CPPFLAGS=-I${DEPS_PREFIX}/include LDFLAGS=-L${DEPS_PREFIX}/lib
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -160,7 +160,7 @@ else
     unzip gtest-1.7.0.zip
     cd gtest-1.7.0
     ./configure ${DEPS_CONFIG}
-    make
+    make -j8 >/dev/null
     cp -a lib/.libs/* ${DEPS_PREFIX}/lib
     cp -a include/gtest ${DEPS_PREFIX}/include
     cd -
@@ -175,7 +175,7 @@ else
     tar zxf libunwind-0.99-beta.tar.gz
     cd libunwind-0.99-beta
     ./configure ${DEPS_CONFIG}
-    make CFLAGS=-fPIC -j4
+    make CFLAGS=-fPIC -j4 >/dev/null
     make CFLAGS=-fPIC install
     cd -
 fi
@@ -192,7 +192,7 @@ else
     tar zxf gperftools-2.2.1.tar.gz
     cd gperftools-2.2.1
     ./configure ${DEPS_CONFIG} CPPFLAGS=-I${DEPS_PREFIX}/include LDFLAGS=-L${DEPS_PREFIX}/lib
-    make -j4
+    make -j4 >/dev/null
     make install
     cd -
 fi
@@ -205,7 +205,7 @@ else
     # leveldb
     git clone https://github.com/imotai/leveldb.git
     cd leveldb
-    make -j8 
+    make -j8 >/dev/null 
     cp -rf include/* ${DEPS_PREFIX}/include
     cp libleveldb.a ${DEPS_PREFIX}/lib
     cd -
@@ -231,7 +231,7 @@ else
     export PATH=${DEPS_PREFIX}/bin:$PATH
     export BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0
     export PBRPC_PATH=${DEPS_PREFIX}/
-    make -j4 ins && make -j4 install_sdk
+    make -j4 ins >/dev/null && make -j4 install_sdk
     mkdir -p output/bin && cp ins output/bin
     cd -
 fi
@@ -256,7 +256,7 @@ else
     sed -i 's/^INS_PREFIX=.*/INS_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -e '$ c -lgtest_main -lgtest -lglog -lgflags -ltcmalloc_minimal -lunwind' depends.mk > depends.mk.new
     mv depends.mk.new depends.mk
-    make -j8
+    make -j8 >/dev/null
     cp -a build/lib/*.a ${DEPS_PREFIX}/lib
     cp -a build/include/*.h ${DEPS_PREFIX}/include
     cd -
@@ -282,7 +282,7 @@ else
     sed -i 's/^INS_PREFIX=.*/INS_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i 's/^TERA_PREFIX=.*/TERA_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i '/-lgtest_main/c -lgtest_main -lgtest -lglog -lgflags -ltcmalloc_minimal -lunwind' depends.mk
-    make -j8
+    make -j8 >/dev/null
     cp src/ftrace/collector/logger.h ${DEPS_PREFIX}/include
     cp libftrace.a ${DEPS_PREFIX}/lib
     cd -
@@ -292,7 +292,7 @@ fi
 git clone https://github.com/baidu/common.git
 cd common
 sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/boost_1_57_0/' Makefile
-make -j8
+make -j8 >/dev/null
 cp -rf include/* ${DEPS_PREFIX}/include
 cp -rf libcommon.a ${DEPS_PREFIX}/lib
 cd -
