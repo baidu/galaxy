@@ -31,8 +31,8 @@ DECLARE_bool(enable_resource_minitor);
 DECLARE_int32(stat_check_period);
 DECLARE_double(max_cpu_usage);
 DECLARE_double(max_mem_usage);
-DECLARE_double(max_disk_r_bps);
-DECLARE_double(max_disk_w_bps);
+DECLARE_double(max_disk_r_kbps);
+DECLARE_double(max_disk_w_kbps);
 DECLARE_double(max_disk_r_rate);
 DECLARE_double(max_disk_w_rate);
 DECLARE_double(max_disk_util);
@@ -542,15 +542,15 @@ void AgentImpl::CheckSysHealth() {
         LOG(WARNING, "mem usage %f reach threshold %f",
                 resource_collector_.GetStat()->mem_used_, FLAGS_max_mem_usage);
         ret = false;
-    } else if (fabs(FLAGS_max_disk_r_bps) >= 1e-6
-            && resource_collector_.GetStat()->disk_read_Bps_ > FLAGS_max_disk_r_bps) {
+    } else if (fabs(FLAGS_max_disk_r_kbps) >= 1e-6
+            && resource_collector_.GetStat()->disk_read_Bps_ > FLAGS_max_disk_r_kbps) {
         LOG(WARNING, "disk read Bps %f reach threshold %f",
-                resource_collector_.GetStat()->disk_read_Bps_, FLAGS_max_disk_r_bps);
+                resource_collector_.GetStat()->disk_read_Bps_, FLAGS_max_disk_r_kbps);
         ret = false;
-    } else if (fabs(FLAGS_max_disk_w_bps) >= 1e-6 
-            && resource_collector_.GetStat()->disk_write_Bps_ > FLAGS_max_disk_w_bps) {
+    } else if (fabs(FLAGS_max_disk_w_kbps) >= 1e-6 
+            && resource_collector_.GetStat()->disk_write_Bps_ > FLAGS_max_disk_w_kbps) {
         LOG(WARNING, "disk write Bps %f reach threshold %f",
-                resource_collector_.GetStat()->disk_write_Bps_, FLAGS_max_disk_w_bps);
+                resource_collector_.GetStat()->disk_write_Bps_, FLAGS_max_disk_w_kbps);
         ret = false;
     } else if (fabs(FLAGS_max_disk_r_rate) >= 1e-6
             && resource_collector_.GetStat()->disk_read_times_ > FLAGS_max_disk_r_rate) {
