@@ -46,7 +46,7 @@ class IoDump(object):
         output.append("-------------------------------------------------")
         output.append(datetime.datetime.fromtimestamp(now).strftime('%Y-%m-%d %H:%M:%S'))
         for item in sorted_array:
-            output.append("%s %s/s %s/s"%(item["name"], self.readable(item["read_bytes_ps"]),
+            output.append("%s read:%s/s write:%s/s"%(item["name"], self.readable(item["read_bytes_ps"]),
                 self.readable(item["write_bytes_ps"])))
         print "\n".join(output)
 
