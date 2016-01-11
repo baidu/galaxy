@@ -160,8 +160,19 @@ def agent_event_processor(resultset, fields=[], limit=100):
             e = util.pb2dict(agent_event)
             e['ftime'] = datetime.datetime.fromtimestamp(e['time']/1000000).strftime("%Y-%m-%d %H:%M:%S")
             stats.append(data_filter(e , fields))
+    stats = sorted(stats, key=lambda x:x["time"])
     return stats[0:limit]
 
+def pod_stat_processor(resultset, fields=[], limit=100):
+    stats = []
+    pod_stat = log_pb2.PodStat()
+    for data in resultset:
+        for d in data.data_list:
+            pod_stat.ParseFromString(d)
+            e = util.pb2dict(pod_stat)
+            e['ftime'] = datetime.datetime.fromtimestamp(e['time']/1000000).strftime("%Y-%m-%d %H:%M:%S")
+            stats.append(data_filter(e , fields))
+    return stats[0:limit]
 
 PROCESSOR_MAP={
         "baidu.galaxy":{
@@ -170,7 +181,8 @@ PROCESSOR_MAP={
             "PodEvent":pod_event_processor,
             "TaskEvent":task_event_processor,
             "ClusterStat":cluster_stat_processor,
-            "AgentEvent":agent_event_processor
+            "AgentEvent":agent_event_processor,
+            "PodStat":pod_stat_processor
     }
 }
 
@@ -287,8 +299,10 @@ def job_all(request):
                                      "dc":request.data_center,
                                      "master":request.master,
                                      "trace":request.trace}, "index.html")
-    #return util.render_tpl(request, {}, "index.html")
 
+@data_center_decorator
+def pod_all(request):
+    galaxy = sdk.GalaxySDK(request.master)
 @data_center_decorator
 def job_detail(request):
 

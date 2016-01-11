@@ -35,6 +35,7 @@ DECLARE_string(agent_global_cgroup_path);
 DECLARE_string(agent_global_hardlimit_path);
 DECLARE_string(agent_global_softlimit_path);
 DECLARE_int32(agent_detect_interval);
+DECLARE_int32(agent_io_collect_interval);
 DECLARE_int32(agent_memory_check_interval);
 DECLARE_int32(agent_millicores_share);
 DECLARE_int32(agent_task_oom_delay_restart_time);
@@ -55,7 +56,7 @@ const static int32_t GALAXY_OOM_KILLER_OFFSET = 50 * 1024 * 1024;
 TaskManager::TaskManager() : 
     tasks_mutex_(),
     tasks_(),
-    background_thread_(5), 
+    background_thread_(20), 
     killer_pool_(20), 
     cgroup_root_(FLAGS_gce_cgroup_root),
     hierarchies_(),
@@ -229,7 +230,7 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
         task_info->status.set_state(kTaskError);
         return 0;
     }
-
+    PrepareIOCollector(task_info);
     SetupDeployProcessKey(task_info);
     SetupRunProcessKey(task_info);
     SetupTerminateProcessKey(task_info);
@@ -334,6 +335,7 @@ int TaskManager::CreateTask(const TaskInfo& task) {
         killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
                           boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
     }
+    PrepareIOCollector(task_info);
     LOG(INFO, "task %s is add", task.task_id.c_str());
     background_thread_.DelayTask(
                     50, 
@@ -341,6 +343,67 @@ int TaskManager::CreateTask(const TaskInfo& task) {
                         &TaskManager::DelayCheckTaskStageChange,
                         this, task_info->task_id));
     return 0;
+}
+
+int TaskManager::PrepareIOCollector(TaskInfo* task_info) { 
+    tasks_mutex_.AssertHeld(); 
+    background_thread_.DelayTask(FLAGS_agent_io_collect_interval,
+                    boost::bind(&TaskManager::CollectIO, this, task_info->task_id));
+    return 0;
+}
+
+void TaskManager::CollectIO(const std::string& task_id) {
+    std::string freezer_path;
+    {
+        MutexLock scope_lock(&tasks_mutex_);
+        std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
+        if (it == tasks_.end()) {
+            return;
+        }
+        std::map<std::string, std::string>::iterator cg_it = it->second->cgroups.find("freezer");
+        if (cg_it != it->second->cgroups.end()) {
+            freezer_path = cg_it->second;
+        }
+    }
+    CGroupIOStatistics current;
+    bool ok = CGroupIOCollector::Collect(freezer_path, &current);
+    if (!ok) {
+        LOG(WARNING, "fail to collect io stat for task %s", task_id.c_str());
+    }else {
+        MutexLock scope_lock(&tasks_mutex_);
+        std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
+        if (it == tasks_.end()) {
+            return;
+        }
+        TaskInfo* task = it->second;
+        task->io_collect_counter ++;
+        if (task->io_collect_counter > 1) {
+            int64_t read_bytes_ps = 0;
+            int64_t write_bytes_ps = 0;
+            int64_t syscr_ps = 0;
+            int64_t syscw_ps = 0;
+            std::map<int, ProcIOStatistics>::iterator proc_it = current.processes.begin();
+            for (; proc_it != current.processes.end(); ++proc_it) {
+                std::map<int, ProcIOStatistics>::iterator old_proc_it = task->old_io_stat.processes.find(proc_it->first);
+                if (old_proc_it == task->old_io_stat.processes.end()) {
+                    // wait the next turn to statistics
+                    continue;
+                }
+                read_bytes_ps +=  proc_it->second.read_bytes - old_proc_it->second.read_bytes; 
+                write_bytes_ps += proc_it->second.write_bytes - proc_it->second.cancelled_write_bytes
+                    - old_proc_it->second.write_bytes + old_proc_it->second.cancelled_write_bytes;
+                syscr_ps += proc_it->second.syscr - old_proc_it->second.syscr;
+                syscw_ps += proc_it->second.wchar - old_proc_it->second.syscw;
+            }
+            task->status.mutable_resource_used()->set_read_bytes_ps(read_bytes_ps);
+            task->status.mutable_resource_used()->set_write_bytes_ps(write_bytes_ps);
+            task->status.mutable_resource_used()->set_syscr_ps(syscr_ps);
+            task->status.mutable_resource_used()->set_syscw_ps(syscw_ps);
+            task->old_io_stat = current;
+        }
+    }
+    background_thread_.DelayTask(FLAGS_agent_io_collect_interval,
+                    boost::bind(&TaskManager::CollectIO, this, task_id));
 }
 
 int TaskManager::DeleteTask(const std::string& task_id) {
@@ -387,7 +450,7 @@ int TaskManager::RunTask(TaskInfo* task_info) {
             return -1;
         }
     }
-    
+    task_info->status.set_start_time(::baidu::common::timer::get_micros());
     task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
     SetupRunProcessKey(task_info);
@@ -595,6 +658,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     std::string deploy_command;
     task_info->stage = kTaskStageDEPLOYING;
     task_info->status.set_state(kTaskDeploy);
+    task_info->status.set_deploy_time(::baidu::common::timer::get_micros());
     if (task_info->desc.source_type() == kSourceTypeBinary) {
         // TODO write binary directly
         std::string tar_packet = task_info->task_workspace;
@@ -899,7 +963,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     int32_t task_delay_check_time = FLAGS_agent_detect_interval;
     // switch task stage
     if (task_info->stage == kTaskStagePENDING 
-            && task_info->status.state() != kTaskError) {
+        && task_info->status.state() != kTaskError) {
         int chk_res = InitdProcessCheck(task_info);
         if (chk_res == 1) {
             if (task_info->desc.has_binary() 
