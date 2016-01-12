@@ -100,14 +100,14 @@ else
     cd ..
 fi
 
-if [ -f "zookeeper-3.4.7.tar.gz" ]
+if [ -f "zookeeper-3.4.6.tar.gz" ]
 then
-    echo "zookeeper-3.4.7.tar.gz exist"
+    echo "zookeeper-3.4.6.tar.gz exist"
 else
     # zookeeper
-    wget http://www.us.apache.org/dist/zookeeper/stable/zookeeper-3.4.7.tar.gz
-    tar zxf zookeeper-3.4.7.tar.gz
-    cd zookeeper-3.4.7/src/c
+    wget http://apache.arvixe.com/zookeeper/zookeeper-3.4.6/zookeeper-3.4.6.tar.gz
+    tar zxf zookeeper-3.4.6.tar.gz
+    cd zookeeper-3.4.6/src/c
     ./configure ${DEPS_CONFIG} >/dev/null
     make -j4 >/dev/null
     make install
