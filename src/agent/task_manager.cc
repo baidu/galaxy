@@ -450,7 +450,7 @@ int TaskManager::RunTask(TaskInfo* task_info) {
             return -1;
         }
     }
-    
+    task_info->status.set_start_time(::baidu::common::timer::get_micros());
     task_info->stage = kTaskStageRUNNING;
     task_info->status.set_state(kTaskRunning);
     SetupRunProcessKey(task_info);
@@ -658,6 +658,7 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     std::string deploy_command;
     task_info->stage = kTaskStageDEPLOYING;
     task_info->status.set_state(kTaskDeploy);
+    task_info->status.set_deploy_time(::baidu::common::timer::get_micros());
     if (task_info->desc.source_type() == kSourceTypeBinary) {
         // TODO write binary directly
         std::string tar_packet = task_info->task_workspace;
@@ -962,7 +963,7 @@ void TaskManager::DelayCheckTaskStageChange(const std::string& task_id) {
     int32_t task_delay_check_time = FLAGS_agent_detect_interval;
     // switch task stage
     if (task_info->stage == kTaskStagePENDING 
-            && task_info->status.state() != kTaskError) {
+        && task_info->status.state() != kTaskError) {
         int chk_res = InitdProcessCheck(task_info);
         if (chk_res == 1) {
             if (task_info->desc.has_binary() 

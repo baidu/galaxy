@@ -83,6 +83,10 @@ public:
                            const ::baidu::galaxy::ShowPodRequest* request,
                            ::baidu::galaxy::ShowPodResponse* response,
                            ::google::protobuf::Closure* done);
+      virtual void ShowTask(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::ShowTaskRequest* request,
+                           ::baidu::galaxy::ShowTaskResponse* response,
+                           ::google::protobuf::Closure* done); 
       virtual void GetStatus(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::GetMasterStatusRequest* request,
                            ::baidu::galaxy::GetMasterStatusResponse* response,
