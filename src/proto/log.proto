@@ -127,6 +127,17 @@ message TaskEvent {
     optional string gc_dir = 18;
 }
 
+message AgentStat {
+    optional string addr = 1;
+    optional int64 job_count = 2;
+    optional int64 cpu_millicores = 3;
+    optional int64 cpu_used_millicores = 4;
+    optional int64 mem_used = 5;
+    optional int64 mem_quota = 6;
+
+}
+
+
 message ClusterStat {
     // index
     optional string data_center = 1;
