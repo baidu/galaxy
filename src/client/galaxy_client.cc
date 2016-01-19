@@ -286,7 +286,15 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         fprintf(stderr, "millicores is required\n");
         return -1;
     }
-
+    if (pod_json.HasMember("namespace_isolation")) {
+        pod.namespace_isolation = pod_json["namespace_isolation"].GetBool();
+    } else {
+        if ("kMonitor" == job->type) {
+            pod.namespace_isolation = false;
+        } else {
+            pod.namespace_isolation = true;
+        }
+    }
     res->millicores = pod_require["millicores"].GetInt();
     if (!pod_require.HasMember("memory")) {
         fprintf(stderr, "memory is required\n");
@@ -352,6 +360,8 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             if (tasks_json[i].HasMember("cpu_isolation_type")) {
                 task.cpu_isolation_type = tasks_json[i]["cpu_isolation_type"].GetString();
             }
+            task.namespace_isolation = pod.namespace_isolation;
+
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
             ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);

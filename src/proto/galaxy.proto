@@ -109,6 +109,7 @@ message TaskDescriptor {
     optional SourceType source_type = 8;
     optional MemIsolationType mem_isolation_type = 9;
     optional CpuIsolationType cpu_isolation_type = 10;
+    optional bool namespace_isolation = 11 [default = true];
 }
 
 message PodDescriptor {
@@ -120,6 +121,7 @@ message PodDescriptor {
     optional bool pin_on_agent = 3 [default = false];
     repeated string labels = 4;
     optional string version = 5;
+    optional bool namespace_isolation = 6 [default = true];
 }
 
 message TaskStatus {

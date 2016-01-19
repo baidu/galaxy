@@ -68,11 +68,11 @@ static int LanuchInitdMain(void *arg) {
                                          context->stderr_fd, 
                                          context->fds);
     char* argv[] = {
-        const_cast<char*>("sh"),
+        const_cast<char*>("bash"),
         const_cast<char*>("-c"),
         const_cast<char*>(context->start_command.c_str()),
         NULL};
-    ::execv("/bin/sh", argv);
+    ::execv("/bin/bash", argv);
     assert(0);
     return 0;
 }
@@ -157,11 +157,11 @@ int PodManager::LanuchInitdByFork(PodInfo* info) {
                                              stderr_fd, 
                                              fd_vector);
         char* argv[] = {
-            const_cast<char*>("sh"),
+            const_cast<char*>("bash"),
             const_cast<char*>("-c"),
             const_cast<char*>(command.c_str()),
             NULL};
-        ::execv("/bin/sh", argv);
+        ::execv("/bin/bash", argv);
         assert(0);
     } 
     ::close(stdout_fd);
@@ -438,8 +438,9 @@ int PodManager::AddPod(const PodInfo& info) {
                 internal_info.pod_id.c_str()); 
         return -1;
     }
+    LOG(INFO, "run pod with namespace_isolation: [%d]", internal_info.pod_desc.namespace_isolation());
     int lanuch_initd_ret = -1;
-    if (FLAGS_agent_namespace_isolation_switch) {
+    if (FLAGS_agent_namespace_isolation_switch && internal_info.pod_desc.namespace_isolation()) {
         lanuch_initd_ret = LanuchInitd(&internal_info);
     } else {
         lanuch_initd_ret = LanuchInitdByFork(&internal_info); 

@@ -85,7 +85,7 @@ DEFINE_int32(send_bps_quota, 200000000, "galaxy net send limit");
 DEFINE_int32(recv_bps_quota, 200000000, "galaxy new recv limit");
 
 // gce
-DEFINE_string(gce_cgroup_root, "/cgroups/", "Cgroup root mount path");
+DEFINE_string(gce_cgroup_root, "/cgroups", "Cgroup root mount path");
 DEFINE_string(gce_support_subsystems, "", "Cgroup default support subsystems");
 DEFINE_int64(gce_initd_zombie_check_interval, 100, "Initd Zombie Check Interval");
 DEFINE_string(gce_initd_dump_file, "initd_checkpoint_file", "Initd Checkpoint File Name");
