@@ -112,6 +112,19 @@ struct SysStat {
     double net_out_pps_;
     double intr_rate_;
     double soft_intr_rate_;
+    int cpu_used_ex_;
+    int mem_used_ex_;
+    int disk_read_Bps_ex_;
+    int disk_write_Bps_ex_;
+    int disk_read_times_ex_;
+    int disk_write_times_ex_;
+    int disk_io_util_ex_;
+    int net_in_bps_ex_;
+    int net_out_bps_ex_;
+    int net_in_pps_ex_;
+    int net_out_pps_ex_;
+    int intr_rate_ex_;
+    int soft_intr_rate_ex_;
     int collect_times_;
     SysStat():last_stat_(),
               cur_stat_(),
@@ -128,6 +141,19 @@ struct SysStat {
               net_out_pps_(0.0),
               intr_rate_(0.0),
               soft_intr_rate_(0.0),
+              cpu_used_ex_(0),
+              mem_used_ex_(0),
+              disk_read_Bps_ex_(0),
+              disk_write_Bps_ex_(0),
+              disk_read_times_ex_(0),
+              disk_write_times_ex_(0),
+              disk_io_util_ex_(0),
+              net_in_bps_ex_(0),
+              net_out_bps_ex_(0),
+              net_in_pps_ex_(0),
+              net_out_pps_ex_(0),
+              intr_rate_ex_(0),
+              soft_intr_rate_ex_(0),
               collect_times_(0) {
         }
     ~SysStat(){

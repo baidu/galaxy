@@ -22,6 +22,20 @@
 
 DECLARE_string(gce_cgroup_root);
 DECLARE_int32(stat_check_period);
+DECLARE_double(max_cpu_usage);
+DECLARE_double(max_mem_usage);
+DECLARE_double(max_disk_r_kbps);
+DECLARE_double(max_disk_w_kbps);
+DECLARE_double(max_disk_r_rate);
+DECLARE_double(max_disk_w_rate);
+DECLARE_double(max_disk_util);
+DECLARE_double(max_net_in_bps);
+DECLARE_double(max_net_out_bps);
+DECLARE_double(max_net_in_pps);
+DECLARE_double(max_net_out_pps);
+DECLARE_double(max_intr_rate);
+DECLARE_double(max_soft_intr_rate);
+DECLARE_int32(max_ex_time);
 
 namespace baidu {
 namespace galaxy {
@@ -284,43 +298,183 @@ SysStat* GlobalResourceCollector::GetStat() {
 }
 
 int GlobalResourceCollector::CollectStatistics() {
-    bool ret = -1;
-    do {
-        LOG(INFO, "start collect sys stat");
-        stat_->last_stat_ = stat_->cur_stat_;        
-        bool ok = GetGlobalCpuStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get cpu usage");
-            break;
+    LOG(INFO, "start collect sys stat");
+    stat_->last_stat_ = stat_->cur_stat_;        
+    bool ok = GetGlobalCpuStat();
+    if (!ok) {
+        LOG(WARNING, "fail to get cpu usage");
+        return 1;
+    }
+    ok = GetGlobalMemStat();
+    if (!ok) {
+        LOG(WARNING, "fail to get mem usage");
+        return 1;
+    }
+    ok = GetGlobalIntrStat();
+    if (!ok) {
+        LOG(WARNING, "fail to get interupt usage");
+        return 1;
+    }
+    ok = GetGlobalIOStat();
+    if (!ok) {
+        LOG(WARNING, "fail to get IO usage");
+        return 1;    
+    }
+    ok = GetGlobalNetStat();
+    if (!ok) {
+        LOG(WARNING, "fail to get Net usage");
+        return 1;
+    }
+    stat_->collect_times_++;
+    if (stat_->collect_times_ < MIN_COLLECT_TIME) {
+        LOG(WARNING, "collect times not reach %d", MIN_COLLECT_TIME);
+        return 2;
+    }
+
+    int ret = 0;
+    if (fabs(FLAGS_max_cpu_usage) >= 1e-6 
+            && stat_->cpu_used_ > FLAGS_max_cpu_usage) {
+        stat_->cpu_used_ex_++;
+        LOG(WARNING, "cpu uage %f reach threshold %f ex %d",
+                stat_->cpu_used_, FLAGS_max_cpu_usage, stat_->cpu_used_ex_);
+        if (stat_->cpu_used_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
         }
-        ok = GetGlobalMemStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get mem usage");
-            break;
+    } else {
+        stat_->cpu_used_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_mem_usage) >= 1e-6
+            && stat_->mem_used_ > FLAGS_max_mem_usage) {
+        stat_->mem_used_ex_++;
+        LOG(WARNING, "mem usage %f reach threshold %f ex %d",
+                stat_->mem_used_, FLAGS_max_mem_usage, stat_->mem_used_ex_);
+        if (stat_->mem_used_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
         }
-        ok = GetGlobalIntrStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get interupt usage");
-            break;
+    } else {
+        stat_->mem_used_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_disk_r_kbps) >= 1e-6
+            && stat_->disk_read_Bps_ > FLAGS_max_disk_r_kbps) {
+        stat_->disk_read_Bps_ex_++;
+        LOG(WARNING, "disk read Bps %f reach threshold %f ex %d",
+                stat_->disk_read_Bps_, FLAGS_max_disk_r_kbps, stat_->disk_read_Bps_ex_);
+        if (stat_->disk_read_Bps_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
         }
-        ok = GetGlobalIOStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get IO usage");
-            break;
+    } else {
+        stat_->disk_read_Bps_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_disk_w_kbps) >= 1e-6
+            && stat_->disk_write_Bps_ > FLAGS_max_disk_w_kbps) {
+        stat_->disk_write_Bps_ex_++;
+        LOG(WARNING, "disk write Bps %f reach threshold %f ex %d",
+                stat_->disk_write_Bps_, FLAGS_max_disk_w_kbps, stat_->disk_write_Bps_ex_);
+        if (stat_->disk_write_Bps_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
         }
-        ok = GetGlobalNetStat();
-        if (!ok) {
-            LOG(WARNING, "fail to get Net usage");
-            break;
+    } else {
+        stat_->disk_write_Bps_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_disk_r_rate) >= 1e-6
+            && stat_->disk_read_times_ > FLAGS_max_disk_r_rate) {
+        stat_->disk_read_times_ex_++;
+        LOG(WARNING, "disk write rate %f reach threshold %f ex %d",
+                stat_->disk_read_times_, FLAGS_max_disk_r_rate, stat_->disk_read_times_ex_);
+        if (stat_->disk_read_times_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
         }
-        stat_->collect_times_++;
-        if (stat_->collect_times_ < MIN_COLLECT_TIME) {
-            LOG(WARNING, "collect times not reach %d", MIN_COLLECT_TIME);
-            ret = 1;
-            break;
+    } else {
+        stat_->disk_read_times_ex_ = 0;
+    } 
+    if (fabs(FLAGS_max_disk_w_rate) >= 1e-6 &&
+            stat_->disk_write_times_ > FLAGS_max_disk_w_rate) {
+        stat_->disk_write_times_ex_++;
+        LOG(WARNING, "disk write rate %f reach threshold %f ex %d",
+                stat_->disk_write_times_, FLAGS_max_disk_w_rate, stat_->disk_write_times_ex_);
+        if (stat_->disk_write_times_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
         }
-        ret = 0;
-    } while(0); 
+    } else {
+        stat_->disk_write_times_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_disk_util) >= 1e-6
+            && stat_->disk_io_util_ > FLAGS_max_disk_util) {
+        stat_->disk_io_util_ex_++;
+        LOG(WARNING, "disk io util %f reach threshold %f ex %d",
+                stat_->disk_io_util_, FLAGS_max_disk_util, stat_->disk_io_util_ex_);
+        if (stat_->disk_io_util_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->disk_io_util_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_net_in_bps) >= 1e-6
+            && stat_->net_in_bps_ > FLAGS_max_net_in_bps) {
+        stat_->net_in_bps_ex_++;
+        LOG(WARNING, "net in bps %f reach threshold %f ex %d",
+                stat_->net_in_bps_, FLAGS_max_net_in_bps, stat_->net_in_bps_ex_);
+        if (stat_->net_in_bps_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->net_in_bps_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_net_out_bps) >= 1e-6
+            && stat_->net_out_bps_ > FLAGS_max_net_out_bps) {
+        stat_->net_out_bps_ex_++;
+        LOG(WARNING, "net out bps %f reach threshold %f ex %d",
+                stat_->net_out_bps_, FLAGS_max_net_out_bps, stat_->net_out_bps_ex_);
+        if (stat_->net_out_bps_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->net_out_bps_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_net_in_pps) >= 1e-6
+            && stat_->net_in_pps_ > FLAGS_max_net_in_pps) {
+        stat_->net_in_pps_ex_++;
+        LOG(WARNING, "net in pps %f reach threshold %f ex %d",
+                stat_->net_in_bps_, FLAGS_max_net_in_pps, stat_->net_in_pps_ex_);
+        if (stat_->net_in_pps_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->net_in_pps_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_net_out_pps) >= 1e-6 
+            && stat_->net_out_pps_ > FLAGS_max_net_out_pps) {
+        stat_->net_out_pps_ex_++;
+        LOG(WARNING, "net out pps %f reach threshold %f ex %d",
+                stat_->net_out_pps_, FLAGS_max_net_out_pps, stat_->net_out_pps_ex_);
+        if (stat_->net_out_pps_ex_ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->net_out_pps_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_intr_rate) >= 1e-6  
+            && stat_->intr_rate_ > FLAGS_max_intr_rate) {
+        stat_->intr_rate_ex_++;
+        LOG(WARNING, "interupt rate %f reach threshold %f ex %d",
+                stat_->intr_rate_, FLAGS_max_intr_rate, stat_->intr_rate_ex_);
+        if (stat_->intr_rate_ex_++ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->intr_rate_ex_ = 0;
+    }
+    if (fabs(FLAGS_max_soft_intr_rate) >= 1e-6 
+            && stat_->soft_intr_rate_ > FLAGS_max_soft_intr_rate) {
+        stat_->soft_intr_rate_++;
+        LOG(WARNING, "soft interupt rate %f reach threshold %f ex %d",
+                stat_->soft_intr_rate_, FLAGS_max_soft_intr_rate, stat_->soft_intr_rate_ex_);
+        if (stat_->soft_intr_rate_ex_++ > FLAGS_max_ex_time) {
+            ret = 3;
+        }
+    } else {
+        stat_->soft_intr_rate_ex_ = 0;
+    }
     return ret;
 }
 
