@@ -8,7 +8,7 @@
 #
 # processname: galaxy
 
-PROD_ADDR=ftp://yq01-ps-rtg0000.yq01.baidu.com/home/galaxy/prod/galaxy.tar.gz
+PROD_ADDR=xxxxx
 . /etc/rc.d/init.d/functions
 AGENT_IP=`hostname -i`
 AGENT_HOME=/home/galaxy/agent
