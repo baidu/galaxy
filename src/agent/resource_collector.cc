@@ -297,6 +297,35 @@ SysStat* GlobalResourceCollector::GetStat() {
     return stat_;
 }
 
+bool GlobalResourceCollector::IsItemBusy(const double value, 
+                    const double threshold,
+                    int& ex_time,
+                    const int max_ex_time,
+                    bool& busy,
+                    const std::string title) {
+    if (fabs(threshold) < 1e-6) {
+        return false;
+    }
+    if (value > threshold) {
+        ex_time++;
+        LOG(WARNING, "%s uage %f reach threshold %f ex %d", title.c_str(),
+                value, threshold, max_ex_time);
+        if (ex_time >= max_ex_time) {
+            ex_time = max_ex_time;
+            busy = true;
+            LOG(WARNING, "item %s set busy", title.c_str());
+        }
+    } else {
+        ex_time--;
+        if (ex_time <= 0) {
+            busy = false;
+            ex_time = 0;
+            LOG(WARNING, "item %s set idle", title.c_str());
+        }
+    }
+    return busy;
+}
+
 int GlobalResourceCollector::CollectStatistics() {
     LOG(INFO, "start collect sys stat");
     stat_->last_stat_ = stat_->cur_stat_;        
@@ -331,151 +360,38 @@ int GlobalResourceCollector::CollectStatistics() {
         return 2;
     }
 
-    int ret = 0;
-    if (fabs(FLAGS_max_cpu_usage) >= 1e-6 
-            && stat_->cpu_used_ > FLAGS_max_cpu_usage) {
-        stat_->cpu_used_ex_++;
-        LOG(WARNING, "cpu uage %f reach threshold %f ex %d",
-                stat_->cpu_used_, FLAGS_max_cpu_usage, stat_->cpu_used_ex_);
-        if (stat_->cpu_used_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
+    bool ret = false;
+    ret |= IsItemBusy(stat_->cpu_used_, FLAGS_max_cpu_usage, stat_->cpu_used_ex_,
+                      FLAGS_max_ex_time, stat_->cpu_used_busy_, "cpu");
+    ret |= IsItemBusy(stat_->mem_used_, FLAGS_max_mem_usage, stat_->mem_used_ex_,
+                      FLAGS_max_ex_time, stat_->mem_used_busy_, "mem");
+    ret |= IsItemBusy(stat_->disk_read_Bps_, FLAGS_max_disk_r_kbps, stat_->disk_read_Bps_ex_,
+                      FLAGS_max_ex_time, stat_->disk_read_Bps_busy_, "disk read kBps");
+    ret |= IsItemBusy(stat_->disk_write_Bps_, FLAGS_max_disk_w_kbps, stat_->disk_write_Bps_ex_,
+                      FLAGS_max_ex_time, stat_->disk_write_Bps_busy_, "disk write kBps");
+    ret |= IsItemBusy(stat_->disk_read_times_, FLAGS_max_disk_r_rate, stat_->disk_read_times_ex_,
+                      FLAGS_max_ex_time, stat_->disk_read_times_busy_, "disk read rate");
+    ret |= IsItemBusy(stat_->disk_write_times_, FLAGS_max_disk_w_rate, stat_->disk_write_times_ex_,
+                      FLAGS_max_ex_time, stat_->disk_write_times_busy_, "disk write rate");
+    ret |= IsItemBusy(stat_->disk_io_util_, FLAGS_max_disk_util, stat_->disk_io_util_ex_,
+                      FLAGS_max_ex_time, stat_->disk_io_util_busy_, "disk io util");
+    ret |= IsItemBusy(stat_->net_in_bps_, FLAGS_max_net_in_bps, stat_->net_in_bps_ex_,
+                      FLAGS_max_ex_time, stat_->net_in_bps_busy_, "net in bps");
+    ret |= IsItemBusy(stat_->net_out_bps_, FLAGS_max_net_out_bps, stat_->net_out_bps_ex_,
+                      FLAGS_max_ex_time, stat_->net_out_bps_busy_, "net out bps");
+    ret |= IsItemBusy(stat_->net_in_pps_, FLAGS_max_net_in_pps, stat_->net_in_pps_ex_,
+                      FLAGS_max_ex_time, stat_->net_in_pps_busy_, "net in pps");
+    ret |= IsItemBusy(stat_->net_out_pps_, FLAGS_max_net_out_pps, stat_->net_out_pps_ex_,
+                      FLAGS_max_ex_time, stat_->net_out_pps_busy_, "net out pps");
+    ret |= IsItemBusy(stat_->intr_rate_, FLAGS_max_intr_rate, stat_->intr_rate_ex_,
+                      FLAGS_max_ex_time, stat_->intr_rate_busy_, "interupt rate");
+    ret |= IsItemBusy(stat_->soft_intr_rate_, FLAGS_max_soft_intr_rate, stat_->soft_intr_rate_ex_,
+                      FLAGS_max_ex_time, stat_->soft_intr_rate_busy_, "soft interupt rate");
+    if (ret) {
+        return 3;
     } else {
-        stat_->cpu_used_ex_ = 0;
+        return 0;
     }
-    if (fabs(FLAGS_max_mem_usage) >= 1e-6
-            && stat_->mem_used_ > FLAGS_max_mem_usage) {
-        stat_->mem_used_ex_++;
-        LOG(WARNING, "mem usage %f reach threshold %f ex %d",
-                stat_->mem_used_, FLAGS_max_mem_usage, stat_->mem_used_ex_);
-        if (stat_->mem_used_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->mem_used_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_disk_r_kbps) >= 1e-6
-            && stat_->disk_read_Bps_ > FLAGS_max_disk_r_kbps) {
-        stat_->disk_read_Bps_ex_++;
-        LOG(WARNING, "disk read Bps %f reach threshold %f ex %d",
-                stat_->disk_read_Bps_, FLAGS_max_disk_r_kbps, stat_->disk_read_Bps_ex_);
-        if (stat_->disk_read_Bps_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->disk_read_Bps_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_disk_w_kbps) >= 1e-6
-            && stat_->disk_write_Bps_ > FLAGS_max_disk_w_kbps) {
-        stat_->disk_write_Bps_ex_++;
-        LOG(WARNING, "disk write Bps %f reach threshold %f ex %d",
-                stat_->disk_write_Bps_, FLAGS_max_disk_w_kbps, stat_->disk_write_Bps_ex_);
-        if (stat_->disk_write_Bps_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->disk_write_Bps_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_disk_r_rate) >= 1e-6
-            && stat_->disk_read_times_ > FLAGS_max_disk_r_rate) {
-        stat_->disk_read_times_ex_++;
-        LOG(WARNING, "disk write rate %f reach threshold %f ex %d",
-                stat_->disk_read_times_, FLAGS_max_disk_r_rate, stat_->disk_read_times_ex_);
-        if (stat_->disk_read_times_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->disk_read_times_ex_ = 0;
-    } 
-    if (fabs(FLAGS_max_disk_w_rate) >= 1e-6 &&
-            stat_->disk_write_times_ > FLAGS_max_disk_w_rate) {
-        stat_->disk_write_times_ex_++;
-        LOG(WARNING, "disk write rate %f reach threshold %f ex %d",
-                stat_->disk_write_times_, FLAGS_max_disk_w_rate, stat_->disk_write_times_ex_);
-        if (stat_->disk_write_times_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->disk_write_times_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_disk_util) >= 1e-6
-            && stat_->disk_io_util_ > FLAGS_max_disk_util) {
-        stat_->disk_io_util_ex_++;
-        LOG(WARNING, "disk io util %f reach threshold %f ex %d",
-                stat_->disk_io_util_, FLAGS_max_disk_util, stat_->disk_io_util_ex_);
-        if (stat_->disk_io_util_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->disk_io_util_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_net_in_bps) >= 1e-6
-            && stat_->net_in_bps_ > FLAGS_max_net_in_bps) {
-        stat_->net_in_bps_ex_++;
-        LOG(WARNING, "net in bps %f reach threshold %f ex %d",
-                stat_->net_in_bps_, FLAGS_max_net_in_bps, stat_->net_in_bps_ex_);
-        if (stat_->net_in_bps_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->net_in_bps_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_net_out_bps) >= 1e-6
-            && stat_->net_out_bps_ > FLAGS_max_net_out_bps) {
-        stat_->net_out_bps_ex_++;
-        LOG(WARNING, "net out bps %f reach threshold %f ex %d",
-                stat_->net_out_bps_, FLAGS_max_net_out_bps, stat_->net_out_bps_ex_);
-        if (stat_->net_out_bps_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->net_out_bps_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_net_in_pps) >= 1e-6
-            && stat_->net_in_pps_ > FLAGS_max_net_in_pps) {
-        stat_->net_in_pps_ex_++;
-        LOG(WARNING, "net in pps %f reach threshold %f ex %d",
-                stat_->net_in_bps_, FLAGS_max_net_in_pps, stat_->net_in_pps_ex_);
-        if (stat_->net_in_pps_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->net_in_pps_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_net_out_pps) >= 1e-6 
-            && stat_->net_out_pps_ > FLAGS_max_net_out_pps) {
-        stat_->net_out_pps_ex_++;
-        LOG(WARNING, "net out pps %f reach threshold %f ex %d",
-                stat_->net_out_pps_, FLAGS_max_net_out_pps, stat_->net_out_pps_ex_);
-        if (stat_->net_out_pps_ex_ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->net_out_pps_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_intr_rate) >= 1e-6  
-            && stat_->intr_rate_ > FLAGS_max_intr_rate) {
-        stat_->intr_rate_ex_++;
-        LOG(WARNING, "interupt rate %f reach threshold %f ex %d",
-                stat_->intr_rate_, FLAGS_max_intr_rate, stat_->intr_rate_ex_);
-        if (stat_->intr_rate_ex_++ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->intr_rate_ex_ = 0;
-    }
-    if (fabs(FLAGS_max_soft_intr_rate) >= 1e-6 
-            && stat_->soft_intr_rate_ > FLAGS_max_soft_intr_rate) {
-        stat_->soft_intr_rate_++;
-        LOG(WARNING, "soft interupt rate %f reach threshold %f ex %d",
-                stat_->soft_intr_rate_, FLAGS_max_soft_intr_rate, stat_->soft_intr_rate_ex_);
-        if (stat_->soft_intr_rate_ex_++ > FLAGS_max_ex_time) {
-            ret = 3;
-        }
-    } else {
-        stat_->soft_intr_rate_ex_ = 0;
-    }
-    return ret;
 }
 
 bool GlobalResourceCollector::GetGlobalCpuStat() {
