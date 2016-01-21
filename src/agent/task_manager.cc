@@ -99,6 +99,9 @@ int TaskManager::Init() {
             InitTcpthrotEnv();
             cgroup_funcs_.insert(std::make_pair("tcp_throt",
                         boost::bind(&TaskManager::HandleInitTaskTcpCgroup, this, sub_systems[i], _1)));
+        } else if (sub_systems[i] == "blkio") {
+            cgroup_funcs_.insert(std::make_pair("blkio",
+                        boost::bind(&TaskManager::HandleInitTaskBlkioCgroup, this, sub_systems[i], _1)));
         } else {
             cgroup_funcs_.insert(std::make_pair(sub_systems[i], 
              boost::bind(&TaskManager::HandleInitTaskComCgroup, this, sub_systems[i], _1)));
@@ -1114,7 +1117,7 @@ bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* tas
             return false;
         }
     }
-	const int GROUP_KILL_MODE = 0;
+    const int GROUP_KILL_MODE = 0;
     if (file::IsExists(mem_path + "/memory.kill_mode") 
           && cgroups::Write(mem_path,
                 "memory.kill_mode", 
@@ -1162,7 +1165,7 @@ bool TaskManager::HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task
             LOG(WARNING, "disable cpu limit failed for %s", cpu_path.c_str()); 
             return false;
         } 
-    }else {
+    } else {
         LOG(INFO, "create hard limit task %s", task->task_id.c_str());
         std::string cpu_path = hierarchies_["cpu"] + "/" + FLAGS_agent_global_hardlimit_path + "/" + task->task_id;
         if (!file::Mkdir(cpu_path)) {
@@ -1187,6 +1190,45 @@ bool TaskManager::HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task
             return false;
         }
     }
+    return true;
+}
+
+bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* task) {
+    tasks_mutex_.AssertHeld();
+    if (task == NULL) {
+        return false;
+    }
+    if (!task->desc.requirement().has_read_bytes_ps()) {
+        return true;
+    }
+
+    LOG(INFO, "create cgroup %s for task %s", subsystem.c_str(), task->task_id.c_str());
+    if (hierarchies_.find("blkio") == hierarchies_.end()) {
+        LOG(WARNING, "blkio subsystem is disabled");
+        return true;
+    }
+    std::string blkio_path = hierarchies_["blkio"] + "/" + FLAGS_agent_global_cgroup_path + "/"
+                           + task->task_id;
+    if (!file::Mkdir(blkio_path)) {
+        LOG(WARNING, "create dir %s failed for %s", blkio_path.c_str(), task->task_id.c_str());
+        return false;
+    }
+    task->cgroups["blkio"] = blkio_path;
+    int64_t read_bytes_ps = task->desc.requirement().read_bytes_ps();
+    int32_t major_number;
+    bool ok = file::GetDeviceMajorNumber("/home", major_number);
+    if (!ok) {
+        LOG(WARNING, "get device major  for task %s fail", task->task_id.c_str());
+        return false;
+    }
+    std::string limit_string = boost::lexical_cast<std::string>(major_id) + ":0 "
+        + boost::lexical_cast<std::string>(read_bytes_ps);
+    if (cgroups::Write(blkio_path,
+            "blkio.throttle.read_bps_device",
+            limit_string) != 0) {
+        LOG(WARNING, "set read_bps fail for %s", blkio_path.c_str());
+        return false;
+    };
     return true;
 }
 

@@ -80,7 +80,7 @@ DEFINE_int32(agent_detect_interval, 1000, "agent detect process running interval
 DEFINE_int32(agent_io_collect_interval, 1000, "agent collect io interval");
 DEFINE_int32(agent_memory_check_interval, 200, "agent check task memory interval");
 DEFINE_bool(agent_use_galaxy_oom_killer, false, "use galaxy oom killer default false, use cgroup oom killer");
-DEFINE_string(agent_default_user, "galaxy", "agent default run task user");
+DEFINE_string(agent_default_user, "root", "agent default run task user");
 DEFINE_int32(send_bps_quota, 200000000, "galaxy net send limit");
 DEFINE_int32(recv_bps_quota, 200000000, "galaxy new recv limit");
 

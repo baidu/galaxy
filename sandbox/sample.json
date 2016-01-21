@@ -9,7 +9,8 @@
         "requirement": {
             "millicores": 1000,
             "memory": "2G",
-            "ports": [8080]
+            "ports": [8080],
+            "read_bytes_ps": "1M"
         },
         "tasks":[
                  {
@@ -18,7 +19,8 @@
                      "start_command": "sleep 10000",
                      "requirement": {
                          "millicores": 500,
-                         "memory": "2G"
+                         "memory": "2G",
+                         "read_bytes_ps": "1M"
                      }
                  }
 

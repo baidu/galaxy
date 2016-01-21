@@ -439,6 +439,11 @@ int PodManager::AddPod(const PodInfo& info) {
         return -1;
     }
     LOG(INFO, "run pod with namespace_isolation: [%d]", internal_info.pod_desc.namespace_isolation());
+    if (internal_info.pod_desc.requirement().has_read_bytes_ps()) {
+        LOG(INFO, "run pod with read_bytes_ps: [%d]", internal_info.pod_desc.requirement().read_bytes_ps());
+    } else {
+        LOG(INFO, "run pod without read_bytes_ps limit");
+    }
     int lanuch_initd_ret = -1;
     if (FLAGS_agent_namespace_isolation_switch && internal_info.pod_desc.namespace_isolation()) {
         lanuch_initd_ret = LanuchInitd(&internal_info);

@@ -311,7 +311,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             res->ports.push_back(pod_ports[i].GetInt());
         }
     }
-    if (pod_json.HasMember("disks")) {
+    if (pod_require.HasMember("disks")) {
         const rapidjson::Value& pod_disks = pod_require["disks"];
         for (rapidjson::SizeType i = 0; i < pod_disks.Size(); i++) {
             ::baidu::galaxy::VolumeDescription vol;
@@ -320,13 +320,20 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             res->disks.push_back(vol);
         } 
     }
-    if (pod_json.HasMember("ssds")) {
+    if (pod_require.HasMember("ssds")) {
         const rapidjson::Value& pod_ssds = pod_require["ssds"];
         for (rapidjson::SizeType i = 0; i < pod_ssds.Size(); i++) {
             ::baidu::galaxy::VolumeDescription vol;
             vol.quota = pod_ssds[i]["quota"].GetInt64();
             vol.path = pod_ssds[i]["path"].GetString();
             res->ssds.push_back(vol);
+        }
+    }
+    if (pod_require.HasMember("read_bytes_ps")) {
+        ok = ReadableStringToInt(pod_require["read_bytes_ps"].GetString(), &res->read_bytes_ps);
+        if (ok != 0) {
+            fprintf(stderr, "fail to parse pod read_bytes_ps %s\n", pod_require["read_bytes_ps"].GetString());
+            return -1;
         }
     }
     std::vector< ::baidu::galaxy::TaskDescription>& tasks = pod.tasks;
@@ -384,7 +391,6 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     res->disks.push_back(task_vol);
                 } 
             }
-
             if (tasks_json[i]["requirement"].HasMember("ssds")) {
                 const rapidjson::Value& task_ssds = tasks_json[i]["requirement"]["ssds"];
                 for (rapidjson::SizeType i = 0; i < task_ssds.Size(); i++){ 
@@ -392,6 +398,13 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     task_vol.quota = task_ssds[i]["quota"].GetInt64();
                     task_vol.path = task_ssds[i]["path"].GetString();
                     res->ssds.push_back(task_vol);
+                }
+            }
+            if (tasks_json[i]["requirement"].HasMember("read_bytes_ps")) {
+                ok = ReadableStringToInt(tasks_json[i]["requirement"]["read_bytes_ps"].GetString(), &res->read_bytes_ps);
+                if (ok != 0) {
+                    fprintf(stderr, "fail to parse task read_bytes_ps %s\n", tasks_json[i]["requirement"]["read_bytes_ps"].GetString());
+                    return -1;
                 }
             }
             tasks.push_back(task);

@@ -21,7 +21,7 @@ echo "--agent_namespace_isolation_switch=true" >> galaxy.flag
 echo "--agent_initd_bin=`pwd`/../initd" >> galaxy.flag
 echo "--agent_work_dir=`pwd`/work_dir" >> galaxy.flag
 echo "--gce_bind_config=`pwd`/mount_bind.template" >> galaxy.flag
-echo "--gce_support_subsystems=cpu,memory,cpuacct,freezer" >> galaxy.flag
+echo "--gce_support_subsystems=cpu,memory,cpuacct,freezer,blkio" >> galaxy.flag
 
 test -e work_dir && rm -rf work_dir
 mkdir work_dir
@@ -32,6 +32,6 @@ sleep 3
 #echo "sleep 10000000000" > longrun.sh
 #tar zcf longrun.tar.gz longrun.sh
 
-../galaxy submit -f sample.json
+../galaxy submit -f io.json
 ../galaxy jobs
 ../galaxy agents
