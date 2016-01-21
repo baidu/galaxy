@@ -1221,7 +1221,7 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
         LOG(WARNING, "get device major  for task %s fail", task->task_id.c_str());
         return false;
     }
-    std::string limit_string = boost::lexical_cast<std::string>(major_id) + ":0 "
+    std::string limit_string = boost::lexical_cast<std::string>(major_number) + ":0 "
         + boost::lexical_cast<std::string>(read_bytes_ps);
     if (cgroups::Write(blkio_path,
             "blkio.throttle.read_bps_device",
