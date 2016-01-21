@@ -289,11 +289,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
     if (pod_json.HasMember("namespace_isolation")) {
         pod.namespace_isolation = pod_json["namespace_isolation"].GetBool();
     } else {
-        if ("kMonitor" == job->type) {
-            pod.namespace_isolation = false;
-        } else {
-            pod.namespace_isolation = true;
-        }
+        pod.namespace_isolation = true;
     }
     res->millicores = pod_require["millicores"].GetInt();
     if (!pod_require.HasMember("memory")) {

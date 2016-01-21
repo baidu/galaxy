@@ -68,11 +68,11 @@ static int LanuchInitdMain(void *arg) {
                                          context->stderr_fd, 
                                          context->fds);
     char* argv[] = {
-        const_cast<char*>("bash"),
+        const_cast<char*>("sh"),
         const_cast<char*>("-c"),
         const_cast<char*>(context->start_command.c_str()),
         NULL};
-    ::execv("/bin/bash", argv);
+    ::execv("/bin/sh", argv);
     assert(0);
     return 0;
 }
@@ -157,11 +157,11 @@ int PodManager::LanuchInitdByFork(PodInfo* info) {
                                              stderr_fd, 
                                              fd_vector);
         char* argv[] = {
-            const_cast<char*>("bash"),
+            const_cast<char*>("sh"),
             const_cast<char*>("-c"),
             const_cast<char*>(command.c_str()),
             NULL};
-        ::execv("/bin/bash", argv);
+        ::execv("/bin/sh", argv);
         assert(0);
     } 
     ::close(stdout_fd);

@@ -10,7 +10,6 @@ enum JobType {
     kLongRun = 0;
     kBatch = 1;
     kSystem = 2;
-    kMonitor = 3;
 }
 
 enum JobPriority {

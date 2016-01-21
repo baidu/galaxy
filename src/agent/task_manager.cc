@@ -940,7 +940,7 @@ int TaskManager::RunProcessCheck(TaskInfo* task_info) {
                 task_info->task_id.c_str(),
                 task_info->main_process.exit_code()); 
         task_info->status.set_state(kTaskError);
-        Trace::TraceTaskEvent(TERROR, 
+        Trace::TraceTaskEvent(TERROR,
                               task_info,
                               "main process err exit", 
                               kTaskError,
@@ -1216,7 +1216,7 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
     task->cgroups["blkio"] = blkio_path;
     int64_t read_bytes_ps = task->desc.requirement().read_bytes_ps();
     int32_t major_number;
-    bool ok = file::GetDeviceMajorNumber("/home", major_number);
+    bool ok = file::GetDeviceMajorNumberByPath(FLAGS_agent_work_dir, major_number);
     if (!ok) {
         LOG(WARNING, "get device major  for task %s fail", task->task_id.c_str());
         return false;

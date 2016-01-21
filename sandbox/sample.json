@@ -1,11 +1,12 @@
 {
     "name": "sample",
     "replica": 2,
-    "type": "kMonitor",
+    "type": "kLongRun",
     "priority": 50,
     "deploy_step": 3,
     "pod": {
         "version": "2.0.0",
+        "namespace_isolation": false,
         "requirement": {
             "millicores": 1000,
             "memory": "2G",

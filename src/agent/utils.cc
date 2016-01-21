@@ -506,7 +506,7 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path) {
     return true;
 }
 
-bool GetDeviceMajorNumber(const std::string& path, int32_t& major_number) {
+bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number) {
     struct stat sb;
     if (stat(path.c_str(), &sb) == -1) {
         return false;
