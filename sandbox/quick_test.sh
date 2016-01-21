@@ -28,10 +28,6 @@ mkdir work_dir
 ./start_all.sh
 sleep 3
 
-#tar zcf batch.tar.gz ../galaxy
-#echo "sleep 10000000000" > longrun.sh
-#tar zcf longrun.tar.gz longrun.sh
-
-../galaxy submit -f io.json
+../galaxy submit -f sample.json
 ../galaxy jobs
 ../galaxy agents

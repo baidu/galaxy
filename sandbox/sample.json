@@ -13,17 +13,16 @@
             "read_bytes_ps": "1M"
         },
         "tasks":[
-                 {
-                     "binary": "",
-                     "source_type": "kSourceTypeCommand",
-                     "start_command": "sleep 10000",
-                     "requirement": {
-                         "millicores": 500,
-                         "memory": "2G",
-                         "read_bytes_ps": "1M"
-                     }
+            {
+                "binary": "",
+                "source_type": "kSourceTypeCommand",
+                "start_command": "dd if=/dev/cciss/c0d0p6 of=/dev/null",
+                "requirement": {
+                     "millicores": 500,
+                     "memory": "2G",
+                     "read_bytes_ps": "1M"
                  }
-
-            ]
+             }
+         ]
     }
 }
