@@ -301,6 +301,7 @@ bool GlobalResourceCollector::IsItemBusy(const double value,
                     const double threshold,
                     int& ex_time,
                     const int max_ex_time,
+                    bool& busy,
                     const std::string title) {
     if (fabs(threshold) < 1e-6) {
         return false;
@@ -311,6 +312,7 @@ bool GlobalResourceCollector::IsItemBusy(const double value,
                 value, threshold, ex_time);
         if (ex_time >= max_ex_time) {
             ex_time = max_ex_time;
+            busy = true;
             LOG(WARNING, "item %s set busy", title.c_str());
         }
     } else {
@@ -318,6 +320,7 @@ bool GlobalResourceCollector::IsItemBusy(const double value,
         LOG(WARNING, "%s usage %f under threshold %f ex %d", title.c_str(),
                 value, threshold, ex_time);
         if (ex_time <= 0) {
+            busy = false;
             ex_time = 0;
             LOG(WARNING, "item %s set idle", title.c_str());
         }
@@ -361,31 +364,31 @@ int GlobalResourceCollector::CollectStatistics() {
 
     bool ret = false;
     ret |= IsItemBusy(stat_->cpu_used_, FLAGS_max_cpu_usage, stat_->cpu_used_ex_,
-                      FLAGS_max_ex_time, "cpu");
+                      FLAGS_max_ex_time, stat_->cpu_used_busy_, "cpu");
     ret |= IsItemBusy(stat_->mem_used_, FLAGS_max_mem_usage, stat_->mem_used_ex_,
-                      FLAGS_max_ex_time, "mem");
+                      FLAGS_max_ex_time, stat_->mem_used_busy_, "mem");
     ret |= IsItemBusy(stat_->disk_read_Bps_, FLAGS_max_disk_r_kbps, stat_->disk_read_Bps_ex_,
-                      FLAGS_max_ex_time, "disk read kBps");
+                      FLAGS_max_ex_time, stat_->disk_read_Bps_busy_, "disk read kBps");
     ret |= IsItemBusy(stat_->disk_write_Bps_, FLAGS_max_disk_w_kbps, stat_->disk_write_Bps_ex_,
-                      FLAGS_max_ex_time, "disk write kBps");
+                      FLAGS_max_ex_time, stat_->disk_write_Bps_busy_, "disk write kBps");
     ret |= IsItemBusy(stat_->disk_read_times_, FLAGS_max_disk_r_rate, stat_->disk_read_times_ex_,
-                      FLAGS_max_ex_time, "disk read rate");
+                      FLAGS_max_ex_time, stat_->disk_read_times_busy_, "disk read rate");
     ret |= IsItemBusy(stat_->disk_write_times_, FLAGS_max_disk_w_rate, stat_->disk_write_times_ex_,
-                      FLAGS_max_ex_time, "disk write rate");
+                      FLAGS_max_ex_time, stat_->disk_write_times_busy_, "disk write rate");
     ret |= IsItemBusy(stat_->disk_io_util_, FLAGS_max_disk_util, stat_->disk_io_util_ex_,
-                      FLAGS_max_ex_time, "disk io util");
+                      FLAGS_max_ex_time, stat_->disk_io_util_busy_, "disk io util");
     ret |= IsItemBusy(stat_->net_in_bps_, FLAGS_max_net_in_bps, stat_->net_in_bps_ex_,
-                      FLAGS_max_ex_time, "net in bps");
+                      FLAGS_max_ex_time, stat_->net_in_bps_busy_, "net in bps");
     ret |= IsItemBusy(stat_->net_out_bps_, FLAGS_max_net_out_bps, stat_->net_out_bps_ex_,
-                      FLAGS_max_ex_time, "net out bps");
+                      FLAGS_max_ex_time, stat_->net_out_bps_busy_, "net out bps");
     ret |= IsItemBusy(stat_->net_in_pps_, FLAGS_max_net_in_pps, stat_->net_in_pps_ex_,
-                      FLAGS_max_ex_time, "net in pps");
+                      FLAGS_max_ex_time, stat_->net_in_pps_busy_, "net in pps");
     ret |= IsItemBusy(stat_->net_out_pps_, FLAGS_max_net_out_pps, stat_->net_out_pps_ex_,
-                      FLAGS_max_ex_time, "net out pps");
+                      FLAGS_max_ex_time, stat_->net_out_pps_busy_, "net out pps");
     ret |= IsItemBusy(stat_->intr_rate_, FLAGS_max_intr_rate, stat_->intr_rate_ex_,
-                      FLAGS_max_ex_time, "interupt rate");
+                      FLAGS_max_ex_time, stat_->intr_rate_busy_, "interupt rate");
     ret |= IsItemBusy(stat_->soft_intr_rate_, FLAGS_max_soft_intr_rate, stat_->soft_intr_rate_ex_,
-                      FLAGS_max_ex_time, "soft interupt rate");
+                      FLAGS_max_ex_time, stat_->soft_intr_rate_busy_, "soft interupt rate");
     if (ret) {
         return 3;
     } else {
