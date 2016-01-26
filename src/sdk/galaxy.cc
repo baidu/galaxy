@@ -208,6 +208,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     // pod meta
     PodDescriptor* pod_pb = job->mutable_pod();
     pod_pb->set_version(sdk_job.pod.version);
+    pod_pb->set_namespace_isolation(sdk_job.pod.namespace_isolation);
     Resource* pod_res = pod_pb->mutable_requirement();
     // pod res
     pod_res->set_millicores(sdk_job.pod.requirement.millicores);
@@ -215,6 +216,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     for (size_t i = 0; i < sdk_job.pod.requirement.ports.size(); i++) {
         pod_res->add_ports(sdk_job.pod.requirement.ports[i]);
     }
+    pod_res->set_read_bytes_ps(sdk_job.pod.requirement.read_bytes_ps);
     for (size_t i = 0; i < sdk_job.pod.tasks.size(); i++) {
         TaskDescriptor* task = pod_pb->add_tasks();
         task->set_binary(sdk_job.pod.tasks[i].binary);
@@ -238,6 +240,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
         }
         task->set_cpu_isolation_type(cpu_isolation_type);
         task->set_mem_isolation_type(mem_isolation_type);
+        task->set_namespace_isolation(sdk_job.pod.namespace_isolation);
         task->set_offset(sdk_job.pod.tasks[i].offset);
         std::set<std::string>::iterator envs_it = sdk_job.pod.tasks[i].envs.begin();
         for (;envs_it != sdk_job.pod.tasks[i].envs.end(); i++) {
@@ -260,6 +263,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
             ssd->set_quota(task_res_desc.ssds[j].quota);
             ssd->set_path(task_res_desc.ssds[j].path);
         }
+        task_res->set_read_bytes_ps(task_res_desc.read_bytes_ps);
     }
     if (!sdk_job.label.empty()) {
         job->mutable_pod()->add_labels(sdk_job.label);

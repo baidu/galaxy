@@ -40,12 +40,14 @@ struct TaskDescription {
     std::string mem_isolation_type;
     std::set<std::string> envs;
     std::string cpu_isolation_type;
+    bool namespace_isolation;
 };
 
 struct PodDescription {
    ResDescription requirement; 
    std::vector<TaskDescription> tasks;
    std::string version;
+   bool namespace_isolation;
 };
 
 struct JobDescription {

@@ -27,3 +27,14 @@ _testmain.go
 *.pb.cc
 
 output/*
+
+# bin files
+master
+scheduler
+agent
+initd
+thirdsrc
+thirdparty
+sandbox/*.log
+galaxy
+
