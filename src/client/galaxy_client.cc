@@ -332,6 +332,13 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             return -1;
         }
     }
+    if (pod_require.HasMember("write_bytes_ps")) {
+        ok = ReadableStringToInt(pod_require["write_bytes_ps"].GetString(), &res->write_bytes_ps);
+        if (ok != 0) {
+            fprintf(stderr, "fail to parse pod write_bytes_ps %s\n", pod_require["write_bytes_ps"].GetString());
+            return -1;
+        } 
+    }
     std::vector< ::baidu::galaxy::TaskDescription>& tasks = pod.tasks;
     if (pod_json.HasMember("tasks")) {
         const rapidjson::Value& tasks_json = pod_json["tasks"];
@@ -400,6 +407,13 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                 ok = ReadableStringToInt(tasks_json[i]["requirement"]["read_bytes_ps"].GetString(), &res->read_bytes_ps);
                 if (ok != 0) {
                     fprintf(stderr, "fail to parse task read_bytes_ps %s\n", tasks_json[i]["requirement"]["read_bytes_ps"].GetString());
+                    return -1;
+                }
+            }
+            if (tasks_json[i]["requirement"].HasMember("write_bytes_ps")) {
+                ok = ReadableStringToInt(tasks_json[i]["requirement"]["write_bytes_ps"].GetString(), &res->write_bytes_ps);
+                if (ok != 0) {
+                    fprintf(stderr, "fail to parse task write_bytes_ps %s\n", tasks_json[i]["requirement"]["write_bytes_ps"].GetString());
                     return -1;
                 }
             }

@@ -1198,10 +1198,6 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
     if (task == NULL) {
         return false;
     }
-    if (!task->desc.requirement().has_read_bytes_ps()) {
-        return true;
-    }
-
     LOG(INFO, "create cgroup %s for task %s", subsystem.c_str(), task->task_id.c_str());
     if (hierarchies_.find("blkio") == hierarchies_.end()) {
         LOG(WARNING, "blkio subsystem is disabled");
@@ -1214,21 +1210,42 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
         return false;
     }
     task->cgroups["blkio"] = blkio_path;
-    int64_t read_bytes_ps = task->desc.requirement().read_bytes_ps();
     int32_t major_number;
     bool ok = file::GetDeviceMajorNumberByPath(FLAGS_agent_work_dir, major_number);
     if (!ok) {
         LOG(WARNING, "get device major  for task %s fail", task->task_id.c_str());
         return false;
     }
-    std::string limit_string = boost::lexical_cast<std::string>(major_number) + ":0 "
-        + boost::lexical_cast<std::string>(read_bytes_ps);
-    if (cgroups::Write(blkio_path,
-            "blkio.throttle.read_bps_device",
-            limit_string) != 0) {
-        LOG(WARNING, "set read_bps fail for %s", blkio_path.c_str());
-        return false;
-    };
+    int64_t read_bytes_ps = task->desc.requirement().read_bytes_ps();
+    if (read_bytes_ps > 0) {
+        std::string read_limit_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(read_bytes_ps);
+        if (cgroups::Write(blkio_path,
+                "blkio.throttle.read_bps_device",
+                read_limit_string) != 0) {
+            LOG(WARNING, "set read_bps fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore read bytes ps of task  podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
+    int64_t write_bytes_ps = task->desc.requirement().write_bytes_ps();
+    if (write_bytes_ps > 0) {
+        std::string write_limit_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(write_bytes_ps);
+        if (cgroups::Write(blkio_path,
+            "blkio.throttle.write_bps_device",
+            write_limit_string) != 0) {
+            LOG(WARNING, "set write_bps fail for %s", blkio_path.c_str());
+            return false;
+        }; 
+    } else {
+        LOG(WARNING, "ignore write bytes ps of task podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
     return true;
 }
 

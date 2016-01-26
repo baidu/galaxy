@@ -22,6 +22,7 @@ struct TaskInfo {
     std::string task_id;    
     std::string pod_id;     // which pod belong to 
     std::string job_id;
+    std::string job_name;
     TaskDescriptor desc;
     TaskStatus status;
     std::string initd_endpoint;
