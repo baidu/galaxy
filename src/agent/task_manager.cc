@@ -26,6 +26,7 @@
 #include "agent/resource_collector.h"
 #include "logging.h"
 #include "timer.h"
+#include "string_util.h"
 #include "utils/trace.h"
 
 DECLARE_string(gce_cgroup_root);
@@ -371,7 +372,8 @@ void TaskManager::CollectIO(const std::string& task_id) {
     CGroupIOStatistics current;
     bool ok = CGroupIOCollector::Collect(freezer_path, &current);
     if (!ok) {
-        LOG(WARNING, "fail to collect io stat for task %s", task_id.c_str());
+        LOG(WARNING, "fail to collect io stat for task %s",
+                task_id.c_str());
     }else {
         MutexLock scope_lock(&tasks_mutex_);
         std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
@@ -400,6 +402,11 @@ void TaskManager::CollectIO(const std::string& task_id) {
             }
             task->status.mutable_resource_used()->set_read_bytes_ps(read_bytes_ps);
             task->status.mutable_resource_used()->set_write_bytes_ps(write_bytes_ps);
+            LOG(INFO, "pod %s of job %s read_bytes_ps %s/s write_bytes_ps %s/s",
+                    task->pod_id.c_str(),
+                    task->job_name.c_str(),
+                    ::baidu::common::HumanReadableString(read_bytes_ps).c_str(),
+                    ::baidu::common::HumanReadableString(write_bytes_ps).c_str());
             task->status.mutable_resource_used()->set_syscr_ps(syscr_ps);
             task->status.mutable_resource_used()->set_syscw_ps(syscw_ps);
             task->old_io_stat = current;
