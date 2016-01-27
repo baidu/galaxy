@@ -337,7 +337,6 @@ bool AgentImpl::PingMaster() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     request.set_endpoint(endpoint_);
-    LOG(WARNING, "agent %s ping master : %s", endpoint_.c_str(), master_endpoint_.c_str());
     return rpc_client_->SendRequest(master_,
                                     &Master_Stub::HeartBeat,
                                     &request,

@@ -111,6 +111,7 @@ struct TaskInfo {
     void CopyFrom(const TaskInfo& task) {
         task_id = task.task_id; 
         pod_id = task.pod_id;
+        job_name = task.job_name;
         job_id = task.job_id;
         desc.CopyFrom(task.desc);
         status.CopyFrom(task.status);
