@@ -170,6 +170,9 @@ public:
     //     master_key    : /baidu/galaxy/yq01-master
     static Galaxy* ConnectGalaxy(const std::string& nexus_servers,
                                  const std::string& master_key);
+
+    static Galaxy* ConnectGalaxy(const std::string& master_addr);
+
     //create a new job
     virtual bool SubmitJob(const JobDescription& job, std::string* job_id) = 0;
     //update job for example update the replicate_count
