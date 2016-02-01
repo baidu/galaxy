@@ -37,6 +37,7 @@ DECLARE_double(max_net_out_pps);
 DECLARE_double(max_intr_rate);
 DECLARE_double(max_soft_intr_rate);
 DECLARE_int32(max_ex_time);
+DECLARE_string(agent_work_dir);
 
 namespace baidu {
 namespace galaxy {
@@ -609,7 +610,7 @@ bool GlobalResourceCollector::GetGlobalIntrStat() {
 
 bool GlobalResourceCollector::GetGlobalIOStat() {
     struct stat stat_buf;
-    if (stat("/home/galaxy/", &stat_buf) != 0) {
+    if (stat(FLAGS_agent_work_dir.c_str(), &stat_buf) != 0) {
         return false;
     }
     int dev_major = major(stat_buf.st_dev);
