@@ -161,21 +161,6 @@ else
     cd -
 fi
 
-if [ -d "leveldb" ]
-then
-    echo "leveldb exist"
-else
-
-    # leveldb
-    git clone https://github.com/imotai/leveldb.git
-    cd leveldb
-    make -j8 >/dev/null 
-    cp -rf include/* ${DEPS_PREFIX}/include
-    cp libleveldb.a ${DEPS_PREFIX}/lib
-    cd -
-fi
-
-
 if [ -d "ins" ]
 then
     echo "ins exist"
@@ -198,6 +183,22 @@ else
     cp -rf output/python/* ../../optools/
     cd -
 fi
+
+if [ -d "leveldb" ]
+then
+    echo "leveldb exist"
+else
+
+    # leveldb
+    git clone https://github.com/imotai/leveldb.git
+    cd leveldb
+    make -j8 >/dev/null 
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp libleveldb.a ${DEPS_PREFIX}/lib
+    cd -
+fi
+
+
 
 if [ -d "mdt" ]
 then
