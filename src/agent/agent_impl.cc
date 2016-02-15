@@ -136,6 +136,9 @@ void AgentImpl::CreatePodInfo(
         task_info.stage = kTaskStagePENDING;
         task_info.fail_retry_times = 0;
         task_info.max_retry_times = 10;
+        if (req->has_job_name()) {
+            task_info.job_name = req->job_name();
+        }
         pod_info->tasks[task_info.task_id] = task_info;
     }
     if (req->has_job_name()) {
@@ -334,7 +337,6 @@ bool AgentImpl::PingMaster() {
     HeartBeatRequest request;
     HeartBeatResponse response;
     request.set_endpoint(endpoint_);
-    LOG(WARNING, "agent %s ping master : %s", endpoint_.c_str(), master_endpoint_.c_str());
     return rpc_client_->SendRequest(master_,
                                     &Master_Stub::HeartBeat,
                                     &request,
