@@ -187,9 +187,9 @@ else
     sed -i 's/^PROTOBUF_PATH=.*/PROTOBUF_PATH=..\/..\/thirdparty/' Makefile
     sed -i 's/^PROTOC_PATH=.*/PROTOC_PATH=..\/..\/thirdparty\/bin/' Makefile
     sed -i 's/^PROTOC=.*/PROTOC=..\/..\/thirdparty\/bin\/protoc/' Makefile
-    sed -i 's|^PROTOC=.*|PROTOC=${PREFIX}/bin/protoc|' Makefile
     sed -i 's/^GFLAGS_PATH=.*/GFLAGS_PATH=..\/..\/thirdparty/' Makefile
     sed -i 's/^GTEST_PATH=.*/GTEST_PATH=..\/..\/thirdparty/' Makefile
+    sed -i 's/^PREFIX=.*/PREFIX=..\/..\/thirdparty/' Makefile
     export PATH=${DEPS_PREFIX}/bin:$PATH
     export BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0
     export PBRPC_PATH=${DEPS_PREFIX}/
@@ -198,7 +198,6 @@ else
     cp -rf output/python/* ../../optools/
     cd -
 fi
-
 
 if [ -d "mdt" ]
 then
