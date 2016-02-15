@@ -12,6 +12,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sys/stat.h>
 #include "gflags/gflags.h"
 #include "boost/lexical_cast.hpp"
 #include "boost/algorithm/string.hpp"
@@ -36,6 +37,7 @@ DECLARE_double(max_net_out_pps);
 DECLARE_double(max_intr_rate);
 DECLARE_double(max_soft_intr_rate);
 DECLARE_int32(max_ex_time);
+DECLARE_string(agent_work_dir);
 
 namespace baidu {
 namespace galaxy {
@@ -607,15 +609,57 @@ bool GlobalResourceCollector::GetGlobalIntrStat() {
 }
 
 bool GlobalResourceCollector::GetGlobalIOStat() {
-    std::string path = "/sys/block/sda/stat";
+    struct stat stat_buf;
+    if (stat(FLAGS_agent_work_dir.c_str(), &stat_buf) != 0) {
+        return false;
+    }
+    int dev_major = major(stat_buf.st_dev);
+    int dev_minor = minor(stat_buf.st_dev);
+    std::ifstream partition("/proc/partitions");
+    if (!partition.is_open()) {
+        LOG(WARNING, "open partitions file fail.");
+        return false;
+    }
+    std::vector<std::string> lines;
+    std::string dev_name;
+    std::ostringstream tmp;
+    tmp << partition.rdbuf();
+    std::string content = tmp.str();
+    partition.close();
+    boost::split(lines, content, boost::is_any_of("\n"));
+    for (size_t n = 0; n < lines.size(); n++) {
+        if (n < 2) {
+            continue;
+        }
+        std::string line = lines[n];
+        boost::trim(line);
+        std::vector<std::string> parts;
+        boost::split(parts, line, boost::is_any_of(" "), boost::token_compress_on);
+        if (boost::lexical_cast<int64_t>(parts[0]) == dev_major
+                && boost::lexical_cast<int64_t>(parts[1]) == dev_minor) {
+            if (parts[3].find("sda") != std::string::npos) {
+                dev_name = "sda";
+                break;
+            } else if (parts[3].find("cciss") != std::string::npos) {
+                dev_name = "cciss!c0d0";
+                break;
+            } else {
+                LOG(WARNING, "can not find dev name");
+                return false;
+            }
+        } else {
+            continue;
+        }
+    }
+    std::string path = "/sys/block/" + dev_name + "/stat";
     std::ifstream stat(path.c_str());
     if (!stat.is_open()) {
         LOG(WARNING, "open proc stat fail.");
         return false;
     }
-    std::ostringstream tmp;
+    tmp.str("");
     tmp << stat.rdbuf(); 
-    std::string content = tmp.str();
+    content = tmp.str();
     stat.close();
     boost::trim(content);
     std::vector<std::string> parts;
