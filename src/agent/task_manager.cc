@@ -551,7 +551,8 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     ExecuteResponse initd_response;
     initd_request.set_key(task_info->stop_process.key());
     initd_request.set_commands(stop_command);
-    if (FLAGS_agent_namespace_isolation_switch) {
+    if (FLAGS_agent_namespace_isolation_switch
+            && task_info->desc.namespace_isolation()) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
         std::string* chroot_path = initd_request.add_envs();
         chroot_path->append("CHROOT_PATH=");
@@ -704,7 +705,8 @@ int TaskManager::DeployTask(TaskInfo* task_info) {
     ExecuteResponse initd_response;
     initd_request.set_key(task_info->deploy_process.key());
     initd_request.set_commands(deploy_command);
-    if (FLAGS_agent_namespace_isolation_switch) {
+    if (FLAGS_agent_namespace_isolation_switch
+            && task_info->desc.namespace_isolation()) {
         initd_request.set_chroot_path(task_info->task_chroot_path); 
         std::string* chroot_path = initd_request.add_envs();
         chroot_path->append("CHROOT_PATH=");

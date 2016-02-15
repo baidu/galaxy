@@ -190,11 +190,11 @@ then
 else
 
     # leveldb
-    git clone https://github.com/imotai/leveldb.git
+    git clone https://github.com/google/leveldb.git
     cd leveldb
     make -j8 >/dev/null 
     cp -rf include/* ${DEPS_PREFIX}/include
-    cp libleveldb.a ${DEPS_PREFIX}/lib
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
     cd -
 fi
 

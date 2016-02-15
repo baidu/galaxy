@@ -11,17 +11,19 @@
             "millicores": 1000,
             "memory": "2G",
             "ports": [8080],
-            "read_bytes_ps": "1M"
+            "read_bytes_ps": "1M",
+            "write_bytes_ps": "1M"
         },
         "tasks":[
             {
                 "binary": "",
                 "source_type": "kSourceTypeCommand",
-                "start_command": "dd if=/dev/cciss/c0d0p6 of=/dev/null",
+                "start_command": "dd if=/dev/sda of=/dev/null",
                 "requirement": {
                      "millicores": 500,
                      "memory": "2G",
-                     "read_bytes_ps": "1M"
+                     "read_bytes_ps": "1M",
+                     "write_bytes_ps": "1M"
                  }
              }
          ]
