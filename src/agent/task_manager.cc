@@ -1255,6 +1255,37 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
                 task->pod_id.c_str(),
                 task->job_name.c_str());
     }
+    int64_t read_io_ps = task->desc.requirement().read_io_ps();
+    if (read_io_ps > 0) {
+        std::string read_io_ps_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(read_io_ps);
+        if (cgroups::Write(blkio_path,
+                "blkio.throttle.read_iops_device",
+                read_io_ps_string) != 0) {
+            LOG(WARNING, "set read io ps fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore read io ps of task  podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
+    int64_t write_io_ps = task->desc.requirement().write_io_ps();
+    if (write_io_ps > 0) {
+        std::string write_io_ps_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(write_io_ps);
+        if (cgroups::Write(blkio_path,
+            "blkio.throttle.write_iops_device",
+            write_io_ps_string) != 0) {
+            LOG(WARNING, "set write io ps fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore write io ps of task podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
+
     return true;
 }
 
