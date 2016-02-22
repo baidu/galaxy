@@ -358,23 +358,28 @@ int TaskManager::PrepareIOCollector(TaskInfo* task_info) {
 
 void TaskManager::CollectIO(const std::string& task_id) {
     std::string freezer_path;
+    std::string blkio_path;
     {
         MutexLock scope_lock(&tasks_mutex_);
         std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
         if (it == tasks_.end()) {
             return;
         }
-        std::map<std::string, std::string>::iterator cg_it = it->second->cgroups.find("freezer");
-        if (cg_it != it->second->cgroups.end()) {
-            freezer_path = cg_it->second;
+        std::map<std::string, std::string>::iterator cg_freezer_it = it->second->cgroups.find("freezer");
+        if (cg_freezer_it != it->second->cgroups.end()) {
+            freezer_path = cg_freezer_it->second;
+        }
+        std::map<std::string, std::string>::iterator cg_blkio_it = it->second->cgroups.find("blkio");
+        if (cg_blkio_it != it->second->cgroups.end()) {
+            blkio_path = cg_blkio_it->second;
         }
     }
     CGroupIOStatistics current;
-    bool ok = CGroupIOCollector::Collect(freezer_path, &current);
+    bool ok = CGroupIOCollector::Collect(freezer_path, blkio_path, &current);
     if (!ok) {
         LOG(WARNING, "fail to collect io stat for task %s",
                 task_id.c_str());
-    }else {
+    } else {
         MutexLock scope_lock(&tasks_mutex_);
         std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
         if (it == tasks_.end()) {
@@ -400,13 +405,18 @@ void TaskManager::CollectIO(const std::string& task_id) {
                 syscr_ps += proc_it->second.syscr - old_proc_it->second.syscr;
                 syscw_ps += proc_it->second.wchar - old_proc_it->second.syscw;
             }
+            int64_t read_io_ps = current.blkio.read - task->old_io_stat.blkio.read;
+            int64_t write_io_ps = current.blkio.write - task->old_io_stat.blkio.write;
             task->status.mutable_resource_used()->set_read_bytes_ps(read_bytes_ps);
             task->status.mutable_resource_used()->set_write_bytes_ps(write_bytes_ps);
-            LOG(INFO, "pod %s of job %s read_bytes_ps %s/s write_bytes_ps %s/s",
+            LOG(INFO, "task %s of pod %s of job %s read_bytes_ps %s/s write_bytes_ps %s/s read_io_ps %s/s write_io_ps %s/s",
+                    task->task_id.c_str(),
                     task->pod_id.c_str(),
                     task->job_name.c_str(),
                     ::baidu::common::HumanReadableString(read_bytes_ps).c_str(),
-                    ::baidu::common::HumanReadableString(write_bytes_ps).c_str());
+                    ::baidu::common::HumanReadableString(write_bytes_ps).c_str(),
+                    boost::lexical_cast<std::string>(read_io_ps).c_str(),
+                    boost::lexical_cast<std::string>(write_io_ps).c_str());
             task->status.mutable_resource_used()->set_syscr_ps(syscr_ps);
             task->status.mutable_resource_used()->set_syscw_ps(syscw_ps);
             task->old_io_stat = current;
