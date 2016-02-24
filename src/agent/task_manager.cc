@@ -1300,6 +1300,21 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
                 task->pod_id.c_str(),
                 task->job_name.c_str());
     }
+    int64_t io_weight = task->desc.requirement().io_weight();
+    if (io_weight >= 10 && io_weight <= 1000) {
+        std::string io_weight_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(io_weight);
+        if (cgroups::Write(blkio_path,
+            "blkio.weight_device",
+            io_weight_string) != 0) {
+            LOG(WARNING, "set io weight fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore io weight of task podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
 
     return true;
 }

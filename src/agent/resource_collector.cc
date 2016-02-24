@@ -1023,7 +1023,6 @@ bool CGroupIOCollector::GetBlkioStat(const std::string& group_path,
         return false;
     }
 
-    int count = 0;
     for (size_t i = 0; i < lines.size(); i++) {
         std::string& line = lines[i];
         if (line.empty()) {
@@ -1042,28 +1041,20 @@ bool CGroupIOCollector::GetBlkioStat(const std::string& group_path,
         if (name == device_name) {
             if ("Read" == type) {
                 blkio->read = val;
-                count++;
             } else if ("Write" == type) {
                 blkio->write = val;
-                count++;
             } else if ("Sync" == type) {
                 blkio->sync = val;
-                count++;
             } else if ("Async" == type) {
                 blkio->async = val;
-                count++;
             } else if ("Total" == type) {
                 blkio->total = val;
-                count++;
                 break;
             }
         }
     }
 
-    if (5 == count) {
-        return true;
-    }
-    return false;
+    return true;
 }
 
 }   // ending namespace galaxy

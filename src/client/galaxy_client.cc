@@ -340,18 +340,10 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         } 
     }
     if (pod_require.HasMember("read_io_ps")) {
-        ok = ReadableStringToInt(pod_require["read_io_ps"].GetString(), &res->read_io_ps);
-        if (ok != 0) {
-            fprintf(stderr, "fail to parse pod read_io_ps %s\n", pod_require["read_io_ps"].GetString());
-            return -1;
-        }
+        res->read_io_ps = pod_require["read_io_ps"].GetInt();
     }
     if (pod_require.HasMember("write_io_ps")) {
-        ok = ReadableStringToInt(pod_require["write_io_ps"].GetString(), &res->write_io_ps);
-        if (ok != 0) {
-            fprintf(stderr, "fail to parse pod write_io_ps %s\n", pod_require["write_io_ps"].GetString());
-            return -1;
-        }
+        res->write_io_ps = pod_require["write_io_ps"].GetInt();
     }
 
     std::vector< ::baidu::galaxy::TaskDescription>& tasks = pod.tasks;
@@ -433,16 +425,16 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                 }
             }
             if (tasks_json[i]["requirement"].HasMember("read_io_ps")) {
-                ok = ReadableStringToInt(tasks_json[i]["requirement"]["read_io_ps"].GetString(), &res->read_io_ps);
-                if (ok != 0) {
-                    fprintf(stderr, "fail to parse task read_io_ps %s\n", tasks_json[i]["requirement"]["read_io_ps"].GetString());
-                    return -1;
-                }
+                res->read_io_ps = tasks_json[i]["requirement"]["read_io_ps"].GetInt64();
             }
             if (tasks_json[i]["requirement"].HasMember("write_io_ps")) {
-                ok = ReadableStringToInt(tasks_json[i]["requirement"]["write_io_ps"].GetString(), &res->write_io_ps);
-                if (ok != 0) {
-                    fprintf(stderr, "fail to parse task write_io_ps %s\n", tasks_json[i]["requirement"]["write_io_ps"].GetString());
+                res->write_io_ps = tasks_json[i]["requirement"]["write_io_ps"].GetInt64();
+            }
+            if (tasks_json[i]["requirement"].HasMember("io_weight")) {
+                res->io_weight = tasks_json[i]["requirement"]["io_weight"].GetInt();
+                if (res->io_weight < 10 || res->io_weight > 1000) {
+                    fprintf(stderr, "invalid io_weight value %d, io_weight value should in range of [10 - 1000]\n",
+                    tasks_json[i]["requirement"]["io_weight"].GetInt());
                     return -1;
                 }
             }
