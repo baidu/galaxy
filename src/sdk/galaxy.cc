@@ -289,6 +289,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
         task_res->set_write_bytes_ps(task_res_desc.write_bytes_ps);
         task_res->set_read_io_ps(task_res_desc.read_io_ps);
         task_res->set_write_io_ps(task_res_desc.write_io_ps);
+        task_res->set_io_weight(task_res_desc.io_weight);
     }
     if (!sdk_job.label.empty()) {
         job->mutable_pod()->add_labels(sdk_job.label);
