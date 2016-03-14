@@ -548,55 +548,58 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     std::string stop_command = task_info->desc.stop_command();
     task_info->stage = kTaskStageSTOPPING;
     SetupTerminateProcessKey(task_info);
-    // send rpc to initd to execute stop process
-    ExecuteRequest initd_request; 
-    ExecuteResponse initd_response;
-    initd_request.set_key(task_info->stop_process.key());
-    initd_request.set_commands(stop_command);
-    if (FLAGS_agent_namespace_isolation_switch
-            && task_info->desc.namespace_isolation()) {
-        initd_request.set_chroot_path(task_info->task_chroot_path); 
-        std::string* chroot_path = initd_request.add_envs();
-        chroot_path->append("CHROOT_PATH=");
-        chroot_path->append(task_info->task_chroot_path);
-    }
-    initd_request.set_path(task_info->task_workspace);
-    initd_request.set_cgroup_path(task_info->cgroup_path);
-    initd_request.set_user(FLAGS_agent_default_user);
 
-    if (task_info->initd_stub == NULL 
-            && !rpc_client_->GetStub(task_info->initd_endpoint, 
-                                     &(task_info->initd_stub))) {
-        LOG(WARNING, "get stub failed"); 
-        return -1;
-    }
+    if (0 ==  task_info->stop_timeout_point) {
+        // send rpc to initd to execute stop process
+        ExecuteRequest initd_request; 
+        ExecuteResponse initd_response;
+        initd_request.set_key(task_info->stop_process.key());
+        initd_request.set_commands(stop_command);
+        if (FLAGS_agent_namespace_isolation_switch
+                    && task_info->desc.namespace_isolation()) {
+            initd_request.set_chroot_path(task_info->task_chroot_path); 
+            std::string* chroot_path = initd_request.add_envs();
+            chroot_path->append("CHROOT_PATH=");
+            chroot_path->append(task_info->task_chroot_path);
+        }
+        initd_request.set_path(task_info->task_workspace);
+        initd_request.set_cgroup_path(task_info->cgroup_path);
+        initd_request.set_user(FLAGS_agent_default_user);
 
-    bool ret = rpc_client_->SendRequest(task_info->initd_stub,
-                                        &Initd_Stub::Execute,
-                                        &initd_request,
-                                        &initd_response,
-                                        5, 1);
-    if (!ret) {
-        LOG(WARNING, "stop command [%s] rpc failed for %s",
-                stop_command.c_str(),
-                task_info->task_id.c_str()); 
-        return -1;
-    } else if (initd_response.has_status()
-                && initd_response.status() != kOk) {
-        LOG(WARNING, "stop command [%s] failed %s for %s",
-                stop_command.c_str(),
-                Status_Name(initd_response.status()).c_str(),
-                task_info->task_id.c_str()); 
-        return -1;
+        if (task_info->initd_stub == NULL 
+                    && !rpc_client_->GetStub(task_info->initd_endpoint, 
+                        &(task_info->initd_stub))) {
+            LOG(WARNING, "get stub failed"); 
+            return -1;
+        }
+
+        bool ret = rpc_client_->SendRequest(task_info->initd_stub,
+                    &Initd_Stub::Execute,
+                    &initd_request,
+                    &initd_response,
+                    5, 1);
+        if (!ret) {
+            LOG(WARNING, "stop command [%s] rpc failed for %s",
+                        stop_command.c_str(),
+                        task_info->task_id.c_str()); 
+            return -1;
+        } else if (initd_response.has_status()
+                    && initd_response.status() != kOk) {
+            LOG(WARNING, "stop command [%s] failed %s for %s",
+                        stop_command.c_str(),
+                        Status_Name(initd_response.status()).c_str(),
+                        task_info->task_id.c_str()); 
+            return -1;
+        }
+        int32_t now_time = common::timer::now_time();
+        task_info->stop_timeout_point = now_time + 100;
+
+        LOG(INFO, "stop command [%s] start success for %s and forceing to kill will be %d , now is %d ",
+                    stop_command.c_str(),
+                    task_info->task_id.c_str(),
+                    task_info->stop_timeout_point,
+                    now_time);
     }
-    int32_t now_time = common::timer::now_time();
-    // TODO config stop timeout len
-    task_info->stop_timeout_point = now_time + 100;
-    LOG(INFO, "stop command [%s] start success for %s and forceing to kill will be %d , now is %d ",
-            stop_command.c_str(),
-            task_info->task_id.c_str(),
-            task_info->stop_timeout_point,
-            now_time);
 
     return 0;
 }
