@@ -360,23 +360,28 @@ int TaskManager::PrepareIOCollector(TaskInfo* task_info) {
 
 void TaskManager::CollectIO(const std::string& task_id) {
     std::string freezer_path;
+    std::string blkio_path;
     {
         MutexLock scope_lock(&tasks_mutex_);
         std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
         if (it == tasks_.end()) {
             return;
         }
-        std::map<std::string, std::string>::iterator cg_it = it->second->cgroups.find("freezer");
-        if (cg_it != it->second->cgroups.end()) {
-            freezer_path = cg_it->second;
+        std::map<std::string, std::string>::iterator cg_freezer_it = it->second->cgroups.find("freezer");
+        if (cg_freezer_it != it->second->cgroups.end()) {
+            freezer_path = cg_freezer_it->second;
+        }
+        std::map<std::string, std::string>::iterator cg_blkio_it = it->second->cgroups.find("blkio");
+        if (cg_blkio_it != it->second->cgroups.end()) {
+            blkio_path = cg_blkio_it->second;
         }
     }
     CGroupIOStatistics current;
-    bool ok = CGroupIOCollector::Collect(freezer_path, &current);
+    bool ok = CGroupIOCollector::Collect(freezer_path, blkio_path, &current);
     if (!ok) {
         LOG(WARNING, "fail to collect io stat for task %s",
                 task_id.c_str());
-    }else {
+    } else {
         MutexLock scope_lock(&tasks_mutex_);
         std::map<std::string, TaskInfo*>::iterator it = tasks_.find(task_id); 
         if (it == tasks_.end()) {
@@ -402,13 +407,18 @@ void TaskManager::CollectIO(const std::string& task_id) {
                 syscr_ps += proc_it->second.syscr - old_proc_it->second.syscr;
                 syscw_ps += proc_it->second.wchar - old_proc_it->second.syscw;
             }
+            int64_t read_io_ps = current.blkio.read - task->old_io_stat.blkio.read;
+            int64_t write_io_ps = current.blkio.write - task->old_io_stat.blkio.write;
             task->status.mutable_resource_used()->set_read_bytes_ps(read_bytes_ps);
             task->status.mutable_resource_used()->set_write_bytes_ps(write_bytes_ps);
-            LOG(INFO, "pod %s of job %s read_bytes_ps %s/s write_bytes_ps %s/s",
+            LOG(INFO, "task %s of pod %s of job %s read_bytes_ps %s/s write_bytes_ps %s/s read_io_ps %s/s write_io_ps %s/s",
+                    task->task_id.c_str(),
                     task->pod_id.c_str(),
                     task->job_name.c_str(),
                     ::baidu::common::HumanReadableString(read_bytes_ps).c_str(),
-                    ::baidu::common::HumanReadableString(write_bytes_ps).c_str());
+                    ::baidu::common::HumanReadableString(write_bytes_ps).c_str(),
+                    boost::lexical_cast<std::string>(read_io_ps).c_str(),
+                    boost::lexical_cast<std::string>(write_io_ps).c_str());
             task->status.mutable_resource_used()->set_syscr_ps(syscr_ps);
             task->status.mutable_resource_used()->set_syscw_ps(syscw_ps);
             task->old_io_stat = current;
@@ -1260,6 +1270,52 @@ bool TaskManager::HandleInitTaskBlkioCgroup(std::string& subsystem, TaskInfo* ta
                 task->pod_id.c_str(),
                 task->job_name.c_str());
     }
+    int64_t read_io_ps = task->desc.requirement().read_io_ps();
+    if (read_io_ps > 0) {
+        std::string read_io_ps_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(read_io_ps);
+        if (cgroups::Write(blkio_path,
+                "blkio.throttle.read_iops_device",
+                read_io_ps_string) != 0) {
+            LOG(WARNING, "set read io ps fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore read io ps of task  podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
+    int64_t write_io_ps = task->desc.requirement().write_io_ps();
+    if (write_io_ps > 0) {
+        std::string write_io_ps_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(write_io_ps);
+        if (cgroups::Write(blkio_path,
+            "blkio.throttle.write_iops_device",
+            write_io_ps_string) != 0) {
+            LOG(WARNING, "set write io ps fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore write io ps of task podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
+    int64_t io_weight = task->desc.requirement().io_weight();
+    if (io_weight >= 10 && io_weight <= 1000) {
+        std::string io_weight_string = boost::lexical_cast<std::string>(major_number) + ":0 "
+            + boost::lexical_cast<std::string>(io_weight);
+        if (cgroups::Write(blkio_path,
+            "blkio.weight_device",
+            io_weight_string) != 0) {
+            LOG(WARNING, "set io weight fail for %s", blkio_path.c_str());
+            return false;
+        };
+    } else {
+        LOG(WARNING, "ignore io weight of task podid %s of job %s",
+                task->pod_id.c_str(),
+                task->job_name.c_str());
+    }
+
     return true;
 }
 
