@@ -555,11 +555,12 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     if (task_info == NULL) {
         return -1; 
     }
-    std::string stop_command = task_info->desc.stop_command();
-    task_info->stage = kTaskStageSTOPPING;
-    SetupTerminateProcessKey(task_info);
 
     if (0 ==  task_info->stop_timeout_point) {
+        std::string stop_command = task_info->desc.stop_command();
+        task_info->stage = kTaskStageSTOPPING;
+        SetupTerminateProcessKey(task_info);
+
         // send rpc to initd to execute stop process
         ExecuteRequest initd_request; 
         ExecuteResponse initd_response;
