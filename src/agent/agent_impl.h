@@ -4,6 +4,7 @@
 
 #ifndef _AGENT_IMPL_H_
 #define _AGENT_IMPL_H_
+
 #include <string>
 #include <map>
 

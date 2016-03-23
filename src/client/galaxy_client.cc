@@ -431,10 +431,10 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                 res->write_io_ps = tasks_json[i]["requirement"]["write_io_ps"].GetInt64();
             }
             if (tasks_json[i]["requirement"].HasMember("io_weight")) {
-                res->io_weight = tasks_json[i]["requirement"]["io_weight"].GetInt64();
+                res->io_weight = tasks_json[i]["requirement"]["io_weight"].GetInt();
                 if (res->io_weight < 10 || res->io_weight > 1000) {
                     fprintf(stderr, "invalid io_weight value %d, io_weight value should in range of [10 - 1000]\n",
-                    tasks_json[i]["requirement"]["io_weight"].GetInt64());
+                    tasks_json[i]["requirement"]["io_weight"].GetInt());
                     return -1;
                 }
             }

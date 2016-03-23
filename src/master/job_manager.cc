@@ -1125,7 +1125,7 @@ void JobManager::QueryAgentCallback(AgentAddr endpoint, const QueryRequest* requ
 
 void JobManager::UpdateAgent(const AgentInfo& agent,
                              AgentInfo* agent_in_master) {
-    agent_in_master->set_build(agent.build()); 
+    agent_in_master->set_build(agent.build());
     std::stringstream ss;
     for (int i = 0; i < agent.assigned().ports_size(); i++) {
         ss << agent.assigned().ports(i) << ",";

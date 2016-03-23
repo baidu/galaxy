@@ -287,9 +287,10 @@ int TaskManager::ReloadTask(const TaskInfo& task) {
     if (task_info->desc.has_mem_isolation_type() && 
         task_info->desc.mem_isolation_type() == kMemIsolationCgroup && FLAGS_agent_use_galaxy_oom_killer){
         LOG(INFO, "task %s use galaxy oom killer ", task_info->task_id.c_str());
-        killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
-                          boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
     }
+    killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
+                          boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
+
     LOG(INFO, "task %s is reload", task_info->task_id.c_str());
     background_thread_.DelayTask(
                     50, 
@@ -336,9 +337,10 @@ int TaskManager::CreateTask(const TaskInfo& task) {
                task_info->desc.mem_isolation_type() == 
                     kMemIsolationCgroup && FLAGS_agent_use_galaxy_oom_killer){
         LOG(INFO, "task %s use galaxy oom killer ", task_info->task_id.c_str());
-        killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
-                          boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
     }
+    killer_pool_.DelayTask(FLAGS_agent_memory_check_interval,
+                          boost::bind(&TaskManager::MemoryCheck, this, task_info->task_id));
+
     PrepareIOCollector(task_info);
     LOG(INFO, "task %s is add", task.task_id.c_str());
     background_thread_.DelayTask(
@@ -553,58 +555,62 @@ int TaskManager::TerminateTask(TaskInfo* task_info) {
     if (task_info == NULL) {
         return -1; 
     }
-    std::string stop_command = task_info->desc.stop_command();
-    task_info->stage = kTaskStageSTOPPING;
-    SetupTerminateProcessKey(task_info);
-    // send rpc to initd to execute stop process
-    ExecuteRequest initd_request; 
-    ExecuteResponse initd_response;
-    initd_request.set_key(task_info->stop_process.key());
-    initd_request.set_commands(stop_command);
-    if (FLAGS_agent_namespace_isolation_switch
-            && task_info->desc.namespace_isolation()) {
-        initd_request.set_chroot_path(task_info->task_chroot_path); 
-        std::string* chroot_path = initd_request.add_envs();
-        chroot_path->append("CHROOT_PATH=");
-        chroot_path->append(task_info->task_chroot_path);
-    }
-    initd_request.set_path(task_info->task_workspace);
-    initd_request.set_cgroup_path(task_info->cgroup_path);
-    initd_request.set_user(FLAGS_agent_default_user);
 
-    if (task_info->initd_stub == NULL 
-            && !rpc_client_->GetStub(task_info->initd_endpoint, 
-                                     &(task_info->initd_stub))) {
-        LOG(WARNING, "get stub failed"); 
-        return -1;
-    }
+    if (0 ==  task_info->stop_timeout_point) {
+        std::string stop_command = task_info->desc.stop_command();
+        task_info->stage = kTaskStageSTOPPING;
+        SetupTerminateProcessKey(task_info);
 
-    bool ret = rpc_client_->SendRequest(task_info->initd_stub,
-                                        &Initd_Stub::Execute,
-                                        &initd_request,
-                                        &initd_response,
-                                        5, 1);
-    if (!ret) {
-        LOG(WARNING, "stop command [%s] rpc failed for %s",
-                stop_command.c_str(),
-                task_info->task_id.c_str()); 
-        return -1;
-    } else if (initd_response.has_status()
-                && initd_response.status() != kOk) {
-        LOG(WARNING, "stop command [%s] failed %s for %s",
-                stop_command.c_str(),
-                Status_Name(initd_response.status()).c_str(),
-                task_info->task_id.c_str()); 
-        return -1;
+        // send rpc to initd to execute stop process
+        ExecuteRequest initd_request; 
+        ExecuteResponse initd_response;
+        initd_request.set_key(task_info->stop_process.key());
+        initd_request.set_commands(stop_command);
+        if (FLAGS_agent_namespace_isolation_switch
+                    && task_info->desc.namespace_isolation()) {
+            initd_request.set_chroot_path(task_info->task_chroot_path); 
+            std::string* chroot_path = initd_request.add_envs();
+            chroot_path->append("CHROOT_PATH=");
+            chroot_path->append(task_info->task_chroot_path);
+        }
+        initd_request.set_path(task_info->task_workspace);
+        initd_request.set_cgroup_path(task_info->cgroup_path);
+        initd_request.set_user(FLAGS_agent_default_user);
+
+        if (task_info->initd_stub == NULL 
+                    && !rpc_client_->GetStub(task_info->initd_endpoint, 
+                        &(task_info->initd_stub))) {
+            LOG(WARNING, "get stub failed"); 
+            return -1;
+        }
+
+        bool ret = rpc_client_->SendRequest(task_info->initd_stub,
+                    &Initd_Stub::Execute,
+                    &initd_request,
+                    &initd_response,
+                    5, 1);
+        if (!ret) {
+            LOG(WARNING, "stop command [%s] rpc failed for %s",
+                        stop_command.c_str(),
+                        task_info->task_id.c_str()); 
+            return -1;
+        } else if (initd_response.has_status()
+                    && initd_response.status() != kOk) {
+            LOG(WARNING, "stop command [%s] failed %s for %s",
+                        stop_command.c_str(),
+                        Status_Name(initd_response.status()).c_str(),
+                        task_info->task_id.c_str()); 
+            return -1;
+        }
+        int32_t now_time = common::timer::now_time();
+        task_info->stop_timeout_point = now_time + 100;
+
+        LOG(INFO, "stop command [%s] start success for %s and forceing to kill will be %d , now is %d ",
+                    stop_command.c_str(),
+                    task_info->task_id.c_str(),
+                    task_info->stop_timeout_point,
+                    now_time);
     }
-    int32_t now_time = common::timer::now_time();
-    // TODO config stop timeout len
-    task_info->stop_timeout_point = now_time + 100;
-    LOG(INFO, "stop command [%s] start success for %s and forceing to kill will be %d , now is %d ",
-            stop_command.c_str(),
-            task_info->task_id.c_str(),
-            task_info->stop_timeout_point,
-            now_time);
 
     return 0;
 }
@@ -1114,9 +1120,12 @@ bool TaskManager::HandleInitTaskMemCgroup(std::string& subsystem , TaskInfo* tas
     if (task->desc.has_mem_isolation_type() && 
             task->desc.mem_isolation_type() == 
                     kMemIsolationLimit) {
-        int ret = cgroups::Write(mem_path,
-                                 "memory.soft_limit_in_bytes",
+        int ret = cgroups::Write(mem_path, "memory.excess_mode", "1"); //soft limit
+        if (ret == 0) {
+            ret = cgroups::Write(mem_path,
+                                 "memory.limit_in_bytes",
                                  boost::lexical_cast<std::string>(memory_limit));    
+        }
         if (ret != 0) {
             LOG(WARNING, "set memory soft limit %ld failed for %s",
                     memory_limit, mem_path.c_str()); 
