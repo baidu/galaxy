@@ -170,5 +170,6 @@ message AgentInfo {
     optional int32 version = 9;
     repeated string tags = 10;
     optional int64 time = 11;
+    optional string build = 12;
 }
 

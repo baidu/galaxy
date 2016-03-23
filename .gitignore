@@ -42,5 +42,7 @@ initd_cli_server
 sandbox/data/
 sandbox/work_dir/
 sandbox/gc_dir/
+sandbox/galaxy.flag
+sandbox/sample.json
 test_agent
 test_initd

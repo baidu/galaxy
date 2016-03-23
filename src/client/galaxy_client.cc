@@ -494,13 +494,14 @@ int ListAgent() {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while (true) {
         std::vector<baidu::galaxy::NodeDescription> agents;
-        baidu::common::TPrinter tp(11);
-        tp.AddRow(11, "", "addr", "state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
+        baidu::common::TPrinter tp(12);
+        tp.AddRow(12, "", "addr", "build", "state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
         if (galaxy->ListAgents(&agents)) {
             for (uint32_t i = 0; i < agents.size(); i++) {
                 std::vector<std::string> vs;
                 vs.push_back(baidu::common::NumToString(i + 1));
                 vs.push_back(agents[i].addr);
+                vs.push_back(agents[i].build);
                 vs.push_back(agents[i].state);
                 vs.push_back(baidu::common::NumToString(agents[i].task_num));
                 vs.push_back(baidu::common::NumToString(agents[i].cpu_used));
