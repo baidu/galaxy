@@ -5,7 +5,6 @@ OPT ?= -g2 -Wall -Werror  # (B) Debug mode, w/ full line-level debugging symbols
 # Thirdparty
 include depends.mk
 
-#
 CC = gcc
 CXX = g++
 
