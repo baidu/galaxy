@@ -86,6 +86,7 @@ struct JobInformation {
 
 struct NodeDescription {
     std::string addr;
+    std::string build;
     int32_t task_num;
     int64_t cpu_share;
     int64_t mem_share;

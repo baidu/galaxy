@@ -585,6 +585,7 @@ bool GalaxyImpl::ListAgents(std::vector<NodeDescription>* nodes) {
         const AgentInfo& node = response.agents(i);
         NodeDescription node_desc;
         node_desc.addr = node.endpoint();
+        node_desc.build = node.build();
         node_desc.task_num = node.pods_size();
         node_desc.cpu_share = node.total().millicores();
         node_desc.mem_share = node.total().memory();

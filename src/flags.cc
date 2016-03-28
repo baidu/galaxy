@@ -49,6 +49,7 @@ DEFINE_double(scheduler_cpu_overload_threashold, 0.9, "the max cpu used");
 DEFINE_int32(scheduler_agent_overload_turns_threashold, 3, "agent overload times");
 
 // agent
+DEFINE_string(agent_build, __DATE__" "__TIME__, "agent version");
 DEFINE_string(agent_port, "8080", "agent listen port");
 DEFINE_int32(agent_http_port, 8222, "agent http server port");
 DEFINE_int32(agent_background_threads_num, 2, "agent background threads");
