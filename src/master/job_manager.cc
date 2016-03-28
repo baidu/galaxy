@@ -363,6 +363,10 @@ void JobManager::FillPodsToJob(Job* job) {
     LOG(INFO, "pod namespace_isolation is: [%d]", job->desc_.pod().namespace_isolation());
     for(int i = pods_size; i < job->desc_.replica(); i++) {
         PodId pod_id = MasterUtil::UUID();
+        if (job->desc_.has_name()) {
+            pod_id = MasterUtil::ShortName(job->desc_.name()) + "_" + pod_id;
+        }
+
         PodStatus* pod_status = new PodStatus();
         pod_status->set_podid(pod_id);
         pod_status->set_jobid(job->id_);
