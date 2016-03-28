@@ -173,30 +173,12 @@ bool TaskManager::InitCpuSubSystem() {
             return false;
         }
     }
-    int32_t softlimit_cores = FLAGS_agent_millicores_share * (CPU_CFS_PERIOD / 1000); 
+
     write_ok = cgroups::Write(softlimit_folder, 
                                   "cpu.cfs_quota_us",
-                                  boost::lexical_cast<std::string>(softlimit_cores));
+                                  boost::lexical_cast<std::string>(-1));
     if (write_ok != 0) {
-        LOG(WARNING, "fail to write softlimit quota %d to %s", softlimit_cores, softlimit_folder.c_str());
-        return false;
-    }
-    return true;
-}
-
-bool TaskManager::HandleHardlimitChange(int32_t hardlimit_cores) {
-    tasks_mutex_.AssertHeld();
-    if (hierarchies_.find("cpu") == hierarchies_.end()) {
-        LOG(WARNING, "cpu subsystem is disabled");
-        return true;
-    }
-    std::string softlimit_folder = hierarchies_["cpu"] + "/" + FLAGS_agent_global_softlimit_path;
-    int32_t softlimit_cores = (FLAGS_agent_millicores_share - hardlimit_cores) * (CPU_CFS_PERIOD / 1000);
-    int write_ok = cgroups::Write(softlimit_folder, 
-                                  "cpu.cfs_quota_us",
-                                  boost::lexical_cast<std::string>(softlimit_cores));
-    if (write_ok != 0) {
-        LOG(WARNING, "fail to write softlimit quota %d to %s", softlimit_cores, softlimit_folder.c_str());
+        LOG(WARNING, "fail to write softlimit quota %d to %s", -1, softlimit_folder.c_str());
         return false;
     }
     return true;
@@ -661,16 +643,6 @@ int TaskManager::CleanTask(TaskInfo* task_info) {
                 task_info->task_id.c_str()); 
         task_info->status.set_state(kTaskError);
         return -1;
-    }
-    if (!task_info->desc.has_cpu_isolation_type()
-        ||  task_info->desc.cpu_isolation_type() == kCpuIsolationHard) {
-        int32_t old_hardlimit_cores = hardlimit_cores_;
-        hardlimit_cores_ -= task_info->desc.requirement().millicores();
-        bool ok = HandleHardlimitChange(hardlimit_cores_);
-        if (!ok) {
-            LOG(WARNING, "fail move cpu quota from hard limit to sofelimit , the hardlimit is %d", hardlimit_cores_); 
-            hardlimit_cores_ = old_hardlimit_cores;
-        }
     }
      
     LOG(INFO, "task %s clean success", task_info->task_id.c_str());
@@ -1201,20 +1173,12 @@ bool TaskManager::HandleInitTaskCpuCgroup(std::string& subsystem, TaskInfo* task
             return false;
         }
         task->cgroups[subsystem] = cpu_path;
-        int32_t old_hardlimit_cores = hardlimit_cores_;
-        hardlimit_cores_ += task->desc.requirement().millicores();
         int32_t limit_cores = task->desc.requirement().millicores() * (CPU_CFS_PERIOD / 1000);
         if (cgroups::Write(cpu_path,
                            "cpu.cfs_quota_us",
                            boost::lexical_cast<std::string>(limit_cores)
                            ) != 0) {
             LOG(WARNING, "set cpu limit failed for %s", cpu_path.c_str()); 
-            return false;
-        }
-        bool ok = HandleHardlimitChange(hardlimit_cores_);
-        if (!ok) {
-            LOG(WARNING, "fail to adjust hardlimit to %d", hardlimit_cores_);
-            hardlimit_cores_ = old_hardlimit_cores;
             return false;
         }
     }
