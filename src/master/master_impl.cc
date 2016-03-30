@@ -171,6 +171,11 @@ void MasterImpl::SubmitJob(::google::protobuf::RpcController* /*controller*/,
     const JobDescriptor& job_desc = request->job();
     MasterUtil::TraceJobDesc(job_desc);
     JobId job_id = MasterUtil::UUID();
+
+    if (job_desc.has_name()) {
+        job_id = MasterUtil::ShortName(job_desc.name()) + "_" + job_id;
+    }
+
     Status status = job_manager_.Add(job_id, job_desc);
     response->set_status(status);
     if (status == kOk) {
