@@ -228,6 +228,11 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     PodDescriptor* pod_pb = job->mutable_pod();
     pod_pb->set_version(sdk_job.pod.version);
     pod_pb->set_namespace_isolation(sdk_job.pod.namespace_isolation);
+
+    if (!sdk_job.pod.tmpfs_path.empty() && sdk_job.pod.tmpfs_size > 0) {
+        pod_pb->set_tmpfs_path(sdk_job.pod.tmpfs_path);
+        pod_pb->set_tmpfs_size(sdk_job.pod.tmpfs_size);
+    }
     Resource* pod_res = pod_pb->mutable_requirement();
     // pod res
     pod_res->set_millicores(sdk_job.pod.requirement.millicores);

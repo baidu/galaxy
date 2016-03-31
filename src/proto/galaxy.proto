@@ -71,6 +71,11 @@ message Volume {
     optional string path  = 2;
 }
 
+message Tmpfs {
+    optional string path = 1;
+    optional int64 size = 2;
+}
+
 message Resource {
     optional int32 millicores = 1;
     optional int64 memory = 2;
@@ -84,6 +89,7 @@ message Resource {
     optional int64 read_io_ps = 10;
     optional int64 write_io_ps = 11;
     optional int32 io_weight = 12;
+    optional Tmpfs tmpfs = 13;
 }
 
 enum MemIsolationType {
@@ -125,6 +131,10 @@ message PodDescriptor {
     repeated string labels = 4;
     optional string version = 5;
     optional bool namespace_isolation = 6 [default = true];
+
+    //tmpfs
+    optional string tmpfs_path = 7;
+    optional int64 tmpfs_size = 8;
 }
 
 message TaskStatus {

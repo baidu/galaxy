@@ -198,6 +198,12 @@ int PodManager::LanuchInitd(PodInfo* info) {
     context.path = FLAGS_agent_work_dir + "/" + info->pod_id;
     context.start_command.append(" --gce_initd_dump_file=");
     context.start_command.append(context.path + "/initd_checkpoint_file");
+    if (info->pod_desc.has_tmpfs_path() && info->pod_desc.has_tmpfs_size()) {
+        context.start_command.append(" --gce_initd_tmpfs_path=");
+        context.start_command.append(info->pod_desc.tmpfs_path());
+        context.start_command.append(" --gce_initd_tmpfs_size=");
+        context.start_command.append(boost::lexical_cast<std::string>(info->pod_desc.tmpfs_size()));
+    }
     if (!file::Mkdir(context.path)) {
         LOG(WARNING, "mkdir %s failed", context.path.c_str()); 
         return -1;
