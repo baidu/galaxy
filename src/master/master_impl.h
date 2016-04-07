@@ -8,6 +8,8 @@
 #include "job_manager.h"
 #include "ins_sdk.h"
 
+#include <set>
+
 using ::galaxy::ins::sdk::InsSDK;
 
 namespace baidu {
@@ -114,9 +116,15 @@ private:
       void ReloadJobInfo();
       void ReloadLabelInfo();
       void ReloadAgent();
+
+      void LoadAuthorityHosts(const std::string& iplist);
+      bool HasAuthority(const std::string& endpoint);
 private:
       JobManager job_manager_;
       InsSDK* nexus_;
+
+       std::set<std::string> _authority_ips;
+       std::string _authority_string;
 
 };
 
