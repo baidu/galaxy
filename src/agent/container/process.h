@@ -60,8 +60,7 @@ private:
     static int CloneRoutine(void* self);
     
     int ListFds(pid_t pid, std::vector<int>& fd);
-    
-    
+ 
     pid_t _pid;
     
     std::string _user;

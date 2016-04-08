@@ -11,7 +11,7 @@ namespace baidu {
 namespace galaxy {
 namespace ns {
 
-    int Attach(pid_t pid);
+int Attach(pid_t pid);
 
 } //namespace ns
 } //namespace galaxy
