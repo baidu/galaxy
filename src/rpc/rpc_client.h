@@ -3,9 +3,7 @@
 // found in the LICENSE file.
 //
 // Author: yanshiguang02@baidu.com
-
-#ifndef  BAIDU_GALAXY_RPC_CLIENT_H_
-#define  BAIDU_GALAXY_RPC_CLIENT_H_
+#pragma once
 
 #include <assert.h>
 #include <boost/function.hpp>
@@ -114,7 +112,3 @@ private:
 
 } // namespace galaxy
 } // namespace baidu
-
-#endif  // BAIDU_GALAXY_RPC_CLIENT_H_
-
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
