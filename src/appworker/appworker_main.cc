@@ -1,3 +1,7 @@
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -21,10 +25,9 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
 
-    LOG(INFO) << "resman started.";
+    LOG(INFO) << "appworker started.";
     while (!s_quit) {
         sleep(1);
     }
     return 0;
 }
-

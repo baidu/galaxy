@@ -1,4 +1,8 @@
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 #include "setting_utils.h"
+
 #include <glog/logging.h>
 
 namespace baidu {
@@ -28,6 +32,6 @@ void SetupLog(const std::string& name) {
 }
 
 
-}
-}
+} //namespace galaxy
+} //namespace baidu
 

@@ -1,5 +1,7 @@
-#ifndef _BAIDU_GALAXY_AGENT_IMPL_H_
-#define _BAIDU_GALAXY_AGENT_IMPL_H_
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+#pragma once
 
 #include <string>
 #include <map>
@@ -42,6 +44,3 @@ void Query(::google::protobuf::RpcController* controller,
 
 }
 }
-
-#endif
-

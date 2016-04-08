@@ -1,30 +1,28 @@
-/* 
- * File:   container_manager.h
- * Author: haolifei
- *
- * Created on 2016年4月3日, 下午9:04
- */
-
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 #pragma once
 
 namespace baidu {
-    namespace galaxy {
-        namespace agent {
+namespace galaxy {
+namespace agent {
             
-            class ContainerManager {
-            public:
-                boost::shared_ptr<baidu::galaxy::container::Container> CreateContainer() {
-                    // check resource
-                    // alloc resource
-                    // create crgoup
-                    // command
-                    // process
-                }
-                
-                int ReleaseContainer();
-                
-                void ListContainer();
-            };
-        }
-    }
+class ContainerManager {
+public:
+boost::shared_ptr<baidu::galaxy::container::Container> CreateContainer() {
+    // check resource
+    // alloc resource
+    // create crgoup
+    // command
+    // process
 }
+
+int ReleaseContainer();
+
+void ListContainer();
+
+};
+
+} //namespace agent
+} //namespace galaxy
+} //namespace baidu
