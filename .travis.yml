@@ -1,0 +1,8 @@
+language: cpp
+compiler: gcc
+install:
+    - sudo apt-get update
+    - sudo apt-get install scons
+script: 
+    - sh build.sh
+
