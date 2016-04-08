@@ -1,0 +1,196 @@
+import "galaxy.proto";
+package baidu.galaxy;
+
+option cc_generic_services = true;
+
+message EnterSafeModeRequest {
+
+}
+message EnterSafeModeResponse {
+
+}
+message LeaveSafeModeRequest {
+
+}
+message LeaveSafeModeResponse {
+
+}
+message StatusRequest {
+
+}
+message StatusResponse {
+
+}
+
+message KeepAliveRequest {
+
+}
+message KeepAliveResponse {
+
+}
+message SubmitJobRequest {
+
+}
+message SubmitJobResponse {
+
+}
+message UpdateJobRequest {
+
+}
+message UpdateJobResponse {
+
+}
+message RemoveJobRequest {
+
+}
+message RemoveJobResponse {
+
+}
+message AddAgentRequest {
+
+}
+message AddAgentResponse {
+
+}
+message RemoveAgentRequest {
+
+}
+message RemoveAgentResponse {
+
+}
+message OnlineAgentRequest {
+
+}
+message OnlineAgentResponse {
+
+}
+message OfflineAgentRequest {
+
+}
+message OfflineAgentResponse {
+
+}
+message ListAgentsRequest {
+
+}
+message ListAgentsResponse {
+
+}
+message CreateTagRequest {
+
+}
+message CreateTagResponse {
+
+}
+message RemoveTagRequest {
+
+}
+message RemoveTagResponse {
+
+}
+message ListTagsRequest {
+
+}
+message ListTagsResponse {
+
+}
+message AddAgentToTagRequest {
+
+}
+message AddAgentToTagResponse {
+
+}
+message RemoveAgentFromTagRequest {
+
+}
+message RemoveAgentFromTagResponse {
+
+}
+message ListAgentsByTagRequest {
+
+}
+message ListAgentsByTagResponse {
+
+}
+message AddUserRequest {
+
+}
+message AddUserResponse {
+
+}
+message RemoveUserRequest {
+
+}
+message RemoveUserResponse {
+
+}
+message ListUsersRequest {
+
+}
+message ListUsersResponse {
+
+}
+message ShowUserRequest {
+
+}
+message ShowUserResponse {
+
+}
+message GrantUserRequest {
+
+}
+message GrantUserResponse {
+
+}
+message AssignQuotaRequest {
+
+}
+message AssignQuotaResponse {
+
+}
+
+service ResMan {
+
+    //op api
+    rpc EnterSafeMode(EnterSafeModeRequest) returns (EnterSafeModeResponse);
+    rpc LeaveSafeMode(LeaveSafeModeRequest) returns (LeaveSafeModeResponse);
+
+    rpc Status(StatusRequest) returns (StatusResponse);
+
+    //internal RPC 
+    rpc KeepAlive(KeepAliveRequest) returns (KeepAliveResponse);
+
+    //job man
+    rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
+    rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
+    rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse);
+   
+    //agent man
+    rpc AddAgent(AddAgentRequest) returns (AddAgentResponse);
+    rpc RemoveAgent(RemoveAgentRequest) returns (RemoveAgentResponse);
+    rpc OnlineAgent(OnlineAgentRequest) returns (OnlineAgentResponse);
+    rpc OfflineAgent(OfflineAgentRequest) returns (OfflineAgentResponse);
+    rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+
+    //tag man
+    rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
+    rpc RemoveTag(RemoveTagRequest) returns (RemoveTagResponse);
+    rpc ListTags(ListTagsRequest) returns (ListTagsResponse);
+   
+    // tag <--> agent
+    rpc AddAgentToTag(AddAgentToTagRequest) returns (AddAgentToTagResponse);
+    rpc RemoveAgentFromTag(RemoveAgentFromTagRequest) returns (RemoveAgentFromTagResponse);
+    rpc ListAgentsByTag(ListAgentsByTagRequest) returns (ListAgentsByTagResponse);
+
+    // user man
+    rpc AddUser(AddUserRequest) returns (AddUserResponse);
+    rpc RemoveUser(RemoveUserRequest) returns (RemoveUserResponse);
+    rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+    rpc ShowUser(ShowUserRequest) returns (ShowUserResponse);
+    rpc GrantUser(GrantUserRequest) returns (GrantUserResponse);
+    rpc AssignQuota(AssignQuotaRequest) returns (AssignQuotaResponse);
+
+}
+
+
+

@@ -1,0 +1,54 @@
+import "galaxy.proto";
+package baidu.galaxy;
+
+option cc_generic_services = true;
+
+message AssignTaskRequest {
+
+}
+message AssignTaskResponse {
+
+}
+message ListTasksRequest {
+
+}
+message ListTasksResponse {
+
+}
+message StartTaskRequest {
+
+}
+message StartTaskResponse {
+
+}
+message StopTaskRequest {
+
+}
+message StopTaskResponse {
+
+}
+message UpdateTaskRequest {
+
+}
+message UpdateTaskResponse {
+
+}
+message ExecuteCmdRequest {
+
+}
+message ExecuteCmdResponse {
+
+}
+
+service AppMaster {
+    //for app-worker: report & task assignment
+    rpc AssignTask(AssignTaskRequest) returns (AssignTaskResponse);
+
+    //for user
+    rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+    rpc StartTask(StartTaskRequest) returns (StartTaskResponse);
+    rpc StopTask(StopTaskRequest) returns (StopTaskResponse);
+    rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
+    rpc ExecuteCmd(ExecuteCmdRequest) returns (ExecuteCmdResponse);
+ 
+}

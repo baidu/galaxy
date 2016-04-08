@@ -1,0 +1,222 @@
+package baidu.galaxy;
+
+//////////////////////////////////////////
+////////user
+//////////////////////////////////////////
+message User {
+    optional string user = 1;
+    optional string token = 2;
+}
+
+message Quota {
+    optional int64 millicore = 1;
+    optional int64 memory = 2;
+    optional int64 storage = 3;
+}
+
+enum Authority {
+    kAuthoritySubmit = 1;
+    kAuthorityRemove = 2;
+    kAuthorityUpdate = 3;
+    kAuthorityRead = 4;
+}
+
+enum AuthorityAction {
+    kActionAdd = 1;
+    kActionRemove = 2;
+    kActionSet = 3;
+    kActionClera = 4;
+}
+
+message Grant {
+    optional User user = 1;
+    repeated string tags = 2;
+    optional AuthorityAction action = 3;
+    repeated Authority authority = 4;
+}
+
+
+///////////////////////////////////////////
+///// resource
+///////////////////////////////////////////
+message CpuRequired {
+    optional int64 milli_core = 1;
+    optional bool excess = 2;
+}
+
+message MemoryRequired {
+    optional int64 size = 1;
+    optional bool excess = 2;
+}
+
+message PortRequired {
+    optional uint32 port_size = 1;
+    optional uint32 start_port = 2;
+}
+
+enum VolumType {
+    KEmptyDir = 1;  
+    KHostDir = 2;
+}
+
+enum VolumMedium {
+    KSsd = 1;
+    KDisk = 2;
+    KBfs = 3;
+    KTmpfs = 4;
+}
+
+message VolumRequired {
+    optional int64 size = 1;
+    optional VolumType type = 2;
+    optional VolumMedium medium = 3;
+    optional string source_path = 4;
+    optional string dist_path = 5;    
+    optional bool readonly = 6;      // default: false
+    optional bool exclusive = 7;     // default: false
+}
+
+message CpuResource {
+    optional int64 milli_core = 1;
+}
+
+message MemoryResource {
+    optional int64 size = 1;
+}
+
+message Volum {
+    optional string path = 1;
+    optional int64 size = 2;
+    optional VolumMedium medium = 3;
+}
+
+message VolumResource {
+    repeated Volum volums = 1;
+}
+
+/////////////////////////////////////////
+///// Job
+/////////////////////////////////////////
+enum JobType {
+    kBatch = 1;
+    kService = 2;
+    kMonitor = 3;
+}
+
+message Package {
+    optional string source_path = 1; // support nfs/hdfs/ftp
+    optional string dest_path = 2;   // local path
+}
+message ExePackage {
+    optional Package package = 1;
+    optional string pre_cmd = 2;     // executed befor overwriting the old package, eg: stop service
+    optional string post_cmd = 3;    // execute after overwriting the old package, eg: start service
+}
+
+message DataPackage {
+    repeated Package packages = 1;
+    optional string pre_cmd = 2;     // 
+    optional string post_cmd = 3;    // 
+}
+
+message Deploy {
+    optional uint32 replica = 1;
+    optional uint32 step = 2;
+    optional uint32 interval = 3;
+    optional uint32 max_per_host = 4;
+}
+
+message Service {
+    optional string name = 1;  // mast be uniq, which is guaranteed by user
+    optional uint32 port = 2;
+    optional bool use_bns = 3;
+}
+
+message TaskDescription {
+    optional uint32 id = 1;
+
+    // resource
+    optional CpuRequired cpu = 2;
+    optional MemoryRequired memory = 3;
+    optional PortRequired ports = 4;
+
+    // package
+    optional ExePackage exe_package = 5;
+    optional DataPackage data_package = 6;
+
+    // service
+    repeated Service services = 7;
+}
+
+message JobDescription {
+    // Job
+    optional string name = 1;
+    optional JobType type = 2;
+
+    // Resource, volum is owned by Pod
+    repeated VolumRequired volums = 3;
+
+    // tasks 
+    repeated TaskDescription tasks = 4;
+
+    // schedule-policy is necessary ?
+}
+
+
+///////////////////////////////////////
+////container
+///////////////////////////////////////
+
+message PartitionId {
+    optional string id = 1;
+}
+
+message Partition {
+   optional PartitionId id = 1; 
+   optional CpuResource cpu = 2;
+   optional MemoryResource memory = 3;
+
+}
+
+message ContainerId {
+    optional string id = 1;
+}
+
+message ContainerDescription {
+    optional ContainerId id = 1;
+    optional VolumResource volum = 2;   //
+    optional string cmd_line = 3;       // appmaster or appwork
+    repeated Partition partitions = 4;
+}
+
+message ContainerInfo {
+    optional string id = 1; 
+    optional int64 create_path = 2;
+    optional int64 cpu_used = 3;
+    optional int64 memory_used = 4;
+}
+
+///////////////////////////////////////
+////status
+///////////////////////////////////////
+enum Status {
+   kOk = 1; 
+}
+
+message ErrorCode {
+    optional Status status = 1;
+    optional string reason = 2;
+}
+
+message AgentInfo {
+    // agent version
+
+    // host healthy
+
+    // container
+    repeated ContainerInfo container_info = 1;
+
+    // resource
+
+    // exception statistics, eg: failed num of pod ..
+}

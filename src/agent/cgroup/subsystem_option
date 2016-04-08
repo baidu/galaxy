@@ -1,0 +1,15 @@
+package baidu.galaxy.cgroup;
+
+
+message CpuOption {
+optional string path = 1;
+optional int64_t millicore = 2;
+optional bool enable_exceed = 3;
+}
+
+message MemoryOption {
+optional string path = 1;
+optional int64_t limit_in_bytes = 2;
+optional bool enable_exceed = 3;
+}
+

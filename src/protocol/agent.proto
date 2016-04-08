@@ -1,0 +1,46 @@
+import "galaxy.proto";
+package baidu.galaxy;
+
+option cc_generic_services = true;
+
+message CreateContainerRequest {
+    optional ContainerDescription container = 1;
+}
+
+message CreateContainerResponse {
+    optional ErrorCode code = 1; 
+}
+
+message RemoveContainerRequest {
+    optional ContainerId id = 1;
+}
+
+message RemoveContainerResponse {
+    optional ErrorCode code = 1; 
+}
+
+message ListContainersRequest {
+
+}
+
+message ListContainersResponse {
+    optional ErrorCode code = 1; 
+    repeated ContainerInfo container_infos = 2;
+}
+
+message QueryRequest {
+    
+}
+
+message QueryResponse {
+    optional ErrorCode code = 1; 
+    repeated AgentInfo agent_infos = 2;
+}
+
+service Agent {
+    rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
+    rpc RemoveContainer(RemoveContainerRequest) returns (RemoveContainerResponse);
+    rpc ListContainers(ListContainersRequest) returns (ListContainersResponse); 
+    rpc Query(QueryRequest) returns (QueryResponse);
+}
+
