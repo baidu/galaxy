@@ -74,6 +74,7 @@ message UserDescriptor {
 
 message SubmitJobRequest {
     optional JobDescriptor job = 1;
+    optional string host = 2;
 }
 
 message SubmitJobResponse {
@@ -84,6 +85,7 @@ message SubmitJobResponse {
 message UpdateJobRequest {
     optional string jobid = 1;
     optional JobDescriptor job = 2;
+    optional string host = 3;
 }
 
 message UpdateJobResponse {
@@ -108,6 +110,7 @@ message ResumeJobResponse {
 
 message TerminateJobRequest {
     optional string jobid = 1;
+    optional string host = 2;
 }
 
 message TerminateJobResponse {
@@ -159,6 +162,7 @@ message HeartBeatResponse {
 
 message SwitchSafeModeRequest {
     optional bool enter_or_leave = 1;
+    optional string host = 2;
 }
 
 message SwitchSafeModeResponse {
@@ -222,6 +226,7 @@ message LabelCell {
 
 message LabelAgentRequest {
     optional LabelCell labels = 1;
+    optional string host = 2;
 }
 
 message LabelAgentResponse {

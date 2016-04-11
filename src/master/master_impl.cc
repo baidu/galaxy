@@ -6,6 +6,8 @@
 #include "master_util.h"
 #include <logging.h>
 #include <sofa/pbrpc/pbrpc.h>
+#include <boost/algorithm/string/trim.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 DECLARE_string(nexus_servers);
 DECLARE_string(nexus_root_path);
@@ -17,6 +19,7 @@ DECLARE_string(labels_store_path);
 DECLARE_int32(max_scale_down_size);
 DECLARE_int32(max_scale_up_size);
 DECLARE_int32(max_need_update_job_size);
+DECLARE_string(authority_host_list);
 
 namespace baidu {
 namespace galaxy {
@@ -61,6 +64,35 @@ void MasterImpl::Init() {
     ReloadJobInfo();
     ReloadLabelInfo();
     ReloadAgent();
+
+    LoadAuthorityHosts(FLAGS_authority_host_list); 
+}
+
+void MasterImpl::LoadAuthorityHosts(const std::string& iplist) {
+    _authority_string = boost::trim_copy(iplist);
+    std::vector<std::string> v;
+    boost::split(v,  _authority_string, boost::is_any_of(","));
+    for (size_t i = 0; i < v.size(); i++) {
+        _authority_ips.insert(v[i]);
+    }
+}
+
+bool MasterImpl::HasAuthority(const std::string& endpoint) {
+    if ("*" == _authority_string) {
+        return true;
+    }
+
+    bool ret = false;
+    std::string str = boost::trim_copy(endpoint);
+    std::vector<std::string> v;
+    boost::split(v, str, boost::is_any_of(":"));
+    if (v.size() > 0) {
+        std::set<std::string>::iterator iter = _authority_ips.find(v[0]);
+        if (iter != _authority_ips.end()) {
+            ret = true;
+        }
+    }
+    return ret;
 }
 
 void MasterImpl::Start() {
@@ -164,11 +196,21 @@ void MasterImpl::AcquireMasterLock() {
         master_path_key.c_str(), master_endpoint.c_str());
 }
 
-void MasterImpl::SubmitJob(::google::protobuf::RpcController* /*controller*/,
+void MasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SubmitJobRequest* request,
                            ::baidu::galaxy::SubmitJobResponse* response,
                            ::google::protobuf::Closure* done) {
     const JobDescriptor& job_desc = request->job();
+
+    std::string host = request->has_host() ? request->host() : "*";
+    if (!HasAuthority(host)) {
+        LOG(WARNING, "%s is NOT allowed to submite job", host.c_str());
+        response->set_status(kPermission);
+        done->Run();
+        return;
+    }
+
+
     MasterUtil::TraceJobDesc(job_desc);
     JobId job_id = MasterUtil::UUID();
 
@@ -188,6 +230,15 @@ void MasterImpl::UpdateJob(::google::protobuf::RpcController* /*controller*/,
                            const ::baidu::galaxy::UpdateJobRequest* request,
                            ::baidu::galaxy::UpdateJobResponse* response,
                            ::google::protobuf::Closure* done) {
+
+    std::string host = request->has_host() ? request->host() : "*";
+    if (!HasAuthority(host)) {
+        LOG(WARNING, "%s is NOT allowed to submite job", host.c_str());
+        response->set_status(kPermission);
+        done->Run();
+        return;
+    }
+
     JobId job_id = request->jobid();
     LOG(INFO, "update job %s replica %d", job_id.c_str(), request->job().replica());
     Status status = job_manager_.Update(job_id, request->job());
@@ -215,6 +266,15 @@ void MasterImpl::TerminateJob(::google::protobuf::RpcController* ,
                               const ::baidu::galaxy::TerminateJobRequest* request,
                               ::baidu::galaxy::TerminateJobResponse* response,
                               ::google::protobuf::Closure* done) {
+    std::string host = request->has_host() ? request->host() : "*";
+    if (!HasAuthority(host)) {
+        LOG(WARNING, "%s is NOT allowed to submite job", host.c_str());
+        response->set_status(kPermission);
+        done->Run();
+        return;
+    }
+
+
     JobId job_id = request->jobid();
     LOG(INFO, "terminate job %s", job_id.c_str());
     Status status= job_manager_.Terminte(job_id);
@@ -258,6 +318,15 @@ void MasterImpl::SwitchSafeMode(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::SwitchSafeModeRequest* request,
                            ::baidu::galaxy::SwitchSafeModeResponse* response,
                            ::google::protobuf::Closure* done) {
+
+    std::string host = request->has_host() ? request->host() : "*";
+    if (!HasAuthority(host)) {
+        LOG(WARNING, "%s is NOT allowed to submite job", host.c_str());
+        response->set_status(kPermission);
+        done->Run();
+        return;
+    }
+
     Status ok = job_manager_.SetSafeMode(request->enter_or_leave());
     response->set_status(ok);
     done->Run();
@@ -332,6 +401,16 @@ void MasterImpl::LabelAgents(::google::protobuf::RpcController* ,
                              const ::baidu::galaxy::LabelAgentRequest* request,
                              ::baidu::galaxy::LabelAgentResponse* response,
                              ::google::protobuf::Closure* done) { 
+
+    std::string host = request->has_host() ? request->host() : "*";
+    if (!HasAuthority(host)) {
+        LOG(WARNING, "%s is NOT allowed to submite job", host.c_str());
+        response->set_status(kPermission);
+        done->Run();
+        return;
+    }
+
+
     Status status = job_manager_.LabelAgents(request->labels());
     response->set_status(status);
     done->Run();
