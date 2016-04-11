@@ -208,6 +208,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     // pod meta
     PodDescriptor* pod_pb = job->mutable_pod();
     pod_pb->set_version(sdk_job.pod.version);
+    pod_pb->set_type(job_type);
     Resource* pod_res = pod_pb->mutable_requirement();
     // pod res
     pod_res->set_millicores(sdk_job.pod.requirement.millicores);

@@ -2,6 +2,12 @@ package baidu.galaxy;
 
 option cc_generic_services = true;
 
+enum JobType {
+    kLongRun = 0;
+    kBatch = 1;
+    kSystem = 2;
+}
+
 enum Status {
     kOk = 0;
     kUnknown = 1;
@@ -120,6 +126,7 @@ message PodDescriptor {
     optional bool pin_on_agent = 3 [default = false];
     repeated string labels = 4;
     optional string version = 5;
+    optional JobType type = 6;
 }
 
 message TaskStatus {
