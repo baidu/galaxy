@@ -25,7 +25,7 @@ enum AuthorityAction {
     kActionAdd = 1;
     kActionRemove = 2;
     kActionSet = 3;
-    kActionClera = 4;
+    kActionClear = 4;
 }
 
 message Grant {
