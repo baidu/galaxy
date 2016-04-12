@@ -20,42 +20,52 @@ Galaxy3.0是对Galaxy2.0的重构，主要解决以下问题：
 
         Galaxy3.0架构上分为2层： 资源管理层和服务管理层，每层都是主从式架构  
         1. 资源管理层由ResMan(Resource Manager)和Agent构成  
-        2. 服务管理层由AppMaster和AppWorker构成, 每个服务有自己的AppMaster进程
+        2. 服务管理层由AppMaster和AppWorker构成;
 
  
-                       Naming _                       Job_A1          Job_A2
-                                \                       |               |
-                                 \__ AppMaster_A <--> AppWorker_A1   AppWorker_A2
-                                         |              |               |
-         +----------------------------------------------------------------------+
-         |  ResMan  <--------------->  Agent1         Agent2      Agent3 ....
-         +----------------------------------------------------------------------+
-                                         |              |               |
-                                     AppMaster_B <--> AppWorker_B1   AppWorker_B2
-                                                        |               |
-                                                      Job_B1          Job_B2
-上面的图有点抽象，可以举一个不太恰当的例子。
+           +-------------------+-----------------------------+
+           |                   |               |             |
+           |                   |   MapReduce   |   Spark     |
+           |                   |               |             |
+           |                   +-----------------------------+
+           |                                                 |
+           |               Service Management                |
+           |                                                 |
+           +-------------------------------------------------+
+           |                                                 |
+           |               Resource Management               |
+           |                                                 |
+           +-------------------------------------------------+
 
-> Galaxy就是一个五星级酒店，每天都有大量游客组团入住和离开。  
-> ResMan就是大堂经理，负责按照每个团的人数、房间需求来分配房间，以及记账结账；  
-> Agent就是酒店服务员，确保房间就绪，以及游客离开后打扫等；  
-> AppMaster是旅游团团长，确保每个游客不掉队，以及组织一些集体活动；  
-> AppWorker就是小导游，负责把游客引导到房间，并且跟进游客的状态，汇报给团长；  
+## 1. 资源管理层（Resource Management)
+组件： ResMan + Agents  
+一个Galaxy集群只有一个处于工作状态的ResMan，负责容器的调度，为每个容器找到满足部署资源要求的机器；  
+ResMan通过和部署在各个机器上的Agent通信，来创建和销毁容器；  
+容器： 一个基于linux cgroup和namspace技术的资源隔离环境；   
+容器里默认会启动AppWorker进程，是容器内的第一个进程，也就是根进程；   
+ResMan不暴露给普通用户接口， 仅供内部组件以及集群管理员使用；  
+
+## 2. 服务管理层 (Service Management)
+组件：　AppMaster + AppWorkers  
+AppMaster是外界用户操作Galaxy的唯一入口；  
+一个Galaxy集群通常只有一个AppMaster，负责服务的部署、更新、启停和状态管理，把服务实例分发到各个机器上的容器内启动并跟踪状态；  
+AppMaster通过调用ResMan的RPC接口创建容器，然后容器内拉起AppWorker进程；  
+容器内的AppWorker进程通过和AppMaster进程通信，获得需要在容器内执行的命令，包括部署、启停、更新等等；  
+AppWorker会汇报服务的状态给AppMaster，例如该实例是否在运行，进程退出码等；  
 
 ## 调度逻辑
 
-用户提交的Job内容主要是两部分：资源需求 +　程序启停  
-1. 一个Job提交后，就持久化到Nexus中。 ResMan只关心资源需求部分，ResMan命令有资源的Agent创建容器: 1个Master容器 + N个Worker容器；  
-2. Agent在Master容器启动AppMaster进程， Agent在Worker容器启动AppWorker进程； AppMaster进程把自己的地址记录在Nexus上；  
-3. Master容器的调度需要在有特殊Tag的机器上，这样确保AppMaster的稳定性；
-4. AppWorker进程发RPC请求AppMaster进程， AppMaster分配任务给AppWorker执行， AppWorker反馈任务执行状态给AppMaster；（执行的任务包括：下载程序包、启动程序、停止程序、Load词典、更新程序版本等）
+用户提交的Job内容主要是两部分：资源需求 +　程序部署启停命令
+1. Galaxy客户端通过Nexus找到AppMaster的地址；  
+2. AppMaster收到Job提交请求后，把资源需求转发给ResMan， 创建相应的容器；  
+3. AppWorkers向AppMaster索要命令，然后再容器内部署、启动服务；     
+4. 当服务的状态发生变化后，AppWorker立即汇报给AppMaster;
 
 ## 容错
 
 1. ResMan有备份，通过Nexus抢锁来Standby;  
 2. Agent跟踪每个容器的状态汇报给ResMan，当容器个数不够或者不符合ResMan的要求时，就需要调度：创建或删除容器；  
-3. AppWorker负责跟踪用户程序的状态，当用户程序coredump、异常退出或者被cgroup kill后，反馈状态给AppMaster，AppMaster根据指定策略命令AppWorker是否再次拉起。  
-4. AppMaster如果异常挂掉，或者所在机器挂掉，ResMan会销毁此容器，并且在其他Agent上创建一个Master容器；  
+3. AppWorker负责跟踪用户程序的状态，当用户程序coredump、异常退出或者被cgroup kill后，反馈状态给AppMaster，AppMaster根据指定策略命令AppWorker是否再次拉起。   
 
 ## 服务发现
 1. SDK通过Nexus发现指定的Job的AppMaster地址；  
@@ -72,5 +82,4 @@ Galaxy3.0是对Galaxy2.0的重构，主要解决以下问题：
 1. Nexus作为寻址和元信息保存  
 2. MDT作为用户日志的Trace系统  
 3. Sofa-PbRPC作为通信基础库  
-
 
