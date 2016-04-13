@@ -56,30 +56,6 @@ void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
 }
 
 
-void ResManImpl::SubmitJob(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::SubmitJobRequest* request,
-                           ::baidu::galaxy::SubmitJobResponse* response,
-                           ::google::protobuf::Closure* done) {
-
-}
-
-
-void ResManImpl::UpdateJob(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::UpdateJobRequest* request,
-                           ::baidu::galaxy::UpdateJobResponse* response,
-                           ::google::protobuf::Closure* done) {
-
-}
-
-
-void ResManImpl::RemoveJob(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::RemoveJobRequest* request,
-                           ::baidu::galaxy::RemoveJobResponse* response,
-                           ::google::protobuf::Closure* done) {
-
-}
-
-
 void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::AddAgentRequest* request,
                           ::baidu::galaxy::AddAgentResponse* response,

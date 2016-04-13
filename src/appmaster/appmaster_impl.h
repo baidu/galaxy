@@ -18,35 +18,35 @@ public:
 AppMasterImpl();
 virtual ~AppMasterImpl();
 
-void AssignTask(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::AssignTaskRequest* request,
-               ::baidu::galaxy::AssignTaskResponse* response,
+void SubmitJob(::google::protobuf::RpcController* controller,
+               const ::baidu::galaxy::SubmitJobRequest* request,
+               ::baidu::galaxy::SubmitJobResponse* response,
                ::google::protobuf::Closure* done);
 
-void ListTasks(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::ListTasksRequest* request,
-               ::baidu::galaxy::ListTasksResponse* response,
+void UpdateJob(::google::protobuf::RpcController* controller,
+               const ::baidu::galaxy::UpdateJobRequest* request,
+               ::baidu::galaxy::UpdateJobResponse* response,
                ::google::protobuf::Closure* done);
 
-void StartTask(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::StartTaskRequest* request,
-               ::baidu::galaxy::StartTaskResponse* response,
+void RemoveJob(::google::protobuf::RpcController* controller,
+               const ::baidu::galaxy::RemoveJobRequest* request,
+               ::baidu::galaxy::RemoveJobResponse* response,
                ::google::protobuf::Closure* done);
 
-void StopTask(::google::protobuf::RpcController* controller,
-              const ::baidu::galaxy::StopTaskRequest* request,
-              ::baidu::galaxy::StopTaskResponse* response,
-              ::google::protobuf::Closure* done);
+void ListJobs(::google::protobuf::RpcController* controller,
+               const ::baidu::galaxy::ListJobsRequest* request,
+               ::baidu::galaxy::ListJobsResponse* response,
+               ::google::protobuf::Closure* done);
 
-void UpdateTask(::google::protobuf::RpcController* controller,
-                const ::baidu::galaxy::UpdateTaskRequest* request,
-                ::baidu::galaxy::UpdateTaskResponse* response,
-                ::google::protobuf::Closure* done);
+void ShowJob(::google::protobuf::RpcController* controller,
+               const ::baidu::galaxy::ShowJobRequest* request,
+               ::baidu::galaxy::ShowJobResponse* response,
+               ::google::protobuf::Closure* done);
 
 void ExecuteCmd(::google::protobuf::RpcController* controller,
-                const ::baidu::galaxy::ExecuteCmdRequest* request,
-                ::baidu::galaxy::ExecuteCmdResponse* response,
-                ::google::protobuf::Closure* done);
+                               const ::baidu::galaxy::ExecuteCmdRequest* request,
+                               ::baidu::galaxy::ExecuteCmdResponse* response,
+                               ::google::protobuf::Closure* done);
 
 };
 
