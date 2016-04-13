@@ -20,57 +20,82 @@ Galaxy3.0是对Galaxy2.0的重构，主要解决以下问题：
 
         Galaxy3.0架构上分为2层： 资源管理层和服务管理层，每层都是主从式架构  
         1. 资源管理层由ResMan(Resource Manager)和Agent构成  
-        2. 服务管理层由AppMaster和AppWorker构成, 每个服务有自己的AppMaster进程
+        2. 服务管理层由AppMaster和AppWorker构成;
 
  
-                       Naming _                       Job_A1          Job_A2
-                                \                       |               |
-                                 \__ AppMaster_A <--> AppWorker_A1   AppWorker_A2
-                                         |              |               |
-         +----------------------------------------------------------------------+
-         |  ResMan  <--------------->  Agent1         Agent2      Agent3 ....
-         +----------------------------------------------------------------------+
-                                         |              |               |
-                                     AppMaster_B <--> AppWorker_B1   AppWorker_B2
-                                                        |               |
-                                                      Job_B1          Job_B2
-上面的图有点抽象，可以举一个不太恰当的例子。
+       +-------------------+-----------------------------+
+       |                   |               |             |
+       |                   |   MapReduce   |   Spark     |
+       |                   |               |             |
+       |                   +-----------------------------+
+       |                                                 |
+       |               Service Management                |  ---> {AppMaster +　AppWorkers}
+       |                                                 |
+       +-------------------------------------------------+
+       |                                                 |
+       |               Resource Management               |  ---> {ResMan + Agents}
+       |                                                 |
+       +-------------------------------------------------+
 
-> Galaxy就是一个五星级酒店，每天都有大量游客组团入住和离开。  
-> ResMan就是大堂经理，负责按照每个团的人数、房间需求来分配房间，以及记账结账；  
-> Agent就是酒店服务员，确保房间就绪，以及游客离开后打扫等；  
-> AppMaster是旅游团团长，确保每个游客不掉队，以及组织一些集体活动；  
-> AppWorker就是小导游，负责把游客引导到房间，并且跟进游客的状态，汇报给团长；  
+## 1. 资源管理层（Resource Management)
+组件： ResMan + Agents  
+一个Galaxy集群只有一个处于工作状态的ResMan，负责容器的调度，为每个容器找到满足部署资源要求的机器；  
+ResMan通过和部署在各个机器上的Agent通信，来创建和销毁容器；  
+容器： 一个基于linux cgroup和namspace技术的资源隔离环境；   
+容器里默认会启动AppWorker进程，是容器内的第一个进程，也就是根进程；   
+ResMan不暴露给普通用户接口， 仅供内部组件以及集群管理员使用；  
+
+## 2. 服务管理层 (Service Management)
+组件：　AppMaster + AppWorkers  
+AppMaster是外界用户操作Galaxy的唯一入口；  
+一个Galaxy集群通常只有一个AppMaster，负责服务的部署、更新、启停和状态管理，把服务实例分发到各个机器上的容器内启动并跟踪状态；  
+AppMaster通过调用ResMan的RPC接口创建容器，容器内自动拉起AppWorker进程；  
+容器内的AppWorker进程通过和AppMaster进程通信，获得需要在容器内执行的命令，包括部署、启停、更新等等；  
+AppWorker会汇报服务的状态给AppMaster，例如托管的服务是否在正常运行，进程退出码等；  
 
 ## 调度逻辑
 
-用户提交的Job内容主要是两部分：资源需求 +　程序启停  
-1. 一个Job提交后，就持久化到Nexus中。 ResMan只关心资源需求部分，ResMan命令有资源的Agent创建容器: 1个Master容器 + N个Worker容器；  
-2. Agent在Master容器启动AppMaster进程， Agent在Worker容器启动AppWorker进程； AppMaster进程把自己的地址记录在Nexus上；  
-3. Master容器的调度需要在有特殊Tag的机器上，这样确保AppMaster的稳定性；
-4. AppWorker进程发RPC请求AppMaster进程， AppMaster分配任务给AppWorker执行， AppWorker反馈任务执行状态给AppMaster；（执行的任务包括：下载程序包、启动程序、停止程序、Load词典、更新程序版本等）
+用户提交的Job内容主要是两部分：资源需求 +　程序描述  
+资源需求： CPU核数、内存大小、磁盘容量、机器Lable、端口范围、mount路径  
+程序描述： 部署命令、启动命令、停止命令、更新命令、版本号  
+
+### 1. ResMan的调度逻辑
+ResMan通过定时查询Agent，获得每个Agent上面可分配的资源  
+ResMan不断检查当前是否有处于Pending状态的容器， 寻找有资源的Agent创建容器；  
+创建失败的容器，又进入Pending状态，等待重新调度；  
+不符合预期的容器， ResMan命令Agent销毁， 重新进入Pending状态；  
+ResMan确保容器的个数始终符合用户的需求；  
+
+### 2. AppMaster的调度逻辑
+AppMaster等待AppWorkers的定时汇报；  
+如果AppWorker汇报的服务状态不符合AppMaster的预期，则AppMaster返回一些命令让AppWorker执行；  
+> a) 部署： AppWorker汇报目前没有运行任何服务， AppMaster返回部署命令给AppWorker;  
+> b) 启动： AppWorker汇报部署成功了， AppMaster返回启动命令给AppWorker;  
+> c) 更新： AppWorker汇报当前服务的版本号， AppMaster发现不匹配， 返回更新命令给AppWorker;  
+> d) 失败处理： AppWorker汇报（部署失败 or 启动失败 or 更新失败）， AppMaster记录此次异常，并根据策略决定是否让AppWorker继续重试；  
 
 ## 容错
 
-1. ResMan有备份，通过Nexus抢锁来Standby;  
+1. ResMan，AppMaster都有备份，通过Nexus抢锁来Standby;  
 2. Agent跟踪每个容器的状态汇报给ResMan，当容器个数不够或者不符合ResMan的要求时，就需要调度：创建或删除容器；  
-3. AppWorker负责跟踪用户程序的状态，当用户程序coredump、异常退出或者被cgroup kill后，反馈状态给AppMaster，AppMaster根据指定策略命令AppWorker是否再次拉起。  
-4. AppMaster如果异常挂掉，或者所在机器挂掉，ResMan会销毁此容器，并且在其他Agent上创建一个Master容器；  
+3. AppWorker负责跟踪用户程序的状态，当用户程序coredump、异常退出或者被cgroup kill后，反馈状态给AppMaster，AppMaster根据指定策略命令AppWorker是否再次拉起用户的服务； 
+4. 由于机器缺陷或者网络分割，可能导致ResMan认为容器个数足够，但是AppMaster发现服务实例数不够的情况：  
+> 例如： 磁盘坏了、端口被占用等， 导致用户服务始终无法拉起；  
+> 这种情况下， AppMaster可以调用ResMan的接口，增大容器个数（有上限）；  
 
 ## 服务发现
-1. SDK通过Nexus发现指定的Job的AppMaster地址；  
+1. SDK通过Nexus发现AppMaster地址；  
 2. SDK请求AppMaster，发现每个Job实例的地址和当前的服务状态；  
-3. AppMaster会定时同步服务地址和状态到第三方Naming系统（如BNS,ZK等);  
+3. AppMaster会定时同步服务地址和状态到第三方Naming系统（如BNS,Nexus,ZK等);  
 
 ## 服务更新
 1. SDK通过Nexus发现指定的Job的AppMaster地址；  
 2. SDK请求AppMaster, AppMaster将服务更新命令传播给AppWorker, AppWorker将更新状态反馈给AppMaster;  
 3. AppWorker和AppMaster的通信方式是Pull的方式，因此AppMaster可以根据当前的情况来决定部署的暂停和步长控制；  
-4. 服务的更新都在容器内进行，不涉及到容器的销毁和创建
+4. 服务的更新都在容器内进行，不涉及到容器的销毁和创建  
 
 # 系统依赖
 1. Nexus作为寻址和元信息保存  
 2. MDT作为用户日志的Trace系统  
 3. Sofa-PbRPC作为通信基础库  
-
 
