@@ -71,7 +71,7 @@ AppMaster等待AppWorkers的定时汇报；
 如果AppWorker汇报的服务状态不符合AppMaster的预期，则AppMaster返回一些命令让AppWorker执行；  
 > a) 部署： AppWorker汇报目前没有运行任何服务， AppMaster返回部署命令给AppWorker;  
 > b) 启动： AppWorker汇报部署成功了， AppMaster返回启动命令给AppWorker;  
-> c) 更新： AppWorker汇报当前服务的版本号， AppMaster发现不匹配， 返回更新命令给AppWorker;
+> c) 更新： AppWorker汇报当前服务的版本号， AppMaster发现不匹配， 返回更新命令给AppWorker;  
 > d) 失败处理： AppWorker汇报（部署失败 or 启动失败 or 更新失败）， AppMaster记录此次异常，并根据策略决定是否让AppWorker继续重试；  
 
 ## 容错
