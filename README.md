@@ -80,8 +80,8 @@ AppMaster等待AppWorkers的定时汇报；
 2. Agent跟踪每个容器的状态汇报给ResMan，当容器个数不够或者不符合ResMan的要求时，就需要调度：创建或删除容器；  
 3. AppWorker负责跟踪用户程序的状态，当用户程序coredump、异常退出或者被cgroup kill后，反馈状态给AppMaster，AppMaster根据指定策略命令AppWorker是否再次拉起用户的服务； 
 4. 由于机器缺陷或者网络分割，可能导致ResMan认为容器个数足够，但是AppMaster发现服务实例数不够的情况：  
->   例如： 磁盘坏了、端口被占用等， 导致用户服务始终无法拉起；
->   这种情况下， AppMaster可以调用ResMan的接口，增大容器个数（有上限）；
+> 例如： 磁盘坏了、端口被占用等， 导致用户服务始终无法拉起；
+> 这种情况下， AppMaster可以调用ResMan的接口，增大容器个数（有上限）；
 
 ## 服务发现
 1. SDK通过Nexus发现AppMaster地址；  
