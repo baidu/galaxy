@@ -26,6 +26,9 @@ struct ResDescription {
     std::vector<VolumeDescription> disks;
     int64_t read_bytes_ps;
     int64_t write_bytes_ps;
+    int64_t read_io_ps;
+    int64_t write_io_ps;
+    int32_t io_weight;
     int64_t syscr_ps;
     int64_t syscw_ps;
 };
@@ -40,12 +43,14 @@ struct TaskDescription {
     std::string mem_isolation_type;
     std::set<std::string> envs;
     std::string cpu_isolation_type;
+    bool namespace_isolation;
 };
 
 struct PodDescription {
    ResDescription requirement; 
    std::vector<TaskDescription> tasks;
    std::string version;
+   bool namespace_isolation;
 };
 
 struct JobDescription {
@@ -81,6 +86,7 @@ struct JobInformation {
 
 struct NodeDescription {
     std::string addr;
+    std::string build;
     int32_t task_num;
     int64_t cpu_share;
     int64_t mem_share;
@@ -168,6 +174,9 @@ public:
     //     master_key    : /baidu/galaxy/yq01-master
     static Galaxy* ConnectGalaxy(const std::string& nexus_servers,
                                  const std::string& master_key);
+
+    static Galaxy* ConnectGalaxy(const std::string& master_addr);
+
     //create a new job
     virtual bool SubmitJob(const JobDescription& job, std::string* job_id) = 0;
     //update job for example update the replicate_count

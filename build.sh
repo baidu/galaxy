@@ -22,11 +22,38 @@ then
     echo "boost exist"
 else
     echo "start install boost...."
-    wget http://superb-dca2.dl.sourceforge.net/project/boost/boost/1.57.0/boost_1_57_0.tar.gz >/dev/null
+    wget --no-check-certificate -O boost_1_57_0.tar.gz https://github.com/imotai/common_deps/releases/download/boost/boost_1_57.tar.gz >/dev/null
     tar zxf boost_1_57_0.tar.gz >/dev/null
     rm -rf ${DEPS_PREFIX}/boost_1_57_0
     mv boost_1_57_0 ${DEPS_PREFIX}
     echo "install boost done"
+fi
+
+if [ -f "Python-2.7.11.tgz" ]
+then
+    echo "python exist"
+else
+    echo "start download python"
+    wget --no-check-certificate https://www.python.org/ftp/python/2.7.11/Python-2.7.11.tgz > /dev/null
+    tar zxf Python-2.7.11.tgz >/dev/null
+    cd Python-2.7.11
+    ./configure --prefix=${DEPS_PREFIX}  --disable-shared >/dev/null
+    make -j4 && make install>/dev/null
+    echo "install python done"
+    cd -
+fi
+
+if [ -f "setuptools-19.2.tar.gz" ]
+then
+    echo "setuptools exist"
+else
+    echo "start download setuptools"
+    wget --no-check-certificate https://pypi.python.org/packages/source/s/setuptools/setuptools-19.2.tar.gz
+    tar -zxvf setuptools-19.2.tar.gz >/dev/null
+    cd setuptools-19.2
+    python setup.py install >/dev/null
+    echo "install setuptools done"
+    cd -
 fi
 
 if [ -d "rapidjson" ]
@@ -55,6 +82,9 @@ else
     ./configure ${DEPS_CONFIG} >/dev/null
     make -j4 >/dev/null
     make install
+    cd -
+    cd protobuf-2.6.1/python
+    python setup.py build && python setup.py install
     cd -
     echo "install protobuf done"
 fi
@@ -92,27 +122,16 @@ else
     echo "PROTOBUF_DIR=${DEPS_PREFIX}" >> depends.mk
     echo "SNAPPY_DIR=${DEPS_PREFIX}" >> depends.mk
     echo "PREFIX=${DEPS_PREFIX}" >> depends.mk
-    cd src
+    cd -
+    cd sofa-pbrpc-1.0.0/src
     PROTOBUF_DIR=${DEPS_PREFIX} sh compile_proto.sh
-    cd ..
-    make -j4 >/dev/null
-    make install
-    cd ..
-fi
-
-if [ -f "zookeeper-3.4.6.tar.gz" ]
-then
-    echo "zookeeper-3.4.6.tar.gz exist"
-else
-    # zookeeper
-    wget http://apache.arvixe.com/zookeeper/zookeeper-3.4.6/zookeeper-3.4.6.tar.gz
-    tar zxf zookeeper-3.4.6.tar.gz
-    cd zookeeper-3.4.6/src/c
-    ./configure ${DEPS_CONFIG} >/dev/null
+    cd -
+    cd sofa-pbrpc-1.0.0
     make -j4 >/dev/null
     make install
     cd -
 fi
+
 
 if [ -f "CMake-3.2.1.tar.gz" ]
 then
@@ -142,84 +161,6 @@ else
     cd -
 fi
 
-if [ -f "glog-0.3.3.tar.gz" ] 
-then
-    echo "glog-0.3.3.tar.gz exist"
-else
-    # glog
-    wget --no-check-certificate -O glog-0.3.3.tar.gz https://github.com/google/glog/archive/v0.3.3.tar.gz
-    tar zxf glog-0.3.3.tar.gz
-    cd glog-0.3.3
-    ./configure ${DEPS_CONFIG} CPPFLAGS=-I${DEPS_PREFIX}/include LDFLAGS=-L${DEPS_PREFIX}/lib >/dev/null
-    make -j4 >/dev/null
-    make install
-    cd -
-fi
-
-if [ -d "gtest_archive" ]
-then
-    echo "gtest_archive exist"
-else
-
-    # gtest
-    # wget --no-check-certificate https://googletest.googlecode.com/files/gtest-1.7.0.zip
-    git clone --depth=1 https://github.com/xupeilin/gtest_archive
-    mv gtest_archive/gtest-1.7.0.zip .
-    unzip gtest-1.7.0.zip
-    cd gtest-1.7.0
-    ./configure ${DEPS_CONFIG} >/dev/null
-    make -j8 >/dev/null
-    cp -a lib/.libs/* ${DEPS_PREFIX}/lib
-    cp -a include/gtest ${DEPS_PREFIX}/include
-    cd -
-fi
-
-if [ -f "libunwind-0.99-beta.tar.gz" ]
-then
-    echo "libunwind-0.99-beta.tar.gz exist"
-else
-    # libunwind for gperftools
-    wget http://download.savannah.gnu.org/releases/libunwind/libunwind-0.99-beta.tar.gz
-    tar zxf libunwind-0.99-beta.tar.gz
-    cd libunwind-0.99-beta
-    ./configure ${DEPS_CONFIG} >/dev/null
-    make CFLAGS=-fPIC -j4 >/dev/null
-    make CFLAGS=-fPIC install
-    cd -
-fi
-
-if [ -d "gperftools" ]
-then
-    echo "gperftools exist"
-else
-
-    # gperftools (tcmalloc)
-    # wget --no-check-certificate https://googledrive.com/host/0B6NtGsLhIcf7MWxMMF9JdTN3UVk/gperftools-2.2.1.tar.gz
-    git clone --depth=1 https://github.com/00k/gperftools
-    mv gperftools/gperftools-2.2.1.tar.gz .
-    tar zxf gperftools-2.2.1.tar.gz
-    cd gperftools-2.2.1
-    ./configure ${DEPS_CONFIG} CPPFLAGS=-I${DEPS_PREFIX}/include LDFLAGS=-L${DEPS_PREFIX}/lib >/dev/null
-    make -j4 >/dev/null
-    make install
-    cd -
-fi
-
-if [ -d "leveldb" ]
-then
-    echo "leveldb exist"
-else
-
-    # leveldb
-    git clone https://github.com/imotai/leveldb.git
-    cd leveldb
-    make -j8 >/dev/null 
-    cp -rf include/* ${DEPS_PREFIX}/include
-    cp libleveldb.a ${DEPS_PREFIX}/lib
-    cd -
-fi
-
-
 if [ -d "ins" ]
 then
     echo "ins exist"
@@ -231,45 +172,33 @@ else
     sed -i 's/^PROTOBUF_PATH=.*/PROTOBUF_PATH=..\/..\/thirdparty/' Makefile
     sed -i 's/^PROTOC_PATH=.*/PROTOC_PATH=..\/..\/thirdparty\/bin/' Makefile
     sed -i 's/^PROTOC=.*/PROTOC=..\/..\/thirdparty\/bin\/protoc/' Makefile
-    sed -i 's|^PREFIX=.*|PREFIX=..\/..\/thirdparty|' Makefile
-    sed -i 's|^PROTOC=.*|PROTOC=${PREFIX}/bin/protoc|' Makefile
     sed -i 's/^GFLAGS_PATH=.*/GFLAGS_PATH=..\/..\/thirdparty/' Makefile
-    sed -i 's/^LEVELDB_PATH=.*/LEVELDB_PATH=..\/..\/thirdparty/' Makefile
     sed -i 's/^GTEST_PATH=.*/GTEST_PATH=..\/..\/thirdparty/' Makefile
+    sed -i 's/^PREFIX=.*/PREFIX=..\/..\/thirdparty/' Makefile
     export PATH=${DEPS_PREFIX}/bin:$PATH
     export BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0
     export PBRPC_PATH=${DEPS_PREFIX}/
-    make -j4 ins >/dev/null && make -j4 install_sdk
+    make -j4 ins >/dev/null && make -j4 install_sdk >/dev/null  && make python >/dev/null
     mkdir -p output/bin && cp ins output/bin
+    cp -rf output/python/* ../../optools/
     cd -
 fi
 
-if [ -d "tera" ]
-then 
-    echo "tera exist"
+if [ -d "leveldb" ]
+then
+    echo "leveldb exist"
 else
 
-    # tera
-    git clone https://github.com/baidu/tera
-    depends_file=depends.mk.template
-    cd tera
-    sed -i 's#^SOFA_PBRPC_PREFIX=.*#SOFA_PBRPC_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^PROTOBUF_PREFIX=.*#PROTOBUF_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^SNAPPY_PREFIX=.*#SNAPPY_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^ZOOKEEPER_PREFIX=.*#ZOOKEEPER_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^GFLAGS_PREFIX=.*#GFLAGS_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^GLOG_PREFIX=.*#GLOG_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^GTEST_PREFIX=.*#GTEST_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^GPERFTOOLS_PREFIX=.*#GPERFTOOLS_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -i 's#^BOOST_INCDIR=.*#BOOST_INCDIR='${DEPS_PREFIX}'\/boost_1_57_0#' ${depends_file}
-    sed -i 's#^INS_PREFIX=.*#INS_PREFIX='${DEPS_PREFIX}'#' ${depends_file}
-    sed -e '$ c -lgtest_main -lgtest -lglog -lgflags -ltcmalloc_minimal -lunwind' ${depends_file} > depends.mk.new
-    mv depends.mk.new depends.mk
-    make -j8 >/dev/null
-    cp -a build/lib/*.a ${DEPS_PREFIX}/lib
-    cp -a build/include/*.h ${DEPS_PREFIX}/include
+    # leveldb
+    git clone https://github.com/google/leveldb.git
+    cd leveldb
+    make -j8 >/dev/null 
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
     cd -
 fi
+
+
 
 if [ -d "mdt" ]
 then
@@ -282,16 +211,11 @@ else
     sed -i 's/^SOFA_PBRPC_PREFIX=.*/SOFA_PBRPC_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i 's/^PROTOBUF_PREFIX=.*/PROTOBUF_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i 's/^SNAPPY_PREFIX=.*/SNAPPY_PREFIX=..\/..\/thirdparty/' depends.mk
-    sed -i 's/^ZOOKEEPER_PREFIX=.*/ZOOKEEPER_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i 's/^GFLAGS_PREFIX=.*/GFLAGS_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i 's/^GLOG_PREFIX=.*/GLOG_PREFIX=..\/..\/thirdparty/' depends.mk
-    sed -i 's/^GTEST_PREFIX=.*/GTEST_PREFIX=..\/..\/thirdparty/' depends.mk
-    sed -i 's/^GPERFTOOLS_PREFIX=.*/GPERFTOOLS_PREFIX=..\/..\/thirdparty/' depends.mk
     sed -i 's/^BOOST_INCDIR=.*/BOOST_INCDIR=..\/..\/thirdparty\/boost_1_57_0/' depends.mk
-    sed -i 's/^INS_PREFIX=.*/INS_PREFIX=..\/..\/thirdparty/' depends.mk
-    sed -i 's/^TERA_PREFIX=.*/TERA_PREFIX=..\/..\/thirdparty/' depends.mk
-    sed -i '/-lgtest_main/c -lgtest_main -lgtest -lglog -lgflags -ltcmalloc_minimal -lunwind' depends.mk
-    make -j8 >/dev/null
+    sed -i '/-lgtest_main/c  -lglog -lgflags' depends.mk
+    make -j8 libftrace.a >/dev/null
     cp src/ftrace/collector/logger.h ${DEPS_PREFIX}/include
     cp libftrace.a ${DEPS_PREFIX}/lib
     cd -
