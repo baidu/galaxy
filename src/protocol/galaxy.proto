@@ -12,6 +12,7 @@ message Quota {
     optional int64 millicore = 1;
     optional int64 memory = 2;
     optional int64 storage = 3;
+    optional int64 pods = 4;
 }
 
 enum Authority {
@@ -104,9 +105,27 @@ message VolumRequired {
 ///// Job
 /////////////////////////////////////////
 enum JobType {
-    kBatch = 1;
-    kService = 2;
-    kMonitor = 3;
+    kJobBatch = 1;
+    kJobService = 2;
+    kJobMonitor = 3;
+}
+
+// update incrementally may cause new problems: version confusion 
+// Appmaster must save descrition of last 2 versions, and  a complete desc.
+enum JobStatus {
+   kJobPending = 1;
+   kJobDepolying = 2;
+   kJobRunning = 3;
+   //kUpdating = 4;
+   kJobFinished = 5;
+}
+
+// Task or pod
+enum TaskStatus {
+    kTaskDeploying = 1;   
+    kTaskRunning = 2;
+    kTaskFailed = 3;
+    kTaskFinished = 4;
 }
 
 message Package {
@@ -143,7 +162,7 @@ message TaskId {
 }
 
 message TaskDescription {
-    // set by resource manager
+    // set by user
     optional TaskId id = 1;
 
     // resource
@@ -164,24 +183,26 @@ message JobId {
 }
 
 // user -> resource manager
-message JobDescription {
-    // set by resource manager
-     optional JobId id = 1;
-
+message PodDescription {
     // Job
-    optional string name = 2;
-    optional JobType type = 3;
+    optional string name = 1;
+    optional JobType type = 2;
 
     // workspace volum
-    optional VolumRequired workspace_volum = 4;
+    optional VolumRequired workspace_volum = 3;
 
     // Resource, volum is owned by Pod
-    repeated VolumRequired data_volums = 5;
+    repeated VolumRequired data_volums = 4;
     
     // tasks 
-    repeated TaskDescription tasks = 6;
+    repeated TaskDescription tasks = 5;
 
     // schedule-policy is necessary ?
+}
+
+message JobDescription {
+    optional Deploy deploy = 1;
+    optional PodDescription job_desc = 2;
 }
 
 
@@ -189,36 +210,43 @@ message JobDescription {
 ////container
 ///////////////////////////////////////
 
-message PartitionId {
-    optional string id = 1;
+message CgroupId {
+    optional string id = 1; 
 }
 
-message Partition {
-   optional PartitionId id = 1; 
+message Cgroup {
+   optional CgroupId id = 1; 
    optional CpuRequired cpu = 2;
    optional MemoryRequired memory = 3;
     
 }
 
-message ContainerId {
+message ContainerGroup {
     optional string id = 1;
 }
 
-// generated from JobDescriotion
-// resource manager -> agent
-message ContainerDescription {
-    optional ContainerId id = 1;
-    optional VolumRequired workspace_volum = 2;
-    optional VolumRequired volum = 3;      //
-    optional string cmd_line = 4;          // appmaster or appwork
-    repeated Partition partitions = 5;
+message ContainerId {
+    optional string id = 1;     //
 }
 
+// resource manager -> agent
+message ContainerDescription {
+   // optional ContainerGroup = 1; 
+   // optional ContainerId id = 2;
+    optional VolumRequired workspace_volum = 3;
+    repeated VolumRequired data_volums = 4;      //
+    optional string cmd_line = 5;                // appmaster or appwork
+    repeated Cgroup cgroups = 6;
+}
+
+
 enum ContainerStatus {
-    kContainerIniting = 1;  // init, 
-    kContainerRunning = 2;  // running 
-    kContainerError = 3;    // an error occure
-    kContainerFinished = 4; // released by resource manager
+    kContainerPending = 1;    // in pending queue
+    kContainerIniting = 2;    // initing
+    kContainerReady = 3;      // ready, no process in container 
+    kContainerRunning = 4;    // running 
+    kContainerError = 5;      // an error occure
+    kContainerFinished = 6;   // released by resource manager
 }
 
 // agent -> manager

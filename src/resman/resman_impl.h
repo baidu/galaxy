@@ -38,21 +38,6 @@ void KeepAlive(::google::protobuf::RpcController* controller,
                ::baidu::galaxy::KeepAliveResponse* response,
                ::google::protobuf::Closure* done);
 
-void SubmitJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::SubmitJobRequest* request,
-               ::baidu::galaxy::SubmitJobResponse* response,
-               ::google::protobuf::Closure* done);
-
-void UpdateJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::UpdateJobRequest* request,
-               ::baidu::galaxy::UpdateJobResponse* response,
-               ::google::protobuf::Closure* done);
-
-void RemoveJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::RemoveJobRequest* request,
-               ::baidu::galaxy::RemoveJobResponse* response,
-               ::google::protobuf::Closure* done);
-
 void AddAgent(::google::protobuf::RpcController* controller,
               const ::baidu::galaxy::AddAgentRequest* request,
               ::baidu::galaxy::AddAgentResponse* response,

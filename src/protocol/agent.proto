@@ -41,6 +41,7 @@ service Agent {
     rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
     rpc RemoveContainer(RemoveContainerRequest) returns (RemoveContainerResponse);
     rpc ListContainers(ListContainersRequest) returns (ListContainersResponse); 
+    //rpc UpdateContainer();
     rpc Query(QueryRequest) returns (QueryResponse);
 }
 

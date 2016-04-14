@@ -28,24 +28,40 @@ message KeepAliveRequest {
 message KeepAliveResponse {
 
 }
-message SubmitJobRequest {
+
+message CreateContainerRequest {
+}
+
+message CreateContainerResponse {
+}
+
+message RemoveContainerRequest {
+}
+
+message RemoveContainerResponse {
+}
+
+//rpc ResizeContainer(ResizeContainerRequest) returns (ResizeContainerResponse);
+
+message ListContainerRequest {
+}
+
+message ListContainersResponse {
+}
+
+message ShowContainerRequest {
 
 }
-message SubmitJobResponse {
 
+message ShowContainerResponse {
 }
-message UpdateJobRequest {
 
+message CleaseContainerRequest {
 }
-message UpdateJobResponse {
 
+message ClearContainerResponse {
 }
-message RemoveJobRequest {
 
-}
-message RemoveJobResponse {
-
-}
 message AddAgentRequest {
 
 }
@@ -149,6 +165,40 @@ message AssignQuotaResponse {
 
 }
 
+message CreateContainerGroupRequest {
+}
+
+message CreateContainerGroupResponse {
+}
+
+message RemoveContainerGroupRequest {
+}
+
+message RemoveContainerGroupResponse {
+}
+
+message UpdateContainerGroupRequest {
+} 
+
+message UpdateContainerGroupResponse {}
+
+
+message ListContainerGroupsRequest {}
+message ListContainerGroupsResponse {}
+message ShowContainerGroupRequest {} 
+message ShowContainerGroupResponse {}
+message ClearContainerRequest {}
+message GetTagsByAgentRequest {}
+message GetTagsByAgentResponse {}
+message AddAgentToPoolRequest {}
+message AddAgentToPoolResponse {}
+message RemoveAgentFromPoolRequest {}
+message RemoveAgentFromPoolResponse {}
+message ListAgentsByPoolRequest {}
+message ListAgentsByPoolResponse {}
+message GetPoolByAgentRequest {}
+message GetPoolByAgentResponse {}
+
 service ResMan {
 
     //op api
@@ -160,11 +210,26 @@ service ResMan {
     //internal RPC 
     rpc KeepAlive(KeepAliveRequest) returns (KeepAliveResponse);
 
-    //job man
-    rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
-    rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
-    rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse);
-   
+    //container
+    rpc CreateContainerGroup(CreateContainerGroupRequest) returns (CreateContainerGroupResponse);
+    rpc RemoveContainerGroup(RemoveContainerGroupRequest) returns (RemoveContainerGroupResponse);
+
+    // modify replica  only?
+    rpc UpdateContainerGroup(UpdateContainerGroupRequest) returns (UpdateContainerGroupResponse);
+
+    rpc ListContainerGroups(ListContainerGroupsRequest) returns (ListContainerGroupsResponse);
+    rpc ShowContainerGroup(ShowContainerGroupRequest) returns (ShowContainerGroupResponse);
+
+    // stop all the process in container, [volum & data]
+    // [depress]
+    //rpc StopContainerGroup(StopContainerGroupRequest) returns (StopContainerGroupResponse);
+
+    // op 
+    rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
+    rpc RemoveContainer(RemoveContainerRequest) returns (RemoveContainerResponse);
+    rpc ShowContainer(ShowContainerRequest) returns (ShowContainerResponse);
+    rpc ClearContainer(ClearContainerRequest) returns (ClearContainerResponse);
+  
     //agent man
     rpc AddAgent(AddAgentRequest) returns (AddAgentResponse);
     rpc RemoveAgent(RemoveAgentRequest) returns (RemoveAgentResponse);
@@ -173,14 +238,17 @@ service ResMan {
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
 
     //tag man
-    rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
-    rpc RemoveTag(RemoveTagRequest) returns (RemoveTagResponse);
+    rpc AddAgentsToTag(CreateTagRequest) returns (CreateTagResponse);
     rpc ListTags(ListTagsRequest) returns (ListTagsResponse);
    
     // tag <--> agent
-    rpc AddAgentToTag(AddAgentToTagRequest) returns (AddAgentToTagResponse);
-    rpc RemoveAgentFromTag(RemoveAgentFromTagRequest) returns (RemoveAgentFromTagResponse);
     rpc ListAgentsByTag(ListAgentsByTagRequest) returns (ListAgentsByTagResponse);
+    rpc GetTagsByAgent(GetTagsByAgentRequest) returns (GetTagsByAgentResponse);
+
+    rpc AddAgentToPool(AddAgentToPoolRequest) returns (AddAgentToPoolResponse);
+    rpc RemoveAgentFromPool(RemoveAgentFromPoolRequest) returns (RemoveAgentFromPoolResponse);
+    rpc ListAgentsByPool(ListAgentsByPoolRequest) returns (ListAgentsByPoolResponse);
+    rpc GetPoolByAgent(GetPoolByAgentRequest) returns (GetPoolByAgentResponse);
 
     // user man
     rpc AddUser(AddUserRequest) returns (AddUserResponse);
