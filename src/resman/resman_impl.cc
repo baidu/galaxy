@@ -25,168 +25,168 @@ ResManImpl::~ResManImpl() {
 }
 
 void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
-                               const ::baidu::galaxy::EnterSafeModeRequest* request,
-                               ::baidu::galaxy::EnterSafeModeResponse* response,
+                               const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
+                               ::baidu::galaxy::proto::EnterSafeModeResponse* response,
                                ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
-                               const ::baidu::galaxy::LeaveSafeModeRequest* request,
-                               ::baidu::galaxy::LeaveSafeModeResponse* response,
+                               const ::baidu::galaxy::proto::LeaveSafeModeRequest* request,
+                               ::baidu::galaxy::proto::LeaveSafeModeResponse* response,
                                ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::Status(::google::protobuf::RpcController* controller,
-                        const ::baidu::galaxy::StatusRequest* request,
-                        ::baidu::galaxy::StatusResponse* response,
+                        const ::baidu::galaxy::proto::StatusRequest* request,
+                        ::baidu::galaxy::proto::StatusResponse* response,
                         ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::KeepAliveRequest* request,
-                           ::baidu::galaxy::KeepAliveResponse* response,
+                           const ::baidu::galaxy::proto::KeepAliveRequest* request,
+                           ::baidu::galaxy::proto::KeepAliveResponse* response,
                            ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
-                          const ::baidu::galaxy::AddAgentRequest* request,
-                          ::baidu::galaxy::AddAgentResponse* response,
+                          const ::baidu::galaxy::proto::AddAgentRequest* request,
+                          ::baidu::galaxy::proto::AddAgentResponse* response,
                           ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
-                             const ::baidu::galaxy::RemoveAgentRequest* request,
-                             ::baidu::galaxy::RemoveAgentResponse* response,
+                             const ::baidu::galaxy::proto::RemoveAgentRequest* request,
+                             ::baidu::galaxy::proto::RemoveAgentResponse* response,
                              ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::OnlineAgent(::google::protobuf::RpcController* controller,
-                             const ::baidu::galaxy::OnlineAgentRequest* request,
-                             ::baidu::galaxy::OnlineAgentResponse* response,
+                             const ::baidu::galaxy::proto::OnlineAgentRequest* request,
+                             ::baidu::galaxy::proto::OnlineAgentResponse* response,
                              ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::OfflineAgent(::google::protobuf::RpcController* controller,
-                              const ::baidu::galaxy::OfflineAgentRequest* request,
-                              ::baidu::galaxy::OfflineAgentResponse* response,
+                              const ::baidu::galaxy::proto::OfflineAgentRequest* request,
+                              ::baidu::galaxy::proto::OfflineAgentResponse* response,
                               ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
-                            const ::baidu::galaxy::ListAgentsRequest* request,
-                            ::baidu::galaxy::ListAgentsResponse* response,
+                            const ::baidu::galaxy::proto::ListAgentsRequest* request,
+                            ::baidu::galaxy::proto::ListAgentsResponse* response,
                             ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::CreateTagRequest* request,
-                           ::baidu::galaxy::CreateTagResponse* response,
+                           const ::baidu::galaxy::proto::CreateTagRequest* request,
+                           ::baidu::galaxy::proto::CreateTagResponse* response,
                            ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::RemoveTag(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::RemoveTagRequest* request,
-                           ::baidu::galaxy::RemoveTagResponse* response,
+                           const ::baidu::galaxy::proto::RemoveTagRequest* request,
+                           ::baidu::galaxy::proto::RemoveTagResponse* response,
                            ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::ListTags(::google::protobuf::RpcController* controller,
-                          const ::baidu::galaxy::ListTagsRequest* request,
-                          ::baidu::galaxy::ListTagsResponse* response,
+                          const ::baidu::galaxy::proto::ListTagsRequest* request,
+                          ::baidu::galaxy::proto::ListTagsResponse* response,
                           ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::AddAgentToTag(::google::protobuf::RpcController* controller,
-                               const ::baidu::galaxy::AddAgentToTagRequest* request,
-                               ::baidu::galaxy::AddAgentToTagResponse* response,
+                               const ::baidu::galaxy::proto::AddAgentToTagRequest* request,
+                               ::baidu::galaxy::proto::AddAgentToTagResponse* response,
                                ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::RemoveAgentFromTag(::google::protobuf::RpcController* controller,
-                                    const ::baidu::galaxy::RemoveAgentFromTagRequest* request,
-                                    ::baidu::galaxy::RemoveAgentFromTagResponse* response,
+                                    const ::baidu::galaxy::proto::RemoveAgentFromTagRequest* request,
+                                    ::baidu::galaxy::proto::RemoveAgentFromTagResponse* response,
                                     ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::ListAgentsByTag(::google::protobuf::RpcController* controller,
-                                 const ::baidu::galaxy::ListAgentsByTagRequest* request,
-                                 ::baidu::galaxy::ListAgentsByTagResponse* response,
+                                 const ::baidu::galaxy::proto::ListAgentsByTagRequest* request,
+                                 ::baidu::galaxy::proto::ListAgentsByTagResponse* response,
                                  ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::AddUser(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::AddUserRequest* request,
-                         ::baidu::galaxy::AddUserResponse* response,
+                         const ::baidu::galaxy::proto::AddUserRequest* request,
+                         ::baidu::galaxy::proto::AddUserResponse* response,
                          ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::RemoveUser(::google::protobuf::RpcController* controller,
-                            const ::baidu::galaxy::RemoveUserRequest* request,
-                            ::baidu::galaxy::RemoveUserResponse* response,
+                            const ::baidu::galaxy::proto::RemoveUserRequest* request,
+                            ::baidu::galaxy::proto::RemoveUserResponse* response,
                             ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::ListUsers(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::ListUsersRequest* request,
-                           ::baidu::galaxy::ListUsersResponse* response,
+                           const ::baidu::galaxy::proto::ListUsersRequest* request,
+                           ::baidu::galaxy::proto::ListUsersResponse* response,
                            ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::ShowUser(::google::protobuf::RpcController* controller,
-                          const ::baidu::galaxy::ShowUserRequest* request,
-                          ::baidu::galaxy::ShowUserResponse* response,
+                          const ::baidu::galaxy::proto::ShowUserRequest* request,
+                          ::baidu::galaxy::proto::ShowUserResponse* response,
                           ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,
-                           const ::baidu::galaxy::GrantUserRequest* request,
-                           ::baidu::galaxy::GrantUserResponse* response,
+                           const ::baidu::galaxy::proto::GrantUserRequest* request,
+                           ::baidu::galaxy::proto::GrantUserResponse* response,
                            ::google::protobuf::Closure* done) {
 
 }
 
 
 void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
-                             const ::baidu::galaxy::AssignQuotaRequest* request,
-                             ::baidu::galaxy::AssignQuotaResponse* response,
+                             const ::baidu::galaxy::proto::AssignQuotaRequest* request,
+                             ::baidu::galaxy::proto::AssignQuotaResponse* response,
                              ::google::protobuf::Closure* done) {
 
 }

@@ -1,5 +1,5 @@
 import "galaxy.proto";
-package baidu.galaxy;
+package baidu.galaxy.proto;
 
 option cc_generic_services = true;
 
@@ -12,7 +12,7 @@ message CreateContainerResponse {
 }
 
 message RemoveContainerRequest {
-    optional ContainerId id = 1;
+    optional string id = 1;
 }
 
 message RemoveContainerResponse {

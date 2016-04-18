@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     baidu::galaxy::AppMasterImpl * appmaster = new baidu::galaxy::AppMasterImpl();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
-    if (!rpc_server.RegisterService(static_cast<baidu::galaxy::AppMaster*>(appmaster))) {
+    if (!rpc_server.RegisterService(static_cast<baidu::galaxy::proto::AppMaster*>(appmaster))) {
         LOG(WARNING) << "failed to register appmaster service";
         exit(-1);
     }

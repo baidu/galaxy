@@ -1,4 +1,4 @@
-package baidu.galaxy;
+package baidu.galaxy.proto;
 
 //////////////////////////////////////////
 ////////user
@@ -11,15 +11,28 @@ message User {
 message Quota {
     optional int64 millicore = 1;
     optional int64 memory = 2;
-    optional int64 storage = 3;
-    optional int64 pods = 4;
+    optional int64 disk = 3;
+    optional int64 ssd  = 4;
+    optional int64 replica = 5;
 }
 
 enum Authority {
-    kAuthoritySubmit = 1;
-    kAuthorityRemove = 2;
-    kAuthorityUpdate = 3;
-    kAuthorityRead = 4;
+    // job
+    kAuthorityCreateContainer = 1;
+    kAuthorityRemoveContainer = 2;
+    kAuthorityUpdateContainer = 3;
+    kAuthorityListContainer = 4;
+
+    kAuthoritySubmitJob = 5;
+    kAuthorityRemoveJob = 6;
+    kAuthorityUpdateJob = 7;
+    kAuthorityListJobs = 8;
+
+    // pool
+
+    // tag
+
+    // auhority
 }
 
 enum AuthorityAction {
@@ -31,7 +44,7 @@ enum AuthorityAction {
 
 message Grant {
     optional User user = 1;
-    repeated string tags = 2;
+    repeated string pool = 2;
     optional AuthorityAction action = 3;
     repeated Authority authority = 4;
 }
@@ -81,9 +94,11 @@ message MemoryRequired {
     optional bool excess = 2;
 }
 
+// dynamic port ?, only one port?
+// report resource
 message PortRequired {
-    optional uint32 port_size = 1;
-    optional uint32 start_port = 2;
+    optional string port_name = 1;
+    optional string port = 2;       // "dynamic" or num
 }
 
 enum VolumType {
@@ -97,8 +112,8 @@ message VolumRequired {
     optional VolumMedium medium = 3;
     optional string source_path = 4;  // bind source_path --> dest_path
     optional string dest_path = 5;    
-    optional bool readonly = 6;      // default: false
-    optional bool exclusive = 7;     // default: false
+    optional bool readonly = 6;       // default: false
+    optional bool exclusive = 7;      // default: false
 }
 
 /////////////////////////////////////////
@@ -113,26 +128,38 @@ enum JobType {
 // update incrementally may cause new problems: version confusion 
 // Appmaster must save descrition of last 2 versions, and  a complete desc.
 enum JobStatus {
-   kJobPending = 1;
-   kJobDepolying = 2;
-   kJobRunning = 3;
-   //kUpdating = 4;
-   kJobFinished = 5;
+   kJobPending = 1; 
+   kJobRunning = 2;
+   kJobFinished = 3; 
+   kJobDestroying = 4;
 }
 
+
 // Task or pod
+enum PodStatus {
+    kPodPending = 1;
+    kPodDeploying = 2;
+    kPodReady = 3;     // empty container
+    kPodStarting = 4;
+    kPodServing = 5;
+    kPodFailed = 6;
+    kPodFinished = 7;
+}
+
 enum TaskStatus {
-    kTaskDeploying = 1;   
-    kTaskRunning = 2;
-    kTaskFailed = 3;
-    kTaskFinished = 4;
+    kTaskPending = 1;
+    kTaskDeploying = 2;
+    kTaskStarting = 3;
+    kTaskServing = 4;
+    kTaskFailed = 5;
+    kTaskFinished = 6;
 }
 
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
     optional string dest_path = 2;   // local path
 }
-message ExePackage {
+message ImagePackage {
     optional Package package = 1;
     optional string pre_cmd = 2;     // executed befor overwriting the old package, eg: stop service
     optional string post_cmd = 3;    // execute after overwriting the old package, eg: start service
@@ -152,8 +179,8 @@ message Deploy {
 }
 
 message Service {
-    optional string name = 1;  // mast be uniq, which is guaranteed by user
-    optional uint32 port = 2;
+    optional string service_name = 1;  // must be uniq, which is guaranteed by user
+    optional string port_name = 2;     // name
     optional bool use_bns = 3;
 }
 
@@ -162,16 +189,15 @@ message TaskId {
 }
 
 message TaskDescription {
-    // set by user
+    // set by user or by 
     optional TaskId id = 1;
-
     // resource
     optional CpuRequired cpu = 2;
     optional MemoryRequired memory = 3;
-    optional PortRequired ports = 4;
+    repeated PortRequired ports = 4;
 
     // package
-    optional ExePackage exe_package = 5;
+    optional ImagePackage exe_package = 5;
     optional DataPackage data_package = 6;
 
     // service
@@ -184,10 +210,6 @@ message JobId {
 
 // user -> resource manager
 message PodDescription {
-    // Job
-    optional string name = 1;
-    optional JobType type = 2;
-
     // workspace volum
     optional VolumRequired workspace_volum = 3;
 
@@ -201,8 +223,12 @@ message PodDescription {
 }
 
 message JobDescription {
-    optional Deploy deploy = 1;
-    optional PodDescription job_desc = 2;
+    // Job
+    optional string name = 1;
+    optional JobType type = 2;
+
+    optional Deploy deploy = 3;
+    optional PodDescription job_desc = 4;
 }
 
 
@@ -210,23 +236,11 @@ message JobDescription {
 ////container
 ///////////////////////////////////////
 
-message CgroupId {
-    optional string id = 1; 
-}
-
 message Cgroup {
-   optional CgroupId id = 1; 
+   optional string id = 1; 
    optional CpuRequired cpu = 2;
    optional MemoryRequired memory = 3;
     
-}
-
-message ContainerGroup {
-    optional string id = 1;
-}
-
-message ContainerId {
-    optional string id = 1;     //
 }
 
 // resource manager -> agent

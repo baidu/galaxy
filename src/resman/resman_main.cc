@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     baidu::galaxy::ResManImpl * resman = new baidu::galaxy::ResManImpl();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
-    if (!rpc_server.RegisterService(static_cast<baidu::galaxy::ResMan*>(resman))) {
+    if (!rpc_server.RegisterService(static_cast<baidu::galaxy::proto::ResMan*>(resman))) {
         LOG(WARNING) << "failed to register resman service";
         exit(-1);
     }
