@@ -1,5 +1,5 @@
 import "galaxy.proto";
-package baidu.galaxy;
+package baidu.galaxy.proto;
 
 option cc_generic_services = true;
 
@@ -46,18 +46,7 @@ message ListTasksRequest {
 message ListTasksResponse {
 
 }
-message StartTaskRequest {
 
-}
-message StartTaskResponse {
-
-}
-message StopTaskRequest {
-
-}
-message StopTaskResponse {
-
-}
 message UpdateTaskRequest {
 
 }
@@ -78,6 +67,10 @@ message FectTaskRequest {
 message FetchTaskResponse {
 }
 
+
+message StopJobRequest {} 
+message StopJobResponse {}
+
 service AppMaster {
     //for app-worker: report & task assignment
     rpc FetchTask(FectTaskRequest) returns (FetchTaskResponse);
@@ -87,6 +80,8 @@ service AppMaster {
     //job man
     rpc SubmitJob(SubmitJobRequest) returns (SubmitJobResponse);
     rpc UpdateJob(UpdateJobRequest) returns (UpdateJobResponse);
+
+    rpc StopJob(StopJobRequest) returns (StopJobResponse);
     rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse);
     rpc ListJobs(ListJobsRequest)   returns (ListJobsResponse);
     rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);

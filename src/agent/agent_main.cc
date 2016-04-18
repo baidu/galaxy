@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     baidu::galaxy::AgentImpl * agent = new baidu::galaxy::AgentImpl();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
-    if (!rpc_server.RegisterService(static_cast<baidu::galaxy::Agent*>(agent))) {
+    if (!rpc_server.RegisterService(static_cast<baidu::galaxy::proto::Agent*>(agent))) {
         LOG(WARNING) << "failed to register agent service";
         exit(-1);
     }

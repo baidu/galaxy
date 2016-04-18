@@ -1,5 +1,5 @@
 import "galaxy.proto";
-package baidu.galaxy;
+package baidu.galaxy.proto;
 
 option cc_generic_services = true;
 
