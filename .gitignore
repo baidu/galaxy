@@ -22,3 +22,22 @@ _testmain.go
 *.exe
 *.test
 *.prof
+*.sconsign*
+
+# binary
+agent
+appmaster
+appworker
+resman
+
+# dirs
+thirdparty/
+thirdsrc/
+.*/
+
+# pbs
+*.pb.*
+
+# ctags
+tags
+

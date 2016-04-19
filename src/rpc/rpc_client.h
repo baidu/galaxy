@@ -8,14 +8,14 @@
 #include <assert.h>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
+#include <glog/logging.h>
 #include <sofa/pbrpc/pbrpc.h>
 #include <mutex.h>
 #include <thread_pool.h>
-#include <logging.h>
 
 namespace baidu {
 namespace galaxy {
-    
+
 class RpcClient {
 public:
     RpcClient() {
@@ -58,10 +58,10 @@ public:
             (stub->*func)(&controller, request, response, NULL);
             if (controller.Failed()) {
                 if (retry < retry_times - 1) {
-                    LOG(DEBUG, "Send failed, retry ...\n");
+                    LOG(INFO) << "Send failed, retry ...";
                     usleep(1000000);
                 } else {
-                    LOG(WARNING, "SendRequest fail: %s\n", controller.ErrorText().c_str());
+                    LOG(WARNING) <<  "SendRequest fail: " << controller.ErrorText().c_str();
                 }
             } else {
                 return true;
@@ -95,7 +95,7 @@ public:
         if (failed || error) {
             assert(failed && error);
             if (error != sofa::pbrpc::RPC_ERROR_SEND_BUFFER_FULL) {
-                LOG(WARNING, "RpcCallback: %s\n", rpc_controller->ErrorText().c_str());
+                LOG(WARNING) << "RpcCallback: " << rpc_controller->ErrorText().c_str();
             } else {
                 ///TODO: Retry
             }
