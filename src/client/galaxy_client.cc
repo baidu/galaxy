@@ -494,7 +494,7 @@ int ListAgent() {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while (true) {
         std::vector<baidu::galaxy::NodeDescription> agents;
-        baidu::common::TPrinter tp(12);
+        baidu::common::TPrinter tp(12, 60);
         tp.AddRow(12, "", "addr", "build", "state", "pods", "cpu_used", "cpu_assigned", "cpu_total", "mem_used", "mem_assigned", "mem_total", "labels");
         if (galaxy->ListAgents(&agents)) {
             for (uint32_t i = 0; i < agents.size(); i++) {
@@ -549,7 +549,7 @@ int ShowTask() {
                 return -1;
             }
         }
-        baidu::common::TPrinter tp(9);
+        baidu::common::TPrinter tp(9, 60);
         tp.AddRow(9, "", "podid", "state", "cpu", "mem", "disk(r/w)","endpoint", "deploy","start");
         for (size_t i = 0; i < tasks.size(); i++) {
             std::vector<std::string> vs;
@@ -608,7 +608,7 @@ int ShowPod() {
             }
 
         } 
-        baidu::common::TPrinter tp(11);
+        baidu::common::TPrinter tp(11, 60);
         tp.AddRow(11, "", "id", "state", "cpu(u/a)", "mem(u/a)", "disk(r/w)","endpoint", "version", "pending","sched","start");
         for (size_t i = 0; i < pods.size(); i++) {
             std::vector<std::string> vs;
@@ -786,14 +786,14 @@ int GetMasterStatus() {
         fprintf(stderr, "fail to get master addr\n");
         return -1;
     }
-    baidu::common::TPrinter master(2);
+    baidu::common::TPrinter master(2, 60);
     printf("master infomation\n");
     master.AddRow(2, "addr", "state");
     std::string mode = status.safe_mode ? "safe mode" : "normal mode";
     master.AddRow(2, master_endpoint.c_str(), mode.c_str());
     printf("%s\n", master.ToString().c_str());
 
-    baidu::common::TPrinter agent(3);
+    baidu::common::TPrinter agent(3, 60);
     printf("cluster agent infomation\n");
     agent.AddRow(3, "agent total", "live count", "dead count");
     agent.AddRow(3, baidu::common::NumToString(status.agent_total).c_str(), 
@@ -802,7 +802,7 @@ int GetMasterStatus() {
     printf("%s\n", agent.ToString().c_str());
 
 
-    baidu::common::TPrinter mem(3);
+    baidu::common::TPrinter mem(3, 60);
     printf("cluster memory infomation\n");
     mem.AddRow(3, "mem total", "mem used", "mem assigned");
     mem.AddRow(3, baidu::common::HumanReadableString(status.mem_total).c_str(), 
@@ -810,7 +810,7 @@ int GetMasterStatus() {
                      baidu::common::HumanReadableString(status.mem_assigned).c_str());
     printf("%s\n", mem.ToString().c_str());
 
-    baidu::common::TPrinter cpu(3);
+    baidu::common::TPrinter cpu(3, 60);
     printf("cluster cpu infomation\n");
     cpu.AddRow(3, "cpu total", "cpu used", "cpu assigned");
     cpu.AddRow(3, baidu::common::NumToString(status.cpu_total).c_str(), 
@@ -818,7 +818,7 @@ int GetMasterStatus() {
                   baidu::common::NumToString(status.cpu_assigned).c_str());
     printf("%s\n", cpu.ToString().c_str());
 
-    baidu::common::TPrinter job(5);
+    baidu::common::TPrinter job(5, 60);
     printf("cluster job infomation\n");
     job.AddRow(5, "job count", "job scale up", "job scale down", "job need update", "pod count");
     job.AddRow(5, baidu::common::NumToString(status.job_count).c_str(), 
@@ -837,7 +837,7 @@ int ListJob() {
     baidu::galaxy::Galaxy* galaxy = baidu::galaxy::Galaxy::ConnectGalaxy(FLAGS_nexus_servers, master_key);
     while(true) {
         std::vector<baidu::galaxy::JobInformation> infos;
-        baidu::common::TPrinter tp(12);
+        baidu::common::TPrinter tp(12, 60);
         tp.AddRow(12, "", "id", "name", "state", "stat(r/p/d/e)", "replica", "batch", "cpu", "memory","disk(r/w)","create", "update");
         if (galaxy->ListJobs(&infos)) {
             for (uint32_t i = 0; i < infos.size(); i++) {

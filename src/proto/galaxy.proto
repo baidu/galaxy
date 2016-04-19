@@ -24,6 +24,7 @@ enum Status {
     kRpcError = 20;
     kLabelAgentFail = 21;
     kAgentError = 22;
+    kPermission = 23;
 }
 
 enum PodState {

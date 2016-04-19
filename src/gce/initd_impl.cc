@@ -127,6 +127,19 @@ void InitdImpl::Execute(::google::protobuf::RpcController* /*controller*/,
         return;
     }
 
+    {
+        MutexLock scope_lock(&lock_); 
+        std::map<std::string, ProcessInfo>::iterator iter = process_infos_.find(request->key());
+        if (iter != process_infos_.end() && kProcessRunning == iter->second.status()) {
+            LOG(INFO, "%s is already running", request->commands().c_str());
+            response->set_key(request->key());
+            response->set_pid(iter->second.pid());
+            response->set_status(kOk);
+            done->Run();
+            return;
+        }
+    }
+
     LOG(INFO, "run command %s at %s in cgroup %s", 
             request->commands().c_str(), request->path().c_str(),
             request->cgroup_path().c_str());
