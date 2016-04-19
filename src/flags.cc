@@ -111,5 +111,7 @@ DEFINE_double(max_intr_rate, 0.0, "max interupt times per second");
 DEFINE_double(max_soft_intr_rate, 0.0, "max soft interupt times per second");
 DEFINE_int32(max_ex_time, 0, "max exception time");
 DEFINE_string(loop_dev_file, "/home/.FS_on_file_galaxy_agent", "loop device file for agent");
-
+DEFINE_string(log_file, "", "log file");
+DEFINE_int32(log_size, 0, "log size");
+DEFINE_int32(log_cnt, 1, "log count");
 DEFINE_string(authority_host_list, "*", "job can be submitted, updated or killed from ip");
