@@ -67,7 +67,9 @@ bool Agent::CanPut(const Container* container, ResourceError& err) {
         }
     }
 
-    if (sum_tmpfs_size + res_assigned_.memory.size() > res_total_.memory.size()) {
+    if (container->require.res.memory.size()
+        + sum_tmpfs_size + res_assigned_.memory.size() 
+        > res_total_.memory.size()) {
         err = kNoMemoryForTmpfs;
         return false;
     }
