@@ -66,10 +66,10 @@ message MemoryResource {
 }
 
 enum VolumMedium {
-    KSsd = 1;
-    KDisk = 2;
-    KBfs = 3;
-    KTmpfs = 4;
+    kSsd = 1;
+    kDisk = 2;
+    kBfs = 3;
+    kTmpfs = 4;
 }
 
 message Volum {

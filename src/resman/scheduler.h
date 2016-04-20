@@ -24,7 +24,19 @@ enum ContainerStatus {
     kAllocating = 2,
     kRunning = 3,
     kError = 4,
-    kTerminated = 5
+    kDestroying = 5,
+    kTerminated = 6
+};
+
+enum ResourceError {
+    kNoCpu = 1,
+    kNoMemory = 2,
+    kNoMedium = 3,
+    kNoDevice = 4,
+    kNoPort = 5,
+    kPortConflict = 6,
+    kLabelMismatch = 7,
+    kNoMemoryForTmpfs = 8
 };
 
 struct Resource {
@@ -59,7 +71,7 @@ class Agent {
 public:
     explicit Agent(const AgentEndpoint endpoint,
                    const Resource& res_total);
-    bool CanPut(const Container* container);
+    bool CanPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
     typedef boost::shared_ptr<Agent> Ptr;

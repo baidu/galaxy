@@ -13,16 +13,19 @@ Agent::Agent(const AgentEndpoint endpoint,
 
 }
 
-bool Agent::CanPut(const Container* container) {
+bool Agent::CanPut(const Container* container, ResourceError& err) {
     if (labels_.find(container->require.label) == labels_.end()) {
+        err = kLabelMismatch;
         return false;
     }
     if (container->require.res.cpu.milli_core() + res_assigned_.cpu.milli_core()
         > res_total_.cpu.milli_core()) {
+        err = kNoCpu;
         return false;
     }
     if (container->require.res.memory.size() + res_assigned_.memory.size()
         > res_total_.memory.size()) {
+        err = kNoMemory;
         return false;
     }
     //volums check
@@ -37,8 +40,14 @@ bool Agent::CanPut(const Container* container) {
     }
     
     const std::vector<proto::VolumRequired>& volums_req = container->require.res.volums;
+    int64_t sum_tmpfs_size = 0;
     BOOST_FOREACH(const proto::VolumRequired& volum, volums_req) {
+        if (volum.medium() == proto::kTmpfs) { //ramdisk
+            sum_tmpfs_size += volum.size();
+            continue;
+        }
         if (free_volums.find(volum.medium()) == free_volums.end()) {
+            err = kNoMedium;
             return false; // no shuch medium on this agent
         }
         bool found_device = false; // try find at least one device
@@ -53,10 +62,15 @@ bool Agent::CanPut(const Container* container) {
             }
         }
         if (!found_device) {
+            err = kNoDevice;
             return false;
         }
     }
 
+    if (sum_tmpfs_size + res_assigned_.memory.size() > res_total_.memory.size()) {
+        err = kNoMemoryForTmpfs;
+        return false;
+    }
     //ports check
     typedef std::map<std::string, proto::PortRequired> PortMap;
     const PortMap& ports = container->require.res.ports;
@@ -65,13 +79,15 @@ bool Agent::CanPut(const Container* container) {
         const proto::PortRequired& port = pair.second;
         if (port.port() == "dynamic") {
             if (res_assigned_.ports.size() < res_total_.ports.size() ) {
-                continue; // no free ports
+                continue; // can random choose one
             } else {
-                return false; // may random choose one
+                err = kNoPort;// no free ports
+                return false; 
             }
         }
         if (res_total_.ports.find(port.port()) == res_total_.ports.end()
             || res_assigned_.ports.find(port.port()) == res_assigned_.ports.end()) {
+            err = kPortConflict;
             return false;
         }
     }
