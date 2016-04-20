@@ -85,8 +85,11 @@ bool Agent::CanPut(const Container* container, ResourceError& err) {
                 return false; 
             }
         }
-        if (res_total_.ports.find(port.port()) == res_total_.ports.end()
-            || res_assigned_.ports.find(port.port()) == res_assigned_.ports.end()) {
+        if (res_total_.ports.find(port.port()) == res_total_.ports.end()) {
+            err = kNoPort;
+            return false;
+        }
+        if (res_assigned_.ports.find(port.port()) != res_assigned_.ports.end()) {
             err = kPortConflict;
             return false;
         }
