@@ -4,6 +4,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <list>
 #include <vector>
 #include <string>
@@ -30,7 +31,7 @@ struct Resource {
     proto::CpuRequired cpu;
     proto::MemoryRequired memory;
     std::vector<proto::VolumRequired> volums;
-    std::vector<proto::PortRequired> ports;
+    std::map<std::string, proto::PortRequired> ports;
 };
 
 struct Requirement {
@@ -41,8 +42,17 @@ struct Requirement {
 struct Container {
     ContainerStatus status;
     ContainerId id;
+    ContainerGroupId group_id;
     Requirement require;
+    Resource allocated;
     typedef boost::shared_ptr<Container> Ptr;
+};
+
+struct ContainerGroup {
+    ContainerGroupId id;
+    std::vector<Container::Ptr> containers;
+    std::list<Container::Ptr> pending_queue;
+    typedef boost::shared_ptr<ContainerGroup> Ptr;
 };
 
 class Agent {
@@ -55,8 +65,9 @@ public:
     typedef boost::shared_ptr<Agent> Ptr;
 private:
     AgentEndpoint endpoint_;
-    std::vector<std::string> labels_;
+    std::set<std::string> labels_;
     Resource res_total_;
+    Resource res_assigned_;
     std::vector<Container::Ptr> containers_;
 };
 
@@ -64,6 +75,7 @@ class Scheduler {
 public:
     explicit Scheduler();
     void AddAgent(Agent::Ptr agent);
+    void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const Requirement& require, int replica);
     void Kill(const ContainerGroupId& group_id);
     void ScaleUp(const ContainerGroupId& group_id, int replica);
@@ -80,8 +92,7 @@ public:
 private:
     std::map<ContainerId, Container::Ptr> containers_;
     std::map<AgentEndpoint, Agent::Ptr> agent_assign_;
-    std::map<ContainerGroupId, std::vector<Container::Ptr> > container_groups_;
-    std::list<Container::Ptr> pending_containers_;
+    std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
 };
 
 } //namespace sched
