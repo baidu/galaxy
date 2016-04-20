@@ -56,7 +56,7 @@ bool Agent::CanPut(const Container* container, ResourceError& err) {
         BOOST_FOREACH(const Path2Volum::value_type& pair, free_v) {
             const std::string source_path = pair.first;
             const proto::VolumRequired& free_volum = pair.second;
-            if (free_volum.size() > volum.size()) {
+            if (free_volum.size() >= volum.size()) {
                 found_device = true;
                 break;
             }
