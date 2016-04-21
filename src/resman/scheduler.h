@@ -18,6 +18,7 @@ namespace sched {
 typedef std::string AgentEndpoint;
 typedef std::string ContainerGroupId;
 typedef std::string ContainerId;
+typedef std::string DevicePath;
 
 enum ContainerStatus {
     kPending = 1,
@@ -39,47 +40,59 @@ enum ResourceError {
     kNoMemoryForTmpfs = 8
 };
 
-struct Resource {
+struct Requirement {
+    const std::string label;
     proto::CpuRequired cpu;
     proto::MemoryRequired memory;
     std::vector<proto::VolumRequired> volums;
-    std::map<std::string, proto::PortRequired> ports;
-};
-
-struct Requirement {
-    std::string label;
-    Resource res;
+    std::vector<proto::PortRequired> ports;
+    typedef boost::shared_ptr<Requirement> Ptr;
 };
 
 struct Container {
-    ContainerStatus status;
     ContainerId id;
     ContainerGroupId group_id;
-    Requirement require;
-    Resource allocated;
+    ContainerStatus status;
+    Requirement::Ptr require;
+    std::vector<DevicePath> allocated_volums;
+    std::set<std::string> allocated_port;
     typedef boost::shared_ptr<Container> Ptr;
 };
 
 struct ContainerGroup {
     ContainerGroupId id;
+    Requirement::Ptr require;
     std::vector<Container::Ptr> containers;
     std::list<Container::Ptr> pending_queue;
     typedef boost::shared_ptr<ContainerGroup> Ptr;
 };
 
+struct VolumInfo {
+    proto::VolumMedium medium;
+    int64_t size;
+    bool exclusive;
+};
+
 class Agent {
 public:
-    explicit Agent(const AgentEndpoint endpoint,
-                   const Resource& res_total);
-    bool CanPut(const Container* container, ResourceError& err);
+    explicit Agent(const AgentEndpoint& endpoint,
+                   int64_t cpu,
+                   int64_t memory,
+                   const std::map<DevicePath, VolumInfo>& volums);
+    bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
     typedef boost::shared_ptr<Agent> Ptr;
 private:
     AgentEndpoint endpoint_;
     std::set<std::string> labels_;
-    Resource res_total_;
-    Resource res_assigned_;
+    int64_t cpu_total_;
+    int64_t cpu_assigned_;
+    int64_t memory_total_;
+    int64_t memory_assigned_;
+    std::map<DevicePath, VolumInfo> volum_total_;
+    std::map<DevicePath, VolumInfo> volum_assigned_;
+    std::set<std::string> port_assigned_;
     std::vector<Container::Ptr> containers_;
 };
 
