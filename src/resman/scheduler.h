@@ -69,8 +69,9 @@ struct ContainerGroup {
 
 struct VolumInfo {
     proto::VolumMedium medium;
-    int64_t size;
     bool exclusive;
+    int64_t size;
+    VolumInfo() : exclusive(false), size(0) {}
 };
 
 class Agent {
@@ -84,6 +85,11 @@ public:
     void Evict(Container::Ptr container);
     typedef boost::shared_ptr<Agent> Ptr;
 private:
+    bool SelectDevices(const std::vector<proto::VolumRequired>& volums,
+                       std::vector<DevicePath>& devices);
+    bool RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
+                            std::map<DevicePath, VolumInfo>& volum_free,
+                            std::vector<DevicePath>& devices);
     AgentEndpoint endpoint_;
     std::set<std::string> labels_;
     int64_t cpu_total_;
@@ -93,6 +99,7 @@ private:
     std::map<DevicePath, VolumInfo> volum_total_;
     std::map<DevicePath, VolumInfo> volum_assigned_;
     std::set<std::string> port_assigned_;
+    size_t port_total_;
     std::vector<Container::Ptr> containers_;
 };
 
