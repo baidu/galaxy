@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "scheduler.h"
+#include <sstream>
 #include <boost/foreach.hpp>
 
 namespace baidu {
@@ -9,6 +10,8 @@ namespace galaxy {
 namespace sched {
 
 const size_t kMaxPorts = 60000;
+const size_t kMinPort = 1000;
+const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
             int64_t cpu,
@@ -68,7 +71,7 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
 
     const std::vector<proto::PortRequired> ports = container->require->ports;
     BOOST_FOREACH(const proto::PortRequired& port, ports) {
-        if (port.port() != "dynamic" 
+        if (port.port() != kDynamicPort
             && port_assigned_.find(port.port()) != port_assigned_.end()) {
             err = kPortConflict;
             return false;
@@ -78,11 +81,83 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
 }
 
 void Agent::Put(Container::Ptr container) {
-
+    //cpu 
+    cpu_assigned_ += container->require->cpu.milli_core();
+    //memory
+    memory_assigned_ += container->require->memory.size();
+    int64_t size_ramdisk = 0;
+    std::vector<proto::VolumRequired> volums_no_ramdisk;
+    BOOST_FOREACH(const proto::VolumRequired& v, container->require->volums) {
+        if (v.medium() == proto::kTmpfs) {
+            size_ramdisk += v.size();
+        } else {
+            volums_no_ramdisk.push_back(v);
+        }
+    }
+    memory_assigned_ += size_ramdisk;
+    //volums
+    std::vector<DevicePath> devices;
+    if (SelectDevices(volums_no_ramdisk, devices)) {
+        for (size_t i = 0; i < devices.size(); i++) {
+            const DevicePath& device_path = devices[i];
+            container->allocated_volums.push_back(device_path);
+            const proto::VolumRequired& volum = volums_no_ramdisk[i];
+            volum_assigned_[device_path].size += volum.size();
+            if (volum.exclusive()) {
+                volum_assigned_[device_path].exclusive = true;
+            }
+        }
+    }  
+    //ports
+    BOOST_FOREACH(const proto::PortRequired& port, container->require->ports) {
+        std::string s_port;
+        if (port.port() != kDynamicPort) {
+            s_port = port.port();
+        } else {
+            double rn = rand() / (RAND_MAX+0.0);
+            int random_port = kMinPort + static_cast<int>(rn * kMaxPorts);
+            std::stringstream ss;
+            ss << random_port;
+            s_port = ss.str();
+        }
+        port_assigned_.insert(s_port);
+        container->allocated_port.insert(s_port);
+    }
 }
 
 void Agent::Evict(Container::Ptr container) {
-
+    //cpu 
+    cpu_assigned_ -= container->require->cpu.milli_core();
+    assert(cpu_assigned_ >= 0);
+    //memory
+    memory_assigned_ -= container->require->memory.size();
+    assert(memory_assigned_ >= 0);
+    int64_t size_ramdisk = 0;
+    std::vector<proto::VolumRequired> volums_no_ramdisk;
+    BOOST_FOREACH(const proto::VolumRequired& v, container->require->volums) {
+        if (v.medium() == proto::kTmpfs) {
+            size_ramdisk += v.size();
+        } else {
+            volums_no_ramdisk.push_back(v);
+        }
+    }
+    memory_assigned_ -= size_ramdisk;
+    assert(memory_assigned_ >= 0);
+    //volums
+    for (size_t i = 0; i < container->allocated_volums.size(); i++) {
+        const DevicePath& device_path = container->allocated_volums[i];
+        const proto::VolumRequired& volum = volums_no_ramdisk[i];
+        volum_assigned_[device_path].size -= volum.size();
+        if (volum.exclusive()) {
+            volum_assigned_[device_path].exclusive = false;
+        }
+    }
+    container->allocated_volums.clear();
+    //port
+    BOOST_FOREACH(const std::string& port, container->allocated_port) {
+        port_assigned_.erase(port);
+    }
+    container->allocated_port.clear();
 }
 
 bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
@@ -90,7 +165,7 @@ bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
     typedef std::map<DevicePath, VolumInfo> VolumMap;
     VolumMap volum_free;
     BOOST_FOREACH(const VolumMap::value_type& pair, volum_total_) {
-        const DevicePath device_path = pair.first;
+        const DevicePath& device_path = pair.first;
         const VolumInfo& volum_info = pair.second;
         if (volum_assigned_.find(device_path) == volum_assigned_.end()) {
             volum_free[device_path] = volum_info;
@@ -117,7 +192,7 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
     const proto::VolumRequired& volum_need = volums[i];
     typedef std::map<DevicePath, VolumInfo> VolumMap;
     BOOST_FOREACH(VolumMap::value_type& pair, volum_free) {
-        const DevicePath device_path = pair.first;
+        const DevicePath& device_path = pair.first;
         VolumInfo& volum_info = pair.second;
         if (volum_info.exclusive || volum_need.size() > volum_info.size) {
             continue;
