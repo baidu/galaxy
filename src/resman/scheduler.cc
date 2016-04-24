@@ -16,13 +16,15 @@ const std::string kDynamicPort = "dynamic";
 Agent::Agent(const AgentEndpoint& endpoint,
             int64_t cpu,
             int64_t memory,
-            const std::map<DevicePath, VolumInfo>& volums) {
+            const std::map<DevicePath, VolumInfo>& volums,
+            const std::set<std::string>& labels) {
     cpu_total_ = cpu;
     cpu_assigned_ = 0;
     memory_total_ = memory;
     memory_assigned_ = 0;
     volum_total_ = volums;
     port_total_ = kMaxPorts;
+    labels_ = labels;
 }
 
 bool Agent::TryPut(const Container* container, ResourceError& err) {
@@ -123,6 +125,8 @@ void Agent::Put(Container::Ptr container) {
         port_assigned_.insert(s_port);
         container->allocated_port.insert(s_port);
     }
+    container->allocated_agent = endpoint_;
+    containers_[container->id] = container;
 }
 
 void Agent::Evict(Container::Ptr container) {
@@ -158,6 +162,8 @@ void Agent::Evict(Container::Ptr container) {
         port_assigned_.erase(port);
     }
     container->allocated_port.clear();
+    container->allocated_agent = "";
+    containers_.erase(container->id);
 }
 
 bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
@@ -216,15 +222,16 @@ Scheduler::Scheduler() {
 }
 
 void Scheduler::AddAgent(Agent::Ptr agent) {
-
+    agent_assign_[agent->endpoint_] = agent;
 }
 
 void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
-
+    agent_assign_.erase(endpoint);
 }
 
 ContainerGroupId Scheduler::Submit(const Requirement& require, int replica) {
-    return "";
+    Requirement::Ptr req(new Requirement(require));
+    return "";    
 }
 
 void Scheduler::Kill(const ContainerGroupId& group_id) {
@@ -240,13 +247,30 @@ void Scheduler::ScaleDown(const ContainerGroupId& group_id, int replica) {
 }
 
 void Scheduler::ShowAssignment(const AgentEndpoint& endpoint,
-                               std::vector<Container::Ptr>& containers) {
-
+                               std::vector<Container>& containers) {
+    containers.clear();
+    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agent_assign_.find(endpoint);
+    if (it == agent_assign_.end()) {
+        return;
+    }
+    Agent::Ptr agent = it->second;
+    typedef std::map<ContainerId, Container::Ptr> ContainerMap;
+    BOOST_FOREACH(const ContainerMap::value_type& pair, agent->containers_) {
+        containers.push_back(*pair.second);
+    }
 }
 
 void Scheduler::ShowContainerGroup(const ContainerGroupId group_id,
-                                   std::vector<Container::Ptr>& containers) {
-
+                                   std::vector<Container>& containers) {
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    it = container_groups_.find(group_id);
+    if (it == container_groups_.end()) {
+        return;
+    }
+    const ContainerGroup::Ptr& ct_group = it->second;
+    BOOST_FOREACH(const Container::Ptr container, ct_group->containers) {
+        containers.push_back(*container);
+    }
 }
 
 void Scheduler::ChangeStatus(const ContainerId& container_id, ContainerStatus status) {

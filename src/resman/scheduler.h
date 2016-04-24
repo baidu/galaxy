@@ -56,6 +56,7 @@ struct Container {
     Requirement::Ptr require;
     std::vector<DevicePath> allocated_volums;
     std::set<std::string> allocated_port;
+    AgentEndpoint allocated_agent;
     typedef boost::shared_ptr<Container> Ptr;
 };
 
@@ -76,10 +77,12 @@ struct VolumInfo {
 
 class Agent {
 public:
+    friend class Scheduler;
     explicit Agent(const AgentEndpoint& endpoint,
                    int64_t cpu,
                    int64_t memory,
-                   const std::map<DevicePath, VolumInfo>& volums);
+                   const std::map<DevicePath, VolumInfo>& volums,
+                   const std::set<std::string>& labels);
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
@@ -100,7 +103,7 @@ private:
     std::map<DevicePath, VolumInfo> volum_assigned_;
     std::set<std::string> port_assigned_;
     size_t port_total_;
-    std::vector<Container::Ptr> containers_;
+    std::map<ContainerId, Container::Ptr> containers_;
 };
 
 class Scheduler {
@@ -116,9 +119,9 @@ public:
     void Start();
     //
     void ShowAssignment(const AgentEndpoint& endpoint,
-                        std::vector<Container::Ptr>& containers);
+                        std::vector<Container>& containers);
     void ShowContainerGroup(const ContainerGroupId group_id,
-                            std::vector<Container::Ptr>& containers);
+                            std::vector<Container>& containers);
     void ChangeStatus(const ContainerId& container_id, ContainerStatus status);
 
 private:
