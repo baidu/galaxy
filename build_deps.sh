@@ -186,6 +186,20 @@ if [ ! -f "${FLAG_DIR}/ins" ] \
     touch "${FLAG_DIR}/ins"
 fi
 
+# common
+if [ ! -f "${FLAG_DIR}/common" ] \
+    || [ ! -f "${DEPS_PREFIX}/lib/libcommon.a" ] \
+    || [ ! -f "${DEPS_PREFIX}/include/logging.h" ]; then
+    rm -rf common
+    git clone https://github.com/baidu/common
+    cd common
+    make -j4
+    cp -rf include/* ${DEPS_PREFIX}/include/
+    cp libcommon.a ${DEPS_PREFIX}/lib
+    cd -
+    touch "${FLAG_DIR}/common"
+fi
+
 cd ${WORK_DIR}
 echo "build deps done!"
 

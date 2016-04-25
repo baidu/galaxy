@@ -16,11 +16,12 @@ namespace galaxy {
 namespace sched {
 
 typedef std::string AgentEndpoint;
-typedef std::string ContainerGroupId;
+typedef std::string JobId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
 
 enum ContainerStatus {
+    kNotInit = 0,
     kPending = 1,
     kAllocating = 2,
     kRunning = 3,
@@ -51,21 +52,25 @@ struct Requirement {
 
 struct Container {
     ContainerId id;
-    ContainerGroupId group_id;
+    JobId job_id;
     ContainerStatus status;
     Requirement::Ptr require;
     std::vector<DevicePath> allocated_volums;
     std::set<std::string> allocated_port;
     AgentEndpoint allocated_agent;
+    Container() : status(kNotInit) {};
     typedef boost::shared_ptr<Container> Ptr;
 };
 
-struct ContainerGroup {
-    ContainerGroupId id;
+typedef std::map<ContainerId, Container::Ptr> ContainerMap;
+
+struct Job {
+    JobId id;
     Requirement::Ptr require;
-    std::vector<Container::Ptr> containers;
-    std::list<Container::Ptr> pending_queue;
-    typedef boost::shared_ptr<ContainerGroup> Ptr;
+    int replica;
+    std::map<ContainerId, Container::Ptr> containers;
+    std::map<ContainerId, Container::Ptr> states[7];
+    typedef boost::shared_ptr<Job> Ptr;
 };
 
 struct VolumInfo {
@@ -83,6 +88,10 @@ public:
                    int64_t memory,
                    const std::map<DevicePath, VolumInfo>& volums,
                    const std::set<std::string>& labels);
+    void SetAssignment(int64_t cpu_assigned,
+                       int64_t memory_assigned,
+                       const std::map<DevicePath, VolumInfo>& volum_assigned,
+                       const std::set<std::string> port_assigned);
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
@@ -111,23 +120,32 @@ public:
     explicit Scheduler();
     void AddAgent(Agent::Ptr agent);
     void RemoveAgent(const AgentEndpoint& endpoint);
-    ContainerGroupId Submit(const Requirement& require, int replica);
-    void Kill(const ContainerGroupId& group_id);
-    void ScaleUp(const ContainerGroupId& group_id, int replica);
-    void ScaleDown(const ContainerGroupId& group_id, int replica);
+    JobId Submit(const std::string& job_name,
+                 const Requirement& require, 
+                 int replica);
+    void Kill(const JobId& job_id);
+    void ScaleUpDown(const JobId& job_id, int replica);
     //start the main schueduling loop
     void Start();
     //
     void ShowAssignment(const AgentEndpoint& endpoint,
                         std::vector<Container>& containers);
-    void ShowContainerGroup(const ContainerGroupId group_id,
-                            std::vector<Container>& containers);
-    void ChangeStatus(const ContainerId& container_id, ContainerStatus status);
+    void ShowJob(const JobId job_id,
+                 std::vector<Container>& containers);
+    void ChangeStatus(const JobId& job_id,
+                      const ContainerId& container_id, 
+                      ContainerStatus new_status);
 
 private:
-    std::map<ContainerId, Container::Ptr> containers_;
-    std::map<AgentEndpoint, Agent::Ptr> agent_assign_;
-    std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
+    void ChangeStatus(Container::Ptr container,
+                      ContainerStatus new_status);
+    void ChangeStatus(Job::Ptr job,
+                      Container::Ptr container,
+                      ContainerStatus new_status);
+    
+    JobId GenerateJobId(const std::string& job_name);
+    std::map<AgentEndpoint, Agent::Ptr> agents_;
+    std::map<JobId, Job::Ptr> jobs_;
 };
 
 } //namespace sched
