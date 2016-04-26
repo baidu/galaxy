@@ -57,9 +57,9 @@ int main (int argc, char* argv[]) {
         return 0;
     }
     if (FLAGS_log_file != "") {
-        baidu::common::SetLogCnt(FLAGS_log_cnt);
         baidu::common::SetLogFile(FLAGS_log_file.c_str());
         baidu::common::SetLogSize(FLAGS_log_size);
+        baidu::common::SetLogCount(FLAGS_log_cnt);
     }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
