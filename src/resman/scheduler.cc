@@ -327,7 +327,7 @@ void Scheduler::Kill(const JobId& job_id) {
         Container::Ptr container = pair.second;
         if (container->status == kPending) {
             ChangeStatus(job, container, kTerminated);
-        } else {
+        } else if (container->status != kTerminated){
             ChangeStatus(job, container, kDestroying);
         }
     }
