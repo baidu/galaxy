@@ -138,14 +138,20 @@ void Agent::Put(Container::Ptr container) {
         if (port.port() != kDynamicPort) {
             s_port = port.port();
         } else {
-            double rn = rand() / (RAND_MAX+0.0);
-            int random_port = kMinPort + static_cast<int>(rn * kMaxPorts);
-            std::stringstream ss;
-            ss << random_port;
-            s_port = ss.str();
+            for (size_t i = kMinPort; i < kMinPort + kMaxPorts; i++) {
+                std::stringstream ss;
+                ss << i;
+                const std::string& random_port = ss.str();
+                if (port_assigned_.find(random_port) == port_assigned_.end()) {
+                    s_port = random_port;
+                    break;
+                }
+            }
         }
-        port_assigned_.insert(s_port);
-        container->allocated_port.insert(s_port);
+        if (!s_port.empty()) {
+            port_assigned_.insert(s_port);
+            container->allocated_port.insert(s_port);
+        }
     }
     //put on this agent succesfully
     container->allocated_agent = endpoint_;
