@@ -24,6 +24,7 @@ if [ ! -f "${FLAG_DIR}/boost_1_57_0" ] \
     rm -rf ${DEPS_PREFIX}/boost_1_57_0
     mv boost_1_57_0 ${DEPS_PREFIX}
     cd ${DEPS_PREFIX}/boost_1_57_0 && ./bootstrap.sh && ./b2 --with-filesystem link=static
+    cd -
     touch "${FLAG_DIR}/boost_1_57_0"
 fi
 
