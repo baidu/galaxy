@@ -1,6 +1,6 @@
 #!/bin/bash
-./build_deps.sh
 echo "-->(1/2), start to install deps ..."
+./build_deps.sh
 if [ $? -ne 0 ]; then
     echo "fail to install deps!!!"
     exit 1

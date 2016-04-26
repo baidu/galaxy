@@ -189,10 +189,11 @@ fi
 # common
 if [ ! -f "${FLAG_DIR}/common" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libcommon.a" ] \
-    || [ ! -f "${DEPS_PREFIX}/include/logging.h" ]; then
+    || [ ! -f "${DEPS_PREFIX}/include/mutex.h" ]; then
     rm -rf common
     git clone https://github.com/baidu/common
     cd common
+    sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/boost_1_57_0/' Makefile
     make -j4
     cp -rf include/* ${DEPS_PREFIX}/include/
     cp libcommon.a ${DEPS_PREFIX}/lib
