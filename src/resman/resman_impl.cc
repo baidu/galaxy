@@ -16,12 +16,12 @@
 namespace baidu {
 namespace galaxy {
 
-ResManImpl::ResManImpl() {
-
+ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()) {
+    scheduler_->Start();
 }
 
 ResManImpl::~ResManImpl() {
-
+  delete scheduler_;
 }
 
 void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,

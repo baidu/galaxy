@@ -24,6 +24,7 @@ if [ ! -f "${FLAG_DIR}/boost_1_57_0" ] \
     rm -rf ${DEPS_PREFIX}/boost_1_57_0
     mv boost_1_57_0 ${DEPS_PREFIX}
     cd ${DEPS_PREFIX}/boost_1_57_0 && ./bootstrap.sh && ./b2 --with-filesystem link=static
+    cd -
     touch "${FLAG_DIR}/boost_1_57_0"
 fi
 
@@ -184,6 +185,21 @@ if [ ! -f "${FLAG_DIR}/ins" ] \
     make -j4 install_sdk
     cd -
     touch "${FLAG_DIR}/ins"
+fi
+
+# common
+if [ ! -f "${FLAG_DIR}/common" ] \
+    || [ ! -f "${DEPS_PREFIX}/lib/libcommon.a" ] \
+    || [ ! -f "${DEPS_PREFIX}/include/mutex.h" ]; then
+    rm -rf common
+    git clone https://github.com/baidu/common
+    cd common
+    sed -i 's/^INCLUDE_PATH=.*/INCLUDE_PATH=-Iinclude -I..\/..\/thirdparty\/boost_1_57_0/' Makefile
+    make -j4
+    cp -rf include/* ${DEPS_PREFIX}/include/
+    cp libcommon.a ${DEPS_PREFIX}/lib
+    cd -
+    touch "${FLAG_DIR}/common"
 fi
 
 cd ${WORK_DIR}
