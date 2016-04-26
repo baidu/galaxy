@@ -10,6 +10,8 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include "src/protocol/galaxy.pb.h"
+#include "mutex.h"
+#include "thread_pool.h"
 
 namespace baidu {
 namespace galaxy {
@@ -25,12 +27,12 @@ enum ContainerStatus {
     kPending = 1,
     kAllocating = 2,
     kRunning = 3,
-    kError = 4,
-    kDestroying = 5,
-    kTerminated = 6
+    kDestroying = 4,
+    kTerminated = 5
 };
 
 enum ResourceError {
+    kOk = 0,
     kNoCpu = 1,
     kNoMemory = 2,
     kNoMedium = 3,
@@ -58,6 +60,7 @@ struct Container {
     std::vector<DevicePath> allocated_volums;
     std::set<std::string> allocated_port;
     AgentEndpoint allocated_agent;
+    ResourceError last_res_err;
     Container() : status(kNotInit) {};
     typedef boost::shared_ptr<Container> Ptr;
 };
@@ -69,7 +72,7 @@ struct Job {
     Requirement::Ptr require;
     int replica;
     std::map<ContainerId, Container::Ptr> containers;
-    std::map<ContainerId, Container::Ptr> states[7];
+    std::map<ContainerId, Container::Ptr> states[6];
     typedef boost::shared_ptr<Job> Ptr;
 };
 
@@ -142,10 +145,15 @@ private:
     void ChangeStatus(Job::Ptr job,
                       Container::Ptr container,
                       ContainerStatus new_status);
-    
+
     JobId GenerateJobId(const std::string& job_name);
+    ContainerId GenerateContainerId(const JobId& job_id, int offset);
+    void TryOneAgent(AgentEndpoint pre_endpoint);
+
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<JobId, Job::Ptr> jobs_;
+    Mutex mu_;
+    ThreadPool pool_;
 };
 
 } //namespace sched

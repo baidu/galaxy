@@ -17,7 +17,7 @@ namespace baidu {
 namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()) {
-
+    scheduler_->Start();
 }
 
 ResManImpl::~ResManImpl() {
