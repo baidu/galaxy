@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef  __APPWORKER_IMPL_H_
-#define  __APPWORKER_IMPL_H_
+#ifndef  BAIDU_GALAXY_APPWORKER_IMPL_H
+#define  BAIDU_GALAXY_APPWORKER_IMPL_H
 
 #include <string>
 #include <map>
@@ -13,6 +13,7 @@
 
 #include "src/protocol/appmaster.pb.h"
 #include "src/rpc/rpc_client.h"
+#include "task_manager.h"
 
 namespace baidu {
 namespace galaxy {
@@ -28,21 +29,19 @@ private:
     void FetchTask();
 
 private:
-    Mutex lock_;
-    ThreadPool backgroud_pool_;
-    std::map<std::string, std::string > tasks_;
+    Mutex mutex_appworker_;
+    Mutex mutex_master_endpoint_;
+    ThreadPool backgroud_thread_pool_;
     RpcClient* rpc_client_;
-//    baidu::galaxy::AppMaster_Stub* app_master_;
-
-//    MasterWatcher* master_watcher_;
-//    Mutex mutex_master_endpoint_;
-
+    std::string appmaster_endpoint_;
+    proto::AppMaster_Stub* appmaster_stub_;
+    TaskManager task_manager_;
 };
 
 } // ending namespace galaxy
 } // ending namespace baidu
 
 
-#endif  //__APPWORKER_IMPL_H_
+#endif  // BAIDU_GALAXY_APPWORKER_IMPL_H
 
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
