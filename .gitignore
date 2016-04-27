@@ -47,3 +47,5 @@ tmp
 
 # logs
 *.INFO*
+*.WARNING*
+*.ERROR*
