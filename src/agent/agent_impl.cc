@@ -242,15 +242,28 @@ void AgentImpl::KillPod(::google::protobuf::RpcController* /*cntl*/,
     return;
 }
 
-void AgentImpl::KillAllPods() {
-    lock_.AssertHeld();
+void AgentImpl::KillPodbyType() {
+    MutexLock scope_lock(&lock_);
     for (std::map<std::string, PodDescriptor>::iterator it = pods_descs_.begin();
             it != pods_descs_.end(); it++) {
         std::string pod_id = it->first;
-        pod_manager_.DeletePod(pod_id);
-        LOG(WARNING, "fork to kill %s", pod_id.c_str());
+        PodDescriptor pod_desc = it->second;
+        if (pod_desc.has_type() && pod_desc.type() == kBatch) {
+            pod_manager_.DeletePod(pod_id);
+            LOG(WARNING, "force to kill %s", pod_id.c_str());
+            return;
+        }
     }
-    return;
+    for (std::map<std::string, PodDescriptor>::iterator it = pods_descs_.begin();
+            it != pods_descs_.end(); it++) {
+        std::string pod_id = it->first;
+        PodDescriptor pod_desc = it->second;
+        if (pod_desc.has_type() && pod_desc.type() == kLongRun) {
+            pod_manager_.DeletePod(pod_id);
+            LOG(WARNING, "force to kill %s", pod_id.c_str());
+            return;
+        }
+    }
 }
 
 void AgentImpl::KeepHeartBeat() {
@@ -545,10 +558,10 @@ void AgentImpl::CheckSysHealth() {
         }
     } else if (coll_rlt == 3) {
         recover_threshold_ = 0;
+        KillPodbyType();
         if (state_ != kOffline) {
             MutexLock scope_lock(&lock_);
             state_ = kOffline;
-            KillAllPods();
             LOG(WARNING, "agent state offline, sys health checker kill all pods");
             lock_.Unlock();
             OfflineAgentRequest request;

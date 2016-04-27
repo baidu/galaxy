@@ -11,8 +11,19 @@
 #include "logging.h"
 #include "ins_sdk.h"
 #include <boost/scoped_ptr.hpp>
+#include <sys/utsname.h>
+
 namespace baidu {
 namespace galaxy {
+
+std::string Hostname() {
+    std::string hostname = "";
+    struct utsname buf;
+    if (0 != uname(&buf)) {
+        *buf.nodename = '\0';
+    }
+    return buf.nodename;
+}
 
 class GalaxyImpl : public Galaxy {
 public:
@@ -188,6 +199,8 @@ bool GalaxyImpl::LabelAgents(const std::string& label,
     for (size_t i = 0; i < agents.size(); i++) {
         request.mutable_labels()->add_agents_endpoint(agents[i]);     
     }
+
+    request.set_host(Hostname());
     bool ret = rpc_client_->SendRequest(master_, &Master_Stub::LabelAgents,
                                         &request, &response, 5, 1);
     if (!ret || 
@@ -202,6 +215,7 @@ bool GalaxyImpl::TerminateJob(const std::string& job_id) {
     TerminateJobRequest request;
     TerminateJobResponse response;
     request.set_jobid(job_id); 
+    request.set_host(Hostname());
     rpc_client_->SendRequest(master_, &Master_Stub::TerminateJob,
                              &request,&response,5,1);
     if (response.status() == kOk) {
@@ -227,6 +241,7 @@ bool GalaxyImpl::FillJobDescriptor(const JobDescription& sdk_job,
     // pod meta
     PodDescriptor* pod_pb = job->mutable_pod();
     pod_pb->set_version(sdk_job.pod.version);
+    pod_pb->set_type(job_type);
     pod_pb->set_namespace_isolation(sdk_job.pod.namespace_isolation);
 
     if (!sdk_job.pod.tmpfs_path.empty() && sdk_job.pod.tmpfs_size > 0) {
@@ -389,6 +404,9 @@ bool GalaxyImpl::SubmitJob(const JobDescription& job, std::string* job_id){
     if (!ok) {
         return false;
     } 
+
+    request.set_host(Hostname());
+
     rpc_client_->SendRequest(master_, &Master_Stub::SubmitJob,
                              &request,&response,5,1);
     if (response.status() != kOk) {
@@ -406,6 +424,8 @@ bool GalaxyImpl::UpdateJob(const std::string& jobid, const JobDescription& job) 
     if (!ok) {
         return false;
     } 
+
+    request.set_host(Hostname());
     rpc_client_->SendRequest(master_, &Master_Stub::UpdateJob,
                              &request, &response, 5, 1);
     if (response.status() != kOk) {
@@ -572,6 +592,8 @@ bool GalaxyImpl::SwitchSafeMode(bool mode) {
     SwitchSafeModeRequest request;
     SwitchSafeModeResponse response;
     request.set_enter_or_leave(mode); 
+    request.set_host(Hostname());
+
     rpc_client_->SendRequest(master_, &Master_Stub::SwitchSafeMode, 
                              &request, &response, 5, 1);
     if (response.status() != kOk) {

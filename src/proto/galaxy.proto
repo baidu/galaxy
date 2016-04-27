@@ -2,6 +2,12 @@ package baidu.galaxy;
 
 option cc_generic_services = true;
 
+enum JobType {
+    kLongRun = 0;
+    kBatch = 1;
+    kSystem = 2;
+}
+
 enum Status {
     kOk = 0;
     kUnknown = 1;
@@ -18,6 +24,7 @@ enum Status {
     kRpcError = 20;
     kLabelAgentFail = 21;
     kAgentError = 22;
+    kPermission = 23;
 }
 
 enum PodState {
@@ -133,8 +140,9 @@ message PodDescriptor {
     optional bool namespace_isolation = 6 [default = true];
 
     //tmpfs
-    optional string tmpfs_path = 7;
-    optional int64 tmpfs_size = 8;
+    optional string tmpfs_path = 8;
+    optional int64 tmpfs_size = 9;
+    optional JobType type = 7;
 }
 
 message TaskStatus {

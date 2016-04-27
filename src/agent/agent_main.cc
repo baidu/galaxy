@@ -25,6 +25,10 @@ DECLARE_int32(agent_http_port);
 DECLARE_string(agent_work_dir);
 DECLARE_string(agent_gc_dir);
 DECLARE_string(agent_coredump_dir);
+DECLARE_string(log_file);
+DECLARE_int32(log_size);
+DECLARE_int32(log_cnt);
+
 void StopSigHandler(int /*sig*/) {
     s_is_stop = true;
 }
@@ -51,6 +55,11 @@ int main (int argc, char* argv[]) {
         fprintf(stdout, "build version : %s\n", baidu::galaxy::GetVersion());
         fprintf(stdout, "build time : %s\n", baidu::galaxy::GetBuildTime());
         return 0;
+    }
+    if (FLAGS_log_file != "") {
+        baidu::common::SetLogFile(FLAGS_log_file.c_str());
+        baidu::common::SetLogSize(FLAGS_log_size);
+        baidu::common::SetLogCount(FLAGS_log_cnt);
     }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
