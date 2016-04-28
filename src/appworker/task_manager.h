@@ -23,9 +23,10 @@ public:
     int CreateTask();
     int StopTask();
     int UpdateTask();
+    int ZombieCheck();
 
-protected:
-    Mutex mutex_task_infos_;
+private:
+    Mutex mutex_task_manager_;
     std::map<std::string, proto::TaskInfo*> task_infos_;
     std::map<std::string, TaskCollector*> task_collectors_;
     ThreadPool background_thread_pool_;

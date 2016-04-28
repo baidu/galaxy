@@ -33,18 +33,17 @@ private:
     void FetchTaskCallback(const proto::FetchTaskRequest* request,
                            proto::FetchTaskResponse* response,
                            bool failed, int error);
-    int RefreshAppMasterStub(proto::AppMaster_Stub& appmaster_stub);
+    int RefreshAppMasterStub();
 
 private:
     Mutex mutex_appworker_;
-    Mutex mutex_master_endpoint_;
-    std::string container_id_;
-    ThreadPool backgroud_thread_pool_;
+    std::string job_id_;
+    std::string pod_id_;
     RpcClient rpc_client_;
-    std::string appmaster_endpoint_;
+    ::galaxy::ins::sdk::InsSDK* nexus_;
     proto::AppMaster_Stub* appmaster_stub_;
     TaskManager task_manager_;
-    InsSDK* nexus_;
+    ThreadPool backgroud_thread_pool_;
 };
 
 } // ending namespace galaxy

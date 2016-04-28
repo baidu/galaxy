@@ -1,4 +1,4 @@
-// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Copyright (c) 2019, Baidu.com, Inc. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,25 +10,24 @@
 #include "protocol/galaxy.pb.h"
 #include "protocol/appmaster.pb.h"
 
+DECLARE_string(nexus_servers);
 DECLARE_int32(appworker_fetch_task_rpc_timeout);
 DECLARE_int32(appworker_background_thread_pool_size);
-DECLARE_string(appworker_container_id);
+DECLARE_string(appworker_job_id);
+DECLARE_string(appworker_pod_id);
 DECLARE_string(appmaster_nexus_path);
-DECLARE_string(appmaster_endpoint);
 
 namespace baidu {
 namespace galaxy {
 
 AppWorkerImpl::AppWorkerImpl() :
     mutex_appworker_(),
-    container_id_(FLAGS_appworker_container_id),
-    backgroud_thread_pool_(FLAGS_appworker_background_thread_pool_size),
-    appmaster_endpoint_(FLAGS_appmaster_endpoint),
-    appmaster_stub_(NULL) {
-
-    if(!rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_) {
-        LOG(ERROR) << "connect appmaster %s failed" << appmaster_endpoint_.c_str();
-    }
+    job_id_(FLAGS_appworker_job_id),
+    pod_id_(FLAGS_appworker_pod_id),
+    nexus_(NULL),
+    appmaster_stub_(NULL),
+    backgroud_thread_pool_(FLAGS_appworker_background_thread_pool_size) {
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
 }
 
 AppWorkerImpl::~AppWorkerImpl () {
@@ -37,45 +36,50 @@ AppWorkerImpl::~AppWorkerImpl () {
 }
 
 int AppWorkerImpl::Init() {
-    LOG(INFO) << "AppWorkerImpl init.";
-    backgroud_thread_pool_.AddTask(boost::bind(&AppWorkerImpl::FetchTask, this));
+    if (RefreshAppMasterStub() != 0) {
+        return -1;
+    }
 
+    backgroud_thread_pool_.AddTask(boost::bind(&AppWorkerImpl::FetchTask, this));
     return 0;
 }
 
 int AppWorkerImpl::RefreshAppMasterStub() {
-    int ret = nexus_->Get(FLAGS_appmaster_nexus_path, &appmaster_endpoint_);
-    if (ret != 0 ) {
-        LOG(ERROR) << "get appmaster endpoint from nexus failed.";
+    MutexLock lock(&mutex_appworker_);
+    ::galaxy::ins::sdk::SDKError err;
+    std::string appmaster_endpoint = "";
+    LOG(INFO) << "appmaster_nexus_path: " << FLAGS_appmaster_nexus_path;
+    bool ok = nexus_->Get(FLAGS_appmaster_nexus_path, &appmaster_endpoint, &err);
+    if (!ok) {
+        LOG(ERROR) << "get appmaster endpoint from nexus failed: " \
+            << ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str();
+        return -1;
     } else {
-        LOG(INFO) << "get appmaster endpoint: " << appmaster_endpoint_;
-        if(!rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_) {
-            rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_);
-            LOG(ERROR) << "connect appmaster %s failed" << appmaster_endpoint_.c_str();
+        LOG(INFO) << "get appmaster endpoint: " << appmaster_endpoint;
+        if(!rpc_client_.GetStub(appmaster_endpoint, &appmaster_stub_)) {
+            LOG(ERROR) << "connect appmaster %s failed" << appmaster_endpoint.c_str();
+            return -1;
         }
     }
 
-    return ret;
+    return 0;
 }
 
 void AppWorkerImpl::FetchTask () {
     MutexLock lock(&mutex_appworker_);
-    LOG(INFO) << "fetch task called";
-
     proto::FetchTaskRequest* request = new proto::FetchTaskRequest;
     proto::FetchTaskResponse* response = new proto::FetchTaskResponse;
-    request->set_containerid(container_id_);
+    request->set_jobid(job_id_);
+    request->set_podid(pod_id_);
     TaskInfoList* task_infos = new TaskInfoList;
     proto::TaskInfo* task_info = new proto::TaskInfo;
     task_infos->Add()->CopyFrom(*task_info);
     request->mutable_task_infos()->CopyFrom(*task_infos);
 
-    boost::function<void (const proto::FetchTaskRequest*, proto::FetchTaskResponse*,
-                          bool, int)> fetch_task_callback;
+    boost::function<void (const proto::FetchTaskRequest*, proto::FetchTaskResponse*, bool, int)> fetch_task_callback;
     fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback, this,
                                       _1, _2, _3, _4);
 
-    rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_);
     rpc_client_.AsyncRequest(appmaster_stub_, &proto::AppMaster_Stub::FetchTask,
                              request, response, fetch_task_callback,
                              FLAGS_appworker_fetch_task_rpc_timeout, 0);
