@@ -51,6 +51,10 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         err = kLabelMismatch;
         return false;
     }
+    if (container->require->pool != pool_) {
+        err = kPoolMismatch;
+        return false;
+    }
     if (container->require->cpu.milli_core() + cpu_assigned_ > cpu_total_) {
         err = kNoCpu;
         return false;
@@ -237,6 +241,19 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
         }
     }
     return false;
+}
+
+
+void Agent::AddLabel(const std::string& label) {
+    labels_.insert(label);
+}
+
+void Agent::RemoveLabel(const std::string& label) {
+    labels_.erase(label);
+}
+
+void Agent::SetPool(const std::string& pool) {
+    pool_ = pool;
 }
 
 Scheduler::Scheduler() {

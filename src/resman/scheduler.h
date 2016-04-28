@@ -40,11 +40,13 @@ enum ResourceError {
     kNoPort = 5,
     kPortConflict = 6,
     kLabelMismatch = 7,
-    kNoMemoryForTmpfs = 8
+    kNoMemoryForTmpfs = 8,
+    kPoolMismatch = 9
 };
 
 struct Requirement {
     const std::string label;
+    const std::string pool;
     proto::CpuRequired cpu;
     proto::MemoryRequired memory;
     std::vector<proto::VolumRequired> volums;
@@ -98,6 +100,9 @@ public:
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
+    void AddLabel(const std::string& label);
+    void RemoveLabel(const std::string& label);
+    void SetPool(const std::string& pool);
     typedef boost::shared_ptr<Agent> Ptr;
 private:
     bool SelectDevices(const std::vector<proto::VolumRequired>& volums,
@@ -107,6 +112,7 @@ private:
                             std::vector<DevicePath>& devices);
     AgentEndpoint endpoint_;
     std::set<std::string> labels_;
+    std::string pool_;
     int64_t cpu_total_;
     int64_t cpu_assigned_;
     int64_t memory_total_;
