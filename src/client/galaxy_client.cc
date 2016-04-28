@@ -246,11 +246,8 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
     rapidjson::Document document;
     document.ParseStream<0>(frs);
     if (!document.IsObject()) {
-        fprintf(stderr, "parse job description %s failed:%s in offset %d\n", 
-                    config.c_str(),
-                    rapidjson::GetParseError_En(document.GetParseError()),
-                    document.GetErrorOffset()
-                    );
+        fprintf(stderr, "parse job description %s", 
+                    config.c_str());
         return -1;
     }
     fclose(fd);
@@ -495,16 +492,16 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
     if (task_cpu_sum > cpu_total) {
         fprintf(stderr, 
                     "sum of task-millicore(%lld) is more than total-millicore(%lld)\n",
-                    task_cpu_sum,
-                    cpu_total);
+                    (long long int)task_cpu_sum,
+                    (long long int)cpu_total);
         return -1;
     }
 
     if (task_memory_sum + tmpfs_size > memory_total) {
         fprintf(stderr,
                     "sum of task-memory and tmpfs (%lld) is more than total-memory(%lld)",
-                    task_memory_sum + tmpfs_size,
-                     memory_total);
+                    (long long int)(task_memory_sum + tmpfs_size),
+                    (long long int)memory_total);
         return -1;
     }
     return 0;
