@@ -60,6 +60,7 @@ struct Requirement {
 struct Container {
     ContainerId id;
     JobId job_id;
+    int priority;
     ContainerStatus status;
     Requirement::Ptr require;
     std::vector<DevicePath> allocated_volums;
@@ -70,14 +71,23 @@ struct Container {
     typedef boost::shared_ptr<Container> Ptr;
 };
 
+struct ContainerPriorityLess{
+    bool operator() (const Container::Ptr& a, const Container::Ptr& b) {
+        return a->priority < b->priority;
+    }
+};
+
 typedef std::map<ContainerId, Container::Ptr> ContainerMap;
 
 struct Job {
     JobId id;
     Requirement::Ptr require;
     int replica;
+    int priority; //lower one is important
+    bool terminated;
     std::map<ContainerId, Container::Ptr> containers;
     std::map<ContainerId, Container::Ptr> states[6];
+    Job() : terminated(false) {};
     typedef boost::shared_ptr<Job> Ptr;
 };
 
@@ -125,6 +135,18 @@ private:
     std::map<JobId, int> container_counts_;
 };
 
+struct JobQueueLess {
+    bool operator () (const Job::Ptr& a, const Job::Ptr& b) {
+        if (a->priority < b->priority) {
+            return true;
+        } else if (a->priority == b->priority) {
+            return a->id < b->id;
+        } else {
+            return false;
+        }
+    }
+};
+
 class Scheduler {
 public:
     explicit Scheduler();
@@ -132,9 +154,12 @@ public:
     void RemoveAgent(const AgentEndpoint& endpoint);
     JobId Submit(const std::string& job_name,
                  const Requirement& require, 
-                 int replica);
-    void Kill(const JobId& job_id);
-    void ScaleUpDown(const JobId& job_id, int replica);
+                 int replica, int priority);
+    bool Kill(const JobId& job_id);
+    bool ManualSchedule(const AgentEndpoint& endpoint,
+                        const JobId& job_id);
+
+    bool ScaleUpDown(const JobId& job_id, int replica);
     //start the main schueduling loop
     void Start();
     //
@@ -162,11 +187,15 @@ private:
     ContainerId GenerateContainerId(const JobId& job_id, int offset);
     void ScheduleNextAgent(AgentEndpoint pre_endpoint);
     void CheckLabelAndPool(Agent::Ptr agent);
+    bool CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
+    void CheckJobGC(Job::Ptr job);
 
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<JobId, Job::Ptr> jobs_;
+    std::set<Job::Ptr, JobQueueLess> job_queue_;
     Mutex mu_;
-    ThreadPool pool_;
+    ThreadPool sched_pool_;
+    ThreadPool gc_pool_;
 };
 
 } //namespace sched
