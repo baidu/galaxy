@@ -51,10 +51,24 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         err = kLabelMismatch;
         return false;
     }
-    if (container->require->pool != pool_) {
+    if (container->require->pool_names.find(pool_name_) 
+        == container->require->pool_names.end()) {
         err = kPoolMismatch;
         return false;
     }
+
+    if (container->require->max_per_host > 0) {
+        JobId job_id = container->job_id;
+        std::map<JobId, int>::iterator it = container_counts_.find(job_id);
+        if (it != container_counts_.end()) {
+            int cur_counts = it->second;
+            if (cur_counts >= container->require->max_per_host) {
+                err = kTooManyPods;
+                return false;
+            } 
+        }
+    }
+
     if (container->require->cpu.milli_core() + cpu_assigned_ > cpu_total_) {
         err = kNoCpu;
         return false;
@@ -160,6 +174,7 @@ void Agent::Put(Container::Ptr container) {
     //put on this agent succesfully
     container->allocated_agent = endpoint_;
     containers_[container->id] = container;
+    container_counts_[container->job_id] += 1;
 }
 
 void Agent::Evict(Container::Ptr container) {
@@ -190,6 +205,10 @@ void Agent::Evict(Container::Ptr container) {
         }
     }
     containers_.erase(container->id);
+    container_counts_[container->job_id] -= 1;
+    if (container_counts_[container->job_id] <= 0) {
+        container_counts_.erase(container->job_id);
+    }
 }
 
 bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
@@ -244,18 +263,6 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
 }
 
 
-void Agent::AddLabel(const std::string& label) {
-    labels_.insert(label);
-}
-
-void Agent::RemoveLabel(const std::string& label) {
-    labels_.erase(label);
-}
-
-void Agent::SetPool(const std::string& pool) {
-    pool_ = pool;
-}
-
 Scheduler::Scheduler() {
 
 }
@@ -279,6 +286,39 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
         ChangeStatus(container, kPending);        
     }
     agents_.erase(endpoint);
+}
+
+void Scheduler::AddLabel(const AgentEndpoint& endpoint, const std::string& label) {
+    MutexLock locker(&mu_);
+    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
+    if (it == agents_.end()) {
+        LOG(WARNING) << "no such agent:" << endpoint;
+        return;
+    }
+    Agent::Ptr agent = it->second;
+    agent->labels_.insert(label);
+}
+
+void Scheduler::RemoveLabel(const AgentEndpoint& endpoint, const std::string& label) {
+    MutexLock locker(&mu_);
+    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
+    if (it == agents_.end()) {
+        LOG(WARNING) << "no such agent:" << endpoint;
+        return;
+    }
+    Agent::Ptr agent = it->second;
+    agent->labels_.erase(label);
+}
+
+void Scheduler::SetPool(const AgentEndpoint& endpoint, const std::string& pool_name) {
+    MutexLock locker(&mu_);
+    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
+    if (it == agents_.end()) {
+        LOG(WARNING) << "no such agent:" << endpoint;
+        return;
+    }
+    Agent::Ptr agent = it->second;
+    agent->pool_name_ = pool_name;
 }
 
 JobId Scheduler::GenerateJobId(const std::string& job_name) {
@@ -363,55 +403,64 @@ void Scheduler::ScaleUpDown(const JobId& job_id, int replica) {
         LOG(WARNING) << "unkonw job id: " << job_id;
         return;
     }
+    if (replica < 0) {
+        LOG(WARNING) << "ignore invalid replica: " << replica;
+        return;
+    }
     Job::Ptr job = it->second;
     if (replica == job->replica) {
         LOG(INFO) << "replica not change, do nothing" ;
-        return;
     } else if (replica < job->replica) {
-        //scale down
-        int delta = job->replica - replica;
-        //remove from pending first
-        BOOST_FOREACH(ContainerMap::value_type& pair, job->states[kPending]) {
+        ScaleDown(job, replica);    
+        job->replica = replica;
+    } else {
+        ScaleUp(job, replica);
+        job->replica = replica; 
+    }
+}
+
+void Scheduler::ScaleDown(Job::Ptr job, int replica) {
+    int delta = job->replica - replica;
+    //remove from pending first
+    BOOST_FOREACH(ContainerMap::value_type& pair, job->states[kPending]) {
+        Container::Ptr container = pair.second;
+        ChangeStatus(job, container, kTerminated);
+        --delta;
+        if (delta <= 0) {
+            break;
+        }
+    }
+    ContainerStatus all_status[] = {kAllocating, kRunning};
+    for (size_t i = 0; i < sizeof(all_status) && delta > 0; i++) {
+        ContainerStatus st = all_status[i];
+        BOOST_FOREACH(ContainerMap::value_type& pair, job->states[st]) {
             Container::Ptr container = pair.second;
-            ChangeStatus(job, container, kTerminated);
+            ChangeStatus(container, kDestroying);
             --delta;
             if (delta <= 0) {
                 break;
             }
         }
-        ContainerStatus all_status[] = {kAllocating, kRunning};
-        for (size_t i = 0; i < sizeof(all_status) && delta > 0; i++) {
-            ContainerStatus st = all_status[i];
-            BOOST_FOREACH(ContainerMap::value_type& pair, job->states[st]) {
-                Container::Ptr container = pair.second;
-                ChangeStatus(container, kDestroying);
-                --delta;
-                if (delta <= 0) {
-                    break;
-                }
-            }
+    }
+}
+
+void Scheduler::ScaleUp(Job::Ptr job, int replica) {
+    for (int i = 0; i < replica; i++) {
+        ContainerId container_id = GenerateContainerId(job->id, i);
+        Container::Ptr container;
+        ContainerMap::iterator it = job->containers.find(container_id);
+        if (it == job->containers.end()) {
+            container.reset(new Container());
+            container->job_id = job->id;
+            container->id = container_id;
+            container->require = job->require;
+            job->containers[container_id] = container;
+        } else {
+            container = it->second;
         }
-        job->replica = replica;
-    } else {
-        //scale up
-        for (int i = 0; i < replica; i++) {
-            ContainerId container_id = GenerateContainerId(job->id, i);
-            Container::Ptr container;
-            ContainerMap::iterator it = job->containers.find(container_id);
-            if (it == job->containers.end()) {
-                container.reset(new Container());
-                container->job_id = job->id;
-                container->id = container_id;
-                container->require = job->require;
-                job->containers[container_id] = container;
-            } else {
-                container = it->second;
-            }
-            if (container->status != kRunning && container->status != kAllocating) {
-                ChangeStatus(job, container, kPending);            
-            }
+        if (container->status != kRunning && container->status != kAllocating) {
+            ChangeStatus(job, container, kPending);            
         }
-        job->replica = replica; 
     }
 }
 
@@ -503,12 +552,34 @@ void Scheduler::ChangeStatus(Job::Ptr job,
     }
 }
 
-void Scheduler::Start() {
-    TryOneAgent("");
+void Scheduler::CheckLabelAndPool(Agent::Ptr agent) {
+    mu_.AssertHeld();
+    BOOST_FOREACH(ContainerMap::value_type& pair, agent->containers_) {
+        Container::Ptr& container = pair.second;
+        bool check_passed = true;
+        if (!container->require->label.empty()
+            && agent->labels_.find(container->require->label) == agent->labels_.end()) {
+            container->last_res_err = kLabelMismatch;
+            check_passed = false;
+        }
+        if (container->require->pool_names.find(agent->pool_name_) 
+            == container->require->pool_names.end()) {
+            container->last_res_err = kPoolMismatch;
+            check_passed = false;
+        }
+        if (!check_passed) { //evit the container to pendings
+            ChangeStatus(container, kPending);
+        }
+    }
 }
 
-void Scheduler::TryOneAgent(AgentEndpoint pre_endpoint) {
-    VLOG(16) << "try agent after: " << pre_endpoint;
+void Scheduler::Start() {
+    AgentEndpoint fake_endpoint = "";
+    ScheduleNextAgent(fake_endpoint);
+}
+
+void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
+    VLOG(16) << "scheduling the agent after: " << pre_endpoint;
     Agent::Ptr agent;
     AgentEndpoint endpoint;
     MutexLock lock(&mu_);
@@ -519,29 +590,34 @@ void Scheduler::TryOneAgent(AgentEndpoint pre_endpoint) {
         agent = it->second;
         endpoint = it->first;
     } else {
+        // turn to the start
         pool_.DelayTask(FLAGS_sched_interval, 
-                        boost::bind(&Scheduler::TryOneAgent, this, ""));
+                        boost::bind(&Scheduler::ScheduleNextAgent, this, ""));
         return;
     }
+
+    CheckLabelAndPool(agent); //may evict some containers
+
+    //for each job checking pending containers, try put it~
     std::map<JobId, Job::Ptr>::iterator jt;
     for (jt = jobs_.begin(); jt != jobs_.end(); jt++) {
         Job::Ptr& job = jt->second;
         if (job->states[kPending].size() == 0) {
-            continue;
+            continue; // no pending pods
         }
         Container::Ptr container = job->states[kPending].begin()->second;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
             container->last_res_err = res_err;
-            continue;
+            continue; //no feasiable
         }
         agent->Put(container);
         container->last_res_err = kOk;
         ChangeStatus(container, kAllocating);
     }
-    //next scheduling round
+    //scheduling round for the next agent
     pool_.DelayTask(FLAGS_sched_interval, 
-                    boost::bind(&Scheduler::TryOneAgent, this, endpoint));
+                    boost::bind(&Scheduler::ScheduleNextAgent, this, endpoint));
 }
 
 } //namespace sched

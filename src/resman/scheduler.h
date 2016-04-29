@@ -41,16 +41,19 @@ enum ResourceError {
     kPortConflict = 6,
     kLabelMismatch = 7,
     kNoMemoryForTmpfs = 8,
-    kPoolMismatch = 9
+    kPoolMismatch = 9,
+    kTooManyPods = 10
 };
 
 struct Requirement {
     const std::string label;
-    const std::string pool;
+    const std::set<std::string> pool_names;
+    int max_per_host;
     proto::CpuRequired cpu;
     proto::MemoryRequired memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
+    Requirement() : max_per_host(0) {};
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
@@ -100,9 +103,6 @@ public:
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
-    void AddLabel(const std::string& label);
-    void RemoveLabel(const std::string& label);
-    void SetPool(const std::string& pool);
     typedef boost::shared_ptr<Agent> Ptr;
 private:
     bool SelectDevices(const std::vector<proto::VolumRequired>& volums,
@@ -112,7 +112,7 @@ private:
                             std::vector<DevicePath>& devices);
     AgentEndpoint endpoint_;
     std::set<std::string> labels_;
-    std::string pool_;
+    std::string pool_name_;
     int64_t cpu_total_;
     int64_t cpu_assigned_;
     int64_t memory_total_;
@@ -122,6 +122,7 @@ private:
     std::set<std::string> port_assigned_;
     size_t port_total_;
     std::map<ContainerId, Container::Ptr> containers_;
+    std::map<JobId, int> container_counts_;
 };
 
 class Scheduler {
@@ -144,6 +145,9 @@ public:
     void ChangeStatus(const JobId& job_id,
                       const ContainerId& container_id, 
                       ContainerStatus new_status);
+    void AddLabel(const AgentEndpoint& endpoint, const std::string& label);
+    void RemoveLabel(const AgentEndpoint& endpoint, const std::string& label);
+    void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
 
 private:
     void ChangeStatus(Container::Ptr container,
@@ -151,10 +155,13 @@ private:
     void ChangeStatus(Job::Ptr job,
                       Container::Ptr container,
                       ContainerStatus new_status);
+    void ScaleDown(Job::Ptr job, int replica);
+    void ScaleUp(Job::Ptr job, int replica);
 
     JobId GenerateJobId(const std::string& job_name);
     ContainerId GenerateContainerId(const JobId& job_id, int offset);
-    void TryOneAgent(AgentEndpoint pre_endpoint);
+    void ScheduleNextAgent(AgentEndpoint pre_endpoint);
+    void CheckLabelAndPool(Agent::Ptr agent);
 
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<JobId, Job::Ptr> jobs_;
