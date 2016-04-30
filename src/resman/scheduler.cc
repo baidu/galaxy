@@ -367,7 +367,6 @@ JobId Scheduler::Submit(const std::string& job_name,
     Job::Ptr job(new Job());
     job->require = req;
     job->id = jobid;
-    job->replica = replica;
     job->priority = priority;
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
@@ -430,7 +429,7 @@ void Scheduler::CheckJobGC(Job::Ptr job) {
     }
 }
 
-bool Scheduler::ScaleUpDown(const JobId& job_id, int replica) {
+bool Scheduler::UpdateReplica(const JobId& job_id, int replica) {
     MutexLock locker(&mu_);
     std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
@@ -446,22 +445,22 @@ bool Scheduler::ScaleUpDown(const JobId& job_id, int replica) {
         LOG(WARNING) << "terminated job can not be scale up/down";
         return false;
     }
-    if (replica == job->replica) {
+    int current_replica = job->Replica();
+    if (replica == current_replica) {
         LOG(INFO) << "replica not change, do nothing" ;
-    } else if (replica < job->replica) {
-        ScaleDown(job, replica);    
-        job->replica = replica;
+    } else if (replica < current_replica) {
+        ScaleDown(job, replica);
     } else {
         ScaleUp(job, replica);
-        job->replica = replica; 
     }
     return true;
 }
 
 void Scheduler::ScaleDown(Job::Ptr job, int replica) {
-    int delta = job->replica - replica;
+    int delta = job->Replica() - replica;
     //remove from pending first
-    BOOST_FOREACH(ContainerMap::value_type& pair, job->states[kPending]) {
+    ContainerMap pending_containers = job->states[kPending];
+    BOOST_FOREACH(ContainerMap::value_type& pair, pending_containers) {
         Container::Ptr container = pair.second;
         ChangeStatus(job, container, kTerminated);
         --delta;
@@ -472,7 +471,8 @@ void Scheduler::ScaleDown(Job::Ptr job, int replica) {
     ContainerStatus all_status[] = {kAllocating, kRunning};
     for (size_t i = 0; i < sizeof(all_status) && delta > 0; i++) {
         ContainerStatus st = all_status[i];
-        BOOST_FOREACH(ContainerMap::value_type& pair, job->states[st]) {
+        ContainerMap working_containers = job->states[st];
+        BOOST_FOREACH(ContainerMap::value_type& pair, working_containers) {
             Container::Ptr container = pair.second;
             ChangeStatus(container, kDestroying);
             --delta;
@@ -485,6 +485,9 @@ void Scheduler::ScaleDown(Job::Ptr job, int replica) {
 
 void Scheduler::ScaleUp(Job::Ptr job, int replica) {
     for (int i = 0; i < replica; i++) {
+        if (job->Replica() >= replica) {
+            break;
+        }
         ContainerId container_id = GenerateContainerId(job->id, i);
         Container::Ptr container;
         ContainerMap::iterator it = job->containers.find(container_id);
@@ -594,7 +597,8 @@ void Scheduler::ChangeStatus(Job::Ptr job,
 
 void Scheduler::CheckLabelAndPool(Agent::Ptr agent) {
     mu_.AssertHeld();
-    BOOST_FOREACH(ContainerMap::value_type& pair, agent->containers_) {
+    ContainerMap containers = agent->containers_;
+    BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
         bool check_passed = CheckLabelAndPoolOnce(agent, container);
         if (!check_passed) { //evit the container to pendings

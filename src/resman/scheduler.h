@@ -82,12 +82,16 @@ typedef std::map<ContainerId, Container::Ptr> ContainerMap;
 struct Job {
     JobId id;
     Requirement::Ptr require;
-    int replica;
     int priority; //lower one is important
     bool terminated;
     std::map<ContainerId, Container::Ptr> containers;
     std::map<ContainerId, Container::Ptr> states[6];
     Job() : terminated(false) {};
+    int Replica() const {
+        return states[kPending].size() 
+               + states[kAllocating].size() 
+               + states[kRunning].size();
+    }
     typedef boost::shared_ptr<Job> Ptr;
 };
 
@@ -159,7 +163,7 @@ public:
     bool ManualSchedule(const AgentEndpoint& endpoint,
                         const JobId& job_id);
 
-    bool ScaleUpDown(const JobId& job_id, int replica);
+    bool UpdateReplica(const JobId& job_id, int replica);
     //start the main schueduling loop
     void Start();
     //
