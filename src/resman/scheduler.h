@@ -53,6 +53,7 @@ struct Requirement {
     proto::MemoryRequired memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
+    std::string version;
     Requirement() : max_per_host(0) {};
     typedef boost::shared_ptr<Requirement> Ptr;
 };
@@ -86,6 +87,8 @@ struct Job {
     bool terminated;
     std::map<ContainerId, Container::Ptr> containers;
     std::map<ContainerId, Container::Ptr> states[6];
+    int update_interval;
+    int last_update_time;
     Job() : terminated(false) {};
     int Replica() const {
         return states[kPending].size() 
@@ -109,7 +112,8 @@ public:
                    int64_t cpu,
                    int64_t memory,
                    const std::map<DevicePath, VolumInfo>& volums,
-                   const std::set<std::string>& labels);
+                   const std::set<std::string>& labels,
+                   const std::string& pool_name);
     void SetAssignment(int64_t cpu_assigned,
                        int64_t memory_assigned,
                        const std::map<DevicePath, VolumInfo>& volum_assigned,
@@ -154,6 +158,9 @@ struct JobQueueLess {
 class Scheduler {
 public:
     explicit Scheduler();
+    //start the main schueduling loop
+    void Start();
+
     void AddAgent(Agent::Ptr agent);
     void RemoveAgent(const AgentEndpoint& endpoint);
     JobId Submit(const std::string& job_name,
@@ -163,10 +170,14 @@ public:
     bool ManualSchedule(const AgentEndpoint& endpoint,
                         const JobId& job_id);
 
-    bool UpdateReplica(const JobId& job_id, int replica);
-    //start the main schueduling loop
-    void Start();
-    //
+    bool ChangeReplica(const JobId& job_id, int replica);
+    
+    // @update_interval : 
+    //      --- intervals between updateing two containers, in seconds
+    bool Update(const JobId& job_id,
+                const Requirement& require,
+                int update_interval);
+
     void ShowAssignment(const AgentEndpoint& endpoint,
                         std::vector<Container>& containers);
     void ShowJob(const JobId job_id,
@@ -191,6 +202,7 @@ private:
     ContainerId GenerateContainerId(const JobId& job_id, int offset);
     void ScheduleNextAgent(AgentEndpoint pre_endpoint);
     void CheckLabelAndPool(Agent::Ptr agent);
+    void CheckVersion(Agent::Ptr agent);
     bool CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
     void CheckJobGC(Job::Ptr job);
 

@@ -11,6 +11,7 @@
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 #include <glog/logging.h>
+#include "timer.h"
 
 DECLARE_int64(sched_interval);
 DECLARE_int64(job_gc_check_interval);
@@ -27,7 +28,8 @@ Agent::Agent(const AgentEndpoint& endpoint,
             int64_t cpu,
             int64_t memory,
             const std::map<DevicePath, VolumInfo>& volums,
-            const std::set<std::string>& labels) {
+            const std::set<std::string>& labels,
+            const std::string& pool_name) {
     cpu_total_ = cpu;
     cpu_assigned_ = 0;
     memory_total_ = memory;
@@ -35,6 +37,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
     volum_total_ = volums;
     port_total_ = kMaxPorts;
     labels_ = labels;
+    pool_name_ = pool_name;
 }
 
 void Agent::SetAssignment(int64_t cpu_assigned,
@@ -175,6 +178,7 @@ void Agent::Put(Container::Ptr container) {
     }
     //put on this agent succesfully
     container->allocated_agent = endpoint_;
+    container->last_res_err = kOk;
     containers_[container->id] = container;
     container_counts_[container->job_id] += 1;
 }
@@ -429,7 +433,7 @@ void Scheduler::CheckJobGC(Job::Ptr job) {
     }
 }
 
-bool Scheduler::UpdateReplica(const JobId& job_id, int replica) {
+bool Scheduler::ChangeReplica(const JobId& job_id, int replica) {
     MutexLock locker(&mu_);
     std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
     if (it == jobs_.end()) {
@@ -628,6 +632,36 @@ bool Scheduler::CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container
     return check_passed;
 }
 
+void Scheduler::CheckVersion(Agent::Ptr agent) {
+    mu_.AssertHeld();
+    ContainerMap containers = agent->containers_;
+    BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
+        Container::Ptr container = pair.second;
+        JobId job_id = container->job_id;
+        std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
+        if (it == jobs_.end()) {
+            LOG(WARNING) << "no such job, so evict it" << job_id;
+            agent->Evict(container);
+            continue;
+        }
+        Job::Ptr job = it->second;
+        if (container->require->version == job->require->version) {
+            continue;
+        }
+        LOG(INFO) << "container version mismatch, " << container->id
+                  << "container-require: " << container->require->version
+                  << "job-require: "  << job->require->version;
+        int32_t now = common::timer::now_time();
+        if (now - job->last_update_time < job->update_interval) {
+            continue;
+        }
+        //update container require, and re-schedule it.
+        ChangeStatus(container, kPending);
+        container->require = job->require;
+        job->last_update_time = now;
+    }
+}
+
 void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
     VLOG(16) << "scheduling the agent after: " << pre_endpoint;
     Agent::Ptr agent;
@@ -647,6 +681,7 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
     }
 
     CheckLabelAndPool(agent); //may evict some containers
+    CheckVersion(agent); //check containers version
 
     //for each job checking pending containers, try to put on...
     std::set<Job::Ptr, JobQueueLess>::iterator jt;
@@ -662,7 +697,6 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
             continue; //no feasiable
         }
         agent->Put(container);
-        container->last_res_err = kOk;
         ChangeStatus(container, kAllocating);
     }
     //scheduling round for the next agent
@@ -716,7 +750,6 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
         //try again after evicting
         if (agent->TryPut(container_manual.get(), res_err)) {
             agent->Put(container_manual);
-            container_manual->last_res_err = kOk;
             ChangeStatus(container_manual, kAllocating);
             preempt_succ = true;
             break;
@@ -726,6 +759,22 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
         }
     }
     return preempt_succ;
+}
+
+bool Scheduler::Update(const JobId& job_id,
+                       const Requirement& require,
+                       int update_interval) {
+    MutexLock locker(&mu_);
+    std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        LOG(WARNING) << "no such job: " << job_id;
+        return false;
+    }
+    Job::Ptr job = it->second;
+    job->update_interval = update_interval;
+    job->last_update_time = common::timer::now_time();
+    job->require.reset(new Requirement(require));
+    return true;
 }
 
 } //namespace sched
