@@ -675,8 +675,7 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         endpoint = it->first;
     } else {
         // turn to the start
-        sched_pool_.DelayTask(FLAGS_sched_interval, 
-                        boost::bind(&Scheduler::ScheduleNextAgent, this, ""));
+        sched_pool_.AddTask(boost::bind(&Scheduler::ScheduleNextAgent, this, ""));
         return;
     }
 
@@ -774,6 +773,10 @@ bool Scheduler::Update(const JobId& job_id,
     job->update_interval = update_interval;
     job->last_update_time = common::timer::now_time();
     job->require.reset(new Requirement(require));
+    BOOST_FOREACH(ContainerMap::value_type& pair, job->states[kPending]) {
+        Container::Ptr pending_container = pair.second;
+        pending_container->require = job->require;
+    }
     return true;
 }
 
