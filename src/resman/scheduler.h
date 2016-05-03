@@ -117,7 +117,8 @@ public:
     void SetAssignment(int64_t cpu_assigned,
                        int64_t memory_assigned,
                        const std::map<DevicePath, VolumInfo>& volum_assigned,
-                       const std::set<std::string> port_assigned);
+                       const std::set<std::string> port_assigned,
+                       const std::map<ContainerId, Container::Ptr>& containers);
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);

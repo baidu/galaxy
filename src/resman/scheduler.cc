@@ -43,11 +43,18 @@ Agent::Agent(const AgentEndpoint& endpoint,
 void Agent::SetAssignment(int64_t cpu_assigned,
                           int64_t memory_assigned,
                           const std::map<DevicePath, VolumInfo>& volum_assigned,
-                          const std::set<std::string> port_assigned) {
+                          const std::set<std::string> port_assigned,
+                          const std::map<ContainerId, Container::Ptr>& containers) {
     cpu_assigned_ = cpu_assigned;
     memory_assigned_ = memory_assigned;
     volum_assigned_ =  volum_assigned;
     port_assigned_ = port_assigned;
+    containers_ =  containers;
+    container_counts_.clear();
+    BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
+        const Container::Ptr& container = pair.second;
+        container_counts_[container->job_id] += 1;
+    }
 }
 
 bool Agent::TryPut(const Container* container, ResourceError& err) {
@@ -461,6 +468,7 @@ bool Scheduler::ChangeReplica(const JobId& job_id, int replica) {
 }
 
 void Scheduler::ScaleDown(Job::Ptr job, int replica) {
+    mu_.AssertHeld();
     int delta = job->Replica() - replica;
     //remove from pending first
     ContainerMap pending_containers = job->states[kPending];
@@ -488,6 +496,7 @@ void Scheduler::ScaleDown(Job::Ptr job, int replica) {
 }
 
 void Scheduler::ScaleUp(Job::Ptr job, int replica) {
+    mu_.AssertHeld();
     for (int i = 0; i < replica; i++) {
         if (job->Replica() >= replica) {
             break;
