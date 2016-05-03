@@ -18,7 +18,7 @@ namespace galaxy {
 namespace sched {
 
 typedef std::string AgentEndpoint;
-typedef std::string JobId;
+typedef std::string GroupId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
 
@@ -60,7 +60,7 @@ struct Requirement {
 
 struct Container {
     ContainerId id;
-    JobId job_id;
+    GroupId group_id;
     int priority;
     ContainerStatus status;
     Requirement::Ptr require;
@@ -80,8 +80,8 @@ struct ContainerPriorityLess{
 
 typedef std::map<ContainerId, Container::Ptr> ContainerMap;
 
-struct Job {
-    JobId id;
+struct Group {
+    GroupId id;
     Requirement::Ptr require;
     int priority; //lower one is important
     bool terminated;
@@ -89,13 +89,13 @@ struct Job {
     std::map<ContainerId, Container::Ptr> states[6];
     int update_interval;
     int last_update_time;
-    Job() : terminated(false) {};
+    Group() : terminated(false) {};
     int Replica() const {
         return states[kPending].size() 
                + states[kAllocating].size() 
                + states[kRunning].size();
     }
-    typedef boost::shared_ptr<Job> Ptr;
+    typedef boost::shared_ptr<Group> Ptr;
 };
 
 struct VolumInfo {
@@ -141,11 +141,11 @@ private:
     std::set<std::string> port_assigned_;
     size_t port_total_;
     std::map<ContainerId, Container::Ptr> containers_;
-    std::map<JobId, int> container_counts_;
+    std::map<GroupId, int> container_counts_;
 };
 
-struct JobQueueLess {
-    bool operator () (const Job::Ptr& a, const Job::Ptr& b) {
+struct GroupQueueLess {
+    bool operator () (const Group::Ptr& a, const Group::Ptr& b) {
         if (a->priority < b->priority) {
             return true;
         } else if (a->priority == b->priority) {
@@ -164,26 +164,26 @@ public:
 
     void AddAgent(Agent::Ptr agent);
     void RemoveAgent(const AgentEndpoint& endpoint);
-    JobId Submit(const std::string& job_name,
+    GroupId Submit(const std::string& group_name,
                  const Requirement& require, 
                  int replica, int priority);
-    bool Kill(const JobId& job_id);
+    bool Kill(const GroupId& group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
-                        const JobId& job_id);
+                        const GroupId& group_id);
 
-    bool ChangeReplica(const JobId& job_id, int replica);
+    bool ChangeReplica(const GroupId& group_id, int replica);
     
     // @update_interval : 
     //      --- intervals between updateing two containers, in seconds
-    bool Update(const JobId& job_id,
+    bool Update(const GroupId& group_id,
                 const Requirement& require,
                 int update_interval);
 
     void ShowAssignment(const AgentEndpoint& endpoint,
                         std::vector<Container>& containers);
-    void ShowJob(const JobId job_id,
-                 std::vector<Container>& containers);
-    void ChangeStatus(const JobId& job_id,
+    void ShowGroup(const GroupId group_id,
+                   std::vector<Container>& containers);
+    void ChangeStatus(const GroupId& group_id,
                       const ContainerId& container_id, 
                       ContainerStatus new_status);
     void AddLabel(const AgentEndpoint& endpoint, const std::string& label);
@@ -193,23 +193,23 @@ public:
 private:
     void ChangeStatus(Container::Ptr container,
                       ContainerStatus new_status);
-    void ChangeStatus(Job::Ptr job,
+    void ChangeStatus(Group::Ptr group,
                       Container::Ptr container,
                       ContainerStatus new_status);
-    void ScaleDown(Job::Ptr job, int replica);
-    void ScaleUp(Job::Ptr job, int replica);
+    void ScaleDown(Group::Ptr group, int replica);
+    void ScaleUp(Group::Ptr group, int replica);
 
-    JobId GenerateJobId(const std::string& job_name);
-    ContainerId GenerateContainerId(const JobId& job_id, int offset);
+    GroupId GenerateGroupId(const std::string& group_name);
+    ContainerId GenerateContainerId(const GroupId& group_id, int offset);
     void ScheduleNextAgent(AgentEndpoint pre_endpoint);
     void CheckLabelAndPool(Agent::Ptr agent);
     void CheckVersion(Agent::Ptr agent);
     bool CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
-    void CheckJobGC(Job::Ptr job);
+    void CheckGroupGC(Group::Ptr group);
 
     std::map<AgentEndpoint, Agent::Ptr> agents_;
-    std::map<JobId, Job::Ptr> jobs_;
-    std::set<Job::Ptr, JobQueueLess> job_queue_;
+    std::map<GroupId, Group::Ptr> groups_;
+    std::set<Group::Ptr, GroupQueueLess> group_queue_;
     Mutex mu_;
     ThreadPool sched_pool_;
     ThreadPool gc_pool_;

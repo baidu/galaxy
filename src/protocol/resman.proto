@@ -98,30 +98,14 @@ message CreateTagRequest {
 message CreateTagResponse {
 
 }
-message RemoveTagRequest {
 
-}
-message RemoveTagResponse {
-
-}
 message ListTagsRequest {
 
 }
 message ListTagsResponse {
 
 }
-message AddAgentToTagRequest {
 
-}
-message AddAgentToTagResponse {
-
-}
-message RemoveAgentFromTagRequest {
-
-}
-message RemoveAgentFromTagResponse {
-
-}
 message ListAgentsByTagRequest {
 
 }

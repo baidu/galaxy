@@ -14,7 +14,7 @@
 #include "timer.h"
 
 DECLARE_int64(sched_interval);
-DECLARE_int64(job_gc_check_interval);
+DECLARE_int64(group_gc_check_interval);
 
 namespace baidu {
 namespace galaxy {
@@ -53,7 +53,7 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     container_counts_.clear();
     BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
         const Container::Ptr& container = pair.second;
-        container_counts_[container->job_id] += 1;
+        container_counts_[container->group_id] += 1;
     }
 }
 
@@ -70,8 +70,8 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     }
 
     if (container->require->max_per_host > 0) {
-        JobId job_id = container->job_id;
-        std::map<JobId, int>::iterator it = container_counts_.find(job_id);
+        GroupId group_id = container->group_id;
+        std::map<GroupId, int>::iterator it = container_counts_.find(group_id);
         if (it != container_counts_.end()) {
             int cur_counts = it->second;
             if (cur_counts >= container->require->max_per_host) {
@@ -187,7 +187,7 @@ void Agent::Put(Container::Ptr container) {
     container->allocated_agent = endpoint_;
     container->last_res_err = kOk;
     containers_[container->id] = container;
-    container_counts_[container->job_id] += 1;
+    container_counts_[container->group_id] += 1;
 }
 
 void Agent::Evict(Container::Ptr container) {
@@ -218,9 +218,9 @@ void Agent::Evict(Container::Ptr container) {
         }
     }
     containers_.erase(container->id);
-    container_counts_[container->job_id] -= 1;
-    if (container_counts_[container->job_id] <= 0) {
-        container_counts_.erase(container->job_id);
+    container_counts_[container->group_id] -= 1;
+    if (container_counts_[container->group_id] <= 0) {
+        container_counts_.erase(container->group_id);
     }
 }
 
@@ -334,9 +334,9 @@ void Scheduler::SetPool(const AgentEndpoint& endpoint, const std::string& pool_n
     agent->pool_name_ = pool_name;
 }
 
-JobId Scheduler::GenerateJobId(const std::string& job_name) {
+GroupId Scheduler::GenerateGroupId(const std::string& group_name) {
     std::string suffix = "";
-    BOOST_FOREACH(char c, job_name) {
+    BOOST_FOREACH(char c, group_name) {
         if (!isalnum(c)) {
             suffix += "_";
         } else {
@@ -354,76 +354,76 @@ JobId Scheduler::GenerateJobId(const std::string& job_name) {
     std::stringstream ss;
     char time_buf[32] = { 0 };
     ::strftime(time_buf, 32, "%Y%m%d_%H%M%S", &t);
-    ss << "job_" << time_buf << "_"
+    ss << "group_" << time_buf << "_"
        << random() << "_" << suffix;
     return ss.str();
 }
 
-ContainerId Scheduler::GenerateContainerId(const JobId& job_id, int offset) {
+ContainerId Scheduler::GenerateContainerId(const GroupId& group_id, int offset) {
     std::stringstream ss;
-    ss << job_id << ".vm_" << offset;
+    ss << group_id << ".vm_" << offset;
     return ss.str();
 }
 
-JobId Scheduler::Submit(const std::string& job_name,
-                        const Requirement& require, 
-                        int replica, int priority) {
+GroupId Scheduler::Submit(const std::string& group_name,
+                          const Requirement& require, 
+                          int replica, int priority) {
     MutexLock locker(&mu_);
-    JobId jobid = GenerateJobId(job_name);
-    if (jobs_.find(jobid) != jobs_.end()) {
-        LOG(WARNING) << "job id conflict:" << jobid;
+    GroupId group_id = GenerateGroupId(group_name);
+    if (groups_.find(group_id) != groups_.end()) {
+        LOG(WARNING) << "group id conflict:" << group_id;
         return "";
     }
     Requirement::Ptr req(new Requirement(require));
-    Job::Ptr job(new Job());
-    job->require = req;
-    job->id = jobid;
-    job->priority = priority;
+    Group::Ptr group(new Group());
+    group->require = req;
+    group->id = group_id;
+    group->priority = priority;
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
-        container->job_id = job->id;
-        container->id = GenerateContainerId(jobid, i);
+        container->group_id = group->id;
+        container->id = GenerateContainerId(group_id, i);
         container->require = req;
         container->priority = priority;
-        job->containers[container->id] = container;
-        ChangeStatus(job, container, kPending);
+        group->containers[container->id] = container;
+        ChangeStatus(group, container, kPending);
     }
-    jobs_[jobid] = job;
-    job_queue_.insert(job);
-    return job->id;
+    groups_[group_id] = group;
+    group_queue_.insert(group);
+    return group->id;
 }
 
-bool Scheduler::Kill(const JobId& job_id) {
+bool Scheduler::Kill(const GroupId& group_id) {
     MutexLock locker(&mu_);
-    std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
-    if (it == jobs_.end()) {
-        LOG(WARNING) << "unkonw job id: " << job_id;
+    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
+    if (it == groups_.end()) {
+        LOG(WARNING) << "unkonw group id: " << group_id;
         return false;
     }
-    Job::Ptr job = it->second;
-    if (job->terminated) {
+    Group::Ptr group = it->second;
+    if (group->terminated) {
         LOG(WARNING) << "ignore the killing, "
-                     << job_id << " already killed";
+                     << group_id << " already killed";
         return false;
     }
-    BOOST_FOREACH(ContainerMap::value_type& pair, job->containers) {
+    BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
         Container::Ptr container = pair.second;
         if (container->status == kPending) {
-            ChangeStatus(job, container, kTerminated);
+            ChangeStatus(group, container, kTerminated);
         } else if (container->status != kTerminated){
-            ChangeStatus(job, container, kDestroying);
+            ChangeStatus(group, container, kDestroying);
         }
     }
-    job->terminated = true;
-    gc_pool_.AddTask(boost::bind(&Scheduler::CheckJobGC, this, job));
+    group->terminated = true;
+    gc_pool_.AddTask(boost::bind(&Scheduler::CheckGroupGC, this, group));
     return true;
 }
 
-void Scheduler::CheckJobGC(Job::Ptr job) {
+void Scheduler::CheckGroupGC(Group::Ptr group) {
     MutexLock locker(&mu_);
-    assert(job->terminated);
+    assert(group->terminated);
     bool all_container_terminated = true;
-    BOOST_FOREACH(ContainerMap::value_type& pair, job->containers) {
+    BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
         Container::Ptr container = pair.second;
         if (container->status != kTerminated) {
             all_container_terminated  = false;
@@ -431,50 +431,50 @@ void Scheduler::CheckJobGC(Job::Ptr job) {
         }
     }
     if (all_container_terminated) {
-        jobs_.erase(job->id);
-        job_queue_.erase(job);
+        groups_.erase(group->id);
+        group_queue_.erase(group);
         //after this, all containers wish to be deleted
     } else {
-        gc_pool_.DelayTask(FLAGS_job_gc_check_interval,
-                           boost::bind(&Scheduler::CheckJobGC, this, job));
+        gc_pool_.DelayTask(FLAGS_group_gc_check_interval,
+                           boost::bind(&Scheduler::CheckGroupGC, this, group));
     }
 }
 
-bool Scheduler::ChangeReplica(const JobId& job_id, int replica) {
+bool Scheduler::ChangeReplica(const GroupId& group_id, int replica) {
     MutexLock locker(&mu_);
-    std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
-    if (it == jobs_.end()) {
-        LOG(WARNING) << "unkonw job id: " << job_id;
+    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
+    if (it == groups_.end()) {
+        LOG(WARNING) << "unkonw group id: " << group_id;
         return false;
     }
     if (replica < 0) {
         LOG(WARNING) << "ignore invalid replica: " << replica;
         return false;
     }
-    Job::Ptr job = it->second;
-    if (job->terminated) {
-        LOG(WARNING) << "terminated job can not be scale up/down";
+    Group::Ptr group = it->second;
+    if (group->terminated) {
+        LOG(WARNING) << "terminated group can not be scale up/down";
         return false;
     }
-    int current_replica = job->Replica();
+    int current_replica = group->Replica();
     if (replica == current_replica) {
         LOG(INFO) << "replica not change, do nothing" ;
     } else if (replica < current_replica) {
-        ScaleDown(job, replica);
+        ScaleDown(group, replica);
     } else {
-        ScaleUp(job, replica);
+        ScaleUp(group, replica);
     }
     return true;
 }
 
-void Scheduler::ScaleDown(Job::Ptr job, int replica) {
+void Scheduler::ScaleDown(Group::Ptr group, int replica) {
     mu_.AssertHeld();
-    int delta = job->Replica() - replica;
+    int delta = group->Replica() - replica;
     //remove from pending first
-    ContainerMap pending_containers = job->states[kPending];
+    ContainerMap pending_containers = group->states[kPending];
     BOOST_FOREACH(ContainerMap::value_type& pair, pending_containers) {
         Container::Ptr container = pair.second;
-        ChangeStatus(job, container, kTerminated);
+        ChangeStatus(group, container, kTerminated);
         --delta;
         if (delta <= 0) {
             break;
@@ -483,7 +483,7 @@ void Scheduler::ScaleDown(Job::Ptr job, int replica) {
     ContainerStatus all_status[] = {kAllocating, kRunning};
     for (size_t i = 0; i < sizeof(all_status) && delta > 0; i++) {
         ContainerStatus st = all_status[i];
-        ContainerMap working_containers = job->states[st];
+        ContainerMap working_containers = group->states[st];
         BOOST_FOREACH(ContainerMap::value_type& pair, working_containers) {
             Container::Ptr container = pair.second;
             ChangeStatus(container, kDestroying);
@@ -495,26 +495,26 @@ void Scheduler::ScaleDown(Job::Ptr job, int replica) {
     }
 }
 
-void Scheduler::ScaleUp(Job::Ptr job, int replica) {
+void Scheduler::ScaleUp(Group::Ptr group, int replica) {
     mu_.AssertHeld();
     for (int i = 0; i < replica; i++) {
-        if (job->Replica() >= replica) {
+        if (group->Replica() >= replica) {
             break;
         }
-        ContainerId container_id = GenerateContainerId(job->id, i);
+        ContainerId container_id = GenerateContainerId(group->id, i);
         Container::Ptr container;
-        ContainerMap::iterator it = job->containers.find(container_id);
-        if (it == job->containers.end()) {
+        ContainerMap::iterator it = group->containers.find(container_id);
+        if (it == group->containers.end()) {
             container.reset(new Container());
-            container->job_id = job->id;
+            container->group_id = group->id;
             container->id = container_id;
-            container->require = job->require;
-            job->containers[container_id] = container;
+            container->require = group->require;
+            group->containers[container_id] = container;
         } else {
             container = it->second;
         }
         if (container->status != kRunning && container->status != kAllocating) {
-            ChangeStatus(job, container, kPending);            
+            ChangeStatus(group, container, kPending);            
         }
     }
 }
@@ -534,33 +534,33 @@ void Scheduler::ShowAssignment(const AgentEndpoint& endpoint,
     }
 }
 
-void Scheduler::ShowJob(const JobId job_id,
+void Scheduler::ShowGroup(const GroupId group_id,
                         std::vector<Container>& containers) {
     MutexLock locker(&mu_);
-    std::map<JobId, Job::Ptr>::iterator it;
-    it = jobs_.find(job_id);
-    if (it == jobs_.end()) {
-        LOG(WARNING) << "no such job id: " << job_id;
+    std::map<GroupId, Group::Ptr>::iterator it;
+    it = groups_.find(group_id);
+    if (it == groups_.end()) {
+        LOG(WARNING) << "no such group id: " << group_id;
         return;
     }
-    const Job::Ptr& job = it->second;
-    BOOST_FOREACH(ContainerMap::value_type& pair, job->containers) {
+    const Group::Ptr& group = it->second;
+    BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
         containers.push_back(*pair.second);
     }
 }
 
-void Scheduler::ChangeStatus(const JobId& job_id,
+void Scheduler::ChangeStatus(const GroupId& group_id,
                              const ContainerId& container_id,
                              ContainerStatus new_status) {
     MutexLock locker(&mu_);
-    std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
-    if (it == jobs_.end()) {
-        LOG(WARNING) << "no such job: " << job_id;
+    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
+    if (it == groups_.end()) {
+        LOG(WARNING) << "no such group: " << group_id;
         return;
     }
-    Job::Ptr job = it->second;
-    ContainerMap::iterator ct = job->containers.find(container_id);
-    if (ct == job->containers.end()) {
+    Group::Ptr group = it->second;
+    ContainerMap::iterator ct = group->containers.find(container_id);
+    if (ct == group->containers.end()) {
         LOG(WARNING) << "no such container: " << container_id;
         return;
     }
@@ -571,28 +571,28 @@ void Scheduler::ChangeStatus(const JobId& job_id,
 void Scheduler::ChangeStatus(Container::Ptr container,
                              ContainerStatus new_status) {
     mu_.AssertHeld();
-    JobId job_id = container->job_id;
-    std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
-    if (it == jobs_.end()) {
-        LOG(WARNING) << "no such job:" << job_id;
+    GroupId group_id = container->group_id;
+    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
+    if (it == groups_.end()) {
+        LOG(WARNING) << "no such group:" << group_id;
         return;
     }
-    Job::Ptr job = it->second;
-    return ChangeStatus(job, container, new_status);
+    Group::Ptr group = it->second;
+    return ChangeStatus(group, container, new_status);
 }
 
-void Scheduler::ChangeStatus(Job::Ptr job,
+void Scheduler::ChangeStatus(Group::Ptr group,
                              Container::Ptr container,
                              ContainerStatus new_status) {
     mu_.AssertHeld();
     ContainerId container_id = container->id;
-    if (job->containers.find(container_id) == job->containers.end()) {
+    if (group->containers.find(container_id) == group->containers.end()) {
         LOG(WARNING) << "no such container id: " << container_id;
         return;
     }
     ContainerStatus old_status = container->status;
-    job->states[old_status].erase(container_id);
-    job->states[new_status][container_id] = container;
+    group->states[old_status].erase(container_id);
+    group->states[new_status][container_id] = container;
     if ((new_status == kPending || new_status == kTerminated)
         && container->allocated_agent != "") {
         std::map<AgentEndpoint, Agent::Ptr>::iterator it;
@@ -646,28 +646,28 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
     ContainerMap containers = agent->containers_;
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        JobId job_id = container->job_id;
-        std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
-        if (it == jobs_.end()) {
-            LOG(WARNING) << "no such job, so evict it" << job_id;
+        GroupId group_id = container->group_id;
+        std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
+        if (it == groups_.end()) {
+            LOG(WARNING) << "no such group, so evict it" << group_id;
             agent->Evict(container);
             continue;
         }
-        Job::Ptr job = it->second;
-        if (container->require->version == job->require->version) {
+        Group::Ptr group = it->second;
+        if (container->require->version == group->require->version) {
             continue;
         }
         LOG(INFO) << "container version mismatch, " << container->id
                   << "container-require: " << container->require->version
-                  << "job-require: "  << job->require->version;
+                  << "group-require: "  << group->require->version;
         int32_t now = common::timer::now_time();
-        if (now - job->last_update_time < job->update_interval) {
+        if (now - group->last_update_time < group->update_interval) {
             continue;
         }
         //update container require, and re-schedule it.
         ChangeStatus(container, kPending);
-        container->require = job->require;
-        job->last_update_time = now;
+        container->require = group->require;
+        group->last_update_time = now;
     }
 }
 
@@ -691,14 +691,14 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
     CheckLabelAndPool(agent); //may evict some containers
     CheckVersion(agent); //check containers version
 
-    //for each job checking pending containers, try to put on...
-    std::set<Job::Ptr, JobQueueLess>::iterator jt;
-    for (jt = job_queue_.begin(); jt != job_queue_.end(); jt++) {
-        Job::Ptr job = *jt;
-        if (job->states[kPending].size() == 0) {
+    //for each group checking pending containers, try to put on...
+    std::set<Group::Ptr, GroupQueueLess>::iterator jt;
+    for (jt = group_queue_.begin(); jt != group_queue_.end(); jt++) {
+        Group::Ptr group = *jt;
+        if (group->states[kPending].size() == 0) {
             continue; // no pending pods
         }
-        Container::Ptr container = job->states[kPending].begin()->second;
+        Container::Ptr container = group->states[kPending].begin()->second;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
             container->last_res_err = res_err;
@@ -713,28 +713,28 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
 }
 
 bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
-                               const JobId& job_id) {
-    LOG(INFO) << "manul scheduling: " << job_id << " @ " << endpoint;
+                               const GroupId& group_id) {
+    LOG(INFO) << "manul scheduling: " << group_id << " @ " << endpoint;
     MutexLock lock(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator agent_it;
-    std::map<JobId, Job::Ptr>::iterator job_it;
+    std::map<GroupId, Group::Ptr>::iterator group_it;
     agent_it = agents_.find(endpoint);
     if (agent_it == agents_.end()) {
         LOG(WARNING) << "no such agent:" << endpoint;
         return false;
     }
     Agent::Ptr agent = agent_it->second;
-    job_it = jobs_.find(job_id);
-    if (job_it == jobs_.end()) {
-        LOG(WARNING) << "no such job:" << job_id;
+    group_it = groups_.find(group_id);
+    if (group_it == groups_.end()) {
+        LOG(WARNING) << "no such group:" << group_id;
         return false;
     }
-    Job::Ptr job = job_it->second;
-    if (job->states[kPending].size() == 0) {
-        LOG(WARNING) << "no pending containers to put, " << job_id;
+    Group::Ptr group = group_it->second;
+    if (group->states[kPending].size() == 0) {
+        LOG(WARNING) << "no pending containers to put, " << group_id;
         return false;
     }
-    Container::Ptr container_manual = job->states[kPending].begin()->second;
+    Container::Ptr container_manual = group->states[kPending].begin()->second;
     if (!CheckLabelAndPoolOnce(agent, container_manual)) {
         LOG(WARNING) << "manual scheduling fail, because of mismatching label or pools";
         return false;
@@ -769,22 +769,22 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
     return preempt_succ;
 }
 
-bool Scheduler::Update(const JobId& job_id,
+bool Scheduler::Update(const GroupId& group_id,
                        const Requirement& require,
                        int update_interval) {
     MutexLock locker(&mu_);
-    std::map<JobId, Job::Ptr>::iterator it = jobs_.find(job_id);
-    if (it == jobs_.end()) {
-        LOG(WARNING) << "no such job: " << job_id;
+    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
+    if (it == groups_.end()) {
+        LOG(WARNING) << "no such group: " << group_id;
         return false;
     }
-    Job::Ptr job = it->second;
-    job->update_interval = update_interval;
-    job->last_update_time = common::timer::now_time();
-    job->require.reset(new Requirement(require));
-    BOOST_FOREACH(ContainerMap::value_type& pair, job->states[kPending]) {
+    Group::Ptr group = it->second;
+    group->update_interval = update_interval;
+    group->last_update_time = common::timer::now_time();
+    group->require.reset(new Requirement(require));
+    BOOST_FOREACH(ContainerMap::value_type& pair, group->states[kPending]) {
         Container::Ptr pending_container = pair.second;
-        pending_container->require = job->require;
+        pending_container->require = group->require;
     }
     return true;
 }
