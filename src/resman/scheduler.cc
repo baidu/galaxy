@@ -779,6 +779,10 @@ bool Scheduler::Update(const GroupId& group_id,
         return false;
     }
     Group::Ptr group = it->second;
+    if (group->require->version == require.version) {
+        LOG(WARNING) << "version same, ignore updating";
+        return false;
+    }
     group->update_interval = update_interval;
     group->last_update_time = common::timer::now_time();
     group->require.reset(new Requirement(require));
