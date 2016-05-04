@@ -107,7 +107,7 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     ::close(context->stderr_fd);
 
     if (-1 == pid_) {
-        perror("clone failed:");
+        return -1;
     }
 
     return 0;

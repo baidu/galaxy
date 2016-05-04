@@ -25,7 +25,7 @@ _testmain.go
 *.sconsign*
 
 # binary
-agent
+#agent
 appmaster
 appworker
 resman
@@ -42,4 +42,4 @@ thirdsrc/
 tags
 
 *~
-
+*.swp
