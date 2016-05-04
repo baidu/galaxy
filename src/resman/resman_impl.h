@@ -67,25 +67,10 @@ public:
                    ::baidu::galaxy::proto::CreateTagResponse* response,
                    ::google::protobuf::Closure* done);
 
-    void RemoveTag(::google::protobuf::RpcController* controller,
-                   const ::baidu::galaxy::proto::RemoveTagRequest* request,
-                   ::baidu::galaxy::proto::RemoveTagResponse* response,
-                   ::google::protobuf::Closure* done);
-
     void ListTags(::google::protobuf::RpcController* controller,
                   const ::baidu::galaxy::proto::ListTagsRequest* request,
                   ::baidu::galaxy::proto::ListTagsResponse* response,
                   ::google::protobuf::Closure* done);
-
-    void AddAgentToTag(::google::protobuf::RpcController* controller,
-                       const ::baidu::galaxy::proto::AddAgentToTagRequest* request,
-                       ::baidu::galaxy::proto::AddAgentToTagResponse* response,
-                       ::google::protobuf::Closure* done);
-
-    void RemoveAgentFromTag(::google::protobuf::RpcController* controller,
-                            const ::baidu::galaxy::proto::RemoveAgentFromTagRequest* request,
-                            ::baidu::galaxy::proto::RemoveAgentFromTagResponse* response,
-                            ::google::protobuf::Closure* done);
 
     void ListAgentsByTag(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::ListAgentsByTagRequest* request,

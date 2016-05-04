@@ -9,7 +9,7 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 env = Environment(
         CPPPATH = ['.', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils', 'src', 'src/agent'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'gflags', 'glog', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
+        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
@@ -39,3 +39,6 @@ env.Program('test_process', test_process_src)
 
 test_volum_src=['src/example/test_volum.cc', 'src/agent/volum/volum.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/volum/mounter.cc', 'src/agent/util/path_tree.cc']
 env.Program('test_volum', test_volum_src);
+
+test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc')
+env.Program('test_container', test_container_src);

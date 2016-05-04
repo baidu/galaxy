@@ -53,17 +53,13 @@ message Grant {
 ///////////////////////////////////////////
 ///// resource
 ///////////////////////////////////////////
-message CpuResource {
+
+message Resource {
     optional int64 total = 1;
     optional int64 assigned = 2;
     optional int64 used = 3;
 }
 
-message MemoryResource {
-    optional int64 total = 1;
-    optional int64 assigned = 2;
-    optional int64 used = 3;
-}
 
 enum VolumMedium {
     kSsd = 1;
@@ -72,16 +68,15 @@ enum VolumMedium {
     kTmpfs = 4;
 }
 
+message VolumResource {
+    optional VolumMedium medium = 1;
+    optional Resource volum = 2;
+}
+
 message Volum {
     optional string path = 1;
     optional int64 size = 2;
     optional VolumMedium medium = 3;
-}
-
-message VolumResource {
-    repeated Volum total = 1;
-    repeated Volum assigned = 2;
-    repeated Volum used = 3;
 }
 
 message CpuRequired {
@@ -150,8 +145,8 @@ enum JobStatus {
 // Task or pod
 enum PodStatus {
     kPodPending = 1;
-    kPodDeploying = 2;
-    kPodReady = 3;     // empty container
+    kPodReady = 2;
+    kPodDeploying = 3;
     kPodStarting = 4;
     kPodServing = 5;
     kPodFailed = 6;
@@ -170,6 +165,7 @@ enum TaskStatus {
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
     optional string dest_path = 2;   // local path
+    optional string version = 3;
 }
 message ImagePackage {
     optional Package package = 1;
@@ -196,13 +192,9 @@ message Service {
     optional bool use_bns = 3;
 }
 
-message TaskId {
-    optional string id = 1;
-}
-
 message TaskDescription {
     // set by user or by 
-    optional TaskId id = 1;
+    optional string id = 1;
     // resource
     optional CpuRequired cpu = 2;
     optional MemoryRequired memory = 3;
@@ -238,9 +230,9 @@ message JobDescription {
     // Job
     optional string name = 1;
     optional JobType type = 2;
-
-    optional Deploy deploy = 3;
-    optional PodDescription job_desc = 4;
+    optional string version = 3;
+    optional Deploy deploy = 4;
+    optional PodDescription pod_desc = 5;
 }
 
 
@@ -256,43 +248,56 @@ message Cgroup {
    optional BlkioRequired blkio = 5;
 }
 
+
 // resource manager -> agent
 message ContainerDescription {
-   // optional ContainerGroup = 1; 
-   // optional ContainerId id = 2;
-    optional string run_user = 1;
-    optional VolumRequired workspace_volum = 3;
-    repeated VolumRequired data_volums = 4;      //
-    optional string cmd_line = 5;                // appmaster or appwork
-    repeated Cgroup cgroups = 6;
+    optional uint32 priority = 1;
+    optional string run_user = 2;
+    optional string version = 3;
+    optional VolumRequired workspace_volum = 4;
+    repeated VolumRequired data_volums = 5;      //
+    optional string cmd_line = 6;                 // appmaster or appwork
+    repeated Cgroup cgroups = 7;
+    
 }
 
 
 enum ContainerStatus {
-    kContainerPending = 1;    // in pending queue
-    kContainerIniting = 2;    // initing
-    kContainerReady = 3;      // ready, no process in container 
-    kContainerError = 4;      // an error occure
-    kContainerDestroying = 5; // 
-    kContainerFinished = 6;   // released by resource manager
+    kContainerPending = 1;     // in pending queue
+    kContainerAllocting = 2;   // 
+    kContainerReady = 3;       // ready, no process in container 
+    kContainerError = 4;       // an error occure
+    kContainerDestroying = 5;  // 
+    kContainerTerminated = 6;  // released by resource manager
+}
+
+enum ContainerGroupStatus {
+    kContainerGroupNormal = 1;
+    kContainerGroupTerminated = 2;
 }
 
 // agent -> manager
+
 message ContainerInfo {
     optional string id = 1; 
     optional int64 created_time = 2;
     optional ContainerStatus status = 3; 
 
     // resource?
-    
+    optional int64 cpu_used = 4;
+    optional int64 memory_used = 5;
+    repeated Volum volum_used = 6;
+
     // statistics, eg: error cnt or other exceptions
+    optional uint32 restart_counter = 7;
 }
 
 ///////////////////////////////////////
 ////status
 ///////////////////////////////////////
 enum Status {
-   kOk = 1; 
+   kOk = 1;
+   kStop = 2;   //am stop pod 
 }
 
 message ErrorCode {
@@ -300,19 +305,28 @@ message ErrorCode {
     optional string reason = 2;
 }
 
+enum AgentStatus {
+    kAgentAlive = 1;
+    kAgentDead = 2;
+    kAgentOffline = 3;
+}
+
 // agent -> resource manager
 message AgentInfo {
     // agent version
+    optional string version = 1;
+    optional int64 start_time = 2;
 
     // host healthy
+    optional bool unhealthy = 3;
 
     // container
-    repeated ContainerInfo container_info = 1;
+    repeated ContainerInfo container_info = 4;
 
     // resource
-    optional CpuResource cpu_resoruce = 2;
-    optional MemoryResource memory_resource = 3;
-    repeated VolumResource volum_resources = 4;
+    optional Resource cpu_resoruce = 5;
+    optional Resource memory_resource = 6;
+    repeated VolumResource volum_resources = 7;
 
     // exception statistics, eg: failed num of pod ..
 }

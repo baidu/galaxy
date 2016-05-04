@@ -13,6 +13,9 @@
 #include "agent/util/path_tree.h"
 #include "agent/cgroup/cgroup.h"
 #include "process.h"
+
+#include <glog/logging.h>
+
 #include <iosfwd>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
 #include <boost/bind.hpp>
@@ -40,6 +43,7 @@ std::string Container::Id() const {
 int Container::Construct() {
     assert(!id_.empty());
     // cgroup
+    LOG(INFO) << "to create cgroup for container" << id_.c_str();
     for (int i = 0; i < desc_.cgroups_size(); i++) {
         boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> cg(new baidu::galaxy::cgroup::Cgroup(
                         baidu::galaxy::cgroup::SubsystemFactory::GetInstance()));
@@ -56,27 +60,37 @@ int Container::Construct() {
     }
 
     if (cgroup_.size() != (unsigned int)desc_.cgroups_size()) {
+        LOG(WARNING) << "create cgroup for container " << id_.c_str() 
+                     << " failed, expect size is " << desc_.cgroups_size() 
+                     << " real size is " << cgroup_.size();
+
         for (size_t i = 0; i < cgroup_.size(); i++) {
             cgroup_[i]->Destroy();
         }
-
         return -1;
     }
 
+    LOG(INFO) << "succed in creating cgroup for container " << id_.c_str();
+
     // clone
+    LOG(INFO) << "to clone appwork process for container " << id_.c_str();
     std::string container_root_path = baidu::galaxy::path::ContainerRootPath(id_);
     std::stringstream ss;
     int now = (int)time(NULL);
     ss << "stderr." << now;
     process_->RedirectStderr(ss.str());
     
-    ss.str("stdout.");
-    ss << now;
+    ss.str("");
+    ss << "stdout." << now;
     process_->RedirectStdout(ss.str());
     
     if(0 != process_->Clone(boost::bind(&Container::RunRoutine, this, _1), NULL, 0)) {
+        LOG(INFO) << "failed to clone appwork process for container " << id_.c_str();
         return -1;
     }
+
+    LOG(WARNING) << "sucessed in cloning appwork process (pid is " << process_->Pid()
+                 << " for container " << id_.c_str();
     return 0;
 }
 

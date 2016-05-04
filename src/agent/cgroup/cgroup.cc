@@ -7,7 +7,7 @@
 #include "subsystem.h"
 #include "freezer_subsystem.h"
 
-#include <iostream>
+#include <glog/logging.h>
 
 namespace baidu {
 namespace galaxy {
@@ -49,6 +49,10 @@ int Cgroup::Construct() {
         }
 
         if (0 != ss->Construct()) {
+            LOG(WARNING) << "construct subsystem " << ss->Name().c_str()
+                << " for cgroup " << ss->Path().c_str()
+                << " failed";
+
             ok = false;
             break;
         }

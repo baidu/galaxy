@@ -35,7 +35,7 @@ message QueryRequest {
 
 message QueryResponse {
     optional ErrorCode code = 1; 
-    repeated AgentInfo agent_infos = 2;
+    optional AgentInfo agent_info = 2;
 }
 
 service Agent {
