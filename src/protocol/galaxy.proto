@@ -264,7 +264,7 @@ message ContainerDescription {
 
 enum ContainerStatus {
     kContainerPending = 1;     // in pending queue
-    kContainerAllocting = 2;   // 
+    kContainerAllocating = 2;   // 
     kContainerReady = 3;       // ready, no process in container 
     kContainerError = 4;       // an error occure
     kContainerDestroying = 5;  // 
