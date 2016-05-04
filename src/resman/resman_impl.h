@@ -17,23 +17,22 @@ class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
     ResManImpl();
     ~ResManImpl();
-   
     void EnterSafeMode(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
-                         ::baidu::galaxy::proto::EnterSafeModeResponse* response,
-                         ::google::protobuf::Closure* done);
+                       const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
+                       ::baidu::galaxy::proto::EnterSafeModeResponse* response,
+                       ::google::protobuf::Closure* done);
     void LeaveSafeMode(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::LeaveSafeModeRequest* request,
-                         ::baidu::galaxy::proto::LeaveSafeModeResponse* response,
-                         ::google::protobuf::Closure* done);
+                       const ::baidu::galaxy::proto::LeaveSafeModeRequest* request,
+                       ::baidu::galaxy::proto::LeaveSafeModeResponse* response,
+                       ::google::protobuf::Closure* done);
     void Status(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::StatusRequest* request,
-                         ::baidu::galaxy::proto::StatusResponse* response,
-                         ::google::protobuf::Closure* done);
+                const ::baidu::galaxy::proto::StatusRequest* request,
+                ::baidu::galaxy::proto::StatusResponse* response,
+                ::google::protobuf::Closure* done);
     void KeepAlive(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::KeepAliveRequest* request,
-                         ::baidu::galaxy::proto::KeepAliveResponse* response,
-                         ::google::protobuf::Closure* done);
+                   const ::baidu::galaxy::proto::KeepAliveRequest* request,
+                   ::baidu::galaxy::proto::KeepAliveResponse* response,
+                   ::google::protobuf::Closure* done);
     void CreateContainerGroup(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::CreateContainerGroupRequest* request,
                          ::baidu::galaxy::proto::CreateContainerGroupResponse* response,
@@ -53,22 +52,6 @@ public:
     void ShowContainerGroup(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::ShowContainerGroupRequest* request,
                          ::baidu::galaxy::proto::ShowContainerGroupResponse* response,
-                         ::google::protobuf::Closure* done);
-    void CreateContainer(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::CreateContainerRequest* request,
-                         ::baidu::galaxy::proto::CreateContainerResponse* response,
-                         ::google::protobuf::Closure* done);
-    void RemoveContainer(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::RemoveContainerRequest* request,
-                         ::baidu::galaxy::proto::RemoveContainerResponse* response,
-                         ::google::protobuf::Closure* done);
-    void ShowContainer(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::ShowContainerRequest* request,
-                         ::baidu::galaxy::proto::ShowContainerResponse* response,
-                         ::google::protobuf::Closure* done);
-    void ClearContainer(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::ClearContainerRequest* request,
-                         ::baidu::galaxy::proto::ClearContainerResponse* response,
                          ::google::protobuf::Closure* done);
     void AddAgent(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::AddAgentRequest* request,
@@ -90,7 +73,7 @@ public:
                          const ::baidu::galaxy::proto::ListAgentsRequest* request,
                          ::baidu::galaxy::proto::ListAgentsResponse* response,
                          ::google::protobuf::Closure* done);
-    void AddAgentsToTag(::google::protobuf::RpcController* controller,
+    void CreateTag(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::CreateTagRequest* request,
                          ::baidu::galaxy::proto::CreateTagResponse* response,
                          ::google::protobuf::Closure* done);
@@ -146,6 +129,7 @@ public:
                          const ::baidu::galaxy::proto::AssignQuotaRequest* request,
                          ::baidu::galaxy::proto::AssignQuotaResponse* response,
                          ::google::protobuf::Closure* done);
+   
 private:
     sched::Scheduler* scheduler_;
 };

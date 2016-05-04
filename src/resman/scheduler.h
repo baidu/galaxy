@@ -17,19 +17,18 @@ namespace baidu {
 namespace galaxy {
 namespace sched {
 
+using proto::ContainerStatus;
+using proto::kContainerPending;
+using proto::kContainerAllocating;
+using proto::kContainerReady;
+using proto::kContainerError;
+using proto::kContainerDestroying;
+using proto::kContainerTerminated;
+
 typedef std::string AgentEndpoint;
 typedef std::string GroupId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
-
-enum ContainerStatus {
-    kNotInit = 0,
-    kPending = 1,
-    kAllocating = 2,
-    kRunning = 3,
-    kDestroying = 4,
-    kTerminated = 5
-};
 
 enum ResourceError {
     kOk = 0,
@@ -61,13 +60,12 @@ struct Container {
     ContainerId id;
     GroupId group_id;
     int priority;
-    ContainerStatus status;
+    proto::ContainerStatus status;
     Requirement::Ptr require;
     std::vector<DevicePath> allocated_volums;
     std::set<std::string> allocated_port;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
-    Container() : status(kNotInit) {};
     typedef boost::shared_ptr<Container> Ptr;
 };
 
@@ -90,9 +88,9 @@ struct Group {
     int last_update_time;
     Group() : terminated(false) {};
     int Replica() const {
-        return states[kPending].size() 
-               + states[kAllocating].size() 
-               + states[kRunning].size();
+        return states[kContainerPending].size() 
+               + states[kContainerAllocating].size() 
+               + states[kContainerReady].size();
     }
     typedef boost::shared_ptr<Group> Ptr;
 };
@@ -184,17 +182,17 @@ public:
                    std::vector<Container>& containers);
     void ChangeStatus(const GroupId& group_id,
                       const ContainerId& container_id, 
-                      ContainerStatus new_status);
+                      proto::ContainerStatus new_status);
     void AddLabel(const AgentEndpoint& endpoint, const std::string& label);
     void RemoveLabel(const AgentEndpoint& endpoint, const std::string& label);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
 
 private:
     void ChangeStatus(Container::Ptr container,
-                      ContainerStatus new_status);
+                      proto::ContainerStatus new_status);
     void ChangeStatus(Group::Ptr group,
                       Container::Ptr container,
-                      ContainerStatus new_status);
+                      proto::ContainerStatus new_status);
     void ScaleDown(Group::Ptr group, int replica);
     void ScaleUp(Group::Ptr group, int replica);
 

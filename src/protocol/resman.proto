@@ -4,184 +4,327 @@ package baidu.galaxy.proto;
 option cc_generic_services = true;
 
 message EnterSafeModeRequest {
-
+    optional string user = 1;
 }
+
 message EnterSafeModeResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message LeaveSafeModeRequest {
-
+    optional string user = 1;
 }
+
 message LeaveSafeModeResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message StatusRequest {
-
+    optional User user = 1;
 }
-message StatusResponse {
 
+message PoolStatus {
+    optional string name = 1;
+    optional uint32 total_agents = 2;
+    optional uint32 alive_agents = 3;
+}
+
+message StatusResponse {
+    optional ErrorCode error_code = 1;
+    optional uint32 alive_agents = 2;
+    optional uint32 dead_agents = 3;
+    optional uint32 total_agents = 4;
+
+    optional Resource cpu = 5;
+    optional Resource memory = 6;
+    optional VolumResource volum = 7;
+
+    optional uint32 total_groups = 8;
+    optional uint32 total_containers = 9;
+
+    repeated PoolStatus pools = 10;
 }
 
 message KeepAliveRequest {
-
+    optional string endpoint = 1; // ip:port
 }
+
 message KeepAliveResponse {
-
-}
-
-message CreateContainerRequest {
-}
-
-message CreateContainerResponse {
-}
-
-message RemoveContainerRequest {
-}
-
-message RemoveContainerResponse {
-}
-
-//rpc ResizeContainer(ResizeContainerRequest) returns (ResizeContainerResponse);
-
-message ListContainerRequest {
-}
-
-message ListContainersResponse {
-}
-
-message ShowContainerRequest {
-
-}
-
-message ShowContainerResponse {
-}
-
-message CleaseContainerRequest {
-}
-
-message ClearContainerResponse {
+    optional ErrorCode error_code = 1;
 }
 
 message AddAgentRequest {
-
+    optional User user = 1;
+    optional string endpoint = 2;
+    optional string pool = 3;
 }
+
 message AddAgentResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message RemoveAgentRequest {
-
+    optional User user = 1;
+    optional string endpoint = 2;
 }
+
 message RemoveAgentResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message OnlineAgentRequest {
-
+    optional User user = 1;
+    optional string endpoint = 2;
 }
+
 message OnlineAgentResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message OfflineAgentRequest {
-
+    optional User user = 1;
+    optional string endpoint = 2;
 }
+
 message OfflineAgentResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message ListAgentsRequest {
-
+    optional User user = 1;
+    optional string pool = 2;
 }
+
+message AgentStatistics {
+    optional string endpoint = 1;
+    optional AgentStatus status = 2;
+    optional string pool = 3;
+    repeated string tags = 4;
+    optional Resource cpu = 5;
+    optional Resource memory = 6;
+    optional VolumResource volum = 7;
+    optional uint32 total_containers = 8;
+    
+}
+
 message ListAgentsResponse {
-
+    optional ErrorCode error_code = 1;
+    repeated AgentStatistics agents = 2;
 }
+
 message CreateTagRequest {
-
+    optional User user = 1;
+    optional string tag = 2;
+    repeated string endpoint = 3;
 }
-message CreateTagResponse {
 
+message CreateTagResponse {
+    optional ErrorCode error_code = 1;
 }
 
 message ListTagsRequest {
-
+    optional User user = 1;
 }
+
 message ListTagsResponse {
+    optional ErrorCode error_code = 1;
+    repeated string tags = 2;
 
 }
 
 message ListAgentsByTagRequest {
-
+    optional User user = 1;
+    optional string tag = 2;
 }
+
 message ListAgentsByTagResponse {
-
+    optional ErrorCode error_code = 1;
+    repeated string endpoint = 2;
 }
+
+message GetTagsByAgentRequest {
+    optional User user = 1;
+    optional string endpoint = 2; 
+}
+
+message GetTagsByAgentResponse {
+    optional ErrorCode error_code = 1;
+    repeated string tags = 2;
+}
+
+message AddAgentToPoolRequest {
+    optional User user = 1;
+    optional string endpoint = 2;
+    optional string pool = 3;
+}
+
+message AddAgentToPoolResponse {
+    optional ErrorCode error_code = 1;
+}
+
+message RemoveAgentFromPoolRequest {
+    optional User user = 1;
+    optional string endpoint = 2;
+}
+
+message RemoveAgentFromPoolResponse {
+    optional ErrorCode error_code = 1;
+}
+
+message ListAgentsByPoolRequest {
+    optional User user = 1;
+    optional string pool = 2;
+}
+
+message ListAgentsByPoolResponse {
+    optional ErrorCode error_code = 1;
+    repeated string endpoint = 2;
+}
+
+message GetPoolByAgentRequest {
+    optional User user = 1;
+    optional string endpoint = 2;
+}
+
+message GetPoolByAgentResponse {
+    optional ErrorCode error_code = 1;
+    optional string pool = 2;
+}
+
+
+
 message AddUserRequest {
-
+    optional User admin = 1;
+    optional User user = 2; 
 }
+
 message AddUserResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message RemoveUserRequest {
-
+    optional User admin = 1;
+    optional User user = 2; 
 }
+
 message RemoveUserResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message ListUsersRequest {
-
+    optional User user = 1; 
 }
+
 message ListUsersResponse {
-
+    optional ErrorCode error_code = 1;
+    repeated string user = 2;
 }
+
 message ShowUserRequest {
-
+    optional User admin = 1;
+    optional User user = 2; 
 }
+
 message ShowUserResponse {
-
+    optional ErrorCode error_code = 1;
+    repeated string pools = 2;
+    repeated Authority authority = 3;
+    optional Quota quota = 4;
+    optional Quota assigned = 5;
 }
+
 message GrantUserRequest {
-
+    optional User admin = 1;
+    optional Grant grant = 2;
 }
+
 message GrantUserResponse {
-
+    optional ErrorCode error_code = 1;
 }
+
 message AssignQuotaRequest {
-
+    optional User admin = 1;
+    optional User user = 2; 
+    optional Quota quota = 3;
 }
-message AssignQuotaResponse {
 
+message AssignQuotaResponse {
+    optional ErrorCode error_code = 1;
 }
 
 message CreateContainerGroupRequest {
+    optional User user = 1; 
+    optional uint32 replica = 2;
+    optional uint32 max_per_host = 3;
+    optional string name = 4;
+    optional ContainerDescription desc = 5;
 }
 
 message CreateContainerGroupResponse {
+    optional ErrorCode error_code = 1;
+    optional string id = 2;
 }
 
 message RemoveContainerGroupRequest {
+    optional User user = 1; 
+    optional string id = 2;
+
 }
 
 message RemoveContainerGroupResponse {
+    optional ErrorCode error_code = 1;
 }
 
 message UpdateContainerGroupRequest {
+    optional User user = 1; 
+    optional uint32 replica = 2;
+    optional string id = 3;
+    optional uint32 interval = 4;
+    optional ContainerDescription desc = 5;
 } 
 
-message UpdateContainerGroupResponse {}
+message UpdateContainerGroupResponse {
+    optional ErrorCode error_code = 1;
+}
 
 
-message ListContainerGroupsRequest {}
-message ListContainerGroupsResponse {}
-message ShowContainerGroupRequest {} 
-message ShowContainerGroupResponse {}
-message ClearContainerRequest {}
-message GetTagsByAgentRequest {}
-message GetTagsByAgentResponse {}
-message AddAgentToPoolRequest {}
-message AddAgentToPoolResponse {}
-message RemoveAgentFromPoolRequest {}
-message RemoveAgentFromPoolResponse {}
-message ListAgentsByPoolRequest {}
-message ListAgentsByPoolResponse {}
-message GetPoolByAgentRequest {}
-message GetPoolByAgentResponse {}
+message ListContainerGroupsRequest {
+    optional User user = 1; 
+}
+
+
+message ContainerGroupStatistics {
+    optional string id = 1;
+    optional uint32 replica = 2;
+    optional uint32 ready = 3;
+    optional uint32 pending = 4;
+    optional uint32 destroying = 5;
+    optional Resource cpu = 6;
+    optional Resource memroy = 7;
+    optional VolumResource volum = 8;
+
+    optional int64 submit_time = 9;
+    optional int64 update_time = 10;
+}
+
+message ListContainerGroupsResponse {
+    optional ErrorCode error_code = 1;
+    repeated ContainerGroupStatistics containers = 2;
+}
+
+message ShowContainerGroupRequest {
+    optional User user = 1;
+    optional string id = 2;
+}
+
+message ShowContainerGroupResponse {
+    optional ErrorCode error_code = 1;
+    optional ContainerStatus status = 2;
+    optional string endpoint = 3;
+    optional Resource cpu = 4;
+    optional Resource memroy = 5;
+    optional VolumResource volum = 6;
+}
 
 service ResMan {
 
@@ -208,12 +351,6 @@ service ResMan {
     // [depress]
     //rpc StopContainerGroup(StopContainerGroupRequest) returns (StopContainerGroupResponse);
 
-    // op 
-    rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
-    rpc RemoveContainer(RemoveContainerRequest) returns (RemoveContainerResponse);
-    rpc ShowContainer(ShowContainerRequest) returns (ShowContainerResponse);
-    rpc ClearContainer(ClearContainerRequest) returns (ClearContainerResponse);
-  
     //agent man
     rpc AddAgent(AddAgentRequest) returns (AddAgentResponse);
     rpc RemoveAgent(RemoveAgentRequest) returns (RemoveAgentResponse);
@@ -222,7 +359,7 @@ service ResMan {
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
 
     //tag man
-    rpc AddAgentsToTag(CreateTagRequest) returns (CreateTagResponse);
+    rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
     rpc ListTags(ListTagsRequest) returns (ListTagsResponse);
    
     // tag <--> agent

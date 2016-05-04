@@ -87,34 +87,6 @@ void ResManImpl::ShowContainerGroup(::google::protobuf::RpcController* controlle
 
 }
 
-void ResManImpl::CreateContainer(::google::protobuf::RpcController* controller,
-                                 const ::baidu::galaxy::proto::CreateContainerRequest* request,
-                                 ::baidu::galaxy::proto::CreateContainerResponse* response,
-                                 ::google::protobuf::Closure* done) {
-
-}
-
-void ResManImpl::RemoveContainer(::google::protobuf::RpcController* controller,
-                                 const ::baidu::galaxy::proto::RemoveContainerRequest* request,
-                                 ::baidu::galaxy::proto::RemoveContainerResponse* response,
-                                 ::google::protobuf::Closure* done) {
-
-}
-
-void ResManImpl::ShowContainer(::google::protobuf::RpcController* controller,
-                               const ::baidu::galaxy::proto::ShowContainerRequest* request,
-                               ::baidu::galaxy::proto::ShowContainerResponse* response,
-                               ::google::protobuf::Closure* done) {
-
-}
-
-void ResManImpl::ClearContainer(::google::protobuf::RpcController* controller,
-                                const ::baidu::galaxy::proto::ClearContainerRequest* request,
-                                ::baidu::galaxy::proto::ClearContainerResponse* response,
-                                ::google::protobuf::Closure* done) {
-
-}
-
 void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::AddAgentRequest* request,
                           ::baidu::galaxy::proto::AddAgentResponse* response,
@@ -150,10 +122,10 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
 
 }
 
-void ResManImpl::AddAgentsToTag(::google::protobuf::RpcController* controller,
-                                const ::baidu::galaxy::proto::CreateTagRequest* request,
-                                ::baidu::galaxy::proto::CreateTagResponse* response,
-                                ::google::protobuf::Closure* done) {
+void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::proto::CreateTagRequest* request,
+                           ::baidu::galaxy::proto::CreateTagResponse* response,
+                           ::google::protobuf::Closure* done) {
 
 }
 
@@ -207,9 +179,9 @@ void ResManImpl::GetPoolByAgent(::google::protobuf::RpcController* controller,
 }
 
 void ResManImpl::AddUser(::google::protobuf::RpcController* controller,
-                         const ::baidu::galaxy::proto::AddUserRequest* request,
-                         ::baidu::galaxy::proto::AddUserResponse* response,
-                         ::google::protobuf::Closure* done) {
+                        const ::baidu::galaxy::proto::AddUserRequest* request,
+                        ::baidu::galaxy::proto::AddUserResponse* response,
+                        ::google::protobuf::Closure* done) {
 
 }
 
@@ -248,8 +220,5 @@ void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
 
 }
 
-
 }
 }
-
-

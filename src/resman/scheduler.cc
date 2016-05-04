@@ -131,7 +131,7 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
 }
 
 void Agent::Put(Container::Ptr container) {
-    assert(container->status == kPending);
+    assert(container->status == kContainerPending);
     assert(container->allocated_agent.empty());
     //cpu 
     cpu_assigned_ += container->require->cpu.milli_core();
@@ -305,7 +305,7 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
     ContainerMap containers = agent->containers_; //copy
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        ChangeStatus(container, kPending);        
+        ChangeStatus(container, kContainerPending);        
     }
     agents_.erase(endpoint);
 }
@@ -395,7 +395,7 @@ GroupId Scheduler::Submit(const std::string& group_name,
         container->require = req;
         container->priority = priority;
         group->containers[container->id] = container;
-        ChangeStatus(group, container, kPending);
+        ChangeStatus(group, container, kContainerPending);
     }
     groups_[group_id] = group;
     group_queue_.insert(group);
@@ -417,10 +417,10 @@ bool Scheduler::Kill(const GroupId& group_id) {
     }
     BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
         Container::Ptr container = pair.second;
-        if (container->status == kPending) {
-            ChangeStatus(group, container, kTerminated);
-        } else if (container->status != kTerminated){
-            ChangeStatus(group, container, kDestroying);
+        if (container->status == kContainerPending) {
+            ChangeStatus(group, container, kContainerTerminated);
+        } else if (container->status != kContainerTerminated){
+            ChangeStatus(group, container, kContainerDestroying);
         }
     }
     group->terminated = true;
@@ -434,7 +434,7 @@ void Scheduler::CheckGroupGC(Group::Ptr group) {
     bool all_container_terminated = true;
     BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
         Container::Ptr container = pair.second;
-        if (container->status != kTerminated) {
+        if (container->status != kContainerTerminated) {
             all_container_terminated  = false;
             break;
         }
@@ -480,22 +480,22 @@ void Scheduler::ScaleDown(Group::Ptr group, int replica) {
     mu_.AssertHeld();
     int delta = group->Replica() - replica;
     //remove from pending first
-    ContainerMap pending_containers = group->states[kPending];
+    ContainerMap pending_containers = group->states[kContainerPending];
     BOOST_FOREACH(ContainerMap::value_type& pair, pending_containers) {
         Container::Ptr container = pair.second;
-        ChangeStatus(group, container, kTerminated);
+        ChangeStatus(group, container, kContainerTerminated);
         --delta;
         if (delta <= 0) {
             break;
         }
     }
-    ContainerStatus all_status[] = {kAllocating, kRunning};
+    ContainerStatus all_status[] = {kContainerAllocating, kContainerReady};
     for (size_t i = 0; i < sizeof(all_status) && delta > 0; i++) {
         ContainerStatus st = all_status[i];
         ContainerMap working_containers = group->states[st];
         BOOST_FOREACH(ContainerMap::value_type& pair, working_containers) {
             Container::Ptr container = pair.second;
-            ChangeStatus(container, kDestroying);
+            ChangeStatus(container, kContainerDestroying);
             --delta;
             if (delta <= 0) {
                 break;
@@ -522,8 +522,8 @@ void Scheduler::ScaleUp(Group::Ptr group, int replica) {
         } else {
             container = it->second;
         }
-        if (container->status != kRunning && container->status != kAllocating) {
-            ChangeStatus(group, container, kPending);            
+        if (container->status != kContainerReady && container->status != kContainerAllocating) {
+            ChangeStatus(group, container, kContainerPending);            
         }
     }
 }
@@ -602,7 +602,7 @@ void Scheduler::ChangeStatus(Group::Ptr group,
     ContainerStatus old_status = container->status;
     group->states[old_status].erase(container_id);
     group->states[new_status][container_id] = container;
-    if ((new_status == kPending || new_status == kTerminated)
+    if ((new_status == kContainerPending || new_status == kContainerTerminated)
         && container->allocated_agent != "") {
         std::map<AgentEndpoint, Agent::Ptr>::iterator it;
         it = agents_.find(container->allocated_agent);
@@ -625,7 +625,7 @@ void Scheduler::CheckLabelAndPool(Agent::Ptr agent) {
         Container::Ptr container = pair.second;
         bool check_passed = CheckLabelAndPoolOnce(agent, container);
         if (!check_passed) { //evit the container to pendings
-            ChangeStatus(container, kPending);
+            ChangeStatus(container, kContainerPending);
         }
     }
 }
@@ -673,7 +673,7 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
             continue;
         }
         //update container require, and re-schedule it.
-        ChangeStatus(container, kPending);
+        ChangeStatus(container, kContainerPending);
         container->require = group->require;
         group->last_update_time = now;
     }
@@ -703,17 +703,17 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
     std::set<Group::Ptr, GroupQueueLess>::iterator jt;
     for (jt = group_queue_.begin(); jt != group_queue_.end(); jt++) {
         Group::Ptr group = *jt;
-        if (group->states[kPending].size() == 0) {
+        if (group->states[kContainerPending].size() == 0) {
             continue; // no pending pods
         }
-        Container::Ptr container = group->states[kPending].begin()->second;
+        Container::Ptr container = group->states[kContainerPending].begin()->second;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
             container->last_res_err = res_err;
             continue; //no feasiable
         }
         agent->Put(container);
-        ChangeStatus(container, kAllocating);
+        ChangeStatus(container, kContainerAllocating);
     }
     //scheduling round for the next agent
     sched_pool_.DelayTask(FLAGS_sched_interval, 
@@ -738,11 +738,11 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
         return false;
     }
     Group::Ptr group = group_it->second;
-    if (group->states[kPending].size() == 0) {
+    if (group->states[kContainerPending].size() == 0) {
         LOG(WARNING) << "no pending containers to put, " << group_id;
         return false;
     }
-    Container::Ptr container_manual = group->states[kPending].begin()->second;
+    Container::Ptr container_manual = group->states[kContainerPending].begin()->second;
     if (!CheckLabelAndPoolOnce(agent, container_manual)) {
         LOG(WARNING) << "manual scheduling fail, because of mismatching label or pools";
         return false;
@@ -761,12 +761,12 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
          it != agent_containers.rend(); it++) {
         Container::Ptr poor_container = *it;
         if (!agent->TryPut(container_manual.get(), res_err)) {
-            ChangeStatus(poor_container, kPending); //evict one
+            ChangeStatus(poor_container, kContainerPending); //evict one
         }
         //try again after evicting
         if (agent->TryPut(container_manual.get(), res_err)) {
             agent->Put(container_manual);
-            ChangeStatus(container_manual, kAllocating);
+            ChangeStatus(container_manual, kContainerAllocating);
             preempt_succ = true;
             break;
         } else {
@@ -794,7 +794,7 @@ bool Scheduler::Update(const GroupId& group_id,
     group->update_interval = update_interval;
     group->last_update_time = common::timer::now_time();
     group->require.reset(new Requirement(require));
-    BOOST_FOREACH(ContainerMap::value_type& pair, group->states[kPending]) {
+    BOOST_FOREACH(ContainerMap::value_type& pair, group->states[kContainerPending]) {
         Container::Ptr pending_container = pair.second;
         pending_container->require = group->require;
     }
