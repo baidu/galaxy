@@ -21,7 +21,7 @@ ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()) {
 }
 
 ResManImpl::~ResManImpl() {
-  delete scheduler_;
+    delete scheduler_;
 }
 
 void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,

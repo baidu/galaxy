@@ -108,8 +108,8 @@ message PortRequired {
 }
 
 enum VolumType {
-    KEmptyDir = 1;  
-    KHostDir = 2;
+    kEmptyDir = 1;  
+    kHostDir = 2;
 }
 
 message VolumRequired {
@@ -127,9 +127,10 @@ message VolumRequired {
 ///// Job
 /////////////////////////////////////////
 enum JobType {
-    kJobBatch = 1;
-    kJobService = 2;
-    kJobMonitor = 3;
+    kJobMonitor = 0;
+    kJobService = 100;
+    kJobBatch = 200;
+    kJobBestEffort = 300;
 }
 
 // update incrementally may cause new problems: version confusion 
