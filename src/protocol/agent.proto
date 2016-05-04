@@ -4,7 +4,8 @@ package baidu.galaxy.proto;
 option cc_generic_services = true;
 
 message CreateContainerRequest {
-    optional ContainerDescription container = 1;
+    optional string id = 1;
+    optional ContainerDescription container = 2;
 }
 
 message CreateContainerResponse {
@@ -34,7 +35,7 @@ message QueryRequest {
 
 message QueryResponse {
     optional ErrorCode code = 1; 
-    repeated AgentInfo agent_infos = 2;
+    optional AgentInfo agent_info = 2;
 }
 
 service Agent {
