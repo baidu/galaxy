@@ -53,7 +53,6 @@ struct Requirement {
     proto::MemoryRequired memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
-    std::string version;
     Requirement() : max_per_host(0) {};
     typedef boost::shared_ptr<Requirement> Ptr;
 };
@@ -206,6 +205,7 @@ private:
     void CheckVersion(Agent::Ptr agent);
     bool CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
     void CheckGroupGC(Group::Ptr group);
+    bool RequireHasDiff(const Requirement* v1, const Requirement* v2);
 
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<GroupId, Group::Ptr> groups_;

@@ -20,8 +20,8 @@ namespace baidu {
 namespace galaxy {
 namespace sched {
 
-const size_t kMaxPorts = 60000;
-const size_t kMinPort = 1000;
+const uint32_t kMaxPort = 60000;
+const uint32_t kMinPort = 1000;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -35,7 +35,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
     memory_total_ = memory;
     memory_assigned_ = 0;
     volum_total_ = volums;
-    port_total_ = kMaxPorts;
+    port_total_ = kMaxPort - kMinPort + 1;
     labels_ = labels;
     pool_name_ = pool_name;
 }
@@ -168,19 +168,28 @@ void Agent::Put(Container::Ptr container) {
         if (port.port() != kDynamicPort) {
             s_port = port.port();
         } else {
-            for (size_t i = kMinPort; i < kMinPort + kMaxPorts; i++) {
+            uint32_t max_tries = (kMaxPort - kMinPort + 1);
+            double rand_scale = (double)rand() / (RAND_MAX + 1.0);
+            uint32_t start_port = kMinPort + (uint32_t)(max_tries * rand_scale);
+            for (uint32_t i = 0; i < max_tries; i++) {
                 std::stringstream ss;
-                ss << i;
+                ss << start_port;
                 const std::string& random_port = ss.str();
                 if (port_assigned_.find(random_port) == port_assigned_.end()) {
                     s_port = random_port;
                     break;
+                }
+                start_port ++;
+                if (start_port > kMaxPort) {
+                    start_port = kMinPort;
                 }
             }
         }
         if (!s_port.empty()) {
             port_assigned_.insert(s_port);
             container->allocated_port.insert(s_port);
+        } else {
+            LOG(WARNING) << "no free port.";
         }
     }
     //put on this agent succesfully
@@ -604,6 +613,7 @@ void Scheduler::ChangeStatus(Group::Ptr group,
         container->allocated_volums.clear();
         container->allocated_port.clear();
         container->allocated_agent = "";
+        container->require = group->require;
     }
     container->status = new_status;
 }
@@ -654,12 +664,10 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
             continue;
         }
         Group::Ptr group = it->second;
-        if (container->require->version == group->require->version) {
+        if (!RequireHasDiff(container->require.get(), group->require.get())) {
+            container->require = group->require;
             continue;
         }
-        LOG(INFO) << "container version mismatch, " << container->id
-                  << "container-require: " << container->require->version
-                  << "group-require: "  << group->require->version;
         int32_t now = common::timer::now_time();
         if (now - group->last_update_time < group->update_interval) {
             continue;
@@ -779,7 +787,7 @@ bool Scheduler::Update(const GroupId& group_id,
         return false;
     }
     Group::Ptr group = it->second;
-    if (group->require->version == require.version) {
+    if (!RequireHasDiff(&require, group->require.get())) {
         LOG(WARNING) << "version same, ignore updating";
         return false;
     }
@@ -791,6 +799,63 @@ bool Scheduler::Update(const GroupId& group_id,
         pending_container->require = group->require;
     }
     return true;
+}
+
+bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
+    if (v1 == v2) {//same object 
+        return false;
+    }
+    if (v1->label != v2->label) {
+        return true;
+    }
+    if (v1->pool_names.size() != v2->pool_names.size()) {
+        return true;
+    }
+    std::set<std::string>::iterator it = v1->pool_names.begin();
+    std::set<std::string>::iterator jt = v2->pool_names.begin();
+    for (; it != v1->pool_names.end() && jt != v2->pool_names.end() ; it++, jt++) {
+        if (*it != *jt) {
+            return true;
+        }
+    }
+    if (v1->max_per_host != v2->max_per_host) {
+        return true;
+    }
+    if (v1->cpu.milli_core() != v2->cpu.milli_core() ||
+        v1->cpu.excess() != v2->cpu.excess()) {
+        return true;
+    }
+    if (v1->memory.size() != v2->memory.size() ||
+        v1->memory.excess() != v2->memory.excess()) {
+        return true;
+    }
+    if (v1->volums.size() != v2->volums.size()) {
+        return true;
+    }
+    if (v1->ports.size() != v2->ports.size()) {
+        return true;
+    }
+    for (size_t i = 0; i < v1->volums.size(); i++) {
+        const proto::VolumRequired& vr_1 = v1->volums[i];
+        const proto::VolumRequired& vr_2 = v2->volums[i];
+        if (vr_1.size() != vr_2.size() || vr_1.type() != vr_2.type()
+            || vr_1.medium() != vr_2.medium() 
+            || vr_1.source_path() != vr_2.source_path()
+            || vr_1.dest_path() != vr_2.dest_path()
+            || vr_1.readonly() != vr_2.readonly()
+            || vr_1.exclusive() != vr_2.exclusive()) {
+            return true;
+        }
+    }
+    for (size_t i = 0; i < v1->ports.size(); i++) {
+        const proto::PortRequired pt_1 = v1->ports[i];
+        const proto::PortRequired pt_2 = v2->ports[i];
+        if (pt_1.port() != pt_2.port() || 
+            pt_1.port_name() != pt_2.port_name()) {
+            return true;
+        }   
+    }
+    return false;
 }
 
 } //namespace sched
