@@ -210,6 +210,7 @@ enum ContainerGroupStatus {
 };
 struct ContainerInfo {
     std::string id;
+    std::string group_id;
     int64_t created_time;
     ContainerStatus status;
     PodDescription pod_desc;

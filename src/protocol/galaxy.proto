@@ -278,18 +278,19 @@ enum ContainerGroupStatus {
 // agent -> manager
 
 message ContainerInfo {
-    optional string id = 1; 
-    optional int64 created_time = 2;
-    optional ContainerStatus status = 3; 
-    optional PodDescription pod_desc = 4; //when RM need full report
+    optional string id = 1;
+    optional string group_id = 2;
+    optional int64 created_time = 3;
+    optional ContainerStatus status = 4; 
+    optional PodDescription pod_desc = 5; //when RM need full report
     // resource?
-    optional int64 cpu_used = 5;
-    optional int64 memory_used = 6;
-    repeated Volum volum_used = 7;
-    repeated string port_used = 8;
+    optional int64 cpu_used = 6;
+    optional int64 memory_used = 7;
+    repeated Volum volum_used = 8;
+    repeated string port_used = 9;
 
     // statistics, eg: error cnt or other exceptions
-    optional uint32 restart_counter = 9;
+    optional uint32 restart_counter = 10;
 }
 
 ///////////////////////////////////////
