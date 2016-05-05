@@ -47,7 +47,7 @@ int test_dir_volum(const char* source, const char* target) {
     vr->set_size(1024);
     vr->set_readonly(false);
     vr->set_medium(baidu::galaxy::proto::kDisk);
-    vr->set_type(baidu::galaxy::proto::KEmptyDir);
+    vr->set_type(baidu::galaxy::proto::kEmptyDir);
 
 
     baidu::galaxy::volum::Volum volum;
@@ -80,7 +80,7 @@ int test_symlink_volum(const char* source, const char* target) {
     vr->set_dest_path(target);
     vr->set_source_path(source);
     vr->set_medium(baidu::galaxy::proto::kDisk);
-    vr->set_type(baidu::galaxy::proto::KEmptyDir);
+    vr->set_type(baidu::galaxy::proto::kEmptyDir);
     vr->set_use_symlink(true);
 
     baidu::galaxy::volum::Volum volum;
@@ -112,7 +112,7 @@ int test_tmpfs_volum(const char* target, int size, bool readonly) {
      boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr(new baidu::galaxy::proto::VolumRequired());
     vr->set_dest_path(target);
     vr->set_medium(baidu::galaxy::proto::kTmpfs);
-    vr->set_type(baidu::galaxy::proto::KEmptyDir);
+    vr->set_type(baidu::galaxy::proto::kEmptyDir);
     vr->set_size(size);
     vr->set_readonly(readonly);
     vr->set_use_symlink(true);
