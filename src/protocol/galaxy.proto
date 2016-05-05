@@ -71,12 +71,14 @@ enum VolumMedium {
 message VolumResource {
     optional VolumMedium medium = 1;
     optional Resource volum = 2;
+    optional string device_path = 3;
 }
 
 message Volum {
     optional string path = 1;
-    optional int64 size = 2;
-    optional VolumMedium medium = 3;
+    optional int64 used_size = 2;
+    optional int64 assigned_size = 3;
+    optional VolumMedium medium = 4;
 }
 
 message CpuRequired {
