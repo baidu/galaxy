@@ -211,10 +211,6 @@ message TaskDescription {
     repeated Service services = 7;
 }
 
-message JobId {
-    optional string id = 1;
-}
-
 // user -> resource manager
 message PodDescription {
     // workspace volum

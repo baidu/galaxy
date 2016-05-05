@@ -26,6 +26,7 @@ env.Program('appworker', Glob('src/appworker/*.cc') + Glob('src/utils/*.cc')
 env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src/agent/*/*.cc')
             + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
+env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
 
 #example
 test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc']

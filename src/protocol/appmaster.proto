@@ -45,7 +45,7 @@ message ShowJobRequest {
 
 message JobOverview {
     optional JobDescription desc = 1;
-    optional JobId jobid = 2;
+    optional string jobid = 2;
     optional JobStatus status = 3;
     optional int32 running_num = 4;
     optional int32 pending_num = 5;
@@ -110,7 +110,7 @@ message FetchTaskResponse {
 
 
 message StopJobRequest {
-    optional JobId jobid = 1;
+    optional string jobid = 1;
 } 
 message StopJobResponse {
     optional ErrorCode error_code = 1;
