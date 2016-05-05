@@ -108,8 +108,8 @@ message PortRequired {
 }
 
 enum VolumType {
-    KEmptyDir = 1;  
-    KHostDir = 2;
+    kEmptyDir = 1;  
+    kHostDir = 2;
 }
 
 message VolumRequired {
@@ -127,9 +127,10 @@ message VolumRequired {
 ///// Job
 /////////////////////////////////////////
 enum JobType {
-    kJobBatch = 1;
-    kJobService = 2;
-    kJobMonitor = 3;
+    kJobMonitor = 0;
+    kJobService = 100;
+    kJobBatch = 200;
+    kJobBestEffort = 300;
 }
 
 // update incrementally may cause new problems: version confusion 
@@ -282,14 +283,15 @@ message ContainerInfo {
     optional string id = 1; 
     optional int64 created_time = 2;
     optional ContainerStatus status = 3; 
-
+    optional PodDescription pod_desc = 4; //when RM need full report
     // resource?
-    optional int64 cpu_used = 4;
-    optional int64 memory_used = 5;
-    repeated Volum volum_used = 6;
+    optional int64 cpu_used = 5;
+    optional int64 memory_used = 6;
+    repeated Volum volum_used = 7;
+    repeated string port_used = 8;
 
     // statistics, eg: error cnt or other exceptions
-    optional uint32 restart_counter = 7;
+    optional uint32 restart_counter = 9;
 }
 
 ///////////////////////////////////////

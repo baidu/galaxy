@@ -30,7 +30,7 @@ message ListContainersResponse {
 }
 
 message QueryRequest {
-    
+    optional bool full_report = 1;
 }
 
 message QueryResponse {

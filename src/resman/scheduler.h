@@ -83,7 +83,7 @@ struct Group {
     int priority; //lower one is important
     bool terminated;
     std::map<ContainerId, Container::Ptr> containers;
-    std::map<ContainerId, Container::Ptr> states[6];
+    std::map<ContainerId, Container::Ptr> states[7];
     int update_interval;
     int last_update_time;
     Group() : terminated(false) {};
