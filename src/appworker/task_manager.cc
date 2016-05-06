@@ -10,39 +10,35 @@
 
 DECLARE_int32(task_manager_background_thread_pool_size);
 DECLARE_int32(task_manager_killer_thread_pool_size);
-DECLARE_int32(task_manager_zombie_check_interval);
+DECLARE_int32(task_manager_loop_wait_interval);
 
 namespace baidu {
 namespace galaxy {
 
 TaskManager::TaskManager() :
-    mutex_task_manager_(),
-    background_thread_pool_(FLAGS_task_manager_background_thread_pool_size),
-    killer_thread_pool_(FLAGS_task_manager_killer_thread_pool_size) {
-    LOG(INFO) << "task manager start.";
-
-    background_thread_pool_.DelayTask(
-            FLAGS_task_manager_zombie_check_interval,
-            boost::bind(&TaskManager::ZombieCheck, this));
+        mutex_task_manager_(),
+        background_pool_(FLAGS_task_manager_background_thread_pool_size),
+        killer_pool_(FLAGS_task_manager_killer_thread_pool_size) {
+    background_pool_.DelayTask(
+        FLAGS_task_manager_loop_wait_interval,
+        boost::bind(&TaskManager::LoopWait, this)
+    );
 }
 
 TaskManager::~TaskManager() {
-    background_thread_pool_.Stop(false);
-    killer_thread_pool_.Stop(false);
+    background_pool_.Stop(false);
+    killer_pool_.Stop(false);
 }
 
-int TaskManager::ZombieCheck() {
+void TaskManager::LoopWait() {
     MutexLock lock(&mutex_task_manager_);
-    LOG(INFO) << "zombie check called in task manager";
-    return 0;
+    LOG(INFO) << "loop check";
+    background_pool_.DelayTask(
+        FLAGS_task_manager_loop_wait_interval,
+        boost::bind(&TaskManager::LoopWait, this)
+    );
 }
 
-//int TaskManager::CreateTask(proto::TaskInfo) {
-//    return 0;
-//}
 
 }   // ending namespace galaxy
 }   // ending namespace baidu
-
-/* vim: set ts=4 sw=4 sts=4 tw=100 */
-

@@ -40,6 +40,9 @@ thirdsrc/
 
 # ctags
 tags
+GRTAGS
+GTAGS
+GPATH
 
 *~
 *.swp

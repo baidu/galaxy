@@ -5,25 +5,28 @@
 #ifndef BAIDU_GALAXY_TASK_COLLECTOR_H
 #define BAIDU_GALAXY_TASK_COLLECTOR_H
 
+#include <thread_pool.h>
+
 #include "protocol/galaxy.pb.h"
 
 namespace baidu {
 namespace galaxy {
 
+typedef proto::TaskInfo TaskInfo;
+
 class TaskCollector {
 public:
-    TaskCollector();
-    TaskCollector(proto::TaskInfo* task_info);
+    TaskCollector(TaskInfo* task_info);
     ~TaskCollector();
+    void Collect();
 
 private:
-    proto::TaskInfo* task_info_;
+    ThreadPool background_pool_;
+    TaskInfo* task_info_;
 };
 
 
 }   // ending namespace galaxy
 }   // ending namespace baidu
 
-#endif  //_SRC_AGENT_RESOURCE_COLLECTOR_H
-
-/* vim: set ts=4 sw=4 sts=4 tw=100 */
+#endif  // BAIDU_GALAXY_TASK_COLLECTOR_H

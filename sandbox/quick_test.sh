@@ -13,6 +13,7 @@ hn=`hostname`
 rm -rf galaxy.flag
 touch galaxy.flag
 echo "--nexus_servers=$hn:8868,$hn:8869,$hn:8870,$hn:8871,$hn:8872" >> galaxy.flag
+echo "--appworker_endpoint=127.0.0.1:8221" >> galaxy.flag
 
 # stop galaxy
 ./stop_all.sh

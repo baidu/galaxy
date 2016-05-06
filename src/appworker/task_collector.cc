@@ -3,16 +3,25 @@
 // found in the LICENSE file.
 
 #include "task_collector.h"
+
+#include <boost/bind.hpp>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+
 #include "protocol/galaxy.pb.h"
+
+DECLARE_int32(task_collector_collect_interval);
 
 namespace baidu {
 namespace galaxy {
 
-TaskCollector::TaskCollector() {
-}
-
-TaskCollector::TaskCollector(proto::TaskInfo* task_info) :
-    task_info_(task_info) {
+TaskCollector::TaskCollector(TaskInfo* task_info) :
+        background_pool_(1),
+        task_info_(task_info) {
+    LOG(INFO) << "task collector start collect, task: " << task_info->taskid();
+    background_pool_.DelayTask(FLAGS_task_collector_collect_interval,
+        boost::bind(&TaskCollector::Collect, this)
+    );
 }
 
 TaskCollector::~TaskCollector() {
@@ -21,9 +30,9 @@ TaskCollector::~TaskCollector() {
     }
 }
 
+void TaskCollector::Collect() {
+    LOG(INFO) << "task collector collect";
+}
 
 }   // ending namespace galaxy
 }   // ending namespace baidu
-
-/* vim: set ts=4 sw=4 sts=4 tw=100 */
-

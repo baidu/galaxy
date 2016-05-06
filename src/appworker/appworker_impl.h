@@ -13,37 +13,46 @@
 
 #include "protocol/appmaster.pb.h"
 #include "rpc/rpc_client.h"
-#include "task_manager.h"
+#include "pod_manager.h"
 #include "ins_sdk.h"
 
 namespace baidu {
 namespace galaxy {
 
+typedef ::galaxy::ins::sdk::InsSDK InsSDK;
+typedef ::galaxy::ins::sdk::SDKError SDKError;
 typedef google::protobuf::RepeatedPtrField<proto::TaskInfo> TaskInfoList;
+typedef proto::AppMaster_Stub AppMaster_Stub;
+typedef proto::FetchTaskRequest FetchTaskRequest;
+typedef proto::FetchTaskResponse FetchTaskResponse;
 
 class AppWorkerImpl {
-
 public:
     AppWorkerImpl();
     virtual ~AppWorkerImpl();
-    int Init();
+    void Start();
 
 private:
     void FetchTask();
-    void FetchTaskCallback(const proto::FetchTaskRequest* request,
-                           proto::FetchTaskResponse* response,
+    void FetchTaskCallback(const FetchTaskRequest* request,
+                           FetchTaskResponse* response,
                            bool failed, int error);
-    int RefreshAppMasterStub();
+    void UpdateAppMasterStub();
 
 private:
     Mutex mutex_appworker_;
     std::string job_id_;
     std::string pod_id_;
+    std::string container_id_;
+    std::string endpoint_;
+    std::string appmaster_endpoint_;
+    int64_t start_time_;
+
     RpcClient rpc_client_;
-    ::galaxy::ins::sdk::InsSDK* nexus_;
-    proto::AppMaster_Stub* appmaster_stub_;
-    TaskManager task_manager_;
-    ThreadPool backgroud_thread_pool_;
+    InsSDK* nexus_;
+    AppMaster_Stub* appmaster_stub_;
+    PodManager pod_manager_;
+    ThreadPool backgroud_pool_;
 };
 
 } // ending namespace galaxy
@@ -51,5 +60,3 @@ private:
 
 
 #endif  // BAIDU_GALAXY_APPWORKER_IMPL_H
-
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
