@@ -145,7 +145,7 @@ struct ImagePackage {
 };
 struct DataPackage {
     std::vector<Package> packages;
-    std::string reload_cmd;
+    std::vector<std::string> reload_cmd;
 };
 struct Deploy {
     uint32_t replica;

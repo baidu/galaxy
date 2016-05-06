@@ -178,7 +178,7 @@ message ImagePackage {
 
 message DataPackage {
     repeated Package packages = 1;
-    optional string reload_cmd = 2;
+    repeated string reload_cmd = 2;
 }
 
 message Deploy {
