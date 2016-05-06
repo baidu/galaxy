@@ -140,13 +140,12 @@ struct Package {
 };
 struct ImagePackage {
     Package package;
-    std::string pre_cmd;
-    std::string post_cmd;
+    std::string start_cmd;
+    std::string stop_cmd;
 };
 struct DataPackage {
     std::vector<Package> packages;
-    std::string pre_cmd;
-    std::string post_cmd;
+    std::string reload_cmd;
 };
 struct Deploy {
     uint32_t replica;
