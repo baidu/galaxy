@@ -9,19 +9,27 @@
 #include <time.h>
 #include <assert.h>
 #include <sys/utsname.h>
+#include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <boost/bind.hpp>
-#include <snappy.h>
+
+DECLARE_string(nexus_root);
+DECLARE_string(nexus_addr);
+
+const std::string sAgentPrefix = "/agent";
+const std::string sUserPrefix = "/user";
 
 namespace baidu {
 namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()) {
     scheduler_->Start();
+    nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
 
 ResManImpl::~ResManImpl() {
     delete scheduler_;
+    delete nexus_;
 }
 
 void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
@@ -91,7 +99,22 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::AddAgentRequest* request,
                           ::baidu::galaxy::proto::AddAgentResponse* response,
                           ::google::protobuf::Closure* done) {
-
+    proto::AgentData agent_data;
+    agent_data.set_endpoint(request->endpoint());
+    agent_data.set_pool(request->pool());
+    bool ret = SaveAgentData(agent_data.endpoint(), agent_data);
+    if (!ret) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kAddAgentFail);
+        err->set_reason("fail to save agent in nexus");
+    } else {
+        {
+            MutexLock lock(&mu_);
+            agents_[agent_data.endpoint()] = agent_data;
+        }
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
@@ -218,6 +241,32 @@ void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
                              ::baidu::galaxy::proto::AssignQuotaResponse* response,
                              ::google::protobuf::Closure* done) {
 
+}
+
+bool ResManImpl::SaveAgentData(const std::string& endpoint, 
+                               const proto::AgentData& agent) {
+    std::stringstream ss;
+    agent.SerializeToOstream(&ss);
+    ::galaxy::ins::sdk::SDKError err;
+    std::string key = FLAGS_nexus_root + sAgentPrefix + "/" + endpoint;
+    bool ret = nexus_->Put(key, ss.str(), &err);
+    if (!ret) {
+        LOG(WARNING) << "nexus error: " << err;
+    }
+    return ret;
+}
+
+bool ResManImpl::SaveUserData(const std::string& user_name, 
+                              const proto::UserData& user) {
+    std::stringstream ss;
+    user.SerializeToOstream(&ss);
+    ::galaxy::ins::sdk::SDKError err;
+    std::string key = FLAGS_nexus_root + sAgentPrefix + "/" + user_name;
+    bool ret = nexus_->Put(key , ss.str(), &err);
+    if (!ret) {
+        LOG(WARNING) << "nexus error: " << err;
+    }
+    return ret;
 }
 
 }

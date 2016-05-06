@@ -9,7 +9,7 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 env = Environment(
         CPPPATH = ['.', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils', 'src', 'src/agent'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
+        LIBS = ['ins_sdk','sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')

@@ -6,12 +6,17 @@
 #include <string>
 #include <map>
 #include <set>
+#include <vector>
 
 #include "src/protocol/resman.pb.h"
 #include "scheduler.h"
+#include "ins_sdk.h"
+#include "mutex.h"
 
 namespace baidu {
 namespace galaxy {
+
+using ::galaxy::ins::sdk::InsSDK;
 
 class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
@@ -131,7 +136,16 @@ public:
                          ::google::protobuf::Closure* done);
    
 private:
+    bool SaveAgentData(const std::string& endpoint, 
+                       const proto::AgentData& agent);
+    bool SaveUserData(const std::string& user_name, 
+                      const proto::UserData& user);
+
     sched::Scheduler* scheduler_;
+    InsSDK* nexus_;
+    std::map<std::string, proto::AgentData> agents_;
+    std::map<std::string, proto::UserData> users_;
+    Mutex mu_;
 };
 
 }

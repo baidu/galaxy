@@ -298,6 +298,7 @@ message ContainerInfo {
 enum Status {
    kOk = 1;
    kStop = 2;   //am stop pod 
+   kAddAgentFail = 3;
 }
 
 message ErrorCode {
