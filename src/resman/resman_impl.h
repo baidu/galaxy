@@ -136,15 +136,20 @@ public:
                          ::google::protobuf::Closure* done);
    
 private:
-    bool SaveAgentData(const std::string& endpoint, 
-                       const proto::AgentData& agent);
-    bool SaveUserData(const std::string& user_name, 
-                      const proto::UserData& user);
+
+    template <class ProtoClass> 
+    bool SaveObject(const std::string& key,
+                    const ProtoClass& obj);
+    
+    template <class ProtoClass>
+    bool LoadObjects(const std::string& prefix,
+                     std::map<std::string, ProtoClass>& objs);
 
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentData> agents_;
     std::map<std::string, proto::UserData> users_;
+    std::map<std::string, proto::ContainerGroupData> container_groups_;
     Mutex mu_;
 };
 

@@ -347,3 +347,15 @@ message UserData {
     repeated Authority authorites = 4;
     optional Quota quota = 5;
 }
+
+message ContainerGroupData {
+    optional string id = 1;
+    optional string name = 2;
+    optional string user_name = 3; 
+    optional uint32 replica = 4;
+    optional uint32 max_per_host = 5;
+    optional uint32 update_interval = 6;
+    optional ContainerDescription desc = 7;
+    optional ContainerGroupStatus status = 8;
+}
+

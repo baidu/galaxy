@@ -12,12 +12,14 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <boost/bind.hpp>
+#include <boost/scoped_ptr.hpp>
 
 DECLARE_string(nexus_root);
 DECLARE_string(nexus_addr);
 
 const std::string sAgentPrefix = "/agent";
 const std::string sUserPrefix = "/user";
+const std::string sContainerGroupPrefix = "/container_group";
 
 namespace baidu {
 namespace galaxy {
@@ -102,7 +104,7 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
     proto::AgentData agent_data;
     agent_data.set_endpoint(request->endpoint());
     agent_data.set_pool(request->pool());
-    bool ret = SaveAgentData(agent_data.endpoint(), agent_data);
+    bool ret = SaveObject(sAgentPrefix + "/" + agent_data.endpoint(), agent_data);
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();
         err->set_status(proto::kAddAgentFail);
@@ -243,31 +245,44 @@ void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
 
 }
 
-bool ResManImpl::SaveAgentData(const std::string& endpoint, 
-                               const proto::AgentData& agent) {
+template <class ProtoClass> 
+bool ResManImpl::SaveObject(const std::string& key,
+                            const ProtoClass& obj) {
     std::stringstream ss;
-    agent.SerializeToOstream(&ss);
+    if (!obj.SerializeToOstream(&ss)) {
+        LOG(WARNING) << "save object to protobuf fail";
+        return false;
+    }
     ::galaxy::ins::sdk::SDKError err;
-    std::string key = FLAGS_nexus_root + sAgentPrefix + "/" + endpoint;
-    bool ret = nexus_->Put(key, ss.str(), &err);
+    std::string full_key = FLAGS_nexus_root + key;
+    bool ret = nexus_->Put(full_key, ss.str(), &err);
     if (!ret) {
         LOG(WARNING) << "nexus error: " << err;
     }
     return ret;
 }
 
-bool ResManImpl::SaveUserData(const std::string& user_name, 
-                              const proto::UserData& user) {
-    std::stringstream ss;
-    user.SerializeToOstream(&ss);
-    ::galaxy::ins::sdk::SDKError err;
-    std::string key = FLAGS_nexus_root + sAgentPrefix + "/" + user_name;
-    bool ret = nexus_->Put(key , ss.str(), &err);
-    if (!ret) {
-        LOG(WARNING) << "nexus error: " << err;
+template <class ProtoClass>
+bool ResManImpl::LoadObjects(const std::string& prefix,
+                 std::map<std::string, ProtoClass>& objs) {
+    std::string full_prefix = FLAGS_nexus_root + prefix;
+    ::galaxy::ins::sdk::ScanResult* result  
+        = nexus_->Scan(full_prefix + "/", full_prefix + "/\xff");
+    boost::scoped_ptr< ::galaxy::ins::sdk::ScanResult > result_guard(result);
+    size_t prefix_len = full_prefix.size() + 1;
+    while (!result->Done()) {
+        const std::string& full_key = result->Key();
+        const std::string& value = result->Value();
+        std::string key = full_key.substr(prefix_len);
+        ProtoClass& obj = objs[key];
+        bool parse_ok = obj.ParseFromIstream(std::stringstream(value));
+        if (!parse_ok) {
+            LOG(WARNING) << "parse protobuf object fail ";
+            return false;
+        }
     }
-    return ret;
+    return result->Error() == ::galaxy::ins::sdk::kOK;
 }
 
-}
-}
+} //namespace galaxy
+} //namespace baidu
