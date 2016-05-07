@@ -248,14 +248,14 @@ void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
 template <class ProtoClass> 
 bool ResManImpl::SaveObject(const std::string& key,
                             const ProtoClass& obj) {
-    std::stringstream ss;
-    if (!obj.SerializeToOstream(&ss)) {
+    std::string raw_buf;
+    if (!obj.SerializeToString(&raw_buf)) {
         LOG(WARNING) << "save object to protobuf fail";
         return false;
     }
     ::galaxy::ins::sdk::SDKError err;
     std::string full_key = FLAGS_nexus_root + key;
-    bool ret = nexus_->Put(full_key, ss.str(), &err);
+    bool ret = nexus_->Put(full_key, raw_buf, &err);
     if (!ret) {
         LOG(WARNING) << "nexus error: " << err;
     }
@@ -264,7 +264,7 @@ bool ResManImpl::SaveObject(const std::string& key,
 
 template <class ProtoClass>
 bool ResManImpl::LoadObjects(const std::string& prefix,
-                 std::map<std::string, ProtoClass>& objs) {
+                             std::map<std::string, ProtoClass>& objs) {
     std::string full_prefix = FLAGS_nexus_root + prefix;
     ::galaxy::ins::sdk::ScanResult* result  
         = nexus_->Scan(full_prefix + "/", full_prefix + "/\xff");
@@ -272,10 +272,10 @@ bool ResManImpl::LoadObjects(const std::string& prefix,
     size_t prefix_len = full_prefix.size() + 1;
     while (!result->Done()) {
         const std::string& full_key = result->Key();
-        const std::string& value = result->Value();
+        const std::string& raw_obj_buf = result->Value();
         std::string key = full_key.substr(prefix_len);
         ProtoClass& obj = objs[key];
-        bool parse_ok = obj.ParseFromIstream(std::stringstream(value));
+        bool parse_ok = obj.ParseFromString(raw_obj_buf);
         if (!parse_ok) {
             LOG(WARNING) << "parse protobuf object fail ";
             return false;
