@@ -9,14 +9,23 @@
 #include <vector>
 
 #include "src/protocol/resman.pb.h"
+#include "src/protocol/agent.pb.h"
 #include "scheduler.h"
 #include "ins_sdk.h"
+#include "src/rpc/rpc_client.h"
 #include "mutex.h"
+#include "thread_pool.h"
 
 namespace baidu {
 namespace galaxy {
 
 using ::galaxy::ins::sdk::InsSDK;
+
+struct AgentStat {
+    proto::AgentStatus status;
+    proto::AgentInfo info;
+    int32_t last_heartbeat_time; //timestamp in seconds
+};
 
 class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
@@ -137,6 +146,12 @@ public:
    
 private:
 
+    void QueryAgent(const std::string& agent_endpoint, bool is_first_query);
+    void QueryAgentCallback(std::string agent_endpoint,
+                            const proto::QueryRequest* request,
+                            proto::QueryResponse* response,
+                            bool fail , int err);
+
     template <class ProtoClass> 
     bool SaveObject(const std::string& key,
                     const ProtoClass& obj);
@@ -148,9 +163,13 @@ private:
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentData> agents_;
+    std::map<std::string, AgentStat> agent_stats_;
     std::map<std::string, proto::UserData> users_;
     std::map<std::string, proto::ContainerGroupData> container_groups_;
     Mutex mu_;
+    bool safe_mode_;
+    ThreadPool query_pool_;
+    RpcClient rpc_client_;
 };
 
 }
