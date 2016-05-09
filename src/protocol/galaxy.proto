@@ -264,7 +264,9 @@ message ContainerDescription {
     repeated VolumRequired data_volums = 5;      //
     optional string cmd_line = 6;                 // appmaster or appwork
     repeated Cgroup cgroups = 7;
-    
+    optional int32 max_per_host = 8;
+    optional string tag = 9;
+    repeated string pool_names = 10;
 }
 
 
@@ -362,8 +364,7 @@ message ContainerGroupMeta {
     optional string name = 2;
     optional string user_name = 3; 
     optional uint32 replica = 4;
-    optional uint32 max_per_host = 5;
-    optional uint32 update_interval = 6;
-    optional ContainerDescription desc = 7;
-    optional ContainerGroupStatus status = 8;
+    optional uint32 update_interval = 5;
+    optional ContainerDescription desc = 6;
+    optional ContainerGroupStatus status = 7;
 }
