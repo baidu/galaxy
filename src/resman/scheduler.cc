@@ -28,7 +28,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
             int64_t cpu,
             int64_t memory,
             const std::map<DevicePath, VolumInfo>& volums,
-            const std::set<std::string>& labels,
+            const std::set<std::string>& tags,
             const std::string& pool_name) {
     cpu_total_ = cpu;
     cpu_assigned_ = 0;
@@ -36,7 +36,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
     memory_assigned_ = 0;
     volum_total_ = volums;
     port_total_ = kMaxPort - kMinPort + 1;
-    labels_ = labels;
+    tags_ = tags;
     pool_name_ = pool_name;
 }
 
@@ -57,10 +57,40 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     }
 }
 
+void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
+    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
+    int64_t memory_assigned = agent_info.memory_resource().assigned();
+    std::map<DevicePath, VolumInfo> volum_assigned;
+    std::set<std::string> port_assigned;
+    std::map<ContainerId, Container::Ptr> containers;
+
+    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
+        const proto::VolumResource& vr = agent_info.volum_resources(i);
+        VolumInfo& volum_info = volum_assigned[vr.device_path()];
+        volum_info.size = vr.volum().assigned();
+        volum_info.medium = vr.medium();
+        volum_info.exclusive = vr.exclusive();
+    }
+    for (int i = 0; agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_info = agent_info.container_info(i);
+        Container::Ptr container(new Container());
+        Requirement::Ptr require(new Requirement());
+        container->id = container_info.id();
+        container->group_id = container_info.group_id();
+        container->priority = container_info.container_desc().priority();
+        container->status = container_info.status();
+        container->require = require;
+        containers[container->id] = container;
+    }
+
+    SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
+                  port_assigned, containers);
+}
+
 bool Agent::TryPut(const Container* container, ResourceError& err) {
-    if (!container->require->label.empty() &&
-        labels_.find(container->require->label) == labels_.end()) {
-        err = kLabelMismatch;
+    if (!container->require->tag.empty() &&
+        tags_.find(container->require->tag) == tags_.end()) {
+        err = kTagMismatch;
         return false;
     }
     if (container->require->pool_names.find(pool_name_) 
@@ -310,7 +340,7 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
     agents_.erase(endpoint);
 }
 
-void Scheduler::AddLabel(const AgentEndpoint& endpoint, const std::string& label) {
+void Scheduler::AddTag(const AgentEndpoint& endpoint, const std::string& tag) {
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
@@ -318,10 +348,10 @@ void Scheduler::AddLabel(const AgentEndpoint& endpoint, const std::string& label
         return;
     }
     Agent::Ptr agent = it->second;
-    agent->labels_.insert(label);
+    agent->tags_.insert(tag);
 }
 
-void Scheduler::RemoveLabel(const AgentEndpoint& endpoint, const std::string& label) {
+void Scheduler::RemoveTag(const AgentEndpoint& endpoint, const std::string& tag) {
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
@@ -329,7 +359,7 @@ void Scheduler::RemoveLabel(const AgentEndpoint& endpoint, const std::string& la
         return;
     }
     Agent::Ptr agent = it->second;
-    agent->labels_.erase(label);
+    agent->tags_.erase(tag);
 }
 
 void Scheduler::SetPool(const AgentEndpoint& endpoint, const std::string& pool_name) {
@@ -618,12 +648,12 @@ void Scheduler::ChangeStatus(Group::Ptr group,
     container->status = new_status;
 }
 
-void Scheduler::CheckLabelAndPool(Agent::Ptr agent) {
+void Scheduler::CheckTagAndPool(Agent::Ptr agent) {
     mu_.AssertHeld();
     ContainerMap containers = agent->containers_;
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        bool check_passed = CheckLabelAndPoolOnce(agent, container);
+        bool check_passed = CheckTagAndPoolOnce(agent, container);
         if (!check_passed) { //evit the container to pendings
             ChangeStatus(container, kContainerPending);
         }
@@ -635,12 +665,12 @@ void Scheduler::Start() {
     ScheduleNextAgent(fake_endpoint);
 }
 
-bool Scheduler::CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container) {
+bool Scheduler::CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container) {
     mu_.AssertHeld();
     bool check_passed = true;
-    if (!container->require->label.empty()
-        && agent->labels_.find(container->require->label) == agent->labels_.end()) {
-        container->last_res_err = kLabelMismatch;
+    if (!container->require->tag.empty()
+        && agent->tags_.find(container->require->tag) == agent->tags_.end()) {
+        container->last_res_err = kTagMismatch;
         check_passed = false;
     }
     if (container->require->pool_names.find(agent->pool_name_) 
@@ -696,7 +726,7 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         return;
     }
 
-    CheckLabelAndPool(agent); //may evict some containers
+    CheckTagAndPool(agent); //may evict some containers
     CheckVersion(agent); //check containers version
 
     //for each group checking pending containers, try to put on...
@@ -743,8 +773,8 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
         return false;
     }
     Container::Ptr container_manual = group->states[kContainerPending].begin()->second;
-    if (!CheckLabelAndPoolOnce(agent, container_manual)) {
-        LOG(WARNING) << "manual scheduling fail, because of mismatching label or pools";
+    if (!CheckTagAndPoolOnce(agent, container_manual)) {
+        LOG(WARNING) << "manual scheduling fail, because of mismatching tag or pools";
         return false;
     }
 
@@ -805,7 +835,7 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     if (v1 == v2) {//same object 
         return false;
     }
-    if (v1->label != v2->label) {
+    if (v1->tag != v2->tag) {
         return true;
     }
     if (v1->pool_names.size() != v2->pool_names.size()) {
