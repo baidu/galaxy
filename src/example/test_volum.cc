@@ -8,7 +8,7 @@
 
 #include <iostream>
 
-int test_dir_volum(const char* source, const char* target);
+int test_bind_volum(const char* source, const char* target);
 int test_symlink_volum(const char* source, const char* target);
 int test_proc_volum(const char* target);
 int test_tmpfs_volum(const char* target, int size, bool readonly);
@@ -16,31 +16,33 @@ int test_tmpfs_volum(const char* target, int size, bool readonly);
 
 int main(int argc, char** argv) {
 
-    baidu::galaxy::path::SetRootPath("./");
+    baidu::galaxy::path::SetRootPath("/tmp");
     
     std::string source;
     std::string target;
     
-    std::cerr << "test test_dir_volum ...\n" << std::endl;
+    /*
+    std::cerr << "test test_bind_volum ...\n" << std::endl;
     source = "dir_source";
     target = "dir_target";
-    //test_dir_volum(source.c_str(), target.c_str());
-
-    //return 0;
+    test_bind_volum(source.c_str(), target.c_str());
+    */
     
 
-    std::cerr << "test test_symlink_volum ...\n" << std::endl;
-    source = "symlink_source";
+    /*std::cerr << "test test_symlink_volum ...\n" << std::endl;
+    source = "/tmp/symlink_source";
     target = "symlink_target";
     test_symlink_volum(source.c_str(), target.c_str());
+    */
     
     std::cerr << "test test_tmpfs_volum ...\n" << std::endl;
-    target = "target_target";
-    //test_tmpfs_volum(target.c_str(), 10240, false);
+    source = "/tmp/symlink_source";
+    target = "tmpfs_target";
+    test_tmpfs_volum(target.c_str(), 10240, false);
     return 0;
 }
 
-int test_dir_volum(const char* source, const char* target) {
+int test_bind_volum(const char* source, const char* target) {
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr(new baidu::galaxy::proto::VolumRequired());
     vr->set_dest_path(target);
     vr->set_source_path(source);
@@ -50,26 +52,18 @@ int test_dir_volum(const char* source, const char* target) {
     vr->set_type(baidu::galaxy::proto::KEmptyDir);
 
 
-    baidu::galaxy::volum::Volum volum;
-    volum.SetContainerId("container_id");
-    volum.SetDescrition(vr);
+    boost::shared_ptr<baidu::galaxy::volum::Volum> volum = baidu::galaxy::volum::Volum::CreateVolum(vr);
+    volum->SetContainerId("container_id");
+    volum->SetDescription(vr);
     
 
-    if (0 != volum.Construct()) {
-        std::cerr << "construct volum failed" << std::endl;
+    if (0 != volum->Construct()) {
+        std::cerr << "construct bind volum failed" << std::endl;
         return -1;
     } 
 
-    std::cerr << "construct volum sucessfully" << std::endl;
-
-    if (0 != volum.Mount()) {
-        std::cerr << "mount volum failed" << std::endl;
-        return -1;
-    } 
-    std::cerr << "mout volum sucessfully" << std::endl;
-
-    if (0 != volum.Destroy()) {
-        std::cerr << "destroy volum failed" << std::endl;
+    if (0 != volum->Destroy()) {
+        std::cerr << "destroy bind volum failed" << std::endl;
         return -1;
     }
     return 0;
@@ -83,28 +77,22 @@ int test_symlink_volum(const char* source, const char* target) {
     vr->set_type(baidu::galaxy::proto::KEmptyDir);
     vr->set_use_symlink(true);
 
-    baidu::galaxy::volum::Volum volum;
-    volum.SetContainerId("container_id");
-    volum.SetDescrition(vr);
+    boost::shared_ptr<baidu::galaxy::volum::Volum> volum = baidu::galaxy::volum::Volum::CreateVolum(vr);
+    volum->SetContainerId("container_id");
+    volum->SetDescription(vr);
     
 
-    if (0 != volum.Construct()) {
-        std::cerr << "construct volum failed" << std::endl;
+    if (0 != volum->Construct()) {
+        std::cerr << "construct symlink volum failed" << std::endl;
         return -1;
     } 
 
-    std::cerr << "construct volum sucessfully" << std::endl;
+    std::cerr << "construct symlink volum sucessfully" << std::endl;
 
-    if (0 != volum.Mount()) {
-        std::cerr << "mount volum failed" << std::endl;
+    /*if (0 != volum->Destroy()) {
+        std::cerr << "destroy symlink volum failed" << std::endl;
         return -1;
-    } 
-    std::cerr << "mout volum sucessfully" << std::endl;
-
-    if (0 != volum.Destroy()) {
-        std::cerr << "destroy volum failed" << std::endl;
-        return -1;
-    }
+    }*/
     return 0;
 }
 
@@ -117,26 +105,19 @@ int test_tmpfs_volum(const char* target, int size, bool readonly) {
     vr->set_readonly(readonly);
     vr->set_use_symlink(true);
 
-    baidu::galaxy::volum::Volum volum;
-    volum.SetContainerId("container_id");
-    volum.SetDescrition(vr);
+    boost::shared_ptr<baidu::galaxy::volum::Volum> volum = baidu::galaxy::volum::Volum::CreateVolum(vr);
+    volum->SetContainerId("container_id");
+    volum->SetDescription(vr);
     
 
-    if (0 != volum.Construct()) {
-        std::cerr << "construct volum failed" << std::endl;
+    if (0 != volum->Construct()) {
+        std::cerr << "construct tmpfs volum failed" << std::endl;
         return -1;
-    } 
+    }
+    std::cerr << "construct tmpfs volum sucessfully" << std::endl;
 
-    std::cerr << "construct volum sucessfully" << std::endl;
-
-    if (0 != volum.Mount()) {
-        std::cerr << "mount volum failed" << std::endl;
-        return -1;
-    } 
-    std::cerr << "mout volum sucessfully" << std::endl;
-
-    if (0 != volum.Destroy()) {
-        std::cerr << "destroy volum failed" << std::endl;
+    if (0 != volum->Destroy()) {
+        std::cerr << "destroy tmpfs volum failed" << std::endl;
         return -1;
     }
     return 0;

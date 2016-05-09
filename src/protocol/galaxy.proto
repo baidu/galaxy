@@ -169,14 +169,13 @@ message Package {
 }
 message ImagePackage {
     optional Package package = 1;
-    optional string pre_cmd = 2;     // executed befor overwriting the old package, eg: stop service
-    optional string post_cmd = 3;    // execute after overwriting the old package, eg: start service
+    optional string start_cmd = 2;     
+    optional string stop_cmd = 3;    
 }
 
 message DataPackage {
     repeated Package packages = 1;
-    optional string pre_cmd = 2;     // 
-    optional string post_cmd = 3;    // 
+    optional string reload_cmd = 3;
 }
 
 message Deploy {

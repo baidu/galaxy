@@ -37,8 +37,11 @@ env.Program('test_cgroup', test_cgroup_src)
 test_process_src=['src/example/test_process.cc', 'src/agent/container/process.cc']
 env.Program('test_process', test_process_src)
 
-test_volum_src=['src/example/test_volum.cc', 'src/agent/volum/volum.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/volum/mounter.cc', 'src/agent/util/path_tree.cc']
+test_volum_src=['src/example/test_volum.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/agent/agent_flags.cc'] + Glob('src/agent/volum/*.cc')
 env.Program('test_volum', test_volum_src);
 
-test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc')
+test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc')
 env.Program('test_container', test_container_src);
+
+env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
+

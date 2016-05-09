@@ -3,154 +3,87 @@
 // found in the LICENSE file.
 
 #include "mounter.h"
+
+#include "util/error_code.h"
+
 #include "boost/filesystem/path.hpp"
+#include "boost/thread/thread_time.hpp"
 #include "boost/filesystem/operations.hpp"
 
 #include <sys/mount.h>
-#include <assert.h>
-#include <sstream>
+
+#include <string>
+
 
 namespace baidu {
     namespace galaxy {
         namespace volum {
-
-            Mounter::Mounter() :
-            bind_(false) {
-            }
-
-            Mounter::~Mounter() {
-            }
-
-            Mounter* Mounter::SetSource(const std::string& source) {
-                source_ = source;
-                return this;
-            }
-
-            Mounter* Mounter::SetTarget(const std::string& target) {
-                target_ = target;
-                return this;
-            }
-
-            Mounter* Mounter::SetBind(bool b) {
-                bind_ = b;
-                return this;
-            }
-
-            Mounter* Mounter::SetRdonly(bool ro) {
-                ro_ = ro;
-                return this;
-            }
-
-            Mounter* Mounter::SetType(FsType type) {
-                type_ = type;
-                return this;
-            }
-
-            Mounter* Mounter::SetOption(const std::string& option) {
-                option_ = option;
-                return this;
-            }
-
-            const std::string Mounter::ToString() const {
-                std::stringstream ss;
-                ss << "mouter option:\t"
-                        << "source:" << source_ << "\t"
-                        << "target:" << target_ << "\t"
-                        << "option:" << option_ << "\t"
-                        << "type:" << type_;
-                return ss.str();
-            }
-
-            std::string Mounter::Source() const {
-                return source_;
-            }
-
-            std::string Mounter::Target() const {
-                return target_;
-            }
-
-            bool Mounter::Bind() const {
-                return bind_;
-            }
-
-            bool Mounter::ReadOnly() const {
-                return ro_;
-            }
-
-            const Mounter::FsType Mounter::Type() const {
-                return type_;
-            }
-
-            const std::string Mounter::Option() const {
-                return option_;
-            }
-
-            int Mounter::Mount(const Mounter* mounter) {
-                assert(NULL != mounter);
-
-                if (mounter->Type() == Mounter::FT_TMPFS) {
-                    return MountTmpfs(mounter);
-                } else if (mounter->Type() == Mounter::FT_DIR) {
-                    return MountDir(mounter);
-                } else if (mounter->Type() == Mounter::FT_PROC) {
-                    return MountProc(mounter);
-                } else if (mounter->Type() == Mounter::FT_SYMLINK) {
-                    return MountSymlink(mounter);
-                }
-                return -1;
-            }
-
-            int Mounter::MountTmpfs(const Mounter* mounter) {
-                int flag = 0;
-
-                if (mounter->ReadOnly()) {
-                    flag |= MS_RDONLY;
-                }
-
-                return ::mount("tmpfs", mounter->Target().c_str(), "tmpfs", flag, (void*) mounter->Option().c_str());
-            }
-
-            int Mounter::MountDir(const Mounter* mounter) {
-                int flag = 0;
-                flag |= MS_BIND;
-
-                if (mounter->ReadOnly()) {
-                    flag |= MS_RDONLY;
-                }
-
-                return ::mount(mounter->Source().c_str(), mounter->Target().c_str(), "", flag, "");
-            }
-
-            int Mounter::MountProc(const Mounter* mounter) {
-                return ::mount("proc", mounter->Target().c_str(), "proc", 0, "");
-            }
-
-            int Mounter::MountSymlink(const Mounter* mounter) {
-                boost::filesystem::path symlink(mounter->Target());
-                boost::filesystem::path source(mounter->Source());
+            baidu::galaxy::util::ErrorCode MountProc(const std::string& target) {
+                boost::filesystem::path path(target);
                 boost::system::error_code ec;
-                if (!boost::filesystem::exists(symlink, ec)) {
-                    boost::filesystem::create_symlink(source, symlink, ec);
-                    if (ec.value() != 0) {
-                        return -1;
-                    }
-                } else {
-                    if (boost::filesystem::is_symlink(symlink, ec)) {
-                        if (!boost::filesystem::remove(symlink, ec)) {
-                            return -1;
-                        }
-                        boost::filesystem::create_symlink(source, symlink, ec);
-                        if (ec.value() != 0) {
-                            return -1;
-                        }
-                    } else {
-                        return -1;
-                    }
+                
+                if (!boost::filesystem::exists(path, ec)) {
+                    return ERRORCODE(-1, "target(%s) donot exist", target.c_str());
                 }
-                return 0;
+                
+                if (!boost::filesystem::is_directory(path, ec)) {
+                    return ERRORCODE(-1, "target(%s) is not directory", target.c_str());
+                }
+                
+                if (0 != ::mount("proc", target.c_str(), "proc", 0, NULL)) {
+                    return PERRORCODE(-1, errno, "mount target(%s) failed", target.c_str());
+                }
+                
+                return ERRORCODE_OK;
             }
-
+            
+            baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target) {
+                boost::filesystem::path source_path(source);
+                boost::system::error_code ec;
+                if (!boost::filesystem::exists(source_path, ec)) {
+                    return ERRORCODE(-1, "source(%s) donot exist", source.c_str());
+                }
+                
+                if (!boost::filesystem::is_directory(source_path, ec)) {
+                    return ERRORCODE(-1, "target(%s) is not directory", source.c_str());
+                }
+                
+                boost::filesystem::path target_path(target);
+                if (!boost::filesystem::exists(target_path, ec)) {
+                    return  ERRORCODE(-1, "target(%s) donot exist", target.c_str());
+                }
+                
+                if (!boost::filesystem::is_directory(target_path, ec)) {
+                    return ERRORCODE(-1, "target(%s) is not directory", target.c_str());
+                }
+                
+                if (0 != ::mount(source.c_str(), target.c_str(), "", MS_BIND, NULL)) {
+                    return PERRORCODE(-1, errno, "mount %s to %s failed", source.c_str(), target.c_str());
+                }
+                return ERRORCODE_OK;
+            }
+            
+            baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly) {
+               
+                boost::system::error_code ec;
+                boost::filesystem::path target_path(target);
+                if (!boost::filesystem::exists(target_path, ec)) {
+                    return  ERRORCODE(-1, "target(%s) donot exist", target.c_str());
+                }
+                
+                std::stringstream ss;
+                ss << "size=" << size;
+                
+                int flag = 0; 
+                if (readonly) {
+                    flag |= MS_RDONLY;
+                }
+                
+                if (0 != ::mount("tmpfs", target.c_str(), "tmpfs", flag,  ss.str().c_str())) {
+                    return PERRORCODE(-1, errno, "mount tmpfs to %s failed", target.c_str());
+                }
+                return ERRORCODE_OK;
+            }
         }
     }
 }
-

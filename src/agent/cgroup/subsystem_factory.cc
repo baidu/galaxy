@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "subsystem_factory.h"
+#include "cpu_subsystem.h"
+#include "memory_subsystem.h"
+#include "freezer_subsystem.h"
 
 #include <assert.h>
 
@@ -25,6 +28,13 @@ SubsystemFactory* SubsystemFactory::Register(Subsystem* malloc_subsystem) {
     boost::shared_ptr<Subsystem> sub(malloc_subsystem);
     cgroups_seed_[sub->Name()] = sub;
     return this;
+}
+
+void SubsystemFactory::Setup() {
+    this->Register(new baidu::galaxy::cgroup::CpuSubsystem())
+        ->Register(new baidu::galaxy::cgroup::MemorySubsystem())
+        ->Register(new baidu::galaxy::cgroup::FreezerSubsystem());
+        //->Register(new baidu::galaxy::cgroup::TcpThrotSubsystem());
 }
 
 boost::shared_ptr<Subsystem> SubsystemFactory::CreateSubsystem(const std::string& name) {
