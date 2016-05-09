@@ -3,8 +3,11 @@
 // found in the LICENSE file.
 #include "process.h"
 
+#include "util/util.h"
+
 #include <boost/filesystem/operations.hpp>
 #include <boost/system/error_code.hpp>
+#include <glog/logging.h>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -16,6 +19,7 @@
 
 #include <iostream>
 #include <sstream>
+
 
 namespace baidu {
 namespace galaxy {
@@ -71,7 +75,10 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     Context* context = new Context();
     std::vector<int> fds;
 
-    if (0 != ListFds(SelfPid(), fds)) {
+    int pid = SelfPid();
+
+    if (0 != ListFds(pid, fds)) {
+        LOG(WARNING) << "failed to list opened fd of process " << pid;
         return -1;
     }
 
@@ -81,12 +88,14 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     int stdout_fd = ::open(stdout_path_.c_str(), STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
 
     if (-1 == stdout_fd) {
+        LOG(WARNING) << "open file failed: " << stdout_path_;
         return -1;
     }
 
     int stderr_fd = ::open(stderr_path_.c_str(), STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
 
     if (-1 == stderr_fd) {
+        LOG(WARNING) << "open file failed: " << stderr_path_;
         ::close(stderr_fd);
         return -1;
     }
@@ -103,10 +112,13 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
             CLONE_STACK + CLONE_STACK_SIZE,
             CLONE_FLAG | SIGCHLD,
             context);
+    int en = errno;
+
     ::close(context->stdout_fd);
     ::close(context->stderr_fd);
 
     if (-1 == pid_) {
+        LOG(WARNING) << "clone failed: " << strerror(en);
         return -1;
     }
 
@@ -143,7 +155,7 @@ int Process::CloneRoutine(void* param) {
     pid_t pid = SelfPid();
 
     if (0 != ::setpgid(pid, pid)) {
-        std::cerr << "set pgid failed" << std::endl;
+        return -1;
     }
 
     // export env

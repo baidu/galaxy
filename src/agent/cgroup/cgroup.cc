@@ -6,6 +6,7 @@
 #include "subsystem_factory.h"
 #include "subsystem.h"
 #include "freezer_subsystem.h"
+#include "protocol/galaxy.pb.h"
 
 #include <glog/logging.h>
 
@@ -56,6 +57,10 @@ int Cgroup::Construct() {
             ok = false;
             break;
         }
+
+        VLOG(10) << "create subsystem " << ss->Name() 
+            << "(path: " << ss->Path() 
+            <<") successfully for container " << container_id_;
     }
 
     if (!ok) {
@@ -94,13 +99,21 @@ int Cgroup::Destroy() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> Report() {
+boost::shared_ptr<google::protobuf::Message> Cgroup::Report() {
     boost::shared_ptr<google::protobuf::Message> ret;
     return ret;
 }
 
-int ExportEnv(std::map<std::string, std::string>& evn) {
-    return 0;
+void Cgroup::ExportEnv(std::map<std::string, std::string>& env) {
+    for (size_t i = 0; i < subsystem_.size(); i++) {
+        std::stringstream ss;
+        ss << "baidu_galaxy_contianer_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
+        env[ss.str()] = subsystem_[i]->Path();
+    }
+}
+
+std::string Cgroup::Id() {
+    return cgroup_->id();
 }
 
 }

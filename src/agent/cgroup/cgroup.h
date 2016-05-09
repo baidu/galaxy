@@ -30,8 +30,8 @@ public:
     int Construct();
     int Destroy();
     boost::shared_ptr<google::protobuf::Message> Report();
-    int ExportEnv(std::map<std::string, std::string>& evn);
-
+    void ExportEnv(std::map<std::string, std::string>& evn);
+    std::string Id();
     int Freezen();
     int Thaw();
     int Kill();
