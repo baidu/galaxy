@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef  __APPWORKER_IMPL_H_
-#define  __APPWORKER_IMPL_H_
+#ifndef  BAIDU_GALAXY_APPWORKER_IMPL_H
+#define  BAIDU_GALAXY_APPWORKER_IMPL_H
 
 #include <string>
 #include <map>
@@ -11,38 +11,52 @@
 #include <mutex.h>
 #include <thread_pool.h>
 
-#include "src/protocol/appmaster.pb.h"
-#include "src/rpc/rpc_client.h"
+#include "protocol/appmaster.pb.h"
+#include "rpc/rpc_client.h"
+#include "pod_manager.h"
+#include "ins_sdk.h"
 
 namespace baidu {
 namespace galaxy {
 
-class AppWorkerImpl {
+typedef ::galaxy::ins::sdk::InsSDK InsSDK;
+typedef ::galaxy::ins::sdk::SDKError SDKError;
+typedef google::protobuf::RepeatedPtrField<proto::TaskInfo> TaskInfoList;
+typedef proto::AppMaster_Stub AppMaster_Stub;
+typedef proto::FetchTaskRequest FetchTaskRequest;
+typedef proto::FetchTaskResponse FetchTaskResponse;
 
+class AppWorkerImpl {
 public:
     AppWorkerImpl();
     virtual ~AppWorkerImpl();
-    int Init();
+    void Start();
 
 private:
     void FetchTask();
+    void FetchTaskCallback(const FetchTaskRequest* request,
+                           FetchTaskResponse* response,
+                           bool failed, int error);
+    void UpdateAppMasterStub();
 
 private:
-    Mutex lock_;
+    Mutex mutex_appworker_;
+    std::string job_id_;
+    std::string pod_id_;
+    std::string container_id_;
+    std::string endpoint_;
+    std::string appmaster_endpoint_;
+    int64_t start_time_;
+
+    RpcClient rpc_client_;
+    InsSDK* nexus_;
+    AppMaster_Stub* appmaster_stub_;
+    PodManager pod_manager_;
     ThreadPool backgroud_pool_;
-    std::map<std::string, std::string > tasks_;
-    RpcClient* rpc_client_;
-//    baidu::galaxy::AppMaster_Stub* app_master_;
-
-//    MasterWatcher* master_watcher_;
-//    Mutex mutex_master_endpoint_;
-
 };
 
 } // ending namespace galaxy
 } // ending namespace baidu
 
 
-#endif  //__APPWORKER_IMPL_H_
-
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
+#endif  // BAIDU_GALAXY_APPWORKER_IMPL_H

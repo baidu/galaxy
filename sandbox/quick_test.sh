@@ -1,13 +1,28 @@
 #! /bin/bash
 
-# echo "1.start nexus"
-# cd ../thirdsrc/ins/sandbox && nohup ./start_all.sh > ins_start.log 2>&1 &
-# sleep 2
-#
-# galaxyflag=`pwd`/galaxy.flag
-#
-# echo "2.start appmaster"
-# nohup  ../appmaster --flagfile=$galaxyflag >appmaster.log 2>&1 &
+hn=`hostname`
 
-echo "3.start appworker"
-../appworker --flagfile=$galaxyflag >appworker.log 2>&1 &
+## prepare cgroups
+#CGROUP_ROOT=/cgroups
+#mkdir -p $CGROUP_ROOT/cpu && mount -t cgroup -ocpu none $CGROUP_ROOT/cpu >/dev/null 2>&1
+#mkdir -p $CGROUP_ROOT/memory && mount -t cgroup -omemory none $CGROUP_ROOT/memory >/dev/null 2>&1
+#mkdir -p $CGROUP_ROOT/cpuacct && mount -t cgroup -ocpuacct none $CGROUP_ROOT/cpuacct >/dev/null 2>&1
+#mkdir -p $CGROUP_ROOT/freezer && mount -t cgroup -ofreezer none $CGROUP_ROOT/freezer >/dev/null 2>&1
+
+# start nexus
+rm -rf galaxy.flag
+touch galaxy.flag
+echo "--nexus_servers=$hn:8868,$hn:8869,$hn:8870,$hn:8871,$hn:8872" >> galaxy.flag
+echo "--appworker_endpoint=127.0.0.1:8221" >> galaxy.flag
+
+# stop galaxy
+./stop_all.sh
+
+# start galaxy
+./start_all.sh
+
+## submit job
+#../galaxy submit -f sample.json
+#../galaxy jobs
+#../galaxy agents
+

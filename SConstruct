@@ -8,8 +8,8 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 
 env = Environment(
-        CPPPATH = ['.', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils', 'src', 'src/agent'] ,
-        LIBS = ['ins_sdk','sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
+        CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils'] ,
+        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
@@ -21,7 +21,7 @@ env.Program('appmaster', Glob('src/appmaster/*.cc') + Glob('src/utils/*.cc')
             + ['src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
 env.Program('appworker', Glob('src/appworker/*.cc') + Glob('src/utils/*.cc')
-            + ['src/protocol/galaxy.pb.cc'])
+            + ['src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc'])
 
 env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src/agent/*/*.cc')
             + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc'])
