@@ -165,6 +165,16 @@ enum TaskStatus {
     kTaskFinished = 6;
 }
 
+message TaskInfo {
+    optional string taskid = 1;
+    optional string podid = 2;
+    optional string jobid = 3;
+    optional string workspace = 4;
+    optional string chroot_path = 5;
+    optional TaskDescription desc = 6;
+    optional TaskStatus status = 7;
+}
+
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
     optional string dest_path = 2;   // local path
@@ -214,13 +224,10 @@ message TaskDescription {
 message PodDescription {
     // workspace volum
     optional VolumRequired workspace_volum = 3;
-
     // Resource, volum is owned by Pod
     repeated VolumRequired data_volums = 4;
-    
-    // tasks 
+    // tasks
     repeated TaskDescription tasks = 5;
-
     // schedule-policy is necessary ?
 }
 
@@ -297,7 +304,8 @@ message ContainerInfo {
 ///////////////////////////////////////
 enum Status {
    kOk = 1;
-   kStop = 2;   //am stop pod 
+   kError = 2;
+   kStop = 3;   //am stop pod 
 }
 
 message ErrorCode {

@@ -181,8 +181,9 @@ if [ ! -f "${FLAG_DIR}/ins" ] \
     cd ins
     sed -i "s|^PREFIX=.*|PREFIX=${DEPS_PREFIX}|" Makefile
     sed -i "s|^PROTOC=.*|PROTOC=${DEPS_PREFIX}/bin/protoc|" Makefile
-    BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0 make install_sdk
-    make -j4 install_sdk
+    export BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0
+    make -j4 ins >/dev/null && make -j4 install_sdk >/dev/null
+    mkdir -p output/bin && cp ins output/bin
     cd -
     touch "${FLAG_DIR}/ins"
 fi
