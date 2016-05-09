@@ -64,7 +64,7 @@ int Volum::Destroy() {
     boost::filesystem::path source_path(this->SourcePath());
     boost::system::error_code ec;
 
-    if (vr_->type() == baidu::galaxy::proto::KEmptyDir
+    if (vr_->type() == baidu::galaxy::proto::kEmptyDir
             && vr_->medium() != baidu::galaxy::proto::kTmpfs
             && boost::filesystem::exists(this->SourcePath(), ec)) {
         return boost::filesystem::remove_all(source_path, ec) ? 0 : 1;
