@@ -148,6 +148,7 @@ private:
 
     void QueryAgent(const std::string& agent_endpoint, bool is_first_query);
     void QueryAgentCallback(std::string agent_endpoint,
+                            bool is_first_query,
                             const proto::QueryRequest* request,
                             proto::QueryResponse* response,
                             bool fail , int err);
@@ -162,10 +163,10 @@ private:
 
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
-    std::map<std::string, proto::AgentData> agents_;
+    std::map<std::string, proto::AgentMeta> agents_;
     std::map<std::string, AgentStat> agent_stats_;
-    std::map<std::string, proto::UserData> users_;
-    std::map<std::string, proto::ContainerGroupData> container_groups_;
+    std::map<std::string, proto::UserMeta> users_;
+    std::map<std::string, proto::ContainerGroupMeta> container_groups_;
     Mutex mu_;
     bool safe_mode_;
     ThreadPool query_pool_;

@@ -38,14 +38,14 @@ enum ResourceError {
     kNoDevice = 4,
     kNoPort = 5,
     kPortConflict = 6,
-    kLabelMismatch = 7,
+    kTagMismatch = 7,
     kNoMemoryForTmpfs = 8,
     kPoolMismatch = 9,
     kTooManyPods = 10
 };
 
 struct Requirement {
-    const std::string label;
+    const std::string tag;
     const std::set<std::string> pool_names;
     int max_per_host;
     proto::CpuRequired cpu;
@@ -109,7 +109,7 @@ public:
                    int64_t cpu,
                    int64_t memory,
                    const std::map<DevicePath, VolumInfo>& volums,
-                   const std::set<std::string>& labels,
+                   const std::set<std::string>& tags,
                    const std::string& pool_name);
     void SetAssignment(int64_t cpu_assigned,
                        int64_t memory_assigned,
@@ -127,7 +127,7 @@ private:
                             std::map<DevicePath, VolumInfo>& volum_free,
                             std::vector<DevicePath>& devices);
     AgentEndpoint endpoint_;
-    std::set<std::string> labels_;
+    std::set<std::string> tags_;
     std::string pool_name_;
     int64_t cpu_total_;
     int64_t cpu_assigned_;
@@ -183,8 +183,8 @@ public:
     void ChangeStatus(const GroupId& group_id,
                       const ContainerId& container_id, 
                       proto::ContainerStatus new_status);
-    void AddLabel(const AgentEndpoint& endpoint, const std::string& label);
-    void RemoveLabel(const AgentEndpoint& endpoint, const std::string& label);
+    void AddTag(const AgentEndpoint& endpoint, const std::string& tag);
+    void RemoveTag(const AgentEndpoint& endpoint, const std::string& tag);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
 
 private:
@@ -199,9 +199,9 @@ private:
     GroupId GenerateGroupId(const std::string& group_name);
     ContainerId GenerateContainerId(const GroupId& group_id, int offset);
     void ScheduleNextAgent(AgentEndpoint pre_endpoint);
-    void CheckLabelAndPool(Agent::Ptr agent);
+    void CheckTagAndPool(Agent::Ptr agent);
     void CheckVersion(Agent::Ptr agent);
-    bool CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
+    bool CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
     void CheckGroupGC(Group::Ptr group);
     bool RequireHasDiff(const Requirement* v1, const Requirement* v2);
 

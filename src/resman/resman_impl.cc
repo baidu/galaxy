@@ -73,6 +73,7 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
     int32_t now_tm = common::timer::now_time();
     if (agent.last_heartbeat_time + FLAGS_agent_timeout < now_tm) {
         agent.status = proto::kAgentDead;
+        scheduler_->RemoveAgent(agent_endpoint);
         query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
             boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, false)
         );
@@ -83,7 +84,8 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
     boost::scoped_ptr<proto::Agent_Stub> stub_guard(stub);
     boost::function<void (const proto::QueryRequest*, 
                           proto::QueryResponse*, bool, int)> callback;
-    callback = boost::bind(&ResManImpl::QueryAgentCallback, this, agent_endpoint,
+    callback = boost::bind(&ResManImpl::QueryAgentCallback, this, 
+                           agent_endpoint, is_first_query,
                            _1, _2, _3, _4);
     proto::QueryRequest* request = new proto::QueryRequest();
     request->set_full_report(is_first_query);
@@ -93,16 +95,50 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
 }
 
 void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
+                                    bool is_first_query,
                                     const proto::QueryRequest* request,
                                     proto::QueryResponse* response,
                                     bool fail, int err) {
     boost::scoped_ptr<const proto::QueryRequest> request_guard(request);
     boost::scoped_ptr<proto::QueryResponse> response_guard(response);
     //handle query result
-
+    MutexLock lock(&mu_);
+    if (is_first_query && safe_mode_) {
+        std::map<std::string, proto::AgentMeta>::iterator agent_it 
+            = agents_.find(agent_endpoint);
+        if (agent_it == agents_.end()) {
+            LOG(WARNING) << "query result for expired agent:" << agent_endpoint;
+            return;
+        }
+        proto::AgentMeta& agent_meta = agent_it->second;
+        const proto::AgentInfo& agent_info = response->agent_info();
+        int64_t cpu = agent_info.cpu_resource().total();
+        int64_t memory = agent_info.memory_resource().total();
+        std::map<sched::DevicePath, sched::VolumInfo> volums;
+        for (int i = 0; i < agent_info.volum_resources_size(); i++) {
+            const proto::VolumResource& vres = agent_info.volum_resources(i);
+            sched::VolumInfo& vinfo = volums[vres.device_path()];
+            vinfo.size = vres.volum().total();
+            vinfo.exclusive = vres.exclusive();
+            vinfo.medium = vres.medium();
+        }
+        std::set<std::string> tags;
+        for (int i = 0; i < agent_meta.tags_size(); i++) {
+            tags.insert(agent_meta.tags(i));
+        }
+        std::string pool_name = agent_meta.pool();
+        sched::Agent::Ptr agent(new sched::Agent(agent_endpoint,
+                                                 cpu, memory,
+                                                 volums,
+                                                 tags,
+                                                 pool_name));
+        scheduler_->AddAgent(agent);
+    } else {
+        //TODO, handle query diff
+    }
     //query again later
     query_pool_.DelayTask(FLAGS_agent_query_interval,
-        boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, false)
+        boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
     );
 }
 
@@ -114,7 +150,7 @@ void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
     const std::string agent_ep = request->endpoint();
     bool agent_is_registered = false;
     bool agent_first_heartbeat = false;
-    
+
     if (agents_.find(agent_ep) != agents_.end()) {
         agent_is_registered = true;
     }
@@ -180,10 +216,10 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::AddAgentRequest* request,
                           ::baidu::galaxy::proto::AddAgentResponse* response,
                           ::google::protobuf::Closure* done) {
-    proto::AgentData agent_data;
-    agent_data.set_endpoint(request->endpoint());
-    agent_data.set_pool(request->pool());
-    bool ret = SaveObject(sAgentPrefix + "/" + agent_data.endpoint(), agent_data);
+    proto::AgentMeta agent_meta;
+    agent_meta.set_endpoint(request->endpoint());
+    agent_meta.set_pool(request->pool());
+    bool ret = SaveObject(sAgentPrefix + "/" + agent_meta.endpoint(), agent_meta);
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();
         err->set_status(proto::kAddAgentFail);
@@ -191,7 +227,7 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
     } else {
         {
             MutexLock lock(&mu_);
-            agents_[agent_data.endpoint()] = agent_data;
+            agents_[agent_meta.endpoint()] = agent_meta;
         }
         response->mutable_error_code()->set_status(proto::kOk);
     }
