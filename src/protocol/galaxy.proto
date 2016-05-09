@@ -282,7 +282,7 @@ message ContainerInfo {
     optional string group_id = 2;
     optional int64 created_time = 3;
     optional ContainerStatus status = 4; 
-    optional PodDescription pod_desc = 5; //when RM need full report
+    optional ContainerDescription container_desc = 5; //when RM need full report
     // resource?
     optional int64 cpu_used = 6;
     optional int64 memory_used = 7;

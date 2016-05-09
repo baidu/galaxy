@@ -57,6 +57,36 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     }
 }
 
+void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
+    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
+    int64_t memory_assigned = agent_info.memory_resource().assigned();
+    std::map<DevicePath, VolumInfo> volum_assigned;
+    std::set<std::string> port_assigned;
+    std::map<ContainerId, Container::Ptr> containers;
+
+    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
+        const proto::VolumResource& vr = agent_info.volum_resources(i);
+        VolumInfo& volum_info = volum_assigned[vr.device_path()];
+        volum_info.size = vr.volum().assigned();
+        volum_info.medium = vr.medium();
+        volum_info.exclusive = vr.exclusive();
+    }
+    for (int i = 0; agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_info = agent_info.container_info(i);
+        Container::Ptr container(new Container());
+        Requirement::Ptr require(new Requirement());
+        container->id = container_info.id();
+        container->group_id = container_info.group_id();
+        container->priority = container_info.container_desc().priority();
+        container->status = container_info.status();
+        container->require = require;
+        containers[container->id] = container;
+    }
+
+    SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
+                  port_assigned, containers);
+}
+
 bool Agent::TryPut(const Container* container, ResourceError& err) {
     if (!container->require->tag.empty() &&
         tags_.find(container->require->tag) == tags_.end()) {

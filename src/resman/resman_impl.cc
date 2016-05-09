@@ -98,10 +98,17 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                     bool is_first_query,
                                     const proto::QueryRequest* request,
                                     proto::QueryResponse* response,
-                                    bool fail, int err) {
+                                    bool rpc_fail, int err) {
     boost::scoped_ptr<const proto::QueryRequest> request_guard(request);
     boost::scoped_ptr<proto::QueryResponse> response_guard(response);
-    //handle query result
+    if (response->code().status() != proto::kOk || rpc_fail) {
+        LOG(WARNING) << "failed to query on: " << agent_endpoint
+                     << " err: " << err << ", rpc_fail:" << rpc_fail;
+        query_pool_.DelayTask(FLAGS_agent_query_interval,
+            boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
+        );
+        return;
+    }
     MutexLock lock(&mu_);
     if (is_first_query && safe_mode_) {
         std::map<std::string, proto::AgentMeta>::iterator agent_it 
@@ -119,7 +126,6 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
             const proto::VolumResource& vres = agent_info.volum_resources(i);
             sched::VolumInfo& vinfo = volums[vres.device_path()];
             vinfo.size = vres.volum().total();
-            vinfo.exclusive = vres.exclusive();
             vinfo.medium = vres.medium();
         }
         std::set<std::string> tags;
@@ -132,6 +138,8 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                                  volums,
                                                  tags,
                                                  pool_name));
+
+        agent->SetAssignment(agent_info);
         scheduler_->AddAgent(agent);
     } else {
         //TODO, handle query diff
