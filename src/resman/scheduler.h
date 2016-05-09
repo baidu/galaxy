@@ -45,14 +45,28 @@ enum ResourceError {
 };
 
 struct Requirement {
-    const std::string tag;
-    const std::set<std::string> pool_names;
+    std::string tag;
+    std::set<std::string> pool_names;
     int max_per_host;
-    proto::CpuRequired cpu;
-    proto::MemoryRequired memory;
+    std::vector<proto::CpuRequired> cpu;
+    std::vector<proto::MemoryRequired> memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
     Requirement() : max_per_host(0) {};
+    int64_t CpuNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < cpu.size(); i++) {
+            total += cpu[i].milli_core();
+        }
+        return total;
+    }
+    int64_t MemoryNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < memory.size(); i++) {
+            total += memory[i].size();
+        }
+        return total;
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 

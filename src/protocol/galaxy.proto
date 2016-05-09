@@ -252,6 +252,7 @@ message Cgroup {
    optional MemoryRequired memory = 3;
    optional TcpthrotRequired tcp_throt = 4;
    optional BlkioRequired blkio = 5;
+   optional PortRequired port = 6;
 }
 
 

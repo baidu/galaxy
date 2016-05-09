@@ -54,6 +54,7 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
         const Container::Ptr& container = pair.second;
         container_counts_[container->group_id] += 1;
+        container->allocated_agent = endpoint_;
     }
 }
 
@@ -75,11 +76,35 @@ void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
         const proto::ContainerInfo& container_info = agent_info.container_info(i);
         Container::Ptr container(new Container());
         Requirement::Ptr require(new Requirement());
+
+        require->tag = container_info.container_desc().tag();
+        for (int j = 0; j < container_info.container_desc().pool_names_size(); j++) {
+            require->pool_names.insert(container_info.container_desc().pool_names(j));
+        }
+        require->max_per_host = container_info.container_desc().max_per_host();
+        for (int j = 0; j < container_info.container_desc().cgroups_size(); j++) {
+            const proto::Cgroup& cgroup = container_info.container_desc().cgroups(j);
+            require->cpu.push_back(cgroup.cpu());
+            require->memory.push_back(cgroup.memory());
+            require->ports.push_back(cgroup.port());
+        }
+        require->volums.push_back(container_info.container_desc().workspace_volum());
+        for (int j = 0; j < container_info.container_desc().data_volums_size(); j++) {
+            require->volums.push_back(container_info.container_desc().data_volums(j));
+        }
+        
         container->id = container_info.id();
         container->group_id = container_info.group_id();
         container->priority = container_info.container_desc().priority();
         container->status = container_info.status();
         container->require = require;
+        for (int j = 0; j < container_info.port_used_size(); j++) {
+            container->allocated_port.insert(container_info.port_used(j));
+            port_assigned.insert(container_info.port_used(j));
+        }
+        for (int j = 0; j < container_info.volum_used_size(); j++) {
+            container->allocated_volums.push_back(container_info.volum_used(j).path());
+        }
         containers[container->id] = container;
     }
 
@@ -111,11 +136,11 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         }
     }
 
-    if (container->require->cpu.milli_core() + cpu_assigned_ > cpu_total_) {
+    if (container->require->CpuNeed() + cpu_assigned_ > cpu_total_) {
         err = kNoCpu;
         return false;
     }
-    if (container->require->memory.size() + memory_assigned_ > memory_total_) {
+    if (container->require->MemoryNeed() + memory_assigned_ > memory_total_) {
         err = kNoMemory;
         return false;
     }
@@ -164,10 +189,10 @@ void Agent::Put(Container::Ptr container) {
     assert(container->status == kContainerPending);
     assert(container->allocated_agent.empty());
     //cpu 
-    cpu_assigned_ += container->require->cpu.milli_core();
+    cpu_assigned_ += container->require->CpuNeed();
     assert(cpu_assigned_ <= cpu_total_);
     //memory
-    memory_assigned_ += container->require->memory.size();
+    memory_assigned_ += container->require->MemoryNeed();
     int64_t size_ramdisk = 0;
     std::vector<proto::VolumRequired> volums_no_ramdisk;
     BOOST_FOREACH(const proto::VolumRequired& v, container->require->volums) {
@@ -231,10 +256,10 @@ void Agent::Put(Container::Ptr container) {
 
 void Agent::Evict(Container::Ptr container) {
     //cpu 
-    cpu_assigned_ -= container->require->cpu.milli_core();
+    cpu_assigned_ -= container->require->CpuNeed();
     assert(cpu_assigned_ >= 0);
     //memory
-    memory_assigned_ -= container->require->memory.size();
+    memory_assigned_ -= container->require->MemoryNeed();
     assert(memory_assigned_ >= 0);
     int64_t size_ramdisk = 0;
     std::vector<proto::VolumRequired> volums_no_ramdisk;
@@ -851,13 +876,23 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     if (v1->max_per_host != v2->max_per_host) {
         return true;
     }
-    if (v1->cpu.milli_core() != v2->cpu.milli_core() ||
-        v1->cpu.excess() != v2->cpu.excess()) {
+    if (v1->cpu.size() != v2->cpu.size()) {
         return true;
     }
-    if (v1->memory.size() != v2->memory.size() ||
-        v1->memory.excess() != v2->memory.excess()) {
+    for (size_t i = 0; i < v1->cpu.size(); i++) {
+        if (v1->cpu[i].milli_core() != v2->cpu[i].milli_core() ||
+            v1->cpu[i].excess() != v2->cpu[i].excess()) {
+            return true;
+        }
+    }
+    if (v1->memory.size() != v2->memory.size()) {
         return true;
+    }
+    for (size_t i = 0; i < v1->memory.size(); i++) {
+        if (v1->memory[i].size() != v2->memory[i].size() ||
+            v1->memory[i].excess() != v2->memory[i].excess()) {
+            return true;
+        }
     }
     if (v1->volums.size() != v2->volums.size()) {
         return true;
