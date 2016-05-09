@@ -26,9 +26,9 @@ _testmain.go
 
 # binary
 #agent
-appmaster
-appworker
-resman
+#appmaster
+#appworker
+#resman
 
 # dirs
 thirdparty/
@@ -43,3 +43,4 @@ tags
 
 *~
 *.swp
+tmp

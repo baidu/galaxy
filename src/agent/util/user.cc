@@ -3,64 +3,69 @@
 // found in the LICENSE file.
 
 #include "user.h"
+#include "boost/algorithm/string/predicate.hpp"
+#include "boost/algorithm/string/split.hpp"
+#include "boost/algorithm/string/classification.hpp"
 
 #include <errno.h>
 #include <pwd.h>
+
+#include <iostream>
+#include <fstream>
+#include <vector>
 
 namespace baidu {
     namespace galaxy {
         namespace user {
 
-            bool Su(const std::string& user_name) {
+            baidu::galaxy::util::ErrorCode Su(const std::string& user_name) {
                 uid_t uid;
                 gid_t gid;
-                if (!GetUidAndGid(user_name, &uid, &gid)) {
-                    return false;
+                baidu::galaxy::util::ErrorCode ec = GetUidAndGid(user_name, &uid, &gid);
+                if (0 != ec.Code()) {
+                    return ec;
                 }
 
                 if (::setgid(gid) != 0) {
-                    return false;
+                    return PERRORCODE(-1, errno, "setgid %d failed", (int)gid);
                 }
 
                 if (::setuid(uid) != 0) {
-                    return false;
+                    return PERRORCODE(-1, errno, "setuid %d failed", (int)uid);
                 }
-                return true;
+                return ERRORCODE_OK;
             }
 
-            bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
-                if (user_name.empty() || uid == NULL || gid == NULL) {
-                    return false;
-                }
-                bool rs = false;
-                struct passwd user_passd_info;
-                struct passwd* user_passd_rs;
-                char* user_passd_buf = NULL;
-                int user_passd_buf_len = ::sysconf(_SC_GETPW_R_SIZE_MAX);
-                for (int i = 0; i < 2; i++) {
-                    if (user_passd_buf != NULL) {
-                        delete []user_passd_buf;
-                        user_passd_buf = NULL;
-                    }
-                    user_passd_buf = new char[user_passd_buf_len];
-                    int ret = ::getpwnam_r(user_name.c_str(), &user_passd_info,
-                            user_passd_buf, user_passd_buf_len, &user_passd_rs);
-                    if (ret == 0 && user_passd_rs != NULL) {
-                        *uid = user_passd_rs->pw_uid;
-                        *gid = user_passd_rs->pw_gid;
-                        rs = true;
-                        break;
-                    } else if (errno == ERANGE) {
-                        user_passd_buf_len *= 2;
-                    }
-                    break;
-                }
-                if (user_passd_buf != NULL) {
-                    delete []user_passd_buf;
-                    user_passd_buf = NULL;
-                }
-                return rs;
+            baidu::galaxy::util::ErrorCode Chown(const std::string& file, const std::string& user) {
+                //boost::filesystem::path path(file);
+                //if (boost::)
+                return ERRORCODE_OK;
+
             }
+
+            baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
+                // i can not get uid & gid by getpwnam_r after calling chroot, i donot know why
+                std::ifstream in("/etc/passwd", std::ios::in);
+                if (!in.is_open()) {
+                    return PERRORCODE(-1, errno, "open /etc/passwd failed");
+                }
+                
+                std::string line;
+                while(std::getline(in, line)) {
+                    if(boost::starts_with(line, user_name + ":")) {
+                        std::vector<std::string> v;
+                        boost::split(v, line, boost::is_any_of(":"));
+                        if (v.size() == 7) {
+                            *uid = atoi(v[2].c_str());
+                            *gid = atoi(v[3].c_str());
+                            return ERRORCODE_OK;
+                        }                        
+                    }                    
+                }
+                return ERRORCODE(-1, "user %s donot exist", user_name.c_str());
+            }
+            
+            
         }
     }
 }

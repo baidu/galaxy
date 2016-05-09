@@ -17,10 +17,12 @@
 int main(int argc, char** argv) {
     boost::shared_ptr<baidu::galaxy::cgroup::SubsystemFactory> factory = 
         baidu::galaxy::cgroup::SubsystemFactory::GetInstance();
-    factory->Register(new baidu::galaxy::cgroup::CpuSubsystem())
+    /*factory->Register(new baidu::galaxy::cgroup::CpuSubsystem())
         ->Register(new baidu::galaxy::cgroup::MemorySubsystem())
         ->Register(new baidu::galaxy::cgroup::FreezerSubsystem)
         ->Register(new baidu::galaxy::cgroup::TcpThrotSubsystem);
+        */
+    factory->Setup();
     
     boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> cgroup(new baidu::galaxy::cgroup::Cgroup(factory));
     

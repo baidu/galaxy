@@ -18,12 +18,14 @@ namespace cgroup {
 class SubsystemFactory : public boost::noncopyable {
 public:
     static boost::shared_ptr<SubsystemFactory> GetInstance();
-    SubsystemFactory* Register(Subsystem* malloc_subsystem);
+    void Setup();
+
     boost::shared_ptr<Subsystem> CreateSubsystem(const std::string& name);
     void GetSubsystems(std::vector<std::string>& subsystems);
 
 private:
     SubsystemFactory();
+    SubsystemFactory* Register(Subsystem* malloc_subsystem);
     static boost::shared_ptr<SubsystemFactory> s_instance_;
     std::map<const std::string, boost::shared_ptr<Subsystem> > cgroups_seed_;
 };

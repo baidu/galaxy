@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #pragma once
-#include "mounter.h"
-
 #include <boost/shared_ptr.hpp>
 #include <string>
 
@@ -19,27 +17,29 @@ namespace volum {
 class Volum {
 public:
     Volum();
-    ~Volum();
-    void SetContainerId(const std::string& container_id);
-    void SetDescrition(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
-    const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Descrition();
-    int Construct();
-    int Mount();
-    int Destroy();
-    int64_t Used();
-    std::string ToString();
+    virtual ~Volum();
 
-private:
     std::string SourcePath();
     std::string TargetPath();
-    int ConstructTmpfs();
-    int ConstructDir();
 
+    void SetContainerId(const std::string& container_id);
+    const std::string ContainerId() const;
+    void SetDescription(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
+    const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Description() const;
+
+    static boost::shared_ptr<Volum> CreateVolum(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
+
+    virtual int Destroy();
+    virtual int Construct() = 0;
+    virtual int64_t Used() = 0;
+    virtual std::string ToString() = 0;
+
+private:
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr_;
     std::string container_id_;
-    Mounter mounter_;
 
 };
+
 }
 }
 }
