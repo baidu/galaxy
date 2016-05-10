@@ -8,6 +8,7 @@
 #include <list>
 #include <vector>
 #include <string>
+#include <utility>
 #include <boost/shared_ptr.hpp>
 #include "src/protocol/galaxy.pb.h"
 #include "mutex.h"
@@ -45,15 +46,36 @@ enum ResourceError {
 };
 
 struct Requirement {
-    const std::string tag;
-    const std::set<std::string> pool_names;
+    std::string tag;
+    std::set<std::string> pool_names;
     int max_per_host;
-    proto::CpuRequired cpu;
-    proto::MemoryRequired memory;
+    std::vector<proto::CpuRequired> cpu;
+    std::vector<proto::MemoryRequired> memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
     Requirement() : max_per_host(0) {};
+    int64_t CpuNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < cpu.size(); i++) {
+            total += cpu[i].milli_core();
+        }
+        return total;
+    }
+    int64_t MemoryNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < memory.size(); i++) {
+            total += memory[i].size();
+        }
+        return total;
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
+};
+
+struct VolumInfo {
+    proto::VolumMedium medium;
+    bool exclusive;
+    int64_t size;
+    VolumInfo() : exclusive(false), size(0) {}
 };
 
 struct Container {
@@ -62,8 +84,8 @@ struct Container {
     int priority;
     proto::ContainerStatus status;
     Requirement::Ptr require;
-    std::vector<DevicePath> allocated_volums;
-    std::set<std::string> allocated_port;
+    std::vector<std::pair<DevicePath, VolumInfo> > allocated_volums;
+    std::vector<std::string> allocated_ports;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
     typedef boost::shared_ptr<Container> Ptr;
@@ -95,13 +117,6 @@ struct Group {
     typedef boost::shared_ptr<Group> Ptr;
 };
 
-struct VolumInfo {
-    proto::VolumMedium medium;
-    bool exclusive;
-    int64_t size;
-    VolumInfo() : exclusive(false), size(0) {}
-};
-
 class Agent {
 public:
     friend class Scheduler;
@@ -116,7 +131,6 @@ public:
                        const std::map<DevicePath, VolumInfo>& volum_assigned,
                        const std::set<std::string> port_assigned,
                        const std::map<ContainerId, Container::Ptr>& containers);
-    void SetAssignment(const proto::AgentInfo& agent_info);
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
@@ -160,7 +174,7 @@ public:
     //start the main schueduling loop
     void Start();
 
-    void AddAgent(Agent::Ptr agent);
+    void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     GroupId Submit(const std::string& group_name,
                  const Requirement& require, 
