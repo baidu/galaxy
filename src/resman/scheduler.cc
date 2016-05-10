@@ -30,6 +30,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
             const std::map<DevicePath, VolumInfo>& volums,
             const std::set<std::string>& tags,
             const std::string& pool_name) {
+    endpoint_ = endpoint;
     cpu_total_ = cpu;
     cpu_assigned_ = 0;
     memory_total_ = memory;
@@ -58,71 +59,6 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     }
 }
 
-void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
-    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
-    int64_t memory_assigned = agent_info.memory_resource().assigned();
-    std::map<DevicePath, VolumInfo> volum_assigned;
-    std::set<std::string> port_assigned;
-    std::map<ContainerId, Container::Ptr> containers;
-
-    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
-        const proto::VolumResource& vr = agent_info.volum_resources(i);
-        VolumInfo& volum_info = volum_assigned[vr.device_path()];
-        volum_info.size = vr.volum().assigned();
-        volum_info.medium = vr.medium();
-    }
-
-    for (int i = 0; agent_info.container_info_size(); i++) {
-        const proto::ContainerInfo& container_info = agent_info.container_info(i);
-        Container::Ptr container(new Container());
-        Requirement::Ptr require(new Requirement());
-
-        require->tag = container_info.container_desc().tag();
-        for (int j = 0; j < container_info.container_desc().pool_names_size(); j++) {
-            require->pool_names.insert(container_info.container_desc().pool_names(j));
-        }
-        require->max_per_host = container_info.container_desc().max_per_host();
-        for (int j = 0; j < container_info.container_desc().cgroups_size(); j++) {
-            const proto::Cgroup& cgroup = container_info.container_desc().cgroups(j);
-            require->cpu.push_back(cgroup.cpu());
-            require->memory.push_back(cgroup.memory());
-            for (int k = 0; k < cgroup.ports_size(); k++) {
-                require->ports.push_back(cgroup.ports(k));
-            }
-        }
-        require->volums.push_back(container_info.container_desc().workspace_volum());
-        for (int j = 0; j < container_info.container_desc().data_volums_size(); j++) {
-            require->volums.push_back(container_info.container_desc().data_volums(j));
-        }
-
-        container->id = container_info.id();
-        container->group_id = container_info.group_id();
-        container->priority = container_info.container_desc().priority();
-        container->status = container_info.status();
-        container->require = require;
-        for (int j = 0; j < container_info.port_used_size(); j++) {
-            container->allocated_port.insert(container_info.port_used(j));
-            port_assigned.insert(container_info.port_used(j));
-        }
-        for (int j = 0; j < container_info.volum_used_size(); j++) {
-            VolumInfo volum_info;
-            volum_info.medium = container_info.volum_used(j).medium();
-            volum_info.size = container_info.volum_used(j).assigned_size();
-            volum_info.exclusive = container_info.volum_used(j).exclusive();
-            const std::string& device_path = container_info.volum_used(j).path();
-            container->allocated_volums.push_back(
-                std::make_pair(device_path, volum_info)
-            );
-            if (volum_info.exclusive) {
-                volum_assigned[device_path].exclusive = true;
-            }
-        }
-        containers[container->id] = container;
-    }
-
-    SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
-                  port_assigned, containers);
-}
 
 bool Agent::TryPut(const Container* container, ResourceError& err) {
     if (!container->require->tag.empty() &&
@@ -363,9 +299,75 @@ Scheduler::Scheduler() {
 
 }
 
-void Scheduler::AddAgent(Agent::Ptr agent) {
+void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
     agents_[agent->endpoint_] = agent;
+    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
+    int64_t memory_assigned = agent_info.memory_resource().assigned();
+    std::map<DevicePath, VolumInfo> volum_assigned;
+    std::set<std::string> port_assigned;
+    std::map<ContainerId, Container::Ptr> containers;
+
+    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
+        const proto::VolumResource& vr = agent_info.volum_resources(i);
+        VolumInfo& volum_info = volum_assigned[vr.device_path()];
+        volum_info.size = vr.volum().assigned();
+        volum_info.medium = vr.medium();
+    }
+
+    for (int i = 0; agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_info = agent_info.container_info(i);
+        if (container_info.status() != kContainerReady) {
+            continue;
+        }
+        Container::Ptr container(new Container());
+        Requirement::Ptr require(new Requirement());
+
+        require->tag = container_info.container_desc().tag();
+        for (int j = 0; j < container_info.container_desc().pool_names_size(); j++) {
+            require->pool_names.insert(container_info.container_desc().pool_names(j));
+        }
+        require->max_per_host = container_info.container_desc().max_per_host();
+        for (int j = 0; j < container_info.container_desc().cgroups_size(); j++) {
+            const proto::Cgroup& cgroup = container_info.container_desc().cgroups(j);
+            require->cpu.push_back(cgroup.cpu());
+            require->memory.push_back(cgroup.memory());
+            for (int k = 0; k < cgroup.ports_size(); k++) {
+                require->ports.push_back(cgroup.ports(k));
+            }
+        }
+        require->volums.push_back(container_info.container_desc().workspace_volum());
+        for (int j = 0; j < container_info.container_desc().data_volums_size(); j++) {
+            require->volums.push_back(container_info.container_desc().data_volums(j));
+        }
+        container->id = container_info.id();
+        container->group_id = container_info.group_id();
+        container->priority = container_info.container_desc().priority();
+        container->status = container_info.status();
+        container->require = require;
+        for (int j = 0; j < container_info.port_used_size(); j++) {
+            container->allocated_port.insert(container_info.port_used(j));
+            port_assigned.insert(container_info.port_used(j));
+        }
+        for (int j = 0; j < container_info.volum_used_size(); j++) {
+            VolumInfo volum_info;
+            volum_info.medium = container_info.volum_used(j).medium();
+            volum_info.size = container_info.volum_used(j).assigned_size();
+            volum_info.exclusive = container_info.volum_used(j).exclusive();
+            const std::string& device_path = container_info.volum_used(j).path();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, volum_info)
+            );
+            if (volum_info.exclusive) {
+                volum_assigned[device_path].exclusive = true;
+            }
+        }
+        containers[container->id] = container;
+        groups_[container->group_id]->containers[container->id] = container;
+        ChangeStatus(container, container->status);
+    }
+    agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
+                         port_assigned, containers);
 }
 
 void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {

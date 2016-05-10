@@ -131,7 +131,6 @@ public:
                        const std::map<DevicePath, VolumInfo>& volum_assigned,
                        const std::set<std::string> port_assigned,
                        const std::map<ContainerId, Container::Ptr>& containers);
-    void SetAssignment(const proto::AgentInfo& agent_info);
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
@@ -175,7 +174,7 @@ public:
     //start the main schueduling loop
     void Start();
 
-    void AddAgent(Agent::Ptr agent);
+    void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     GroupId Submit(const std::string& group_name,
                  const Requirement& require, 

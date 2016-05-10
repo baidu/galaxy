@@ -138,9 +138,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                                  volums,
                                                  tags,
                                                  pool_name));
-
-        agent->SetAssignment(agent_info);
-        scheduler_->AddAgent(agent);
+        scheduler_->AddAgent(agent, agent_info);
     } else {
         //TODO, handle query diff
     }
