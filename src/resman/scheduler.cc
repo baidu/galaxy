@@ -321,6 +321,7 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
     for (int j = 0; j < container_desc.data_volums_size(); j++) {
         require->volums.push_back(container_desc.data_volums(j));
     }
+    require->version = container_desc.version();
 }
 
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
@@ -732,7 +733,7 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
             continue;
         }
         ContainerGroup::Ptr container_group = it->second;
-        if (!RequireHasDiff(container->require.get(), container_group->require.get())) {
+        if (container->require->version == container_group->require->version) {
             container->require = container_group->require;
             continue;
         }
@@ -845,8 +846,9 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
 }
 
 bool Scheduler::Update(const ContainerGroupId& container_group_id,
-                       const Requirement& require,
-                       int update_interval) {
+                       const proto::ContainerDescription& container_desc,
+                       int update_interval,
+                       std::string& new_version) {
     MutexLock locker(&mu_);
     std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
     if (it == container_groups_.end()) {
@@ -854,13 +856,20 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
         return false;
     }
     ContainerGroup::Ptr container_group = it->second;
-    if (!RequireHasDiff(&require, container_group->require.get())) {
+    Requirement::Ptr require(new Requirement());
+    SetRequirement(require, container_desc);
+    if (!RequireHasDiff(require.get(), container_group->require.get())) {
         LOG(WARNING) << "version same, ignore updating";
         return false;
     }
+    int64_t timestamp = common::timer::get_micros();
+    std::stringstream ss;
+    ss << timestamp;
+    new_version = ss.str();
+    require->version = new_version;
     container_group->update_interval = update_interval;
     container_group->last_update_time = common::timer::now_time();
-    container_group->require.reset(new Requirement(require));
+    container_group->require = require;
     BOOST_FOREACH(ContainerMap::value_type& pair, container_group->states[kContainerPending]) {
         Container::Ptr pending_container = pair.second;
         pending_container->require = container_group->require;
@@ -872,7 +881,49 @@ void Scheduler::HandleDiff(const std::string& agent_endpoint,
                            const proto::AgentInfo& agent_info, 
                            std::vector<AgentCommand>& commands) {
     MutexLock locker(&mu_);
-    
+    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(agent_endpoint);
+    if (it == agents_.end()) {
+        LOG(WARNING) << "no such agent:" << agent_endpoint;
+        return;
+    }
+    Agent::Ptr agent = it->second;
+    ContainerMap containers_wish = agent->containers_;
+    std::map<ContainerId, proto::ContainerStatus> remote_status;
+    for (int i = 0; agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_info = agent_info.container_info(i);
+        if (containers_wish.find(container_info.id()) == containers_wish.end()) {
+            AgentCommand cmd;
+            cmd.action = kDestroyContainer;
+            cmd.container_id = container_info.id();
+            commands.push_back(cmd);
+            continue;
+        }
+        remote_status[container_info.id()] =  container_info.status();
+    }
+    BOOST_FOREACH(ContainerMap::value_type& pair, containers_wish) {
+        const ContainerId& container_id = pair.first;
+        Container::Ptr& container = pair.second;
+        std::map<ContainerId, proto::ContainerStatus>::iterator remote_it;
+        remote_it = remote_status.find(container_id);
+        bool exist_on_remote = (remote_it != remote_status.end());
+        AgentCommand cmd;
+        if (container->status == kContainerAllocating) {
+            if (exist_on_remote && remote_it->second == kContainerReady) {
+                ChangeStatus(container, kContainerReady);
+            } else {
+                cmd.action = kCreateContainer;
+                cmd.container_id = container_id;
+                //cmd.desc = conatiner_desc;
+            }
+            commands.push_back(cmd);
+        } else if (container->status == kContainerReady) {
+            if (!exist_on_remote || remote_it->second != kContainerReady) {
+
+            }
+        } else if (container->status == kContainerDestroying) {
+
+        }
+    }
 }
 
 bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {

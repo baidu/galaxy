@@ -52,7 +52,7 @@ enum AgentCommandAction {
 
 struct AgentCommand {
     AgentCommandAction action;
-    std::string container_group_id;
+    ContainerId container_id;
     proto::ContainerDescription desc;
 };
 
@@ -64,6 +64,7 @@ struct Requirement {
     std::vector<proto::MemoryRequired> memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
+    std::string version;
     Requirement() : max_per_host(0) {};
     int64_t CpuNeed() {
         int64_t total = 0;
@@ -200,8 +201,9 @@ public:
     // @update_interval : 
     //      --- intervals between updateing two containers, in seconds
     bool Update(const ContainerGroupId& container_group_id,
-                const Requirement& require,
-                int update_interval);
+                const proto::ContainerDescription& container_desc,
+                int update_interval,
+                std::string& new_version);
     void ChangeStatus(const ContainerGroupId& container_group_id,
                       const ContainerId& container_id, 
                       proto::ContainerStatus new_status);
