@@ -85,7 +85,7 @@ struct Container {
     proto::ContainerStatus status;
     Requirement::Ptr require;
     std::vector<std::pair<DevicePath, VolumInfo> > allocated_volums;
-    std::set<std::string> allocated_port;
+    std::vector<std::string> allocated_ports;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
     typedef boost::shared_ptr<Container> Ptr;

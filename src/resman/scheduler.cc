@@ -196,7 +196,7 @@ void Agent::Put(Container::Ptr container) {
         }
         if (!s_port.empty()) {
             port_assigned_.insert(s_port);
-            container->allocated_port.insert(s_port);
+            container->allocated_ports.push_back(s_port);
         } else {
             LOG(WARNING) << "no free port.";
         }
@@ -235,6 +235,9 @@ void Agent::Evict(Container::Ptr container) {
         if (volum_info.exclusive) {
             volum_assigned_[device_path].exclusive = false;
         }
+    }
+    BOOST_FOREACH(const std::string& port, container->allocated_ports) {
+        port_assigned_.erase(port);
     }
     containers_.erase(container->id);
     container_counts_[container->group_id] -= 1;
@@ -346,7 +349,7 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->status = container_info.status();
         container->require = require;
         for (int j = 0; j < container_info.port_used_size(); j++) {
-            container->allocated_port.insert(container_info.port_used(j));
+            container->allocated_ports.push_back(container_info.port_used(j));
             port_assigned.insert(container_info.port_used(j));
         }
         for (int j = 0; j < container_info.volum_used_size(); j++) {
@@ -687,7 +690,7 @@ void Scheduler::ChangeStatus(Group::Ptr group,
             agent->Evict(container);
         }
         container->allocated_volums.clear();
-        container->allocated_port.clear();
+        container->allocated_ports.clear();
         container->allocated_agent = "";
         container->require = group->require;
     }
