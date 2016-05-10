@@ -276,9 +276,10 @@ enum ContainerStatus {
     kContainerPending = 1;     // in pending queue
     kContainerAllocating = 2;   // 
     kContainerReady = 3;       // ready, no process in container 
-    kContainerError = 4;       // an error occure
-    kContainerDestroying = 5;  // 
-    kContainerTerminated = 6;  // released by resource manager
+    kContainerFinish = 4;      // finish , when appworker exit with code 0
+    kContainerError = 5;       // an error occure
+    kContainerDestroying = 6;  // 
+    kContainerTerminated = 7;  // released by resource manager
 }
 
 enum ContainerGroupStatus {

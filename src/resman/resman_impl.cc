@@ -140,8 +140,20 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                                  pool_name));
         scheduler_->AddAgent(agent, agent_info);
     } else {
-        //TODO, handle query diff
+        std::vector<sched::AgentCommand> commands;
+        scheduler_->HandleDiff(agent_endpoint, response->agent_info(), commands);
+        std::vector<sched::AgentCommand>::const_iterator it;
+        for (it = commands.begin(); it != commands.end(); it++) {
+            const sched::AgentCommand& cmd = *it;
+            if (cmd.action == sched::kCreateContainer) {
+
+            } else if (cmd.action == sched::kDestroyContainer) {
+
+            }
+        }
     }
+
+    agent_stats_[agent_endpoint].info = response->agent_info();
     //query again later
     query_pool_.DelayTask(FLAGS_agent_query_interval,
         boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
