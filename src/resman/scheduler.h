@@ -8,6 +8,7 @@
 #include <list>
 #include <vector>
 #include <string>
+#include <utility>
 #include <boost/shared_ptr.hpp>
 #include "src/protocol/galaxy.pb.h"
 #include "mutex.h"
@@ -70,13 +71,20 @@ struct Requirement {
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
+struct VolumInfo {
+    proto::VolumMedium medium;
+    bool exclusive;
+    int64_t size;
+    VolumInfo() : exclusive(false), size(0) {}
+};
+
 struct Container {
     ContainerId id;
     GroupId group_id;
     int priority;
     proto::ContainerStatus status;
     Requirement::Ptr require;
-    std::vector<DevicePath> allocated_volums;
+    std::vector<std::pair<DevicePath, VolumInfo> > allocated_volums;
     std::set<std::string> allocated_port;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
@@ -107,13 +115,6 @@ struct Group {
                + states[kContainerReady].size();
     }
     typedef boost::shared_ptr<Group> Ptr;
-};
-
-struct VolumInfo {
-    proto::VolumMedium medium;
-    bool exclusive;
-    int64_t size;
-    VolumInfo() : exclusive(false), size(0) {}
 };
 
 class Agent {

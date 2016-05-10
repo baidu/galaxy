@@ -72,7 +72,6 @@ message VolumResource {
     optional VolumMedium medium = 1;
     optional Resource volum = 2;
     optional string device_path = 3;
-    optional bool exclusive = 4;
 }
 
 message Volum {
@@ -80,6 +79,7 @@ message Volum {
     optional int64 used_size = 2;
     optional int64 assigned_size = 3;
     optional VolumMedium medium = 4;
+    optional bool exclusive = 5;
 }
 
 message CpuRequired {
@@ -107,7 +107,8 @@ message BlkioRequired {
 // report resource
 message PortRequired {
     optional string port_name = 1;
-    optional string port = 2;       // "dynamic" or num
+    optional string port = 2;       // "dynamic" or number
+    optional int32 real_port = 3; //allocated on agent
 }
 
 enum VolumType {
@@ -252,7 +253,7 @@ message Cgroup {
    optional MemoryRequired memory = 3;
    optional TcpthrotRequired tcp_throt = 4;
    optional BlkioRequired blkio = 5;
-   optional PortRequired port = 6;
+   repeated PortRequired ports = 6;
 }
 
 

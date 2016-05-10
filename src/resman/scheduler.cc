@@ -70,8 +70,8 @@ void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
         VolumInfo& volum_info = volum_assigned[vr.device_path()];
         volum_info.size = vr.volum().assigned();
         volum_info.medium = vr.medium();
-        volum_info.exclusive = vr.exclusive();
     }
+
     for (int i = 0; agent_info.container_info_size(); i++) {
         const proto::ContainerInfo& container_info = agent_info.container_info(i);
         Container::Ptr container(new Container());
@@ -86,13 +86,15 @@ void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
             const proto::Cgroup& cgroup = container_info.container_desc().cgroups(j);
             require->cpu.push_back(cgroup.cpu());
             require->memory.push_back(cgroup.memory());
-            require->ports.push_back(cgroup.port());
+            for (int k = 0; k < cgroup.ports_size(); k++) {
+                require->ports.push_back(cgroup.ports(k));
+            }
         }
         require->volums.push_back(container_info.container_desc().workspace_volum());
         for (int j = 0; j < container_info.container_desc().data_volums_size(); j++) {
             require->volums.push_back(container_info.container_desc().data_volums(j));
         }
-        
+
         container->id = container_info.id();
         container->group_id = container_info.group_id();
         container->priority = container_info.container_desc().priority();
@@ -103,7 +105,17 @@ void Agent::SetAssignment(const proto::AgentInfo& agent_info) {
             port_assigned.insert(container_info.port_used(j));
         }
         for (int j = 0; j < container_info.volum_used_size(); j++) {
-            container->allocated_volums.push_back(container_info.volum_used(j).path());
+            VolumInfo volum_info;
+            volum_info.medium = container_info.volum_used(j).medium();
+            volum_info.size = container_info.volum_used(j).assigned_size();
+            volum_info.exclusive = container_info.volum_used(j).exclusive();
+            const std::string& device_path = container_info.volum_used(j).path();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, volum_info)
+            );
+            if (volum_info.exclusive) {
+                volum_assigned[device_path].exclusive = true;
+            }
         }
         containers[container->id] = container;
     }
@@ -209,14 +221,20 @@ void Agent::Put(Container::Ptr container) {
     if (SelectDevices(volums_no_ramdisk, devices)) {
         for (size_t i = 0; i < devices.size(); i++) {
             const DevicePath& device_path = devices[i];
-            container->allocated_volums.push_back(device_path);
             const proto::VolumRequired& volum = volums_no_ramdisk[i];
             volum_assigned_[device_path].size += volum.size();
+            VolumInfo volum_info;
+            volum_info.medium = volum.medium();
+            volum_info.size = volum.size();
+            volum_info.exclusive = volum.exclusive();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, volum_info)
+            );
             if (volum.exclusive()) {
                 volum_assigned_[device_path].exclusive = true;
             }
         }
-    }  
+    }
     //ports
     BOOST_FOREACH(const proto::PortRequired& port, container->require->ports) {
         std::string s_port;
@@ -274,10 +292,11 @@ void Agent::Evict(Container::Ptr container) {
     assert(memory_assigned_ >= 0);
     //volums
     for (size_t i = 0; i < container->allocated_volums.size(); i++) {
-        const DevicePath& device_path = container->allocated_volums[i];
-        const proto::VolumRequired& volum = volums_no_ramdisk[i];
-        volum_assigned_[device_path].size -= volum.size();
-        if (volum.exclusive()) {
+        const std::pair<DevicePath, VolumInfo>& tup = container->allocated_volums[i];
+        const std::string& device_path = tup.first;
+        const VolumInfo& volum_info = tup.second;
+        volum_assigned_[device_path].size -= volum_info.size;
+        if (volum_info.exclusive) {
             volum_assigned_[device_path].exclusive = false;
         }
     }
@@ -751,9 +770,8 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         return;
     }
 
-    CheckTagAndPool(agent); //may evict some containers
     CheckVersion(agent); //check containers version
-
+    CheckTagAndPool(agent); //may evict some containers
     //for each group checking pending containers, try to put on...
     std::set<Group::Ptr, GroupQueueLess>::iterator jt;
     for (jt = group_queue_.begin(); jt != group_queue_.end(); jt++) {
@@ -905,7 +923,6 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
         const proto::VolumRequired& vr_2 = v2->volums[i];
         if (vr_1.size() != vr_2.size() || vr_1.type() != vr_2.type()
             || vr_1.medium() != vr_2.medium() 
-            || vr_1.source_path() != vr_2.source_path()
             || vr_1.dest_path() != vr_2.dest_path()
             || vr_1.readonly() != vr_2.readonly()
             || vr_1.exclusive() != vr_2.exclusive()) {
