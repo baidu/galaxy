@@ -63,7 +63,8 @@ message PodInfo {
     optional PodStatus status = 4;
     optional string version = 5;
     optional int64 start_time = 6;
-    optional int32 fail_count = 7; 
+    optional int64 update_time = 7;
+    optional int32 fail_count = 8; 
 }
 
 message JobInfo {
@@ -104,7 +105,7 @@ message FecthTaskRequest {
 
 message FetchTaskResponse {
     optional ErrorCode error_code = 1;
-    optional PodDescription job = 2;
+    optional PodDescription pod = 2;
     optional int64 update_time = 3;
 }
 
