@@ -6,12 +6,26 @@
 #include <string>
 #include <map>
 #include <set>
+#include <vector>
 
 #include "src/protocol/resman.pb.h"
+#include "src/protocol/agent.pb.h"
 #include "scheduler.h"
+#include "ins_sdk.h"
+#include "src/rpc/rpc_client.h"
+#include "mutex.h"
+#include "thread_pool.h"
 
 namespace baidu {
 namespace galaxy {
+
+using ::galaxy::ins::sdk::InsSDK;
+
+struct AgentStat {
+    proto::AgentStatus status;
+    proto::AgentInfo info;
+    int32_t last_heartbeat_time; //timestamp in seconds
+};
 
 class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
@@ -131,7 +145,32 @@ public:
                          ::google::protobuf::Closure* done);
    
 private:
+
+    void QueryAgent(const std::string& agent_endpoint, bool is_first_query);
+    void QueryAgentCallback(std::string agent_endpoint,
+                            bool is_first_query,
+                            const proto::QueryRequest* request,
+                            proto::QueryResponse* response,
+                            bool fail , int err);
+
+    template <class ProtoClass> 
+    bool SaveObject(const std::string& key,
+                    const ProtoClass& obj);
+    
+    template <class ProtoClass>
+    bool LoadObjects(const std::string& prefix,
+                     std::map<std::string, ProtoClass>& objs);
+
     sched::Scheduler* scheduler_;
+    InsSDK* nexus_;
+    std::map<std::string, proto::AgentMeta> agents_;
+    std::map<std::string, AgentStat> agent_stats_;
+    std::map<std::string, proto::UserMeta> users_;
+    std::map<std::string, proto::ContainerGroupMeta> container_groups_;
+    Mutex mu_;
+    bool safe_mode_;
+    ThreadPool query_pool_;
+    RpcClient rpc_client_;
 };
 
 }

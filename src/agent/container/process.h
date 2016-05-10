@@ -19,6 +19,15 @@
 #define CLONE_NEWUTS 0x04000000
 #endif
 
+/*
+#define __LOG_STDERROR__(format, ...) do { \
+ fprintf(stderr, "%s:%d"##format, __FILE__, __LINE__,  ##args); \
+} while(0) 
+
+#define __LOG_STDOUT__(format, args, ...) do { \
+ fprintf(stdout, format, ##args); \
+} while(0) 
+*/
 
 namespace baidu {
 namespace galaxy {

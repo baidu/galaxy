@@ -71,12 +71,15 @@ enum VolumMedium {
 message VolumResource {
     optional VolumMedium medium = 1;
     optional Resource volum = 2;
+    optional string device_path = 3;
 }
 
 message Volum {
     optional string path = 1;
-    optional int64 size = 2;
-    optional VolumMedium medium = 3;
+    optional int64 used_size = 2;
+    optional int64 assigned_size = 3;
+    optional VolumMedium medium = 4;
+    optional bool exclusive = 5;
 }
 
 message CpuRequired {
@@ -104,12 +107,13 @@ message BlkioRequired {
 // report resource
 message PortRequired {
     optional string port_name = 1;
-    optional string port = 2;       // "dynamic" or num
+    optional string port = 2;       // "dynamic" or number
+    optional int32 real_port = 3; //allocated on agent
 }
 
 enum VolumType {
-    KEmptyDir = 1;  
-    KHostDir = 2;
+    kEmptyDir = 1;  
+    kHostDir = 2;
 }
 
 message VolumRequired {
@@ -127,9 +131,10 @@ message VolumRequired {
 ///// Job
 /////////////////////////////////////////
 enum JobType {
-    kJobBatch = 1;
-    kJobService = 2;
-    kJobMonitor = 3;
+    kJobMonitor = 0;
+    kJobService = 100;
+    kJobBatch = 200;
+    kJobBestEffort = 300;
 }
 
 // update incrementally may cause new problems: version confusion 
@@ -162,6 +167,16 @@ enum TaskStatus {
     kTaskFinished = 6;
 }
 
+message TaskInfo {
+    optional string taskid = 1;
+    optional string podid = 2;
+    optional string jobid = 3;
+    optional string workspace = 4;
+    optional string chroot_path = 5;
+    optional TaskDescription desc = 6;
+    optional TaskStatus status = 7;
+}
+
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
     optional string dest_path = 2;   // local path
@@ -169,14 +184,13 @@ message Package {
 }
 message ImagePackage {
     optional Package package = 1;
-    optional string pre_cmd = 2;     // executed befor overwriting the old package, eg: stop service
-    optional string post_cmd = 3;    // execute after overwriting the old package, eg: start service
+    optional string start_cmd = 2;     
+    optional string stop_cmd = 3;    
 }
 
 message DataPackage {
     repeated Package packages = 1;
-    optional string pre_cmd = 2;     // 
-    optional string post_cmd = 3;    // 
+    optional string reload_cmd = 3;
 }
 
 message Deploy {
@@ -210,21 +224,14 @@ message TaskDescription {
     repeated Service services = 9;
 }
 
-message JobId {
-    optional string id = 1;
-}
-
 // user -> resource manager
 message PodDescription {
     // workspace volum
     optional VolumRequired workspace_volum = 3;
-
     // Resource, volum is owned by Pod
     repeated VolumRequired data_volums = 4;
-    
-    // tasks 
+    // tasks
     repeated TaskDescription tasks = 5;
-
     // schedule-policy is necessary ?
 }
 
@@ -262,7 +269,9 @@ message ContainerDescription {
     repeated VolumRequired data_volums = 5;      //
     optional string cmd_line = 6;                 // appmaster or appwork
     repeated Cgroup cgroups = 7;
-    
+    optional int32 max_per_host = 8;
+    optional string tag = 9;
+    repeated string pool_names = 10;
 }
 
 
@@ -283,17 +292,19 @@ enum ContainerGroupStatus {
 // agent -> manager
 
 message ContainerInfo {
-    optional string id = 1; 
-    optional int64 created_time = 2;
-    optional ContainerStatus status = 3; 
-
+    optional string id = 1;
+    optional string group_id = 2;
+    optional int64 created_time = 3;
+    optional ContainerStatus status = 4; 
+    optional ContainerDescription container_desc = 5; //when RM need full report
     // resource?
-    optional int64 cpu_used = 4;
-    optional int64 memory_used = 5;
-    repeated Volum volum_used = 6;
+    optional int64 cpu_used = 6;
+    optional int64 memory_used = 7;
+    repeated Volum volum_used = 8;
+    repeated string port_used = 9;
 
     // statistics, eg: error cnt or other exceptions
-    optional uint32 restart_counter = 7;
+    optional uint32 restart_counter = 10;
 }
 
 ///////////////////////////////////////
@@ -301,9 +312,11 @@ message ContainerInfo {
 ///////////////////////////////////////
 enum Status {
    kOk = 1;
-   kTerminate = 2;
-   kDeny = 3;
-   kJobNotFound = 4;
+   kError = 2;
+   kTerminate = 3;
+   kAddAgentFail = 4;
+   kDeny = 5;
+   kJobNotFound = 6;
 }
 
 message ErrorCode {
@@ -330,9 +343,35 @@ message AgentInfo {
     repeated ContainerInfo container_info = 4;
 
     // resource
-    optional Resource cpu_resoruce = 5;
+    optional Resource cpu_resource = 5;
     optional Resource memory_resource = 6;
     repeated VolumResource volum_resources = 7;
 
     // exception statistics, eg: failed num of pod ..
+}
+
+//proto that used to be saved in nexus
+
+message AgentMeta {
+    optional string endpoint = 1;
+    optional string pool = 2;
+    repeated string tags = 3;
+}
+
+message UserMeta {
+    optional string user_name = 1;
+    optional string password = 2;
+    repeated string pools = 3;
+    repeated Authority authorites = 4;
+    optional Quota quota = 5;
+}
+
+message ContainerGroupMeta {
+    optional string id = 1;
+    optional string name = 2;
+    optional string user_name = 3; 
+    optional uint32 replica = 4;
+    optional uint32 update_interval = 5;
+    optional ContainerDescription desc = 6;
+    optional ContainerGroupStatus status = 7;
 }

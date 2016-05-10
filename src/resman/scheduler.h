@@ -8,6 +8,7 @@
 #include <list>
 #include <vector>
 #include <string>
+#include <utility>
 #include <boost/shared_ptr.hpp>
 #include "src/protocol/galaxy.pb.h"
 #include "mutex.h"
@@ -38,22 +39,43 @@ enum ResourceError {
     kNoDevice = 4,
     kNoPort = 5,
     kPortConflict = 6,
-    kLabelMismatch = 7,
+    kTagMismatch = 7,
     kNoMemoryForTmpfs = 8,
     kPoolMismatch = 9,
     kTooManyPods = 10
 };
 
 struct Requirement {
-    const std::string label;
-    const std::set<std::string> pool_names;
+    std::string tag;
+    std::set<std::string> pool_names;
     int max_per_host;
-    proto::CpuRequired cpu;
-    proto::MemoryRequired memory;
+    std::vector<proto::CpuRequired> cpu;
+    std::vector<proto::MemoryRequired> memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
     Requirement() : max_per_host(0) {};
+    int64_t CpuNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < cpu.size(); i++) {
+            total += cpu[i].milli_core();
+        }
+        return total;
+    }
+    int64_t MemoryNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < memory.size(); i++) {
+            total += memory[i].size();
+        }
+        return total;
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
+};
+
+struct VolumInfo {
+    proto::VolumMedium medium;
+    bool exclusive;
+    int64_t size;
+    VolumInfo() : exclusive(false), size(0) {}
 };
 
 struct Container {
@@ -62,8 +84,8 @@ struct Container {
     int priority;
     proto::ContainerStatus status;
     Requirement::Ptr require;
-    std::vector<DevicePath> allocated_volums;
-    std::set<std::string> allocated_port;
+    std::vector<std::pair<DevicePath, VolumInfo> > allocated_volums;
+    std::vector<std::string> allocated_ports;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
     typedef boost::shared_ptr<Container> Ptr;
@@ -83,7 +105,7 @@ struct Group {
     int priority; //lower one is important
     bool terminated;
     std::map<ContainerId, Container::Ptr> containers;
-    std::map<ContainerId, Container::Ptr> states[6];
+    std::map<ContainerId, Container::Ptr> states[7];
     int update_interval;
     int last_update_time;
     Group() : terminated(false) {};
@@ -95,13 +117,6 @@ struct Group {
     typedef boost::shared_ptr<Group> Ptr;
 };
 
-struct VolumInfo {
-    proto::VolumMedium medium;
-    bool exclusive;
-    int64_t size;
-    VolumInfo() : exclusive(false), size(0) {}
-};
-
 class Agent {
 public:
     friend class Scheduler;
@@ -109,7 +124,7 @@ public:
                    int64_t cpu,
                    int64_t memory,
                    const std::map<DevicePath, VolumInfo>& volums,
-                   const std::set<std::string>& labels,
+                   const std::set<std::string>& tags,
                    const std::string& pool_name);
     void SetAssignment(int64_t cpu_assigned,
                        int64_t memory_assigned,
@@ -127,7 +142,7 @@ private:
                             std::map<DevicePath, VolumInfo>& volum_free,
                             std::vector<DevicePath>& devices);
     AgentEndpoint endpoint_;
-    std::set<std::string> labels_;
+    std::set<std::string> tags_;
     std::string pool_name_;
     int64_t cpu_total_;
     int64_t cpu_assigned_;
@@ -159,7 +174,7 @@ public:
     //start the main schueduling loop
     void Start();
 
-    void AddAgent(Agent::Ptr agent);
+    void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     GroupId Submit(const std::string& group_name,
                  const Requirement& require, 
@@ -183,8 +198,8 @@ public:
     void ChangeStatus(const GroupId& group_id,
                       const ContainerId& container_id, 
                       proto::ContainerStatus new_status);
-    void AddLabel(const AgentEndpoint& endpoint, const std::string& label);
-    void RemoveLabel(const AgentEndpoint& endpoint, const std::string& label);
+    void AddTag(const AgentEndpoint& endpoint, const std::string& tag);
+    void RemoveTag(const AgentEndpoint& endpoint, const std::string& tag);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
 
 private:
@@ -199,9 +214,9 @@ private:
     GroupId GenerateGroupId(const std::string& group_name);
     ContainerId GenerateContainerId(const GroupId& group_id, int offset);
     void ScheduleNextAgent(AgentEndpoint pre_endpoint);
-    void CheckLabelAndPool(Agent::Ptr agent);
+    void CheckTagAndPool(Agent::Ptr agent);
     void CheckVersion(Agent::Ptr agent);
-    bool CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
+    bool CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
     void CheckGroupGC(Group::Ptr group);
     bool RequireHasDiff(const Requirement* v1, const Requirement* v2);
 

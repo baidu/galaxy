@@ -28,15 +28,16 @@ Agent::Agent(const AgentEndpoint& endpoint,
             int64_t cpu,
             int64_t memory,
             const std::map<DevicePath, VolumInfo>& volums,
-            const std::set<std::string>& labels,
+            const std::set<std::string>& tags,
             const std::string& pool_name) {
+    endpoint_ = endpoint;
     cpu_total_ = cpu;
     cpu_assigned_ = 0;
     memory_total_ = memory;
     memory_assigned_ = 0;
     volum_total_ = volums;
     port_total_ = kMaxPort - kMinPort + 1;
-    labels_ = labels;
+    tags_ = tags;
     pool_name_ = pool_name;
 }
 
@@ -54,13 +55,15 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
         const Container::Ptr& container = pair.second;
         container_counts_[container->group_id] += 1;
+        container->allocated_agent = endpoint_;
     }
 }
 
+
 bool Agent::TryPut(const Container* container, ResourceError& err) {
-    if (!container->require->label.empty() &&
-        labels_.find(container->require->label) == labels_.end()) {
-        err = kLabelMismatch;
+    if (!container->require->tag.empty() &&
+        tags_.find(container->require->tag) == tags_.end()) {
+        err = kTagMismatch;
         return false;
     }
     if (container->require->pool_names.find(pool_name_) 
@@ -81,11 +84,11 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         }
     }
 
-    if (container->require->cpu.milli_core() + cpu_assigned_ > cpu_total_) {
+    if (container->require->CpuNeed() + cpu_assigned_ > cpu_total_) {
         err = kNoCpu;
         return false;
     }
-    if (container->require->memory.size() + memory_assigned_ > memory_total_) {
+    if (container->require->MemoryNeed() + memory_assigned_ > memory_total_) {
         err = kNoMemory;
         return false;
     }
@@ -134,10 +137,10 @@ void Agent::Put(Container::Ptr container) {
     assert(container->status == kContainerPending);
     assert(container->allocated_agent.empty());
     //cpu 
-    cpu_assigned_ += container->require->cpu.milli_core();
+    cpu_assigned_ += container->require->CpuNeed();
     assert(cpu_assigned_ <= cpu_total_);
     //memory
-    memory_assigned_ += container->require->memory.size();
+    memory_assigned_ += container->require->MemoryNeed();
     int64_t size_ramdisk = 0;
     std::vector<proto::VolumRequired> volums_no_ramdisk;
     BOOST_FOREACH(const proto::VolumRequired& v, container->require->volums) {
@@ -154,14 +157,20 @@ void Agent::Put(Container::Ptr container) {
     if (SelectDevices(volums_no_ramdisk, devices)) {
         for (size_t i = 0; i < devices.size(); i++) {
             const DevicePath& device_path = devices[i];
-            container->allocated_volums.push_back(device_path);
             const proto::VolumRequired& volum = volums_no_ramdisk[i];
             volum_assigned_[device_path].size += volum.size();
+            VolumInfo volum_info;
+            volum_info.medium = volum.medium();
+            volum_info.size = volum.size();
+            volum_info.exclusive = volum.exclusive();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, volum_info)
+            );
             if (volum.exclusive()) {
                 volum_assigned_[device_path].exclusive = true;
             }
         }
-    }  
+    }
     //ports
     BOOST_FOREACH(const proto::PortRequired& port, container->require->ports) {
         std::string s_port;
@@ -187,7 +196,7 @@ void Agent::Put(Container::Ptr container) {
         }
         if (!s_port.empty()) {
             port_assigned_.insert(s_port);
-            container->allocated_port.insert(s_port);
+            container->allocated_ports.push_back(s_port);
         } else {
             LOG(WARNING) << "no free port.";
         }
@@ -201,10 +210,10 @@ void Agent::Put(Container::Ptr container) {
 
 void Agent::Evict(Container::Ptr container) {
     //cpu 
-    cpu_assigned_ -= container->require->cpu.milli_core();
+    cpu_assigned_ -= container->require->CpuNeed();
     assert(cpu_assigned_ >= 0);
     //memory
-    memory_assigned_ -= container->require->memory.size();
+    memory_assigned_ -= container->require->MemoryNeed();
     assert(memory_assigned_ >= 0);
     int64_t size_ramdisk = 0;
     std::vector<proto::VolumRequired> volums_no_ramdisk;
@@ -219,12 +228,16 @@ void Agent::Evict(Container::Ptr container) {
     assert(memory_assigned_ >= 0);
     //volums
     for (size_t i = 0; i < container->allocated_volums.size(); i++) {
-        const DevicePath& device_path = container->allocated_volums[i];
-        const proto::VolumRequired& volum = volums_no_ramdisk[i];
-        volum_assigned_[device_path].size -= volum.size();
-        if (volum.exclusive()) {
+        const std::pair<DevicePath, VolumInfo>& tup = container->allocated_volums[i];
+        const std::string& device_path = tup.first;
+        const VolumInfo& volum_info = tup.second;
+        volum_assigned_[device_path].size -= volum_info.size;
+        if (volum_info.exclusive) {
             volum_assigned_[device_path].exclusive = false;
         }
+    }
+    BOOST_FOREACH(const std::string& port, container->allocated_ports) {
+        port_assigned_.erase(port);
     }
     containers_.erase(container->id);
     container_counts_[container->group_id] -= 1;
@@ -289,9 +302,75 @@ Scheduler::Scheduler() {
 
 }
 
-void Scheduler::AddAgent(Agent::Ptr agent) {
+void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
     agents_[agent->endpoint_] = agent;
+    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
+    int64_t memory_assigned = agent_info.memory_resource().assigned();
+    std::map<DevicePath, VolumInfo> volum_assigned;
+    std::set<std::string> port_assigned;
+    std::map<ContainerId, Container::Ptr> containers;
+
+    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
+        const proto::VolumResource& vr = agent_info.volum_resources(i);
+        VolumInfo& volum_info = volum_assigned[vr.device_path()];
+        volum_info.size = vr.volum().assigned();
+        volum_info.medium = vr.medium();
+    }
+
+    for (int i = 0; agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_info = agent_info.container_info(i);
+        if (container_info.status() != kContainerReady) {
+            continue;
+        }
+        Container::Ptr container(new Container());
+        Requirement::Ptr require(new Requirement());
+
+        require->tag = container_info.container_desc().tag();
+        for (int j = 0; j < container_info.container_desc().pool_names_size(); j++) {
+            require->pool_names.insert(container_info.container_desc().pool_names(j));
+        }
+        require->max_per_host = container_info.container_desc().max_per_host();
+        for (int j = 0; j < container_info.container_desc().cgroups_size(); j++) {
+            const proto::Cgroup& cgroup = container_info.container_desc().cgroups(j);
+            require->cpu.push_back(cgroup.cpu());
+            require->memory.push_back(cgroup.memory());
+            for (int k = 0; k < cgroup.ports_size(); k++) {
+                require->ports.push_back(cgroup.ports(k));
+            }
+        }
+        require->volums.push_back(container_info.container_desc().workspace_volum());
+        for (int j = 0; j < container_info.container_desc().data_volums_size(); j++) {
+            require->volums.push_back(container_info.container_desc().data_volums(j));
+        }
+        container->id = container_info.id();
+        container->group_id = container_info.group_id();
+        container->priority = container_info.container_desc().priority();
+        container->status = container_info.status();
+        container->require = require;
+        for (int j = 0; j < container_info.port_used_size(); j++) {
+            container->allocated_ports.push_back(container_info.port_used(j));
+            port_assigned.insert(container_info.port_used(j));
+        }
+        for (int j = 0; j < container_info.volum_used_size(); j++) {
+            VolumInfo volum_info;
+            volum_info.medium = container_info.volum_used(j).medium();
+            volum_info.size = container_info.volum_used(j).assigned_size();
+            volum_info.exclusive = container_info.volum_used(j).exclusive();
+            const std::string& device_path = container_info.volum_used(j).path();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, volum_info)
+            );
+            if (volum_info.exclusive) {
+                volum_assigned[device_path].exclusive = true;
+            }
+        }
+        containers[container->id] = container;
+        groups_[container->group_id]->containers[container->id] = container;
+        ChangeStatus(container, container->status);
+    }
+    agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
+                         port_assigned, containers);
 }
 
 void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
@@ -310,7 +389,7 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
     agents_.erase(endpoint);
 }
 
-void Scheduler::AddLabel(const AgentEndpoint& endpoint, const std::string& label) {
+void Scheduler::AddTag(const AgentEndpoint& endpoint, const std::string& tag) {
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
@@ -318,10 +397,10 @@ void Scheduler::AddLabel(const AgentEndpoint& endpoint, const std::string& label
         return;
     }
     Agent::Ptr agent = it->second;
-    agent->labels_.insert(label);
+    agent->tags_.insert(tag);
 }
 
-void Scheduler::RemoveLabel(const AgentEndpoint& endpoint, const std::string& label) {
+void Scheduler::RemoveTag(const AgentEndpoint& endpoint, const std::string& tag) {
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
@@ -329,7 +408,7 @@ void Scheduler::RemoveLabel(const AgentEndpoint& endpoint, const std::string& la
         return;
     }
     Agent::Ptr agent = it->second;
-    agent->labels_.erase(label);
+    agent->tags_.erase(tag);
 }
 
 void Scheduler::SetPool(const AgentEndpoint& endpoint, const std::string& pool_name) {
@@ -611,19 +690,19 @@ void Scheduler::ChangeStatus(Group::Ptr group,
             agent->Evict(container);
         }
         container->allocated_volums.clear();
-        container->allocated_port.clear();
+        container->allocated_ports.clear();
         container->allocated_agent = "";
         container->require = group->require;
     }
     container->status = new_status;
 }
 
-void Scheduler::CheckLabelAndPool(Agent::Ptr agent) {
+void Scheduler::CheckTagAndPool(Agent::Ptr agent) {
     mu_.AssertHeld();
     ContainerMap containers = agent->containers_;
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        bool check_passed = CheckLabelAndPoolOnce(agent, container);
+        bool check_passed = CheckTagAndPoolOnce(agent, container);
         if (!check_passed) { //evit the container to pendings
             ChangeStatus(container, kContainerPending);
         }
@@ -635,12 +714,12 @@ void Scheduler::Start() {
     ScheduleNextAgent(fake_endpoint);
 }
 
-bool Scheduler::CheckLabelAndPoolOnce(Agent::Ptr agent, Container::Ptr container) {
+bool Scheduler::CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container) {
     mu_.AssertHeld();
     bool check_passed = true;
-    if (!container->require->label.empty()
-        && agent->labels_.find(container->require->label) == agent->labels_.end()) {
-        container->last_res_err = kLabelMismatch;
+    if (!container->require->tag.empty()
+        && agent->tags_.find(container->require->tag) == agent->tags_.end()) {
+        container->last_res_err = kTagMismatch;
         check_passed = false;
     }
     if (container->require->pool_names.find(agent->pool_name_) 
@@ -696,9 +775,8 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         return;
     }
 
-    CheckLabelAndPool(agent); //may evict some containers
     CheckVersion(agent); //check containers version
-
+    CheckTagAndPool(agent); //may evict some containers
     //for each group checking pending containers, try to put on...
     std::set<Group::Ptr, GroupQueueLess>::iterator jt;
     for (jt = group_queue_.begin(); jt != group_queue_.end(); jt++) {
@@ -743,8 +821,8 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
         return false;
     }
     Container::Ptr container_manual = group->states[kContainerPending].begin()->second;
-    if (!CheckLabelAndPoolOnce(agent, container_manual)) {
-        LOG(WARNING) << "manual scheduling fail, because of mismatching label or pools";
+    if (!CheckTagAndPoolOnce(agent, container_manual)) {
+        LOG(WARNING) << "manual scheduling fail, because of mismatching tag or pools";
         return false;
     }
 
@@ -805,7 +883,7 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     if (v1 == v2) {//same object 
         return false;
     }
-    if (v1->label != v2->label) {
+    if (v1->tag != v2->tag) {
         return true;
     }
     if (v1->pool_names.size() != v2->pool_names.size()) {
@@ -821,13 +899,23 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     if (v1->max_per_host != v2->max_per_host) {
         return true;
     }
-    if (v1->cpu.milli_core() != v2->cpu.milli_core() ||
-        v1->cpu.excess() != v2->cpu.excess()) {
+    if (v1->cpu.size() != v2->cpu.size()) {
         return true;
     }
-    if (v1->memory.size() != v2->memory.size() ||
-        v1->memory.excess() != v2->memory.excess()) {
+    for (size_t i = 0; i < v1->cpu.size(); i++) {
+        if (v1->cpu[i].milli_core() != v2->cpu[i].milli_core() ||
+            v1->cpu[i].excess() != v2->cpu[i].excess()) {
+            return true;
+        }
+    }
+    if (v1->memory.size() != v2->memory.size()) {
         return true;
+    }
+    for (size_t i = 0; i < v1->memory.size(); i++) {
+        if (v1->memory[i].size() != v2->memory[i].size() ||
+            v1->memory[i].excess() != v2->memory[i].excess()) {
+            return true;
+        }
     }
     if (v1->volums.size() != v2->volums.size()) {
         return true;
@@ -840,7 +928,6 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
         const proto::VolumRequired& vr_2 = v2->volums[i];
         if (vr_1.size() != vr_2.size() || vr_1.type() != vr_2.type()
             || vr_1.medium() != vr_2.medium() 
-            || vr_1.source_path() != vr_2.source_path()
             || vr_1.dest_path() != vr_2.dest_path()
             || vr_1.readonly() != vr_2.readonly()
             || vr_1.exclusive() != vr_2.exclusive()) {

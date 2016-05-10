@@ -10,6 +10,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 namespace baidu {
 namespace galaxy {
@@ -34,10 +35,14 @@ public:
 
     int Tasks(std::vector<pid_t>& pids);
     int Pids(std::vector<pid_t>& pids);
-    boost::shared_ptr<google::protobuf::Message> Status();
+    boost::shared_ptr<google::protobuf::Message> Report();
+    baidu::galaxy::proto::ContainerStatus Status();
 
 private:
     int RunRoutine(void*);
+    void ExportEnv(std::map<std::string, std::string>& env);
+    void ExportEnv();
+    
     const baidu::galaxy::proto::ContainerDescription desc_;
     std::vector<boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> > cgroup_;
     boost::shared_ptr<baidu::galaxy::volum::VolumGroup> volum_group_;

@@ -255,9 +255,8 @@ message AssignQuotaResponse {
 message CreateContainerGroupRequest {
     optional User user = 1; 
     optional uint32 replica = 2;
-    optional uint32 max_per_host = 3;
-    optional string name = 4;
-    optional ContainerDescription desc = 5;
+    optional string name = 3;
+    optional ContainerDescription desc = 4;
 }
 
 message CreateContainerGroupResponse {

@@ -34,7 +34,7 @@ public:
     int ExportEnv(std::map<std::string, std::string>& env);
     boost::shared_ptr<google::protobuf::Message> Report();
 
-    static int MountRootfs();
+    int MountRootfs();
 
 private:
     boost::shared_ptr<Volum> Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
