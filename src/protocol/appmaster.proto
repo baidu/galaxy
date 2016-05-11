@@ -64,10 +64,11 @@ message PodInfo {
     optional string podid = 1;
     optional string jobid = 2;
     optional string endpoint = 3;
-    optional PodDescription desc = 4;
-    optional PodStatus status = 5;
-    optional string version = 6;
-    optional int64 start_time = 7;
+    optional PodStatus status = 4;
+    optional string version = 5;
+    optional int64 start_time = 6;
+    optional int64 update_time = 7;
+    optional int32 fail_count = 8; 
 }
 
 message JobInfo {
@@ -116,8 +117,8 @@ message FetchTaskRequest {
 
 message FetchTaskResponse {
     optional ErrorCode error_code = 1;
-    optional PodInfo info = 2;
-    optional PodAction action = 3;
+    optional PodDescription pod = 2;
+    optional int64 update_time = 3;
 }
 
 message StopJobRequest {
