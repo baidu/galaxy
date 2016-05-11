@@ -22,11 +22,11 @@
 /*
 #define __LOG_STDERROR__(format, ...) do { \
  fprintf(stderr, "%s:%d"##format, __FILE__, __LINE__,  ##args); \
-} while(0) 
+} while(0)
 
 #define __LOG_STDOUT__(format, args, ...) do { \
  fprintf(stdout, format, ##args); \
-} while(0) 
+} while(0)
 */
 
 namespace baidu {
@@ -37,7 +37,7 @@ class Process {
 public:
     Process();
     ~Process();
-    
+
     // return pid of call process
     static pid_t SelfPid();
     void AddEnv(const std::string& key, const std::string& value);
@@ -51,7 +51,6 @@ public:
     int Fork(boost::function<int (void*)> routine, void* param);
     int Wait(int& status);
     pid_t Pid();
-
 
 private:
     class Context {
