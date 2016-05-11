@@ -44,9 +44,10 @@ void Process::AddEnv(const std::map<std::string, std::string>& env) {
     if (env.empty()) {
         return;
     }
-    
+
     std::map<std::string, std::string>::const_iterator iter = env.begin();
-    while(iter != env.end()) {
+
+    while (iter != env.end()) {
         env_[iter->first] = iter->second;
         iter++;
     }
@@ -74,7 +75,6 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     assert(!stdout_path_.empty());
     Context* context = new Context();
     std::vector<int> fds;
-
     int pid = SelfPid();
 
     if (0 != ListFds(pid, fds)) {
@@ -113,7 +113,6 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
             CLONE_FLAG | SIGCHLD,
             context);
     int en = errno;
-
     ::close(context->stdout_fd);
     ::close(context->stderr_fd);
 
@@ -160,11 +159,13 @@ int Process::CloneRoutine(void* param) {
 
     // export env
     std::map<std::string, std::string>::const_iterator iter = context->envs.begin();
-    while(iter != context->envs.end()) {
+
+    while (iter != context->envs.end()) {
         if (0 != ::setenv(iter->first.c_str(), iter->second.c_str(), 1)) {
             // LOG
             return -1;
         }
+
         iter++;
     }
 
@@ -183,25 +184,27 @@ pid_t Process::Pid() {
 }
 
 int Process::Wait(int& status) {
-    if (pid_ <=0) {
+    if (pid_ <= 0) {
         return -1;
     }
-    
+
     if (pid_ != ::waitpid(pid_, &status, 0)) {
         return -1;
     }
+
     return 0;
 }
 
 int Process::ListFds(pid_t pid, std::vector<int>& fd) {
     std::stringstream ss;
     ss << "/proc/" << (int)pid << "/fd";
-    
     boost::filesystem::path path(ss.str());
     boost::system::error_code ec;
+
     if (!boost::filesystem::exists(path, ec)) {
         return -1;
     }
+
     boost::filesystem::directory_iterator begin(path);
     boost::filesystem::directory_iterator end;
 
@@ -209,6 +212,7 @@ int Process::ListFds(pid_t pid, std::vector<int>& fd) {
     for (boost::filesystem::directory_iterator iter = begin; iter != end; iter++) {
         //std::string file_name = iter->filename();
         std::string file_name = iter->path().filename().string();
+
         if (file_name != "." && file_name != "..") {
             fd.push_back(atoi(file_name.c_str()));
         }

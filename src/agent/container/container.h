@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 #pragma once
 #include "protocol/galaxy.pb.h"
+#include "container_status.h"
+
 #include <sys/types.h>
 
 #include <boost/shared_ptr.hpp>
@@ -23,7 +25,7 @@ class VolumGroup;
 }
 
 namespace container {
-    class Process;
+class Process;
 class Container {
 public:
     Container(const std::string& id, const baidu::galaxy::proto::ContainerDescription& desc);
@@ -39,19 +41,20 @@ public:
     baidu::galaxy::proto::ContainerStatus Status();
 
 private:
+    int Construct_();
+    int Destroy_();
+
     int RunRoutine(void*);
     void ExportEnv(std::map<std::string, std::string>& env);
     void ExportEnv();
-    
+    bool Alive();
+
     const baidu::galaxy::proto::ContainerDescription desc_;
     std::vector<boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> > cgroup_;
     boost::shared_ptr<baidu::galaxy::volum::VolumGroup> volum_group_;
     boost::shared_ptr<Process> process_;
     std::string id_;
-    
-    int Attach(pid_t pid);
-    int Detach(pid_t pid);
-    int Detachall();
+    baidu::galaxy::container::ContainerStatus status_;
 
 };
 
