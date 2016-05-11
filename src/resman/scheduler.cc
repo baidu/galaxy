@@ -327,18 +327,11 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
     agents_[agent->endpoint_] = agent;
-    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
-    int64_t memory_assigned = agent_info.memory_resource().assigned();
+    int64_t cpu_assigned = 0;
+    int64_t memory_assigned = 0;
     std::map<DevicePath, VolumInfo> volum_assigned;
     std::set<std::string> port_assigned;
     std::map<ContainerId, Container::Ptr> containers;
-
-    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
-        const proto::VolumResource& vr = agent_info.volum_resources(i);
-        VolumInfo& volum_info = volum_assigned[vr.device_path()];
-        volum_info.size = vr.volum().assigned();
-        volum_info.medium = vr.medium();
-    }
 
     for (int i = 0; agent_info.container_info_size(); i++) {
         const proto::ContainerInfo& container_info = agent_info.container_info(i);
@@ -350,7 +343,7 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             continue;
         }
         if (container_groups_[container_info.group_id()]->containers.find(container_info.id())
-            != container_groups_[container_info.id()]->containers.end()) {
+            != container_groups_[container_info.group_id()]->containers.end()) {
             LOG(WARNING) << "this container already exist:" << container_info.id();
             continue;
         }
@@ -365,11 +358,14 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->priority = container_desc.priority();
         container->status = container_info.status();
         container->require = require;
-        
+        cpu_assigned += require->CpuNeed();
+        memory_assigned += require->MemoryNeed();
+
         for (int j = 0; j < container_desc.cgroups_size(); j++) {
             const proto::Cgroup& cgroup = container_desc.cgroups(j);
             for (int k = 0; k < cgroup.ports_size(); k++) {
                 container->allocated_ports.push_back(cgroup.ports(k).real_port());
+                port_assigned.insert(cgroup.ports(k).real_port());
             }
         }
 
@@ -377,18 +373,24 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         workspace_volum.medium = container_desc.workspace_volum().medium();
         workspace_volum.size = container_desc.workspace_volum().size();
         workspace_volum.exclusive = container_desc.workspace_volum().exclusive();
+        std::string work_path = container_desc.workspace_volum().source_path();
         if (workspace_volum.medium != proto::kTmpfs) {
             container->allocated_volums.push_back(
-                std::make_pair(container_desc.workspace_volum().source_path(), workspace_volum)
+                std::make_pair(work_path, workspace_volum)
             );
+            volum_assigned[work_path].size += workspace_volum.size;
+            volum_assigned[work_path].medium = workspace_volum.medium;
+        } else {
+            memory_assigned +=  workspace_volum.size;
         }
         if (workspace_volum.exclusive) {
-            volum_assigned[container_desc.workspace_volum().source_path()].exclusive = true;
+            volum_assigned[work_path].exclusive = true;
         }
         for (int j = 0; j < container_desc.data_volums_size(); j++) {
             VolumInfo data_volum;
             data_volum.medium = container_desc.data_volums(j).medium();
             if (data_volum.medium == proto::kTmpfs) {
+                memory_assigned += data_volum.size;
                 continue;
             }
             data_volum.size = container_desc.data_volums(j).size();
@@ -397,6 +399,8 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             container->allocated_volums.push_back(
                 std::make_pair(device_path, data_volum)
             );
+            volum_assigned[device_path].size += data_volum.size;
+            volum_assigned[device_path].medium = data_volum.medium;
             if (data_volum.exclusive) {
                 volum_assigned[device_path].exclusive = true;
             }
@@ -1045,7 +1049,39 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
 
 void Scheduler::SetVolumsAndPorts(const Container::Ptr& container, 
                                   proto::ContainerDescription& container_desc) {
-
+    size_t idx = 0;
+    if (container_desc.workspace_volum().medium() != proto::kTmpfs) {
+        if (idx >= container->allocated_volums.size()) {
+            LOG(WARNING) << "fail to set allocated volums device path";
+            return;
+        }
+        container_desc.mutable_workspace_volum()->set_source_path(
+            container->allocated_volums[idx++].first
+        );
+    }
+    for (int i = 0; i < container_desc.data_volums_size(); i++) {
+        if (idx >= container->allocated_volums.size()) {
+            LOG(WARNING) << "fail to set allocated volums device path";
+            return;
+        }
+        proto::VolumRequired* vol = container_desc.mutable_data_volums(i);
+        if (vol->medium() != proto::kTmpfs) {
+            vol->set_source_path(container->allocated_volums[idx++].first);
+        }
+    }
+    idx = 0;
+    for (int i = 0; i < container_desc.cgroups_size(); i++) {
+        int one_cgropu_ports = container_desc.cgroups(i).ports_size();
+        for (int j = 0; j < one_cgropu_ports; j++) {
+            if (idx >= container->allocated_ports.size()) {
+                LOG(WARNING) << "fail to set real port";
+                return;
+            }
+            container_desc.mutable_cgroups(i)->mutable_ports(j)->set_real_port(
+                container->allocated_ports[idx++]
+            );
+        }
+    }
 }
 
 } //namespace sched

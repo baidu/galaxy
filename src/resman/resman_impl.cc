@@ -76,7 +76,7 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
         agent.status = proto::kAgentDead;
         scheduler_->RemoveAgent(agent_endpoint);
         query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
-            boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, false)
+            boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, true)
         );
         return;
     }
