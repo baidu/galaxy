@@ -345,29 +345,59 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         if (container_info.status() != kContainerReady) {
             continue;
         }
+        if (container_groups_.find(container_info.group_id()) == container_groups_.end()) {
+            LOG(WARNING) << "no such container group:" << container_info.group_id();
+            continue;
+        }
+        if (container_groups_[container_info.group_id()]->containers.find(container_info.id())
+            != container_groups_[container_info.id()]->containers.end()) {
+            LOG(WARNING) << "this container already exist:" << container_info.id();
+            continue;
+        }
         Container::Ptr container(new Container());
-        Requirement::Ptr require(new Requirement());        
-        SetRequirement(require, container_info.container_desc());
+        Requirement::Ptr require(new Requirement());    
+        const proto::ContainerDescription& container_desc 
+                = container_info.container_desc();    
+        SetRequirement(require, container_desc);
 
         container->id = container_info.id();
         container->container_group_id = container_info.group_id();
-        container->priority = container_info.container_desc().priority();
+        container->priority = container_desc.priority();
         container->status = container_info.status();
         container->require = require;
-        for (int j = 0; j < container_info.port_used_size(); j++) {
-            container->allocated_ports.push_back(container_info.port_used(j));
-            port_assigned.insert(container_info.port_used(j));
+        
+        for (int j = 0; j < container_desc.cgroups_size(); j++) {
+            const proto::Cgroup& cgroup = container_desc.cgroups(j);
+            for (int k = 0; k < cgroup.ports_size(); k++) {
+                container->allocated_ports.push_back(cgroup.ports(k).real_port());
+            }
         }
-        for (int j = 0; j < container_info.volum_used_size(); j++) {
-            VolumInfo volum_info;
-            volum_info.medium = container_info.volum_used(j).medium();
-            volum_info.size = container_info.volum_used(j).assigned_size();
-            volum_info.exclusive = container_info.volum_used(j).exclusive();
-            const std::string& device_path = container_info.volum_used(j).path();
+
+        VolumInfo workspace_volum;
+        workspace_volum.medium = container_desc.workspace_volum().medium();
+        workspace_volum.size = container_desc.workspace_volum().size();
+        workspace_volum.exclusive = container_desc.workspace_volum().exclusive();
+        if (workspace_volum.medium != proto::kTmpfs) {
             container->allocated_volums.push_back(
-                std::make_pair(device_path, volum_info)
+                std::make_pair(container_desc.workspace_volum().source_path(), workspace_volum)
             );
-            if (volum_info.exclusive) {
+        }
+        if (workspace_volum.exclusive) {
+            volum_assigned[container_desc.workspace_volum().source_path()].exclusive = true;
+        }
+        for (int j = 0; j < container_desc.data_volums_size(); j++) {
+            VolumInfo data_volum;
+            data_volum.medium = container_desc.data_volums(j).medium();
+            if (data_volum.medium == proto::kTmpfs) {
+                continue;
+            }
+            data_volum.size = container_desc.data_volums(j).size();
+            data_volum.exclusive = container_desc.data_volums(j).exclusive();
+            std::string device_path = container_desc.data_volums(j).source_path();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, data_volum)
+            );
+            if (data_volum.exclusive) {
                 volum_assigned[device_path].exclusive = true;
             }
         }
@@ -448,14 +478,14 @@ ContainerGroupId Scheduler::GenerateContainerGroupId(const std::string& containe
     std::stringstream ss;
     char time_buf[32] = { 0 };
     ::strftime(time_buf, 32, "%Y%m%d_%H%M%S", &t);
-    ss << "G_" << time_buf << "_"
+    ss << "job_" << time_buf << "_"
        << random() << "_" << suffix;
     return ss.str();
 }
 
 ContainerId Scheduler::GenerateContainerId(const ContainerGroupId& container_group_id, int offset) {
     std::stringstream ss;
-    ss << container_group_id << ".vm_" << offset;
+    ss << container_group_id << ".pod_" << offset;
     return ss.str();
 }
 
@@ -888,42 +918,7 @@ void Scheduler::HandleDiff(const std::string& agent_endpoint,
     }
     Agent::Ptr agent = it->second;
     ContainerMap containers_wish = agent->containers_;
-    std::map<ContainerId, proto::ContainerStatus> remote_status;
-    for (int i = 0; agent_info.container_info_size(); i++) {
-        const proto::ContainerInfo& container_info = agent_info.container_info(i);
-        if (containers_wish.find(container_info.id()) == containers_wish.end()) {
-            AgentCommand cmd;
-            cmd.action = kDestroyContainer;
-            cmd.container_id = container_info.id();
-            commands.push_back(cmd);
-            continue;
-        }
-        remote_status[container_info.id()] =  container_info.status();
-    }
-    BOOST_FOREACH(ContainerMap::value_type& pair, containers_wish) {
-        const ContainerId& container_id = pair.first;
-        Container::Ptr& container = pair.second;
-        std::map<ContainerId, proto::ContainerStatus>::iterator remote_it;
-        remote_it = remote_status.find(container_id);
-        bool exist_on_remote = (remote_it != remote_status.end());
-        AgentCommand cmd;
-        if (container->status == kContainerAllocating) {
-            if (exist_on_remote && remote_it->second == kContainerReady) {
-                ChangeStatus(container, kContainerReady);
-            } else {
-                cmd.action = kCreateContainer;
-                cmd.container_id = container_id;
-                //cmd.desc = conatiner_desc;
-            }
-            commands.push_back(cmd);
-        } else if (container->status == kContainerReady) {
-            if (!exist_on_remote || remote_it->second != kContainerReady) {
-
-            }
-        } else if (container->status == kContainerDestroying) {
-
-        }
-    }
+    
 }
 
 bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {

@@ -110,7 +110,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         return;
     }
     MutexLock lock(&mu_);
-    if (is_first_query && safe_mode_) {
+    if (is_first_query) {
         std::map<std::string, proto::AgentMeta>::iterator agent_it 
             = agents_.find(agent_endpoint);
         if (agent_it == agents_.end()) {
@@ -138,7 +138,13 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                                  volums,
                                                  tags,
                                                  pool_name));
-        scheduler_->AddAgent(agent, agent_info);
+        scheduler_->RemoveAgent(agent_endpoint);
+        if (!safe_mode_) {
+            proto::AgentInfo empty_info;
+            scheduler_->AddAgent(agent, empty_info);
+        } else {
+            scheduler_->AddAgent(agent, agent_info);
+        }
     } else {
         std::vector<sched::AgentCommand> commands;
         scheduler_->HandleDiff(agent_endpoint, response->agent_info(), commands);
