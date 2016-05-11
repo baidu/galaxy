@@ -72,10 +72,11 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
     AgentStat& agent = agent_it->second;
     int32_t now_tm = common::timer::now_time();
     if (agent.last_heartbeat_time + FLAGS_agent_timeout < now_tm) {
+        LOG(INFO) << "this agent maybe dead:" << agent_endpoint;
         agent.status = proto::kAgentDead;
         scheduler_->RemoveAgent(agent_endpoint);
         query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
-            boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, false)
+            boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, true)
         );
         return;
     }
@@ -92,6 +93,7 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
     proto::QueryResponse* response = new proto::QueryResponse();
     rpc_client_.AsyncRequest(stub, &proto::Agent_Stub::Query,
                              request, response, callback, 5, 1);
+    VLOG(10) << "send query command to:" << agent_endpoint;
 }
 
 void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
@@ -109,8 +111,8 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         );
         return;
     }
-    MutexLock lock(&mu_);
-    if (is_first_query && safe_mode_) {
+    if (is_first_query) {
+        MutexLock lock(&mu_);
         std::map<std::string, proto::AgentMeta>::iterator agent_it 
             = agents_.find(agent_endpoint);
         if (agent_it == agents_.end()) {
@@ -138,14 +140,73 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                                  volums,
                                                  tags,
                                                  pool_name));
+        scheduler_->RemoveAgent(agent_endpoint);
         scheduler_->AddAgent(agent, agent_info);
+        LOG(INFO) << "TRACE BEGIN, first query result from:" << agent_endpoint
+                  << "\n" << agent_info.DebugString()
+                  << "\nTRACE END";
     } else {
-        //TODO, handle query diff
+        VLOG(10) << "TRACE BEGIN, query result from: " << agent_endpoint
+                 << "\n" << response->agent_info().DebugString()
+                 << "\nTRACE END";
+        std::vector<sched::AgentCommand> commands;
+        scheduler_->MakeCommand(agent_endpoint, response->agent_info(), commands);
+        SendCommandsToAgent(agent_endpoint, commands);
     }
+
+    {
+        MutexLock lock(&mu_);
+        agent_stats_[agent_endpoint].info = response->agent_info();
+    }
+    
     //query again later
     query_pool_.DelayTask(FLAGS_agent_query_interval,
         boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
     );
+}
+
+void ResManImpl::SendCommandsToAgent(const std::string& agent_endpoint,
+                                     const std::vector<sched::AgentCommand>& commands) {
+    std::vector<sched::AgentCommand>::const_iterator it;
+    for (it = commands.begin(); it != commands.end(); it++) {
+        const sched::AgentCommand& cmd = *it;
+        proto::Agent_Stub* stub;
+        rpc_client_.GetStub(agent_endpoint, &stub);
+        boost::scoped_ptr<proto::Agent_Stub> stub_guard(stub);
+        if (cmd.action == sched::kCreateContainer) {
+            proto::CreateContainerRequest* request = new proto::CreateContainerRequest();
+            proto::CreateContainerResponse* response = new proto::CreateContainerResponse();
+            request->set_id(cmd.container_id);
+            request->mutable_container()->CopyFrom(cmd.desc);
+            boost::function<void (const proto::CreateContainerRequest*,
+                                  proto::CreateContainerResponse*,
+                                  bool, int)> callback;
+            callback = boost::bind(&ResManImpl::CreateContainerCallback, this,
+                                   agent_endpoint, _1, _2, _3, _4);
+            rpc_client_.AsyncRequest(stub, &proto::Agent_Stub::CreateContainer,
+                                     request, response, callback, 5, 1);
+            LOG(INFO) << "send create command, container: "
+                      << cmd.container_id << ", agent:"
+                      << agent_endpoint;
+            VLOG(10) << "TRACE BEGIN container: " << cmd.container_id;
+            VLOG(10) <<  cmd.desc.DebugString();
+            VLOG(10) << "TRACE END";
+        } else if (cmd.action == sched::kDestroyContainer) {
+            proto::RemoveContainerRequest* request = new proto::RemoveContainerRequest();
+            proto::RemoveContainerResponse* response = new proto::RemoveContainerResponse();
+            request->set_id(cmd.container_id);
+            boost::function<void (const proto::RemoveContainerRequest*,
+                                  proto::RemoveContainerResponse*,
+                                  bool, int)> callback;
+            callback = boost::bind(&ResManImpl::RemoveContainerCallback, this,
+                                   agent_endpoint, _1, _2, _3, _4);
+            rpc_client_.AsyncRequest(stub, &proto::Agent_Stub::RemoveContainer,
+                                     request, response, callback, 5, 1);
+            LOG(INFO) << "send remove command, container: "
+                      << cmd.container_id << ", agent:"
+                      << agent_endpoint;
+        }
+    }
 }
 
 void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
@@ -403,6 +464,42 @@ bool ResManImpl::LoadObjects(const std::string& prefix,
         }
     }
     return result->Error() == ::galaxy::ins::sdk::kOK;
+}
+
+void ResManImpl::CreateContainerCallback(std::string agent_endpoint,
+                                         const proto::CreateContainerRequest* request,
+                                         proto::CreateContainerResponse* response,
+                                         bool fail, int err) {
+    boost::scoped_ptr<const proto::CreateContainerRequest> request_guard(request);
+    boost::scoped_ptr<proto::CreateContainerResponse> response_guard(response);
+    if (fail) {
+        LOG(WARNING) << "rpc fail of creating container, err: " << err
+                     << ", agent: " << agent_endpoint; 
+        return;
+    }
+    if (response->code().status() != proto::kOk) {
+        LOG(WARNING) << "fail to create contaienr, reason:" 
+                     << response->code().reason()
+                     << ", agent:" << agent_endpoint;
+    }
+}
+
+void ResManImpl::RemoveContainerCallback(std::string agent_endpoint,
+                                         const proto::RemoveContainerRequest* request,
+                                         proto::RemoveContainerResponse* response,
+                                         bool fail, int err) {
+    boost::scoped_ptr<const proto::RemoveContainerRequest> request_guard(request);
+    boost::scoped_ptr<proto::RemoveContainerResponse> response_guard(response);
+    if (fail) {
+        LOG(WARNING) << "rpc fail of remote container, err: " << err
+                     << ", agent:" << agent_endpoint;
+        return;
+    }
+    if (response->code().status() != proto::kOk) {
+        LOG(WARNING) << "fail to create contaienr, reason:" 
+                     << response->code().reason()
+                     << ", agent:" << agent_endpoint;
+    }
 }
 
 } //namespace galaxy

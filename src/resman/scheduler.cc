@@ -14,7 +14,7 @@
 #include "timer.h"
 
 DECLARE_int64(sched_interval);
-DECLARE_int64(group_gc_check_interval);
+DECLARE_int64(container_group_gc_check_interval);
 
 namespace baidu {
 namespace galaxy {
@@ -54,7 +54,7 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     container_counts_.clear();
     BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
         const Container::Ptr& container = pair.second;
-        container_counts_[container->group_id] += 1;
+        container_counts_[container->container_group_id] += 1;
         container->allocated_agent = endpoint_;
     }
 }
@@ -73,8 +73,8 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     }
 
     if (container->require->max_per_host > 0) {
-        GroupId group_id = container->group_id;
-        std::map<GroupId, int>::iterator it = container_counts_.find(group_id);
+        ContainerGroupId container_group_id = container->container_group_id;
+        std::map<ContainerGroupId, int>::iterator it = container_counts_.find(container_group_id);
         if (it != container_counts_.end()) {
             int cur_counts = it->second;
             if (cur_counts >= container->require->max_per_host) {
@@ -205,7 +205,7 @@ void Agent::Put(Container::Ptr container) {
     container->allocated_agent = endpoint_;
     container->last_res_err = kOk;
     containers_[container->id] = container;
-    container_counts_[container->group_id] += 1;
+    container_counts_[container->container_group_id] += 1;
 }
 
 void Agent::Evict(Container::Ptr container) {
@@ -240,9 +240,9 @@ void Agent::Evict(Container::Ptr container) {
         port_assigned_.erase(port);
     }
     containers_.erase(container->id);
-    container_counts_[container->group_id] -= 1;
-    if (container_counts_[container->group_id] <= 0) {
-        container_counts_.erase(container->group_id);
+    container_counts_[container->container_group_id] -= 1;
+    if (container_counts_[container->container_group_id] <= 0) {
+        container_counts_.erase(container->container_group_id);
     }
 }
 
@@ -302,71 +302,111 @@ Scheduler::Scheduler() {
 
 }
 
+void Scheduler::SetRequirement(Requirement::Ptr require, 
+                               const proto::ContainerDescription& container_desc) {
+    require->tag = container_desc.tag();
+    for (int j = 0; j < container_desc.pool_names_size(); j++) {
+        require->pool_names.insert(container_desc.pool_names(j));
+    }
+    require->max_per_host = container_desc.max_per_host();
+    for (int j = 0; j < container_desc.cgroups_size(); j++) {
+        const proto::Cgroup& cgroup = container_desc.cgroups(j);
+        require->cpu.push_back(cgroup.cpu());
+        require->memory.push_back(cgroup.memory());
+        for (int k = 0; k < cgroup.ports_size(); k++) {
+            require->ports.push_back(cgroup.ports(k));
+        }
+    }
+    require->volums.push_back(container_desc.workspace_volum());
+    for (int j = 0; j < container_desc.data_volums_size(); j++) {
+        require->volums.push_back(container_desc.data_volums(j));
+    }
+    require->version = container_desc.version();
+}
+
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
     agents_[agent->endpoint_] = agent;
-    int64_t cpu_assigned = agent_info.cpu_resource().assigned();
-    int64_t memory_assigned = agent_info.memory_resource().assigned();
+    int64_t cpu_assigned = 0;
+    int64_t memory_assigned = 0;
     std::map<DevicePath, VolumInfo> volum_assigned;
     std::set<std::string> port_assigned;
     std::map<ContainerId, Container::Ptr> containers;
-
-    for (int i = 0; i < agent_info.volum_resources_size(); i++) {
-        const proto::VolumResource& vr = agent_info.volum_resources(i);
-        VolumInfo& volum_info = volum_assigned[vr.device_path()];
-        volum_info.size = vr.volum().assigned();
-        volum_info.medium = vr.medium();
-    }
 
     for (int i = 0; agent_info.container_info_size(); i++) {
         const proto::ContainerInfo& container_info = agent_info.container_info(i);
         if (container_info.status() != kContainerReady) {
             continue;
         }
+        if (container_groups_.find(container_info.group_id()) == container_groups_.end()) {
+            LOG(WARNING) << "no such container group:" << container_info.group_id();
+            continue;
+        }
+        if (container_groups_[container_info.group_id()]->containers.find(container_info.id())
+            != container_groups_[container_info.group_id()]->containers.end()) {
+            LOG(WARNING) << "this container already exist:" << container_info.id();
+            continue;
+        }
         Container::Ptr container(new Container());
-        Requirement::Ptr require(new Requirement());
+        Requirement::Ptr require(new Requirement());    
+        const proto::ContainerDescription& container_desc 
+                = container_info.container_desc();    
+        SetRequirement(require, container_desc);
 
-        require->tag = container_info.container_desc().tag();
-        for (int j = 0; j < container_info.container_desc().pool_names_size(); j++) {
-            require->pool_names.insert(container_info.container_desc().pool_names(j));
-        }
-        require->max_per_host = container_info.container_desc().max_per_host();
-        for (int j = 0; j < container_info.container_desc().cgroups_size(); j++) {
-            const proto::Cgroup& cgroup = container_info.container_desc().cgroups(j);
-            require->cpu.push_back(cgroup.cpu());
-            require->memory.push_back(cgroup.memory());
-            for (int k = 0; k < cgroup.ports_size(); k++) {
-                require->ports.push_back(cgroup.ports(k));
-            }
-        }
-        require->volums.push_back(container_info.container_desc().workspace_volum());
-        for (int j = 0; j < container_info.container_desc().data_volums_size(); j++) {
-            require->volums.push_back(container_info.container_desc().data_volums(j));
-        }
         container->id = container_info.id();
-        container->group_id = container_info.group_id();
-        container->priority = container_info.container_desc().priority();
+        container->container_group_id = container_info.group_id();
+        container->priority = container_desc.priority();
         container->status = container_info.status();
         container->require = require;
-        for (int j = 0; j < container_info.port_used_size(); j++) {
-            container->allocated_ports.push_back(container_info.port_used(j));
-            port_assigned.insert(container_info.port_used(j));
+        cpu_assigned += require->CpuNeed();
+        memory_assigned += require->MemoryNeed();
+
+        for (int j = 0; j < container_desc.cgroups_size(); j++) {
+            const proto::Cgroup& cgroup = container_desc.cgroups(j);
+            for (int k = 0; k < cgroup.ports_size(); k++) {
+                container->allocated_ports.push_back(cgroup.ports(k).real_port());
+                port_assigned.insert(cgroup.ports(k).real_port());
+            }
         }
-        for (int j = 0; j < container_info.volum_used_size(); j++) {
-            VolumInfo volum_info;
-            volum_info.medium = container_info.volum_used(j).medium();
-            volum_info.size = container_info.volum_used(j).assigned_size();
-            volum_info.exclusive = container_info.volum_used(j).exclusive();
-            const std::string& device_path = container_info.volum_used(j).path();
+
+        VolumInfo workspace_volum;
+        workspace_volum.medium = container_desc.workspace_volum().medium();
+        workspace_volum.size = container_desc.workspace_volum().size();
+        workspace_volum.exclusive = container_desc.workspace_volum().exclusive();
+        std::string work_path = container_desc.workspace_volum().source_path();
+        if (workspace_volum.medium != proto::kTmpfs) {
             container->allocated_volums.push_back(
-                std::make_pair(device_path, volum_info)
+                std::make_pair(work_path, workspace_volum)
             );
-            if (volum_info.exclusive) {
+            volum_assigned[work_path].size += workspace_volum.size;
+            volum_assigned[work_path].medium = workspace_volum.medium;
+        } else {
+            memory_assigned +=  workspace_volum.size;
+        }
+        if (workspace_volum.exclusive) {
+            volum_assigned[work_path].exclusive = true;
+        }
+        for (int j = 0; j < container_desc.data_volums_size(); j++) {
+            VolumInfo data_volum;
+            data_volum.medium = container_desc.data_volums(j).medium();
+            if (data_volum.medium == proto::kTmpfs) {
+                memory_assigned += data_volum.size;
+                continue;
+            }
+            data_volum.size = container_desc.data_volums(j).size();
+            data_volum.exclusive = container_desc.data_volums(j).exclusive();
+            std::string device_path = container_desc.data_volums(j).source_path();
+            container->allocated_volums.push_back(
+                std::make_pair(device_path, data_volum)
+            );
+            volum_assigned[device_path].size += data_volum.size;
+            volum_assigned[device_path].medium = data_volum.medium;
+            if (data_volum.exclusive) {
                 volum_assigned[device_path].exclusive = true;
             }
         }
         containers[container->id] = container;
-        groups_[container->group_id]->containers[container->id] = container;
+        container_groups_[container->container_group_id]->containers[container->id] = container;
         ChangeStatus(container, container->status);
     }
     agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
@@ -422,9 +462,9 @@ void Scheduler::SetPool(const AgentEndpoint& endpoint, const std::string& pool_n
     agent->pool_name_ = pool_name;
 }
 
-GroupId Scheduler::GenerateGroupId(const std::string& group_name) {
+ContainerGroupId Scheduler::GenerateContainerGroupId(const std::string& container_group_name) {
     std::string suffix = "";
-    BOOST_FOREACH(char c, group_name) {
+    BOOST_FOREACH(char c, container_group_name) {
         if (!isalnum(c)) {
             suffix += "_";
         } else {
@@ -442,76 +482,93 @@ GroupId Scheduler::GenerateGroupId(const std::string& group_name) {
     std::stringstream ss;
     char time_buf[32] = { 0 };
     ::strftime(time_buf, 32, "%Y%m%d_%H%M%S", &t);
-    ss << "group_" << time_buf << "_"
+    ss << "job_" << time_buf << "_"
        << random() << "_" << suffix;
     return ss.str();
 }
 
-ContainerId Scheduler::GenerateContainerId(const GroupId& group_id, int offset) {
+ContainerId Scheduler::GenerateContainerId(const ContainerGroupId& container_group_id, int offset) {
     std::stringstream ss;
-    ss << group_id << ".vm_" << offset;
+    ss << container_group_id << ".pod_" << offset;
     return ss.str();
 }
 
-GroupId Scheduler::Submit(const std::string& group_name,
-                          const Requirement& require, 
-                          int replica, int priority) {
+ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
+                                   const proto::ContainerDescription& container_desc,
+                                   int replica, int priority) {
     MutexLock locker(&mu_);
-    GroupId group_id = GenerateGroupId(group_name);
-    if (groups_.find(group_id) != groups_.end()) {
-        LOG(WARNING) << "group id conflict:" << group_id;
+    ContainerGroupId container_group_id = GenerateContainerGroupId(container_group_name);
+    if (container_groups_.find(container_group_id) != container_groups_.end()) {
+        LOG(WARNING) << "container_group id conflict:" << container_group_id;
         return "";
     }
-    Requirement::Ptr req(new Requirement(require));
-    Group::Ptr group(new Group());
-    group->require = req;
-    group->id = group_id;
-    group->priority = priority;
+    Requirement::Ptr req(new Requirement());
+    SetRequirement(req, container_desc);
+    ContainerGroup::Ptr container_group(new ContainerGroup());
+    container_group->require = req;
+    container_group->id = container_group_id;
+    container_group->priority = priority;
+    container_group->container_desc = container_desc;
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
-        container->group_id = group->id;
-        container->id = GenerateContainerId(group_id, i);
+        container->container_group_id = container_group->id;
+        container->id = GenerateContainerId(container_group_id, i);
         container->require = req;
         container->priority = priority;
-        group->containers[container->id] = container;
-        ChangeStatus(group, container, kContainerPending);
+        container_group->containers[container->id] = container;
+        ChangeStatus(container_group, container, kContainerPending);
     }
-    groups_[group_id] = group;
-    group_queue_.insert(group);
-    return group->id;
+    container_groups_[container_group_id] = container_group;
+    container_group_queue_.insert(container_group);
+    return container_group->id;
 }
 
-bool Scheduler::Kill(const GroupId& group_id) {
+void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
+    MutexLock lock(&mu_);
+    Requirement::Ptr req(new Requirement());
+    ContainerGroup::Ptr container_group(new ContainerGroup());
+
+    SetRequirement(req, container_group_meta.desc());
+    container_group->require = req;
+    container_group->id = container_group_meta.id();
+    container_group->priority = container_group_meta.desc().priority();
+    container_group->container_desc = container_group_meta.desc();
+
+    container_groups_[container_group->id] = container_group;
+    container_group_queue_.insert(container_group);
+}
+
+bool Scheduler::Kill(const ContainerGroupId& container_group_id) {
     MutexLock locker(&mu_);
-    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
-    if (it == groups_.end()) {
-        LOG(WARNING) << "unkonw group id: " << group_id;
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "unkonw container_group id: " << container_group_id;
         return false;
     }
-    Group::Ptr group = it->second;
-    if (group->terminated) {
+    ContainerGroup::Ptr container_group = it->second;
+    if (container_group->terminated) {
         LOG(WARNING) << "ignore the killing, "
-                     << group_id << " already killed";
+                     << container_group_id << " already killed";
         return false;
     }
-    BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
+    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
         Container::Ptr container = pair.second;
         if (container->status == kContainerPending) {
-            ChangeStatus(group, container, kContainerTerminated);
+            ChangeStatus(container_group, container, kContainerTerminated);
         } else if (container->status != kContainerTerminated){
-            ChangeStatus(group, container, kContainerDestroying);
+            ChangeStatus(container_group, container, kContainerDestroying);
         }
     }
-    group->terminated = true;
-    gc_pool_.AddTask(boost::bind(&Scheduler::CheckGroupGC, this, group));
+    container_group->terminated = true;
+    gc_pool_.AddTask(boost::bind(&Scheduler::CheckContainerGroupGC, this, container_group));
     return true;
 }
 
-void Scheduler::CheckGroupGC(Group::Ptr group) {
+void Scheduler::CheckContainerGroupGC(ContainerGroup::Ptr container_group) {
     MutexLock locker(&mu_);
-    assert(group->terminated);
+    assert(container_group->terminated);
     bool all_container_terminated = true;
-    BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
+    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
         Container::Ptr container = pair.second;
         if (container->status != kContainerTerminated) {
             all_container_terminated  = false;
@@ -519,50 +576,50 @@ void Scheduler::CheckGroupGC(Group::Ptr group) {
         }
     }
     if (all_container_terminated) {
-        groups_.erase(group->id);
-        group_queue_.erase(group);
+        container_groups_.erase(container_group->id);
+        container_group_queue_.erase(container_group);
         //after this, all containers wish to be deleted
     } else {
-        gc_pool_.DelayTask(FLAGS_group_gc_check_interval,
-                           boost::bind(&Scheduler::CheckGroupGC, this, group));
+        gc_pool_.DelayTask(FLAGS_container_group_gc_check_interval,
+                           boost::bind(&Scheduler::CheckContainerGroupGC, this, container_group));
     }
 }
 
-bool Scheduler::ChangeReplica(const GroupId& group_id, int replica) {
+bool Scheduler::ChangeReplica(const ContainerGroupId& container_group_id, int replica) {
     MutexLock locker(&mu_);
-    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
-    if (it == groups_.end()) {
-        LOG(WARNING) << "unkonw group id: " << group_id;
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "unkonw container_group id: " << container_group_id;
         return false;
     }
     if (replica < 0) {
         LOG(WARNING) << "ignore invalid replica: " << replica;
         return false;
     }
-    Group::Ptr group = it->second;
-    if (group->terminated) {
-        LOG(WARNING) << "terminated group can not be scale up/down";
+    ContainerGroup::Ptr container_group = it->second;
+    if (container_group->terminated) {
+        LOG(WARNING) << "terminated container_group can not be scale up/down";
         return false;
     }
-    int current_replica = group->Replica();
+    int current_replica = container_group->Replica();
     if (replica == current_replica) {
         LOG(INFO) << "replica not change, do nothing" ;
     } else if (replica < current_replica) {
-        ScaleDown(group, replica);
+        ScaleDown(container_group, replica);
     } else {
-        ScaleUp(group, replica);
+        ScaleUp(container_group, replica);
     }
     return true;
 }
 
-void Scheduler::ScaleDown(Group::Ptr group, int replica) {
+void Scheduler::ScaleDown(ContainerGroup::Ptr container_group, int replica) {
     mu_.AssertHeld();
-    int delta = group->Replica() - replica;
+    int delta = container_group->Replica() - replica;
     //remove from pending first
-    ContainerMap pending_containers = group->states[kContainerPending];
+    ContainerMap pending_containers = container_group->states[kContainerPending];
     BOOST_FOREACH(ContainerMap::value_type& pair, pending_containers) {
         Container::Ptr container = pair.second;
-        ChangeStatus(group, container, kContainerTerminated);
+        ChangeStatus(container_group, container, kContainerTerminated);
         --delta;
         if (delta <= 0) {
             break;
@@ -571,7 +628,7 @@ void Scheduler::ScaleDown(Group::Ptr group, int replica) {
     ContainerStatus all_status[] = {kContainerAllocating, kContainerReady};
     for (size_t i = 0; i < sizeof(all_status) && delta > 0; i++) {
         ContainerStatus st = all_status[i];
-        ContainerMap working_containers = group->states[st];
+        ContainerMap working_containers = container_group->states[st];
         BOOST_FOREACH(ContainerMap::value_type& pair, working_containers) {
             Container::Ptr container = pair.second;
             ChangeStatus(container, kContainerDestroying);
@@ -583,104 +640,55 @@ void Scheduler::ScaleDown(Group::Ptr group, int replica) {
     }
 }
 
-void Scheduler::ScaleUp(Group::Ptr group, int replica) {
+void Scheduler::ScaleUp(ContainerGroup::Ptr container_group, int replica) {
     mu_.AssertHeld();
     for (int i = 0; i < replica; i++) {
-        if (group->Replica() >= replica) {
+        if (container_group->Replica() >= replica) {
             break;
         }
-        ContainerId container_id = GenerateContainerId(group->id, i);
+        ContainerId container_id = GenerateContainerId(container_group->id, i);
         Container::Ptr container;
-        ContainerMap::iterator it = group->containers.find(container_id);
-        if (it == group->containers.end()) {
+        ContainerMap::iterator it = container_group->containers.find(container_id);
+        if (it == container_group->containers.end()) {
             container.reset(new Container());
-            container->group_id = group->id;
+            container->container_group_id = container_group->id;
             container->id = container_id;
-            container->require = group->require;
-            group->containers[container_id] = container;
+            container->require = container_group->require;
+            container_group->containers[container_id] = container;
         } else {
             container = it->second;
         }
         if (container->status != kContainerReady && container->status != kContainerAllocating) {
-            ChangeStatus(group, container, kContainerPending);            
+            ChangeStatus(container_group, container, kContainerPending);            
         }
     }
-}
-
-void Scheduler::ShowAssignment(const AgentEndpoint& endpoint,
-                               std::vector<Container>& containers) {
-    MutexLock locker(&mu_);
-    containers.clear();
-    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
-    if (it == agents_.end()) {
-        LOG(WARNING) << "no such agent: " << endpoint;
-        return;
-    }
-    Agent::Ptr agent = it->second;
-    BOOST_FOREACH(const ContainerMap::value_type& pair, agent->containers_) {
-        containers.push_back(*pair.second);
-    }
-}
-
-void Scheduler::ShowGroup(const GroupId group_id,
-                        std::vector<Container>& containers) {
-    MutexLock locker(&mu_);
-    std::map<GroupId, Group::Ptr>::iterator it;
-    it = groups_.find(group_id);
-    if (it == groups_.end()) {
-        LOG(WARNING) << "no such group id: " << group_id;
-        return;
-    }
-    const Group::Ptr& group = it->second;
-    BOOST_FOREACH(ContainerMap::value_type& pair, group->containers) {
-        containers.push_back(*pair.second);
-    }
-}
-
-void Scheduler::ChangeStatus(const GroupId& group_id,
-                             const ContainerId& container_id,
-                             ContainerStatus new_status) {
-    MutexLock locker(&mu_);
-    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
-    if (it == groups_.end()) {
-        LOG(WARNING) << "no such group: " << group_id;
-        return;
-    }
-    Group::Ptr group = it->second;
-    ContainerMap::iterator ct = group->containers.find(container_id);
-    if (ct == group->containers.end()) {
-        LOG(WARNING) << "no such container: " << container_id;
-        return;
-    }
-    Container::Ptr container = ct->second;
-    return ChangeStatus(container, new_status);
 }
 
 void Scheduler::ChangeStatus(Container::Ptr container,
                              ContainerStatus new_status) {
     mu_.AssertHeld();
-    GroupId group_id = container->group_id;
-    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
-    if (it == groups_.end()) {
-        LOG(WARNING) << "no such group:" << group_id;
+    ContainerGroupId container_group_id = container->container_group_id;
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "no such container_group:" << container_group_id;
         return;
     }
-    Group::Ptr group = it->second;
-    return ChangeStatus(group, container, new_status);
+    ContainerGroup::Ptr container_group = it->second;
+    return ChangeStatus(container_group, container, new_status);
 }
 
-void Scheduler::ChangeStatus(Group::Ptr group,
+void Scheduler::ChangeStatus(ContainerGroup::Ptr container_group,
                              Container::Ptr container,
                              ContainerStatus new_status) {
     mu_.AssertHeld();
     ContainerId container_id = container->id;
-    if (group->containers.find(container_id) == group->containers.end()) {
+    if (container_group->containers.find(container_id) == container_group->containers.end()) {
         LOG(WARNING) << "no such container id: " << container_id;
         return;
     }
     ContainerStatus old_status = container->status;
-    group->states[old_status].erase(container_id);
-    group->states[new_status][container_id] = container;
+    container_group->states[old_status].erase(container_id);
+    container_group->states[new_status][container_id] = container;
     if ((new_status == kContainerPending || new_status == kContainerTerminated)
         && container->allocated_agent != "") {
         std::map<AgentEndpoint, Agent::Ptr>::iterator it;
@@ -692,7 +700,7 @@ void Scheduler::ChangeStatus(Group::Ptr group,
         container->allocated_volums.clear();
         container->allocated_ports.clear();
         container->allocated_agent = "";
-        container->require = group->require;
+        container->require = container_group->require;
     }
     container->status = new_status;
 }
@@ -735,26 +743,26 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
     ContainerMap containers = agent->containers_;
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        GroupId group_id = container->group_id;
-        std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
-        if (it == groups_.end()) {
-            LOG(WARNING) << "no such group, so evict it" << group_id;
+        ContainerGroupId container_group_id = container->container_group_id;
+        std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
+        if (it == container_groups_.end()) {
+            LOG(WARNING) << "no such container_group, so evict it" << container_group_id;
             agent->Evict(container);
             continue;
         }
-        Group::Ptr group = it->second;
-        if (!RequireHasDiff(container->require.get(), group->require.get())) {
-            container->require = group->require;
+        ContainerGroup::Ptr container_group = it->second;
+        if (container->require->version == container_group->require->version) {
+            container->require = container_group->require;
             continue;
         }
         int32_t now = common::timer::now_time();
-        if (now - group->last_update_time < group->update_interval) {
+        if (now - container_group->last_update_time < container_group->update_interval) {
             continue;
         }
         //update container require, and re-schedule it.
         ChangeStatus(container, kContainerPending);
-        container->require = group->require;
-        group->last_update_time = now;
+        container->require = container_group->require;
+        container_group->last_update_time = now;
     }
 }
 
@@ -777,14 +785,14 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
 
     CheckVersion(agent); //check containers version
     CheckTagAndPool(agent); //may evict some containers
-    //for each group checking pending containers, try to put on...
-    std::set<Group::Ptr, GroupQueueLess>::iterator jt;
-    for (jt = group_queue_.begin(); jt != group_queue_.end(); jt++) {
-        Group::Ptr group = *jt;
-        if (group->states[kContainerPending].size() == 0) {
+    //for each container_group checking pending containers, try to put on...
+    std::set<ContainerGroup::Ptr, ContainerGroupQueueLess>::iterator jt;
+    for (jt = container_group_queue_.begin(); jt != container_group_queue_.end(); jt++) {
+        ContainerGroup::Ptr container_group = *jt;
+        if (container_group->states[kContainerPending].size() == 0) {
             continue; // no pending pods
         }
-        Container::Ptr container = group->states[kContainerPending].begin()->second;
+        Container::Ptr container = container_group->states[kContainerPending].begin()->second;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
             container->last_res_err = res_err;
@@ -799,28 +807,28 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
 }
 
 bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
-                               const GroupId& group_id) {
-    LOG(INFO) << "manul scheduling: " << group_id << " @ " << endpoint;
+                               const ContainerGroupId& container_group_id) {
+    LOG(INFO) << "manul scheduling: " << container_group_id << " @ " << endpoint;
     MutexLock lock(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator agent_it;
-    std::map<GroupId, Group::Ptr>::iterator group_it;
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator container_group_it;
     agent_it = agents_.find(endpoint);
     if (agent_it == agents_.end()) {
         LOG(WARNING) << "no such agent:" << endpoint;
         return false;
     }
     Agent::Ptr agent = agent_it->second;
-    group_it = groups_.find(group_id);
-    if (group_it == groups_.end()) {
-        LOG(WARNING) << "no such group:" << group_id;
+    container_group_it = container_groups_.find(container_group_id);
+    if (container_group_it == container_groups_.end()) {
+        LOG(WARNING) << "no such container_group:" << container_group_id;
         return false;
     }
-    Group::Ptr group = group_it->second;
-    if (group->states[kContainerPending].size() == 0) {
-        LOG(WARNING) << "no pending containers to put, " << group_id;
+    ContainerGroup::Ptr container_group = container_group_it->second;
+    if (container_group->states[kContainerPending].size() == 0) {
+        LOG(WARNING) << "no pending containers to put, " << container_group_id;
         return false;
     }
-    Container::Ptr container_manual = group->states[kContainerPending].begin()->second;
+    Container::Ptr container_manual = container_group->states[kContainerPending].begin()->second;
     if (!CheckTagAndPoolOnce(agent, container_manual)) {
         LOG(WARNING) << "manual scheduling fail, because of mismatching tag or pools";
         return false;
@@ -855,28 +863,123 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
     return preempt_succ;
 }
 
-bool Scheduler::Update(const GroupId& group_id,
-                       const Requirement& require,
-                       int update_interval) {
+bool Scheduler::Update(const ContainerGroupId& container_group_id,
+                       const proto::ContainerDescription& container_desc,
+                       int update_interval,
+                       std::string& new_version) {
     MutexLock locker(&mu_);
-    std::map<GroupId, Group::Ptr>::iterator it = groups_.find(group_id);
-    if (it == groups_.end()) {
-        LOG(WARNING) << "no such group: " << group_id;
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "no such container_group: " << container_group_id;
         return false;
     }
-    Group::Ptr group = it->second;
-    if (!RequireHasDiff(&require, group->require.get())) {
+    ContainerGroup::Ptr container_group = it->second;
+    Requirement::Ptr require(new Requirement());
+    SetRequirement(require, container_desc);
+    if (!RequireHasDiff(require.get(), container_group->require.get())) {
         LOG(WARNING) << "version same, ignore updating";
         return false;
     }
-    group->update_interval = update_interval;
-    group->last_update_time = common::timer::now_time();
-    group->require.reset(new Requirement(require));
-    BOOST_FOREACH(ContainerMap::value_type& pair, group->states[kContainerPending]) {
+    int64_t timestamp = common::timer::get_micros();
+    std::stringstream ss;
+    ss << timestamp;
+    new_version = ss.str();
+    require->version = new_version;
+    container_group->update_interval = update_interval;
+    container_group->last_update_time = common::timer::now_time();
+    container_group->require = require;
+    container_group->container_desc = container_desc;
+    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->states[kContainerPending]) {
         Container::Ptr pending_container = pair.second;
-        pending_container->require = group->require;
+        pending_container->require = container_group->require;
     }
     return true;
+}
+
+void Scheduler::MakeCommand(const std::string& agent_endpoint,
+                            const proto::AgentInfo& agent_info, 
+                            std::vector<AgentCommand>& commands) {
+    MutexLock locker(&mu_);
+    std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(agent_endpoint);
+    if (it == agents_.end()) {
+        LOG(WARNING) << "no such agent:" << agent_endpoint;
+        return;
+    }
+    Agent::Ptr agent = it->second;
+    ContainerMap containers_local = agent->containers_;
+    std::map<ContainerId, ContainerStatus> remote_status;
+    for (int i = 0; i < agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_remote = agent_info.container_info(i);
+        ContainerMap::iterator it_local = containers_local.find(container_remote.id());
+        AgentCommand cmd;
+        if (it_local == containers_local.end()) {
+            LOG(INFO) << "expired remote containers: " << container_remote.id();
+            cmd.container_id = container_remote.id();
+            cmd.action = kDestroyContainer;
+            commands.push_back(cmd);
+            continue;
+        } 
+        const std::string& local_version = it_local->second->require->version;
+        const std::string& remote_version = container_remote.container_desc().version();
+        if (local_version != remote_version) {
+            LOG(INFO) << "version expired:" << local_version 
+                      << " , " << remote_version << ", " << container_remote.id();
+            cmd.container_id = container_remote.id();
+            cmd.action = kDestroyContainer;
+            commands.push_back(cmd);
+            continue;
+        } 
+        remote_status[container_remote.id()] = container_remote.status();
+    }
+    BOOST_FOREACH(ContainerMap::value_type& pair, containers_local) {
+        Container::Ptr container_local = pair.second;
+        AgentCommand cmd;
+        cmd.container_id = container_local->id;
+        ContainerStatus remote_st;
+        remote_st = remote_status[container_local->id];
+        ContainerGroup::Ptr container_group;
+        if (container_groups_.find(container_local->container_group_id) != container_groups_.end()) {
+            container_group = container_groups_[container_local->container_group_id];
+        } else {
+            LOG(WARNING) << "no such container group: " << container_local->container_group_id;
+            agent->Evict(container_local);
+            continue;
+        }
+        switch (container_local->status) {
+            case kContainerAllocating:
+                if (remote_st == kContainerReady) {
+                    ChangeStatus(container_local, kContainerReady);
+                } else if (remote_st == kContainerFinish) {
+                    ChangeStatus(container_local, kContainerTerminated);
+                } else if (remote_st == kContainerError) {
+                    ChangeStatus(container_local, kContainerPending);
+                } else {
+                    cmd.action = kCreateContainer;
+                    cmd.desc = container_group->container_desc;
+                    SetVolumsAndPorts(container_local, cmd.desc);
+                    commands.push_back(cmd);
+                }
+                break;
+            case kContainerReady:
+                if (remote_st == kContainerFinish) {
+                    ChangeStatus(container_local, kContainerTerminated);
+                } else if (remote_st != kContainerReady) {
+                    ChangeStatus(container_local, kContainerPending);
+                }
+                break;
+            case kContainerDestroying:
+                if (remote_st == 0) {//not exit on remote
+                    ChangeStatus(container_local, kContainerTerminated);
+                } else {
+                    cmd.action = kDestroyContainer;
+                    commands.push_back(cmd);
+                }
+                break;
+            default:
+                LOG(WARNING) << "invalid status:" << container_local->id
+                             << container_local->status;
+        }
+    }
 }
 
 bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
@@ -943,6 +1046,43 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
         }   
     }
     return false;
+}
+
+void Scheduler::SetVolumsAndPorts(const Container::Ptr& container, 
+                                  proto::ContainerDescription& container_desc) {
+    size_t idx = 0;
+    if (container_desc.workspace_volum().medium() != proto::kTmpfs) {
+        if (idx >= container->allocated_volums.size()) {
+            LOG(WARNING) << "fail to set allocated volums device path";
+            return;
+        }
+        container_desc.mutable_workspace_volum()->set_source_path(
+            container->allocated_volums[idx++].first
+        );
+    }
+    for (int i = 0; i < container_desc.data_volums_size(); i++) {
+        if (idx >= container->allocated_volums.size()) {
+            LOG(WARNING) << "fail to set allocated volums device path";
+            return;
+        }
+        proto::VolumRequired* vol = container_desc.mutable_data_volums(i);
+        if (vol->medium() != proto::kTmpfs) {
+            vol->set_source_path(container->allocated_volums[idx++].first);
+        }
+    }
+    idx = 0;
+    for (int i = 0; i < container_desc.cgroups_size(); i++) {
+        int one_cgropu_ports = container_desc.cgroups(i).ports_size();
+        for (int j = 0; j < one_cgropu_ports; j++) {
+            if (idx >= container->allocated_ports.size()) {
+                LOG(WARNING) << "fail to set real port";
+                return;
+            }
+            container_desc.mutable_cgroups(i)->mutable_ports(j)->set_real_port(
+                container->allocated_ports[idx++]
+            );
+        }
+    }
 }
 
 } //namespace sched

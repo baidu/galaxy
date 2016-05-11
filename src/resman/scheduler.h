@@ -25,9 +25,10 @@ using proto::kContainerReady;
 using proto::kContainerError;
 using proto::kContainerDestroying;
 using proto::kContainerTerminated;
+using proto::kContainerFinish;
 
 typedef std::string AgentEndpoint;
-typedef std::string GroupId;
+typedef std::string ContainerGroupId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
 
@@ -45,6 +46,17 @@ enum ResourceError {
     kTooManyPods = 10
 };
 
+enum AgentCommandAction {
+    kCreateContainer = 0,
+    kDestroyContainer = 1
+};
+
+struct AgentCommand {
+    AgentCommandAction action;
+    ContainerId container_id;
+    proto::ContainerDescription desc;
+};
+
 struct Requirement {
     std::string tag;
     std::set<std::string> pool_names;
@@ -53,6 +65,7 @@ struct Requirement {
     std::vector<proto::MemoryRequired> memory;
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
+    std::string version;
     Requirement() : max_per_host(0) {};
     int64_t CpuNeed() {
         int64_t total = 0;
@@ -80,7 +93,7 @@ struct VolumInfo {
 
 struct Container {
     ContainerId id;
-    GroupId group_id;
+    ContainerGroupId container_group_id;
     int priority;
     proto::ContainerStatus status;
     Requirement::Ptr require;
@@ -99,22 +112,23 @@ struct ContainerPriorityLess{
 
 typedef std::map<ContainerId, Container::Ptr> ContainerMap;
 
-struct Group {
-    GroupId id;
+struct ContainerGroup {
+    ContainerGroupId id;
     Requirement::Ptr require;
     int priority; //lower one is important
     bool terminated;
     std::map<ContainerId, Container::Ptr> containers;
-    std::map<ContainerId, Container::Ptr> states[7];
+    std::map<ContainerId, Container::Ptr> states[8];
     int update_interval;
     int last_update_time;
-    Group() : terminated(false) {};
+    proto::ContainerDescription container_desc;
+    ContainerGroup() : terminated(false) {};
     int Replica() const {
         return states[kContainerPending].size() 
                + states[kContainerAllocating].size() 
                + states[kContainerReady].size();
     }
-    typedef boost::shared_ptr<Group> Ptr;
+    typedef boost::shared_ptr<ContainerGroup> Ptr;
 };
 
 class Agent {
@@ -153,11 +167,11 @@ private:
     std::set<std::string> port_assigned_;
     size_t port_total_;
     std::map<ContainerId, Container::Ptr> containers_;
-    std::map<GroupId, int> container_counts_;
+    std::map<ContainerGroupId, int> container_counts_;
 };
 
-struct GroupQueueLess {
-    bool operator () (const Group::Ptr& a, const Group::Ptr& b) {
+struct ContainerGroupQueueLess {
+    bool operator () (const ContainerGroup::Ptr& a, const ContainerGroup::Ptr& b) {
         if (a->priority < b->priority) {
             return true;
         } else if (a->priority == b->priority) {
@@ -176,53 +190,53 @@ public:
 
     void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
-    GroupId Submit(const std::string& group_name,
-                 const Requirement& require, 
-                 int replica, int priority);
-    bool Kill(const GroupId& group_id);
+    ContainerGroupId Submit(const std::string& container_group_name,
+                            const proto::ContainerDescription& container_desc,
+                            int replica, int priority);
+    void Reload(const proto::ContainerGroupMeta& container_group_meta);
+    bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
-                        const GroupId& group_id);
+                        const ContainerGroupId& container_group_id);
 
-    bool ChangeReplica(const GroupId& group_id, int replica);
+    bool ChangeReplica(const ContainerGroupId& container_group_id, int replica);
     
     // @update_interval : 
     //      --- intervals between updateing two containers, in seconds
-    bool Update(const GroupId& group_id,
-                const Requirement& require,
-                int update_interval);
-
-    void ShowAssignment(const AgentEndpoint& endpoint,
-                        std::vector<Container>& containers);
-    void ShowGroup(const GroupId group_id,
-                   std::vector<Container>& containers);
-    void ChangeStatus(const GroupId& group_id,
-                      const ContainerId& container_id, 
-                      proto::ContainerStatus new_status);
+    bool Update(const ContainerGroupId& container_group_id,
+                const proto::ContainerDescription& container_desc,
+                int update_interval,
+                std::string& new_version);
     void AddTag(const AgentEndpoint& endpoint, const std::string& tag);
     void RemoveTag(const AgentEndpoint& endpoint, const std::string& tag);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
+    void MakeCommand(const std::string& agent_endpoint,
+                     const proto::AgentInfo& agent_info, 
+                     std::vector<AgentCommand>& commands);
 
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
-    void ChangeStatus(Group::Ptr group,
+    void ChangeStatus(ContainerGroup::Ptr container_group,
                       Container::Ptr container,
                       proto::ContainerStatus new_status);
-    void ScaleDown(Group::Ptr group, int replica);
-    void ScaleUp(Group::Ptr group, int replica);
+    void ScaleDown(ContainerGroup::Ptr container_group, int replica);
+    void ScaleUp(ContainerGroup::Ptr container_group, int replica);
 
-    GroupId GenerateGroupId(const std::string& group_name);
-    ContainerId GenerateContainerId(const GroupId& group_id, int offset);
+    ContainerGroupId GenerateContainerGroupId(const std::string& container_group_name);
+    ContainerId GenerateContainerId(const ContainerGroupId& container_group_id, int offset);
     void ScheduleNextAgent(AgentEndpoint pre_endpoint);
     void CheckTagAndPool(Agent::Ptr agent);
     void CheckVersion(Agent::Ptr agent);
     bool CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
-    void CheckGroupGC(Group::Ptr group);
+    void CheckContainerGroupGC(ContainerGroup::Ptr container_group);
     bool RequireHasDiff(const Requirement* v1, const Requirement* v2);
-
+    void SetRequirement(Requirement::Ptr require, 
+                        const proto::ContainerDescription& container_desc);
+    void SetVolumsAndPorts(const Container::Ptr& container, 
+                           proto::ContainerDescription& container_desc);
     std::map<AgentEndpoint, Agent::Ptr> agents_;
-    std::map<GroupId, Group::Ptr> groups_;
-    std::set<Group::Ptr, GroupQueueLess> group_queue_;
+    std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
+    std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;
     Mutex mu_;
     ThreadPool sched_pool_;
     ThreadPool gc_pool_;
