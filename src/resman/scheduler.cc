@@ -532,6 +532,7 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     container_group->require = req;
     container_group->id = container_group_meta.id();
     container_group->priority = container_group_meta.desc().priority();
+    container_group->container_desc = container_group_meta.desc();
 
     container_groups_[container_group->id] = container_group;
     container_group_queue_.insert(container_group);
