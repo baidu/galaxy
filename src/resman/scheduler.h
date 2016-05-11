@@ -25,6 +25,7 @@ using proto::kContainerReady;
 using proto::kContainerError;
 using proto::kContainerDestroying;
 using proto::kContainerTerminated;
+using proto::kContainerFinish;
 
 typedef std::string AgentEndpoint;
 typedef std::string ContainerGroupId;
@@ -189,7 +190,7 @@ public:
     void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
-                            const Requirement& require, 
+                            const proto::ContainerDescription& container_desc,
                             int replica, int priority);
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
@@ -210,9 +211,9 @@ public:
     void AddTag(const AgentEndpoint& endpoint, const std::string& tag);
     void RemoveTag(const AgentEndpoint& endpoint, const std::string& tag);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
-    void HandleDiff(const std::string& agent_endpoint,
-                    const proto::AgentInfo& agent_info, 
-                    std::vector<AgentCommand>& commands);
+    void MakeCommand(const std::string& agent_endpoint,
+                     const proto::AgentInfo& agent_info, 
+                     std::vector<AgentCommand>& commands);
 
 private:
     void ChangeStatus(Container::Ptr container,

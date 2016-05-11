@@ -490,7 +490,7 @@ ContainerId Scheduler::GenerateContainerId(const ContainerGroupId& container_gro
 }
 
 ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
-                                   const Requirement& require, 
+                                   const proto::ContainerDescription& container_desc,
                                    int replica, int priority) {
     MutexLock locker(&mu_);
     ContainerGroupId container_group_id = GenerateContainerGroupId(container_group_name);
@@ -498,7 +498,8 @@ ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
         LOG(WARNING) << "container_group id conflict:" << container_group_id;
         return "";
     }
-    Requirement::Ptr req(new Requirement(require));
+    Requirement::Ptr req(new Requirement());
+    SetRequirement(req, container_desc);
     ContainerGroup::Ptr container_group(new ContainerGroup());
     container_group->require = req;
     container_group->id = container_group_id;
@@ -907,9 +908,9 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
     return true;
 }
 
-void Scheduler::HandleDiff(const std::string& agent_endpoint,
-                           const proto::AgentInfo& agent_info, 
-                           std::vector<AgentCommand>& commands) {
+void Scheduler::MakeCommand(const std::string& agent_endpoint,
+                            const proto::AgentInfo& agent_info, 
+                            std::vector<AgentCommand>& commands) {
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(agent_endpoint);
     if (it == agents_.end()) {
@@ -917,8 +918,70 @@ void Scheduler::HandleDiff(const std::string& agent_endpoint,
         return;
     }
     Agent::Ptr agent = it->second;
-    ContainerMap containers_wish = agent->containers_;
-    
+    ContainerMap containers_local = agent->containers_;
+    std::map<ContainerId, ContainerStatus> remote_status;
+    for (int i = 0; i < agent_info.container_info_size(); i++) {
+        const proto::ContainerInfo& container_remote = agent_info.container_info(i);
+        ContainerMap::iterator it_local = containers_local.find(container_remote.id());
+        AgentCommand cmd;
+        if (it_local == containers_local.end()) {
+            LOG(INFO) << "expired remote containers: " << container_remote.id();
+            cmd.container_id = container_remote.id();
+            cmd.action = kDestroyContainer;
+            commands.push_back(cmd);
+            continue;
+        } 
+        const std::string& local_version = it_local->second->require->version;
+        const std::string& remote_version = container_remote.container_desc().version();
+        if (local_version != remote_version) {
+            LOG(INFO) << "version expired:" << local_version 
+                      << " , " << remote_version << ", " << container_remote.id();
+            cmd.container_id = container_remote.id();
+            cmd.action = kDestroyContainer;
+            commands.push_back(cmd);
+            continue;
+        } 
+        remote_status[container_remote.id()] = container_remote.status();
+    }
+    BOOST_FOREACH(ContainerMap::value_type& pair, containers_local) {
+        Container::Ptr container_local = pair.second;
+        AgentCommand cmd;
+        cmd.container_id = container_local->id;
+        ContainerStatus remote_st;
+        remote_st = remote_status[container_local->id];
+        switch (container_local->status) {
+            case kContainerAllocating:
+                if (remote_st == kContainerReady) {
+                    ChangeStatus(container_local, kContainerReady);
+                } else if (remote_st == kContainerFinish) {
+                    ChangeStatus(container_local, kContainerTerminated);
+                } else if (remote_st == kContainerError) {
+                    ChangeStatus(container_local, kContainerPending);
+                } else {
+                    cmd.action = kCreateContainer;
+                    commands.push_back(cmd);
+                }
+                break;
+            case kContainerReady:
+                if (remote_st == kContainerFinish) {
+                    ChangeStatus(container_local, kContainerTerminated);
+                } else if (remote_st != kContainerReady) {
+                    ChangeStatus(container_local, kContainerPending);
+                }
+                break;
+            case kContainerDestroying:
+                if (remote_st == 0) {//not exit on remote
+                    ChangeStatus(container_local, kContainerTerminated);
+                } else {
+                    cmd.action = kDestroyContainer;
+                    commands.push_back(cmd);
+                }
+                break;
+            default:
+                LOG(WARNING) << "invalid status:" << container_local->id
+                             << container_local->status;
+        }
+    }
 }
 
 bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {

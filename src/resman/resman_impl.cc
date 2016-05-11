@@ -139,15 +139,10 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
                                                  tags,
                                                  pool_name));
         scheduler_->RemoveAgent(agent_endpoint);
-        if (!safe_mode_) {
-            proto::AgentInfo empty_info;
-            scheduler_->AddAgent(agent, empty_info);
-        } else {
-            scheduler_->AddAgent(agent, agent_info);
-        }
+        scheduler_->AddAgent(agent, agent_info);
     } else {
         std::vector<sched::AgentCommand> commands;
-        scheduler_->HandleDiff(agent_endpoint, response->agent_info(), commands);
+        scheduler_->MakeCommand(agent_endpoint, response->agent_info(), commands);
         std::vector<sched::AgentCommand>::const_iterator it;
         for (it = commands.begin(); it != commands.end(); it++) {
             const sched::AgentCommand& cmd = *it;
