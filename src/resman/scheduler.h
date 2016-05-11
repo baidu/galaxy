@@ -121,6 +121,7 @@ struct ContainerGroup {
     std::map<ContainerId, Container::Ptr> states[8];
     int update_interval;
     int last_update_time;
+    proto::ContainerDescription container_desc;
     ContainerGroup() : terminated(false) {};
     int Replica() const {
         return states[kContainerPending].size() 
@@ -205,9 +206,6 @@ public:
                 const proto::ContainerDescription& container_desc,
                 int update_interval,
                 std::string& new_version);
-    void ChangeStatus(const ContainerGroupId& container_group_id,
-                      const ContainerId& container_id, 
-                      proto::ContainerStatus new_status);
     void AddTag(const AgentEndpoint& endpoint, const std::string& tag);
     void RemoveTag(const AgentEndpoint& endpoint, const std::string& tag);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
@@ -234,6 +232,8 @@ private:
     bool RequireHasDiff(const Requirement* v1, const Requirement* v2);
     void SetRequirement(Requirement::Ptr require, 
                         const proto::ContainerDescription& container_desc);
+    void SetVolumsAndPorts(const Container::Ptr& container, 
+                           proto::ContainerDescription& container_desc);
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;

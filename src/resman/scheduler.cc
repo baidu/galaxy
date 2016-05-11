@@ -504,6 +504,7 @@ ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
     container_group->require = req;
     container_group->id = container_group_id;
     container_group->priority = priority;
+    container_group->container_desc = container_desc;
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
         container->container_group_id = container_group->id;
@@ -656,25 +657,6 @@ void Scheduler::ScaleUp(ContainerGroup::Ptr container_group, int replica) {
             ChangeStatus(container_group, container, kContainerPending);            
         }
     }
-}
-
-void Scheduler::ChangeStatus(const ContainerGroupId& container_group_id,
-                             const ContainerId& container_id,
-                             ContainerStatus new_status) {
-    MutexLock locker(&mu_);
-    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
-    if (it == container_groups_.end()) {
-        LOG(WARNING) << "no such container_group: " << container_group_id;
-        return;
-    }
-    ContainerGroup::Ptr container_group = it->second;
-    ContainerMap::iterator ct = container_group->containers.find(container_id);
-    if (ct == container_group->containers.end()) {
-        LOG(WARNING) << "no such container: " << container_id;
-        return;
-    }
-    Container::Ptr container = ct->second;
-    return ChangeStatus(container, new_status);
 }
 
 void Scheduler::ChangeStatus(Container::Ptr container,
@@ -901,6 +883,7 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
     container_group->update_interval = update_interval;
     container_group->last_update_time = common::timer::now_time();
     container_group->require = require;
+    container_group->container_desc = container_desc;
     BOOST_FOREACH(ContainerMap::value_type& pair, container_group->states[kContainerPending]) {
         Container::Ptr pending_container = pair.second;
         pending_container->require = container_group->require;
@@ -949,6 +932,14 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
         cmd.container_id = container_local->id;
         ContainerStatus remote_st;
         remote_st = remote_status[container_local->id];
+        ContainerGroup::Ptr container_group;
+        if (container_groups_.find(container_local->container_group_id) != container_groups_.end()) {
+            container_group = container_groups_[container_local->container_group_id];
+        } else {
+            LOG(WARNING) << "no such container group: " << container_local->container_group_id;
+            agent->Evict(container_local);
+            continue;
+        }
         switch (container_local->status) {
             case kContainerAllocating:
                 if (remote_st == kContainerReady) {
@@ -959,6 +950,8 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                     ChangeStatus(container_local, kContainerPending);
                 } else {
                     cmd.action = kCreateContainer;
+                    cmd.desc = container_group->container_desc;
+                    SetVolumsAndPorts(container_local, cmd.desc);
                     commands.push_back(cmd);
                 }
                 break;
@@ -1048,6 +1041,11 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
         }   
     }
     return false;
+}
+
+void Scheduler::SetVolumsAndPorts(const Container::Ptr& container, 
+                                  proto::ContainerDescription& container_desc) {
+
 }
 
 } //namespace sched

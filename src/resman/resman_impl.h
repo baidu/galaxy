@@ -152,7 +152,16 @@ private:
                             const proto::QueryRequest* request,
                             proto::QueryResponse* response,
                             bool fail , int err);
-
+    void CreateContainerCallback(std::string agent_endpoint,
+                                 const proto::CreateContainerRequest* request,
+                                 proto::CreateContainerResponse* response,
+                                 bool fail, int err);
+    void RemoveContainerCallback(std::string agent_endpoint,
+                                 const proto::RemoveContainerRequest* request,
+                                 proto::RemoveContainerResponse* response,
+                                 bool fail, int err);
+    void SendCommandsToAgent(const std::string& agent_endpoint,
+                             const std::vector<sched::AgentCommand>& commands);
     template <class ProtoClass> 
     bool SaveObject(const std::string& key,
                     const ProtoClass& obj);
