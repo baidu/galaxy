@@ -213,13 +213,15 @@ message TaskDescription {
     optional CpuRequired cpu = 2;
     optional MemoryRequired memory = 3;
     repeated PortRequired ports = 4;
+    optional BlkioRequired blkio = 5;
+    optional TcpthrotRequired tcp_throt = 6;
 
     // package
-    optional ImagePackage exe_package = 5;
-    optional DataPackage data_package = 6;
+    optional ImagePackage exe_package = 7;
+    optional DataPackage data_package = 8;
 
     // service
-    repeated Service services = 7;
+    repeated Service services = 9;
 }
 
 // user -> resource manager
@@ -236,10 +238,11 @@ message PodDescription {
 message JobDescription {
     // Job
     optional string name = 1;
-    optional JobType type = 2;
+    optional uint32 priority = 2;
     optional string version = 3;
     optional Deploy deploy = 4;
     optional PodDescription pod_desc = 5;
+    optional string run_user = 6;
 }
 
 
@@ -311,8 +314,10 @@ message ContainerInfo {
 enum Status {
    kOk = 1;
    kError = 2;
-   kStop = 3;   //am stop pod 
+   kTerminate = 3;
    kAddAgentFail = 4;
+   kDeny = 5;
+   kJobNotFound = 6;
 }
 
 message ErrorCode {
