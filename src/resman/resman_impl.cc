@@ -70,8 +70,15 @@ void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
                                ::baidu::galaxy::proto::EnterSafeModeResponse* response,
                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mu_);
-    safe_mode_ = true;
-    scheduler_->Stop();
+    if (!safe_mode_) {
+        safe_mode_ = true;
+        scheduler_->Stop();
+        response->mutable_error_code()->set_status(proto::kOk);
+    } else {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("already in safe mode");
+    }
+    done->Run();
 }
 
 void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
@@ -79,8 +86,15 @@ void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
                                ::baidu::galaxy::proto::LeaveSafeModeResponse* response,
                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mu_);
-    safe_mode_ = false;
-    scheduler_->Start();
+    if (safe_mode_) {
+        safe_mode_ = false;
+        scheduler_->Start();
+        response->mutable_error_code()->set_status(proto::kOk);
+    } else {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("invalid op, cluster is not in safe mode");
+    }
+    done->Run();
 }
 
 void ResManImpl::Status(::google::protobuf::RpcController* controller,
@@ -183,6 +197,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         SendCommandsToAgent(agent_endpoint, commands);
     }
 
+    bool leave_safe_mode_event = false;
     {
         MutexLock lock(&mu_);
         agent_stats_[agent_endpoint].info = response->agent_info();
@@ -190,10 +205,12 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
             LOG(INFO) << "leave safe mode";
             safe_mode_ = false;
-            scheduler_->Start();
+            leave_safe_mode_event = true;
         }
     }
-    
+    if (leave_safe_mode_event) {
+        scheduler_->Start();
+    }
     //query again later
     query_pool_.DelayTask(FLAGS_agent_query_interval,
         boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
@@ -277,6 +294,7 @@ void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
             boost::bind(&ResManImpl::QueryAgent, this, agent_ep, true)
         );
     }
+    done->Run();
 }
 
 void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* controller,
@@ -350,6 +368,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
             MutexLock lock(&mu_);
             container_groups_[new_meta.id()] = new_meta;
         }
+        scheduler_->Kill(new_meta.id());
         response->mutable_error_code()->set_status(proto::kOk);
     }
     done->Run();
@@ -630,6 +649,7 @@ void ResManImpl::CreateContainerCallback(std::string agent_endpoint,
         LOG(WARNING) << "fail to create contaienr, reason:" 
                      << response->code().reason()
                      << ", agent:" << agent_endpoint;
+        return;
     }
 }
 
@@ -648,6 +668,7 @@ void ResManImpl::RemoveContainerCallback(std::string agent_endpoint,
         LOG(WARNING) << "fail to create contaienr, reason:" 
                      << response->code().reason()
                      << ", agent:" << agent_endpoint;
+        return;
     }
 }
 
