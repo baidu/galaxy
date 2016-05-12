@@ -479,7 +479,7 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
     LOG(INFO) << "remove agent:" << request->endpoint();
     MutexLock lock(&mu_);
     if (agents_.find(request->endpoint()) == agents_.end()) {
-        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
         response->mutable_error_code()->set_reason("agent not exist");
         done->Run();
         return;
@@ -489,7 +489,7 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
     scheduler_->RemoveAgent(request->endpoint());
     bool remove_ok = RemoveObject(sAgentPrefix + "/" + request->endpoint());
     if (!remove_ok) {
-        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
         response->mutable_error_code()->set_reason("fail to delete meta from nexus");
     } else {
         response->mutable_error_code()->set_status(proto::kOk);

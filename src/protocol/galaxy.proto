@@ -321,6 +321,7 @@ enum Status {
    kCreateContainerGroupFail = 7;
    kRemoveContainerGroupFail = 8;
    kUpdateContainerGroupFail = 9;
+   kRemoveAgentFail = 10;
 }
 
 message ErrorCode {

@@ -415,6 +415,7 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         }
         containers[container->id] = container;
         container_groups_[container->container_group_id]->containers[container->id] = container;
+        container->allocated_agent = agent->endpoint_;
         ChangeStatus(container, container->status);
     }
     agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
