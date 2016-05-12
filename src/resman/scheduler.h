@@ -192,7 +192,7 @@ public:
     //start the main schueduling loop
     void Start();
     void Stop();
-    
+
     void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
@@ -217,7 +217,9 @@ public:
     void MakeCommand(const std::string& agent_endpoint,
                      const proto::AgentInfo& agent_info, 
                      std::vector<AgentCommand>& commands);
-
+    bool ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups);
+    bool ShowContainerGroup(const ContainerGroupId& container_group_id,
+                            std::vector<proto::ContainerStatistics>& containers);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);

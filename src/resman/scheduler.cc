@@ -1033,7 +1033,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             case kContainerDestroying:
                 if (remote_st == 0) {//not exit on remote
                     ChangeStatus(container_local, kContainerTerminated);
-                } else {
+                } else if (remote_st != kContainerTerminated) {
                     cmd.action = kDestroyContainer;
                     commands.push_back(cmd);
                 }
@@ -1146,6 +1146,15 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
             );
         }
     }
+}
+
+bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups) {
+    return true;
+}
+
+bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
+                                   std::vector<proto::ContainerStatistics>& containers) {
+    return true;
 }
 
 } //namespace sched
