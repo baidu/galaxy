@@ -42,7 +42,6 @@ private:
 private:
     Mutex mutex_appworker_;
     std::string job_id_;
-    std::string pod_id_;
     std::string container_id_;
     std::string endpoint_;
     std::string appmaster_endpoint_;

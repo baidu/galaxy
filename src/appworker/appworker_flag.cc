@@ -8,7 +8,7 @@ DEFINE_string(nexus_servers, "127.0.0.1:8868", "server list of nexus, e.g abc.co
 DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on nexus, e.g /ps/galaxy");
 
 // appmaster
-DEFINE_string(appmaster_nexus_path, "/appmaster", "appmaster path on nexus");
+DEFINE_string(appmaster_nexus_path, "appmaster", "appmaster path on nexus");
 DEFINE_string(appmaster_endpoint, "", "appmaster endpoint");
 
 // appworker
@@ -22,7 +22,8 @@ DEFINE_string(appworker_endpoint, "", "appworker endpoint");
 DEFINE_string(appworker_container_id, "", "appworker container id");
 
 // pod_manager
-DEFINE_int32(pod_manager_check_pod_interval, 500, "pod manager check pod interval");
+DEFINE_int32(pod_manager_pod_check_interval, 1000, "pod manager check pod interval");
+DEFINE_int32(pod_manager_pod_status_change_check_interval, 500, "pod manager check pod status change interval");
 
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 1, "task manager background thread pool size");

@@ -15,17 +15,24 @@ namespace baidu {
 namespace galaxy {
 
 typedef proto::PodInfo PodInfo;
+typedef proto::TaskDescription TaskDescription;
 
 class PodManager {
 public:
     PodManager();
     ~PodManager();
-    int RunPod(const PodInfo* pod_info);
-    int KillPod(const PodInfo* pod_info);
-    int ShowPod(PodInfo* pod_info);
+    void RunPod(const PodInfo* pod_info);
+    void KillPod(const PodInfo* pod_info);
+    void ShowPod(PodInfo* pod_info);
+    void LoopPodCheck();
+    void LoopPodStatusChangeCheck();
 
 private:
-    void CheckPod();
+    int DeployPod();
+    int ReadyPodCheck();
+    int DeployingPodCheck();
+    int StartingPodCheck();
+    int RunningPodCheck();
 
 private:
     Mutex mutex_pod_manager_;

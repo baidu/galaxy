@@ -153,9 +153,23 @@ enum PodStatus {
     kPodReady = 2;
     kPodDeploying = 3;
     kPodStarting = 4;
-    kPodServing = 5;
+    kPodRunning = 5;
     kPodFailed = 6;
-    kPodFinished = 7;
+    kPodTerminated = 7;
+}
+
+enum ProcessStatus {
+    kProcessRunning = 0;
+    kProcessTerminate = 1;
+    kProcessKilled = 2;
+    kProcessCoreDump = 3;
+}
+
+message ProcessInfo {
+   optional string key = 1;
+   optional int32 pid = 2;
+   optional ProcessStatus status = 3;
+   optional int32 exit_code = 4;
 }
 
 enum TaskStatus {
@@ -172,9 +186,32 @@ message TaskInfo {
     optional string podid = 2;
     optional string jobid = 3;
     optional string workspace = 4;
-    optional string chroot_path = 5;
     optional TaskDescription desc = 6;
     optional TaskStatus status = 7;
+    optional ProcessInfo deploy_process = 8;
+    optional ProcessInfo main_process = 9;
+    optional ProcessInfo stop_process = 10;
+}
+
+message PodInfo {
+    optional string podid = 1;
+    optional string jobid = 2;
+    optional string endpoint = 3;
+    optional PodDescription desc = 4;
+    optional PodStatus status = 5;
+    optional string version = 6;
+    optional int64 start_time = 7;
+    optional 
+}
+
+message JobInfo {
+    optional string jobid = 1;
+    optional JobDescription desc = 2;
+    repeated PodInfo pods = 3;
+    optional JobStatus status = 4;
+    optional string version = 7;
+    optional int64 create_time = 8;
+    optional int64 update_time = 9;
 }
 
 message Package {
@@ -184,8 +221,8 @@ message Package {
 }
 message ImagePackage {
     optional Package package = 1;
-    optional string start_cmd = 2;     
-    optional string stop_cmd = 3;    
+    optional string start_cmd = 2;
+    optional string stop_cmd = 3;
 }
 
 message DataPackage {
@@ -207,7 +244,7 @@ message Service {
 }
 
 message TaskDescription {
-    // set by user or by 
+    // set by user or by
     optional string id = 1;
     // resource
     optional CpuRequired cpu = 2;
@@ -236,7 +273,6 @@ message PodDescription {
 }
 
 message JobDescription {
-    // Job
     optional string name = 1;
     optional uint32 priority = 2;
     optional string version = 3;

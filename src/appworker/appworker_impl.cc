@@ -12,12 +12,12 @@
 #include "protocol/appmaster.pb.h"
 
 DECLARE_string(nexus_servers);
+DECLARE_string(nexus_root_path);
 DECLARE_int32(appworker_fetch_task_timeout);
 DECLARE_int32(appworker_fetch_task_interval);
 DECLARE_int32(appworker_update_appmaster_stub_interval);
 DECLARE_int32(appworker_background_thread_pool_size);
 DECLARE_string(appworker_job_id);
-DECLARE_string(appworker_pod_id);
 DECLARE_string(appworker_endpoint);
 DECLARE_string(appworker_container_id);
 DECLARE_string(appmaster_nexus_path);
@@ -29,7 +29,6 @@ namespace galaxy {
 AppWorkerImpl::AppWorkerImpl() :
         mutex_appworker_(),
         job_id_(FLAGS_appworker_job_id),
-        pod_id_(FLAGS_appworker_pod_id),
         container_id_(FLAGS_appworker_container_id),
         endpoint_(FLAGS_appworker_endpoint),
         appmaster_endpoint_(FLAGS_appmaster_endpoint),
@@ -42,10 +41,7 @@ AppWorkerImpl::AppWorkerImpl() :
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
-    backgroud_pool_.DelayTask(
-        FLAGS_appworker_update_appmaster_stub_interval,
-        boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this)
-    );
+    backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
 }
 
 AppWorkerImpl::~AppWorkerImpl () {
@@ -61,7 +57,6 @@ AppWorkerImpl::~AppWorkerImpl () {
 void AppWorkerImpl::Start() {
     start_time_ = baidu::common::timer::get_micros();
     LOG(INFO) << "appworker start, job_id: " << job_id_.c_str()\
-        << " pod_id: " << pod_id_.c_str()\
         << " containerid: " << container_id_.c_str()\
         << " endpoint: " << endpoint_.c_str();
 }
@@ -70,12 +65,15 @@ void AppWorkerImpl::UpdateAppMasterStub() {
     MutexLock lock(&mutex_appworker_);
     SDKError err;
     std::string endpoint = "";
-    bool ok = nexus_->Get(FLAGS_appmaster_nexus_path, &endpoint, &err);
+    std::string key = FLAGS_nexus_root_path + "/" + FLAGS_appmaster_nexus_path;
+    LOG(INFO) << "get appmaster endpoint from nexus : " << key.c_str();
+    bool ok = nexus_->Get(key, &endpoint, &err);
     if (!ok) {
-        LOG(ERROR) << "get appmaster endpoint from nexus failed: "\
+        LOG(INFO) << "get appmaster endpoint from nexus failed: "\
             << ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str();
         return;
     }
+
     if (appmaster_endpoint_ == endpoint) {
         return;
     }
@@ -102,7 +100,6 @@ void AppWorkerImpl::FetchTask () {
     FetchTaskRequest* request = new FetchTaskRequest;
     FetchTaskResponse* response = new FetchTaskResponse;
     request->set_jobid(job_id_);
-    request->set_podid(pod_id_);
     request->set_endpoint(endpoint_);
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
     fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback, this,
@@ -116,7 +113,21 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       FetchTaskResponse* response,
                                       bool failed, int /*error*/) {
     MutexLock lock(&mutex_appworker_);
-    LOG(INFO) << "fetch task call back";
+    proto::ErrorCode* error_code = response->mutable_error_code();
+    if (error_code->status() != proto::kOk) {
+        return;
+    }
+
+    if (response->has_action()) {
+        switch (response->action()) {
+            case proto::kRunPod:
+                pod_manager_.RunPod(response->mutable_info());
+                break;
+            case proto::kKillPod:
+                pod_manager_.KillPod(response->mutable_info());
+                break;
+        }
+    }
     backgroud_pool_.DelayTask(
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
