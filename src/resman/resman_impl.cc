@@ -59,8 +59,11 @@ bool ResManImpl::Init() {
     std::map<std::string, proto::ContainerGroupMeta>::const_iterator it;
     for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
         const proto::ContainerGroupMeta& container_group_meta = it->second;
-        LOG(INFO) << "scheduler reaload " << container_group_meta.id();
+        LOG(INFO) << "scheduler reaload: " << container_group_meta.id();
         scheduler_->Reload(container_group_meta);
+        VLOG(10) << "TRACE BEGIN, meta of " << container_group_meta.id()
+                 << "\n" << container_group_meta.DebugString()
+                 << "TRACE END";
     }
     return true;
 }
@@ -429,9 +432,12 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     if (!save_ok) {
         proto::ErrorCode* err = response->mutable_error_code();
         err->set_status(proto::kUpdateContainerGroupFail);
-        err->set_reason("fail to save container group meta in nexus");    
+        err->set_reason("fail to save container group meta in nexus");
     } else {
         response->mutable_error_code()->set_status(proto::kOk);
+        if (version_changed) {
+            response->set_resource_change(true);
+        }
     }
     done->Run();
 }
@@ -654,8 +660,8 @@ bool ResManImpl::LoadObjects(const std::string& prefix,
     while (!result->Done()) {
         const std::string& full_key = result->Key();
         const std::string& raw_obj_buf = result->Value();
-        LOG(INFO) << "try load " << full_key;
         std::string key = full_key.substr(prefix_len);
+        LOG(INFO) << "try load " << key << " from nexus";
         ProtoClass& obj = objs[key];
         bool parse_ok = obj.ParseFromString(raw_obj_buf);
         if (!parse_ok) {

@@ -284,26 +284,11 @@ message UpdateContainerGroupRequest {
 
 message UpdateContainerGroupResponse {
     optional ErrorCode error_code = 1;
+    optional bool resource_change = 2 [default = false];
 }
-
 
 message ListContainerGroupsRequest {
     optional User user = 1; 
-}
-
-
-message ContainerGroupStatistics {
-    optional string id = 1;
-    optional uint32 replica = 2;
-    optional uint32 ready = 3;
-    optional uint32 pending = 4;
-    optional uint32 destroying = 5;
-    optional Resource cpu = 6;
-    optional Resource memroy = 7;
-    optional VolumResource volum = 8;
-
-    optional int64 submit_time = 9;
-    optional int64 update_time = 10;
 }
 
 message ListContainerGroupsResponse {
@@ -318,11 +303,8 @@ message ShowContainerGroupRequest {
 
 message ShowContainerGroupResponse {
     optional ErrorCode error_code = 1;
-    optional ContainerStatus status = 2;
-    optional string endpoint = 3;
-    optional Resource cpu = 4;
-    optional Resource memroy = 5;
-    optional VolumResource volum = 6;
+    optional ContainerDescription desc = 2;
+    repeated ContainerStatistics containers = 3;
 }
 
 service ResMan {
