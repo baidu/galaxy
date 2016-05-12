@@ -298,7 +298,7 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
 }
 
 
-Scheduler::Scheduler() {
+Scheduler::Scheduler() : stop_(true) {
 
 }
 
@@ -326,7 +326,7 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
 
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
-    agents_[agent->endpoint_] = agent;
+    
     int64_t cpu_assigned = 0;
     int64_t memory_assigned = 0;
     std::map<DevicePath, VolumInfo> volum_assigned;
@@ -342,15 +342,23 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             LOG(WARNING) << "no such container group:" << container_info.group_id();
             continue;
         }
-        if (container_groups_[container_info.group_id()]->containers.find(container_info.id())
-            != container_groups_[container_info.group_id()]->containers.end()) {
-            LOG(WARNING) << "this container already exist:" << container_info.id();
-            continue;
-        }
+        ContainerGroup::Ptr& container_group = container_groups_[container_info.group_id()];
         Container::Ptr container(new Container());
+
+        if (container_group->containers.find(container_info.id())
+            != container_group->containers.end()) {
+            Container::Ptr& exist_container = container_group->containers[container_info.id()];
+            if (exist_container->status != kContainerReady) {
+                ChangeStatus(exist_container, kContainerTerminated);
+                container = exist_container;
+            } else {
+                LOG(WARNING) << "this container already exist:" << container_info.id();
+                continue;
+            }
+        }
+        
         Requirement::Ptr require(new Requirement());    
-        const proto::ContainerDescription& container_desc 
-                = container_info.container_desc();    
+        const proto::ContainerDescription& container_desc = container_info.container_desc();    
         SetRequirement(require, container_desc);
 
         container->id = container_info.id();
@@ -411,6 +419,7 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     }
     agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
                          port_assigned, containers);
+    agents_[agent->endpoint_] = agent;
 }
 
 void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
@@ -532,7 +541,14 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     container_group->require = req;
     container_group->id = container_group_meta.id();
     container_group->priority = container_group_meta.desc().priority();
+    container_group->replica = container_group_meta.replica();
+    container_group->update_interval = container_group_meta.update_interval();
     container_group->container_desc = container_group_meta.desc();
+    if (container_group_meta.status() == proto::kContainerGroupTerminated) {
+        container_group->terminated = true;
+    } else {
+        container_group->terminated = false;
+    }
 
     container_groups_[container_group->id] = container_group;
     container_group_queue_.insert(container_group);
@@ -718,8 +734,37 @@ void Scheduler::CheckTagAndPool(Agent::Ptr agent) {
 }
 
 void Scheduler::Start() {
+    LOG(INFO) << "scheduler started";
+    std::vector<std::pair<ContainerGroupId, int> > replicas;
+    std::set<ContainerGroupId> need_kill;
+    {
+        MutexLock lock(&mu_);
+        stop_ = false;
+        std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+        for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+            replicas.push_back(std::make_pair(it->first, it->second->replica));
+            if (it->second->terminated) {
+                need_kill.insert(it->first);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < replicas.size(); i++) {
+        const ContainerGroupId& group_id = replicas[i].first;
+        int replica = replicas[i].second;
+        ChangeReplica(group_id, replica);
+        if (need_kill.find(group_id) != need_kill.end()) {
+            Kill(group_id);
+        }
+    }
     AgentEndpoint fake_endpoint = "";
     ScheduleNextAgent(fake_endpoint);
+}
+
+void Scheduler::Stop() {
+    LOG(INFO) << "scheduler stopped.";
+    MutexLock lock(&mu_);
+    stop_ = true;
 }
 
 bool Scheduler::CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container) {
@@ -771,7 +816,12 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
     Agent::Ptr agent;
     AgentEndpoint endpoint;
     MutexLock lock(&mu_);
-        
+    if (stop_) {
+        VLOG(16) << "no scheduling, because scheduler is stoped.";
+        sched_pool_.DelayTask(FLAGS_sched_interval, 
+                    boost::bind(&Scheduler::ScheduleNextAgent, this, pre_endpoint));
+        return;
+    }    
     std::map<AgentEndpoint, Agent::Ptr>::iterator it;
     it = agents_.upper_bound(pre_endpoint);
     if (it != agents_.end()) {
@@ -900,6 +950,10 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                             const proto::AgentInfo& agent_info, 
                             std::vector<AgentCommand>& commands) {
     MutexLock locker(&mu_);
+    if (stop_) {
+        LOG(INFO) << "no command to agent, when in safe mode";
+        return;
+    }
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(agent_endpoint);
     if (it == agents_.end()) {
         LOG(WARNING) << "no such agent:" << agent_endpoint;

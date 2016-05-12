@@ -31,6 +31,7 @@ class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
     ResManImpl();
     ~ResManImpl();
+    bool Init();
     void EnterSafeMode(::google::protobuf::RpcController* controller,
                        const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
                        ::baidu::galaxy::proto::EnterSafeModeResponse* response,

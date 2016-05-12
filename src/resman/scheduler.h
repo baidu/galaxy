@@ -121,8 +121,12 @@ struct ContainerGroup {
     std::map<ContainerId, Container::Ptr> states[8];
     int update_interval;
     int last_update_time;
+    int replica;
     proto::ContainerDescription container_desc;
-    ContainerGroup() : terminated(false) {};
+    ContainerGroup() : terminated(false),
+                       update_interval(0),
+                       last_update_time(0),
+                       replica(0) {};
     int Replica() const {
         return states[kContainerPending].size() 
                + states[kContainerAllocating].size() 
@@ -187,7 +191,8 @@ public:
     explicit Scheduler();
     //start the main schueduling loop
     void Start();
-
+    void Stop();
+    
     void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
@@ -240,6 +245,7 @@ private:
     Mutex mu_;
     ThreadPool sched_pool_;
     ThreadPool gc_pool_;
+    bool stop_;
 };
 
 } //namespace sched

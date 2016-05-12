@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("resman");
     baidu::galaxy::ResManImpl * resman = new baidu::galaxy::ResManImpl();
+    resman->Init();
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     if (!rpc_server.RegisterService(static_cast<baidu::galaxy::proto::ResMan*>(resman))) {

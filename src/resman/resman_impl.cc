@@ -19,6 +19,8 @@ DECLARE_string(nexus_root);
 DECLARE_string(nexus_addr);
 DECLARE_int32(agent_timeout);
 DECLARE_int32(agent_query_interval);
+DECLARE_int32(container_group_max_replica);
+DECLARE_double(safe_mode_percent);
 
 const std::string sAgentPrefix = "/agent";
 const std::string sUserPrefix = "/user";
@@ -29,7 +31,6 @@ namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()),
                            safe_mode_(true) {
-    scheduler_->Start();
     nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
 
@@ -38,12 +39,39 @@ ResManImpl::~ResManImpl() {
     delete nexus_;
 }
 
+bool ResManImpl::Init() {
+    bool load_ok = false;
+    load_ok = LoadObjects(sAgentPrefix, agents_);
+    if (!load_ok) {
+        LOG(WARNING) << "fail to load agent meta";
+        return false;
+    }
+    load_ok = LoadObjects(sUserPrefix, users_);
+    if (!load_ok) {
+        LOG(WARNING) << "fail to load user meta";
+        return false;
+    }
+    load_ok = LoadObjects(sContainerGroupPrefix, container_groups_);
+    if (!load_ok) {
+        LOG(WARNING) << "failt to load container groups meta";
+        return false;
+    }
+    std::map<std::string, proto::ContainerGroupMeta>::const_iterator it;
+    for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+        const proto::ContainerGroupMeta& container_group_meta = it->second;
+        LOG(INFO) << "scheduler reaload " << container_group_meta.id();
+        scheduler_->Reload(container_group_meta);
+    }
+    return true;
+}
+
 void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
                                const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
                                ::baidu::galaxy::proto::EnterSafeModeResponse* response,
                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mu_);
     safe_mode_ = true;
+    scheduler_->Stop();
 }
 
 void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
@@ -52,6 +80,7 @@ void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mu_);
     safe_mode_ = false;
+    scheduler_->Start();
 }
 
 void ResManImpl::Status(::google::protobuf::RpcController* controller,
@@ -157,6 +186,12 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
     {
         MutexLock lock(&mu_);
         agent_stats_[agent_endpoint].info = response->agent_info();
+        if (safe_mode_ && 
+            agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
+            LOG(INFO) << "leave safe mode";
+            safe_mode_ = false;
+            scheduler_->Start();
+        }
     }
     
     //query again later
@@ -248,7 +283,40 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::CreateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::CreateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
-
+    proto::ContainerGroupMeta container_group_meta;
+    container_group_meta.set_name(request->name());
+    container_group_meta.set_user_name(request->user().user());
+    container_group_meta.set_replica(request->replica());
+    container_group_meta.set_status(proto::kContainerGroupNormal);
+    container_group_meta.mutable_desc()->CopyFrom(request->desc());
+    std::string container_group_id = scheduler_->Submit(request->name(), 
+                                                        request->desc(), 
+                                                        request->replica(), 
+                                                        request->desc().priority());
+    if (container_group_id == "") {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kCreateContainerGroupFail);
+        err->set_reason("container group id conflict");
+        done->Run();
+        return;
+    }
+    container_group_meta.set_id(container_group_id);
+    bool ret = SaveObject(sContainerGroupPrefix + "/" + container_group_id, 
+                          container_group_meta);
+    if (!ret) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kCreateContainerGroupFail);
+        err->set_reason("fail to save container group meta in nexus");
+        scheduler_->Kill(container_group_id);
+    } else {
+        response->mutable_error_code()->set_status(proto::kOk);
+        response->set_id(container_group_id);
+        {
+            MutexLock lock(&mu_);
+            container_groups_[container_group_id] = container_group_meta;
+        }
+    }
+    done->Run();
 }
 
 void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* controller,
@@ -256,13 +324,93 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
                                       ::baidu::galaxy::proto::RemoveContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
 
+    proto::ContainerGroupMeta new_meta;
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::ContainerGroupMeta>::iterator it;
+        it = container_groups_.find(request->id());
+        if (it == container_groups_.end()) {
+            response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+            response->mutable_error_code()->set_reason("no such group");
+            done->Run();
+            return;
+        }
+        new_meta = it->second;
+        new_meta.set_status(proto::kContainerGroupTerminated);
+    }
+    
+    bool ret = SaveObject(sContainerGroupPrefix + "/" + new_meta.id(), 
+                          new_meta);
+    if (!ret) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kRemoveContainerGroupFail);
+        err->set_reason("fail to save container group meta in nexus");
+    } else {
+        {
+            MutexLock lock(&mu_);
+            container_groups_[new_meta.id()] = new_meta;
+        }
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* controller,
                                       const ::baidu::galaxy::proto::UpdateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::UpdateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
-
+    proto::ContainerGroupMeta new_meta;
+    bool replica_changed = false;
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::ContainerGroupMeta>::iterator it;
+        it = container_groups_.find(request->id());
+        if (it == container_groups_.end()) {
+            response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+            response->mutable_error_code()->set_reason("no such group");
+            done->Run();
+            return;
+        }
+        if (request->replica() > (size_t)FLAGS_container_group_max_replica) {
+            response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+            response->mutable_error_code()->set_reason("invalid replica");
+            done->Run();
+            return;
+        }
+        new_meta = it->second;
+        new_meta.set_update_interval(request->interval());
+        new_meta.mutable_desc()->CopyFrom(request->desc());
+        if (new_meta.replica() != request->replica()) {
+            new_meta.set_replica(request->replica());
+            replica_changed = true;
+        }
+    }
+    std::string new_version;
+    bool version_changed = scheduler_->Update(new_meta.id(),
+                                              new_meta.desc(),
+                                              new_meta.update_interval(),
+                                              new_version);
+    if (version_changed) {
+        new_meta.mutable_desc()->set_version(new_version);
+    }
+    if (replica_changed) {
+        scheduler_->ChangeReplica(new_meta.id(),
+                                  new_meta.replica());
+    }
+    {
+        MutexLock lock(&mu_);
+        container_groups_[new_meta.id()] = new_meta;
+    }
+    bool save_ok = SaveObject(sContainerGroupPrefix + "/" + new_meta.id(), 
+                              new_meta);
+    if (!save_ok) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kUpdateContainerGroupFail);
+        err->set_reason("fail to save container group meta in nexus");    
+    } else {
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::ListContainerGroups(::google::protobuf::RpcController* controller,
@@ -455,6 +603,7 @@ bool ResManImpl::LoadObjects(const std::string& prefix,
     while (!result->Done()) {
         const std::string& full_key = result->Key();
         const std::string& raw_obj_buf = result->Value();
+        LOG(INFO) << "try load " << full_key;
         std::string key = full_key.substr(prefix_len);
         ProtoClass& obj = objs[key];
         bool parse_ok = obj.ParseFromString(raw_obj_buf);

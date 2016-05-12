@@ -318,6 +318,9 @@ enum Status {
    kAddAgentFail = 4;
    kDeny = 5;
    kJobNotFound = 6;
+   kCreateContainerGroupFail = 7;
+   kRemoveContainerGroupFail = 8;
+   kUpdateContainerGroupFail = 9;
 }
 
 message ErrorCode {
