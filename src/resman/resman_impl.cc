@@ -200,6 +200,10 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
     bool leave_safe_mode_event = false;
     {
         MutexLock lock(&mu_);
+        if (agent_stats_.find(agent_endpoint) == agent_stats_.end()) {
+            LOG(INFO) << "this agent may be removed, no need to query again";
+            return;
+        }
         agent_stats_[agent_endpoint].info = response->agent_info();
         if (safe_mode_ && 
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
@@ -472,7 +476,25 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
                              const ::baidu::galaxy::proto::RemoveAgentRequest* request,
                              ::baidu::galaxy::proto::RemoveAgentResponse* response,
                              ::google::protobuf::Closure* done) {
-
+    LOG(INFO) << "remove agent:" << request->endpoint();
+    MutexLock lock(&mu_);
+    if (agents_.find(request->endpoint()) == agents_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("agent not exist");
+        done->Run();
+        return;
+    }
+    agents_.erase(request->endpoint());
+    agent_stats_.erase(request->endpoint());
+    scheduler_->RemoveAgent(request->endpoint());
+    bool remove_ok = RemoveObject(sAgentPrefix + "/" + request->endpoint());
+    if (!remove_ok) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("fail to delete meta from nexus");
+    } else {
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::OnlineAgent(::google::protobuf::RpcController* controller,
@@ -592,6 +614,16 @@ void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
                              ::baidu::galaxy::proto::AssignQuotaResponse* response,
                              ::google::protobuf::Closure* done) {
 
+}
+
+bool ResManImpl::RemoveObject(const std::string& key) {
+    ::galaxy::ins::sdk::SDKError err;
+    std::string full_key = FLAGS_nexus_root + key;
+    bool ret = nexus_->Delete(full_key, &err);
+    if (!ret) {
+        LOG(WARNING) << "nexus error:" << err;
+    }
+    return ret;
 }
 
 template <class ProtoClass> 

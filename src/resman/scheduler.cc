@@ -956,7 +956,15 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
     }
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(agent_endpoint);
     if (it == agents_.end()) {
-        LOG(WARNING) << "no such agent:" << agent_endpoint;
+        LOG(WARNING) << "no such agent, will kill all containers, " << agent_endpoint;
+        for (int i = 0; i < agent_info.container_info_size(); i++) {
+            const proto::ContainerInfo& container_remote = agent_info.container_info(i);
+            AgentCommand cmd;
+            LOG(INFO) << "expired remote containers: " << container_remote.id();
+            cmd.container_id = container_remote.id();
+            cmd.action = kDestroyContainer;
+            commands.push_back(cmd);
+        }
         return;
     }
     Agent::Ptr agent = it->second;

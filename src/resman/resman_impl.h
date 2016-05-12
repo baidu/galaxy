@@ -171,6 +171,7 @@ private:
     bool LoadObjects(const std::string& prefix,
                      std::map<std::string, ProtoClass>& objs);
 
+    bool RemoveObject(const std::string& key);
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentMeta> agents_;
