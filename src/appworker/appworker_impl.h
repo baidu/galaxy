@@ -25,6 +25,7 @@ typedef google::protobuf::RepeatedPtrField<proto::TaskInfo> TaskInfoList;
 typedef proto::AppMaster_Stub AppMaster_Stub;
 typedef proto::FetchTaskRequest FetchTaskRequest;
 typedef proto::FetchTaskResponse FetchTaskResponse;
+typedef proto::ErrorCode ErrorCode;
 
 class AppWorkerImpl {
 public:
@@ -44,11 +45,11 @@ private:
     std::string job_id_;
     std::string container_id_;
     std::string endpoint_;
-    std::string appmaster_endpoint_;
     int64_t start_time_;
 
     RpcClient rpc_client_;
     InsSDK* nexus_;
+    std::string appmaster_endpoint_;
     AppMaster_Stub* appmaster_stub_;
     PodManager pod_manager_;
     ThreadPool backgroud_pool_;

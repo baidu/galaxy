@@ -193,27 +193,6 @@ message TaskInfo {
     optional ProcessInfo stop_process = 10;
 }
 
-message PodInfo {
-    optional string podid = 1;
-    optional string jobid = 2;
-    optional string endpoint = 3;
-    optional PodDescription desc = 4;
-    optional PodStatus status = 5;
-    optional string version = 6;
-    optional int64 start_time = 7;
-    optional 
-}
-
-message JobInfo {
-    optional string jobid = 1;
-    optional JobDescription desc = 2;
-    repeated PodInfo pods = 3;
-    optional JobStatus status = 4;
-    optional string version = 7;
-    optional int64 create_time = 8;
-    optional int64 update_time = 9;
-}
-
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
     optional string dest_path = 2;   // local path

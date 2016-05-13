@@ -5,28 +5,25 @@
 #ifndef BAIDU_GALAXY_TASK_COLLECTOR_H
 #define BAIDU_GALAXY_TASK_COLLECTOR_H
 
-#include <thread_pool.h>
+#include <string>
 
-#include "protocol/galaxy.pb.h"
+#include <thread_pool.h>
 
 namespace baidu {
 namespace galaxy {
 
-typedef proto::TaskInfo TaskInfo;
-
 class TaskCollector {
 public:
-    TaskCollector(TaskInfo* task_info);
+    TaskCollector();
     ~TaskCollector();
-    void Collect();
+    void Collect(const std::string& task_id);
 
 private:
     ThreadPool background_pool_;
-    TaskInfo* task_info_;
 };
-
 
 }   // ending namespace galaxy
 }   // ending namespace baidu
+
 
 #endif  // BAIDU_GALAXY_TASK_COLLECTOR_H

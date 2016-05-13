@@ -7,34 +7,16 @@
 #include <map>
 #include <set>
 
-#include "rpc/rpc_client.h"
-#include "ins_sdk.h"
 #include "src/protocol/appmaster.pb.h"
-
 
 namespace baidu {
 namespace galaxy {
-
-typedef ::galaxy::ins::sdk::InsSDK InsSDK;
-typedef::galaxy::ins::sdk::SDKError  SDKError;
-typedef proto::PodDescription PodDescription;
-typedef proto::TaskDescription TaskDescription;
-typedef proto::ImagePackage ImagePackage;
-typedef proto::DataPackage DataPackage;
-typedef proto::Package Package;
-typedef proto::PodInfo PodInfo;
-
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
 
 AppMasterImpl();
 virtual ~AppMasterImpl();
-
-void FetchTask(::google::protobuf::RpcController* controller,
-               const::baidu::galaxy::proto::FetchTaskRequest* request,
-               ::baidu::galaxy::proto::FetchTaskResponse* response,
-               ::google::protobuf::Closure* done);
 
 void SubmitJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::SubmitJobRequest* request,
@@ -65,10 +47,6 @@ void ExecuteCmd(::google::protobuf::RpcController* controller,
                                const ::baidu::galaxy::proto::ExecuteCmdRequest* request,
                                ::baidu::galaxy::proto::ExecuteCmdResponse* response,
                                ::google::protobuf::Closure* done);
-
-private:
-    std::string endpoint_;
-    InsSDK* nexus_;
 
 };
 

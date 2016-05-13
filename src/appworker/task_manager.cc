@@ -32,13 +32,24 @@ TaskManager::~TaskManager() {
 
 void TaskManager::LoopWait() {
     MutexLock lock(&mutex_task_manager_);
-    LOG(INFO) << "loop check";
+    LOG(INFO) << "loop wait tasks";
     background_pool_.DelayTask(
         FLAGS_task_manager_loop_wait_interval,
         boost::bind(&TaskManager::LoopWait, this)
     );
 }
 
+int TaskManager::CreateTask(const TaskDescription* task_desc) {
+    return 0;
+}
+
+int TaskManager::DeleteTask(const std::string& task_id) {
+    return 0;
+}
+
+int TaskManager::GetProcessInfo(Process& process) {
+    return 0;
+}
 
 }   // ending namespace galaxy
 }   // ending namespace baidu

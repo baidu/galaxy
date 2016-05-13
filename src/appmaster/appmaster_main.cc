@@ -6,18 +6,15 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <assert.h>
-
 #include <algorithm>
 #include <vector>
-
 #include <sofa/pbrpc/pbrpc.h>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
-
 #include "setting_utils.h"
 #include "appmaster_impl.h"
 
-DECLARE_string(appmaster_endpoint);
+DECLARE_string(appmaster_port);
 
 static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/){
@@ -36,8 +33,9 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
 
-    if (!rpc_server.Start(FLAGS_appmaster_endpoint)) {
-        LOG(WARNING)  << "failed to start server on %s", FLAGS_appmaster_endpoint.c_str();
+    std::string endpoint = "0.0.0.0:" + FLAGS_appmaster_port;
+    if (!rpc_server.Start(endpoint)) {
+        LOG(WARNING)  << "failed to start server on %s", endpoint.c_str();
         exit(-2);
     }
     signal(SIGINT, SignalIntHandler);

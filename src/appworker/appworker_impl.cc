@@ -13,6 +13,7 @@
 
 DECLARE_string(nexus_servers);
 DECLARE_string(nexus_root_path);
+DECLARE_string(appmaster_nexus_path);
 DECLARE_int32(appworker_fetch_task_timeout);
 DECLARE_int32(appworker_fetch_task_interval);
 DECLARE_int32(appworker_update_appmaster_stub_interval);
@@ -20,8 +21,6 @@ DECLARE_int32(appworker_background_thread_pool_size);
 DECLARE_string(appworker_job_id);
 DECLARE_string(appworker_endpoint);
 DECLARE_string(appworker_container_id);
-DECLARE_string(appmaster_nexus_path);
-DECLARE_string(appmaster_endpoint);
 
 namespace baidu {
 namespace galaxy {
@@ -31,7 +30,6 @@ AppWorkerImpl::AppWorkerImpl() :
         job_id_(FLAGS_appworker_job_id),
         container_id_(FLAGS_appworker_container_id),
         endpoint_(FLAGS_appworker_endpoint),
-        appmaster_endpoint_(FLAGS_appmaster_endpoint),
         start_time_(),
         nexus_(NULL),
         appmaster_stub_(NULL),
@@ -57,33 +55,37 @@ AppWorkerImpl::~AppWorkerImpl () {
 void AppWorkerImpl::Start() {
     start_time_ = baidu::common::timer::get_micros();
     LOG(INFO) << "appworker start, job_id: " << job_id_.c_str()\
-        << " containerid: " << container_id_.c_str()\
-        << " endpoint: " << endpoint_.c_str();
+        << ", container_id: " << container_id_.c_str()\
+        << ", endpoint: " << endpoint_.c_str();
 }
 
 void AppWorkerImpl::UpdateAppMasterStub() {
     MutexLock lock(&mutex_appworker_);
     SDKError err;
-    std::string endpoint = "";
+    std::string new_endpoint = "";
     std::string key = FLAGS_nexus_root_path + "/" + FLAGS_appmaster_nexus_path;
-    LOG(INFO) << "get appmaster endpoint from nexus : " << key.c_str();
-    bool ok = nexus_->Get(key, &endpoint, &err);
-    if (!ok) {
-        LOG(INFO) << "get appmaster endpoint from nexus failed: "\
-            << ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str();
-        return;
-    }
+    bool ok = nexus_->Get(key, &new_endpoint, &err);
+    do {
+        if (!ok) {
+           LOG(INFO) << "get appmaster endpoint from nexus failed: "\
+               << ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str();
+           break;
+        }
+        if (appmaster_endpoint_ == new_endpoint) {
+           break;
+        }
+        LOG(INFO) << "appmaster endpoint updated, from: " << appmaster_endpoint_.c_str()\
+           << ", to: " << new_endpoint.c_str();
+        appmaster_endpoint_ = new_endpoint;
+        if(rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
+            LOG(INFO) << "appmaster stub updated, endpoint: " << appmaster_endpoint_.c_str();
+        }
+    } while (0);
 
-    if (appmaster_endpoint_ == endpoint) {
-        return;
-    }
-    LOG(INFO) << "appmaster endpoint change from: " << appmaster_endpoint_.c_str()\
-        << " to: " << endpoint.c_str();
-    appmaster_endpoint_ = endpoint;
-    if(!rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
-        LOG(ERROR) << "connect appmaster fail, appmaster: " << appmaster_endpoint_.c_str();
-        return;
-    }
+    backgroud_pool_.DelayTask(
+        FLAGS_appworker_update_appmaster_stub_interval,
+        boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this)
+    );
 }
 
 void AppWorkerImpl::FetchTask () {
@@ -113,29 +115,27 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       FetchTaskResponse* response,
                                       bool failed, int /*error*/) {
     MutexLock lock(&mutex_appworker_);
-    proto::ErrorCode* error_code = response->mutable_error_code();
-    if (error_code->status() != proto::kOk) {
-        return;
+    ErrorCode* error_code = response->mutable_error_code();
+    LOG(WARNING) << "get status: " << proto::Status_Name(error_code->status()).c_str()\
+        << " from appmaster, appworker will exit.";
+    switch (error_code->status()) {
+        case proto::kJobNotFound:
+            exit(-1);
+        case proto::kTerminate:
+            pod_manager_.DeletePod();
+            break;
+        case proto::kOk:
+            pod_manager_.CreatePod(response->mutable_pod());
+            break;
+        default:
+            LOG(INFO) << "appworker fetch task ok, nope";
     }
 
-    if (response->has_action()) {
-        switch (response->action()) {
-            case proto::kRunPod:
-                pod_manager_.RunPod(response->mutable_info());
-                break;
-            case proto::kKillPod:
-                pod_manager_.KillPod(response->mutable_info());
-                break;
-        }
-    }
     backgroud_pool_.DelayTask(
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
 }
 
-
 }   // ending namespace galaxy
 }   // ending namespace baidu
-
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

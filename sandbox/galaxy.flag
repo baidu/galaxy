@@ -1,1 +1,4 @@
---nexus_servers=wanghaitao01-pc:8868,wanghaitao01-pc:8869,wanghaitao01-pc:8870,wanghaitao01-pc:8871,wanghaitao01-pc:8872
+--nexus_servers=cp01-ocean-893.epc.baidu.com:8868,cp01-ocean-893.epc.baidu.com:8869,cp01-ocean-893.epc.baidu.com:8870,cp01-ocean-893.epc.baidu.com:8871,cp01-ocean-893.epc.baidu.com:8872
+--appworker_endpoint=127.0.0.1:8221
+--appworker_container_id=container-1
+--logbufsecs=0

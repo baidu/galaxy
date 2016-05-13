@@ -5,6 +5,9 @@
 #ifndef  BAIDU_GALAXY_POD_MANAGER_H
 #define  BAIDU_GALAXY_POD_MANAGER_H
 
+#include <map>
+#include <string>
+
 #include <thread_pool.h>
 #include <mutex.h>
 
@@ -14,21 +17,27 @@
 namespace baidu {
 namespace galaxy {
 
-typedef proto::PodInfo PodInfo;
-typedef proto::TaskDescription TaskDescription;
+typedef proto::PodDescription PodDescription;
+typedef proto::PodStatus PodStatus;
+
+struct Pod {
+    PodDescription desc;
+    PodStatus status;
+    std::map<std::string, Task*> tasks;
+};
 
 class PodManager {
 public:
     PodManager();
     ~PodManager();
-    void RunPod(const PodInfo* pod_info);
-    void KillPod(const PodInfo* pod_info);
-    void ShowPod(PodInfo* pod_info);
-    void LoopPodCheck();
-    void LoopPodStatusChangeCheck();
+    void CreatePod(const PodDescription* pod_desc);
+    void DeletePod();
+    void LoopCheckPod();
+    void LoopChangePodStatus();
 
 private:
     int DeployPod();
+    int StartPod();
     int ReadyPodCheck();
     int DeployingPodCheck();
     int StartingPodCheck();
@@ -36,13 +45,13 @@ private:
 
 private:
     Mutex mutex_pod_manager_;
-    PodInfo* pod_;
-    TaskManager* task_manager_;
-    ThreadPool background_pool_; 
+    Pod* pod_;
+    TaskManager task_manager_;
+    ThreadPool background_pool_;
 };
 
-}
-}
+} // ending namespace galaxy
+} // ending namespace baidu
 
 
 #endif  // BAIDU_GALAXY_POD_MANAGER_H
