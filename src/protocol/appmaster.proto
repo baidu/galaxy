@@ -25,8 +25,9 @@ message UpdateJobResponse {
 }
 
 message RemoveJobRequest {
-    optional string jobid = 1;
-    optional string hostname = 2;
+    optional User user = 1;
+    optional string jobid = 2;
+    optional string hostname = 3;
 }
 
 message RemoveJobResponse {
@@ -122,7 +123,8 @@ message FetchTaskResponse {
 }
 
 message StopJobRequest {
-    optional string jobid = 1;
+    optional User user = 1;
+    optional string jobid = 2;
 }
 
 message StopJobResponse {

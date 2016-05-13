@@ -515,6 +515,7 @@ struct UpdateJobResponse {
     ErrorCode error_code;
 };
 struct RemoveJobRequest {
+    User user;
     std::string jobid;
     std::string hostname;
 };
@@ -578,6 +579,7 @@ struct ExecuteCmdResponse {
 };
 
 struct StopJobRequest {
+    User user;
     std::string jobid;
 };
 struct StopJobResponse {
