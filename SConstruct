@@ -8,7 +8,7 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 
 env = Environment(
-        CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils'] ,
+        CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', './thirdparty/rapidjson/include', 'src/utils'] ,
         LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
@@ -43,6 +43,9 @@ env.Program('test_volum', test_volum_src);
 
 test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc')
 env.Program('test_container', test_container_src);
+
+test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_parse.cc']
+env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
 

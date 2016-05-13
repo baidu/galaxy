@@ -1,18 +1,6 @@
-/***************************************************************************
- * 
- * Copyright (c) 2016 Baidu.com, Inc. All Rights Reserved
- * $Id$ 
- * 
- **************************************************************************/
- 
- /**
- * @file test_galaxy_parse.cc
- * @author zhoumeiting(zhoumeiting@baidu.com)
- * @date 2016/05/12 18:56:33
- * @version $Revision$ 
- * @brief 
- *  
- **/
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <iostream>
 #include "client/galaxy_util.h"
@@ -88,6 +76,5 @@ int main(int argc, char** argv) {
 
     return ok;
 }
-
 
 /* vim: set ts=4 sw=4 sts=4 tw=100 */

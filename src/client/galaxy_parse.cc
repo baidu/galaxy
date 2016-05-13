@@ -1,18 +1,6 @@
-/***************************************************************************
- * 
- * Copyright (c) 2016 Baidu.com, Inc. All Rights Reserved
- * $Id$ 
- * 
- **************************************************************************/
- 
- /**
- * @file galaxy_parse.cc
- * @author zhoumeiting(zhoumeiting@baidu.com)
- * @date 2016/05/11 16:19:53
- * @version $Revision$ 
- * @brief 
- *  
- **/
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include "galaxy_util.h"
 #include "rapidjson/document.h"

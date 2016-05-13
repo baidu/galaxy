@@ -1,18 +1,7 @@
-/***************************************************************************
- * 
- * Copyright (c) 2016 Baidu.com, Inc. All Rights Reserved
- * $Id$ 
- * 
- **************************************************************************/
- 
- /**
- * @file galaxy_util.h
- * @author zhoumeiting(zhoumeiting@baidu.com)
- * @date 2016/05/12 18:57:06
- * @version $Revision$ 
- * @brief 
- *  
- **/
+// Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #ifndef BAIDU_GALAXY_CLIENT_UTIL_H
 #define BAIDU_GALAXY_CLIENT_UTIL_H
 
@@ -28,6 +17,6 @@ int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescrip
 } //end namespace galaxy
 } //end namespace baidu
 
-#endif  // GALAXY_UTIL_H
+#endif  // BAIDU_GALAXY_CLIENT_UTIL_H
 
 /* vim: set ts=4 sw=4 sts=4 tw=100 */
