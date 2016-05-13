@@ -298,7 +298,7 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
 }
 
 
-Scheduler::Scheduler() {
+Scheduler::Scheduler() : stop_(true) {
 
 }
 
@@ -326,7 +326,7 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
 
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
-    agents_[agent->endpoint_] = agent;
+    
     int64_t cpu_assigned = 0;
     int64_t memory_assigned = 0;
     std::map<DevicePath, VolumInfo> volum_assigned;
@@ -342,15 +342,23 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             LOG(WARNING) << "no such container group:" << container_info.group_id();
             continue;
         }
-        if (container_groups_[container_info.group_id()]->containers.find(container_info.id())
-            != container_groups_[container_info.group_id()]->containers.end()) {
-            LOG(WARNING) << "this container already exist:" << container_info.id();
-            continue;
-        }
+        ContainerGroup::Ptr& container_group = container_groups_[container_info.group_id()];
         Container::Ptr container(new Container());
+
+        if (container_group->containers.find(container_info.id())
+            != container_group->containers.end()) {
+            Container::Ptr& exist_container = container_group->containers[container_info.id()];
+            if (exist_container->status != kContainerReady) {
+                ChangeStatus(exist_container, kContainerTerminated);
+                container = exist_container;
+            } else {
+                LOG(WARNING) << "this container already exist:" << container_info.id();
+                continue;
+            }
+        }
+        
         Requirement::Ptr require(new Requirement());    
-        const proto::ContainerDescription& container_desc 
-                = container_info.container_desc();    
+        const proto::ContainerDescription& container_desc = container_info.container_desc();    
         SetRequirement(require, container_desc);
 
         container->id = container_info.id();
@@ -407,10 +415,12 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         }
         containers[container->id] = container;
         container_groups_[container->container_group_id]->containers[container->id] = container;
+        container->allocated_agent = agent->endpoint_;
         ChangeStatus(container, container->status);
     }
     agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
                          port_assigned, containers);
+    agents_[agent->endpoint_] = agent;
 }
 
 void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
@@ -509,6 +519,8 @@ ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
     container_group->id = container_group_id;
     container_group->priority = priority;
     container_group->container_desc = container_desc;
+    container_group->replica = replica;
+    container_group->name = container_group_name;
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
         container->container_group_id = container_group->id;
@@ -532,7 +544,15 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     container_group->require = req;
     container_group->id = container_group_meta.id();
     container_group->priority = container_group_meta.desc().priority();
+    container_group->replica = container_group_meta.replica();
+    container_group->update_interval = container_group_meta.update_interval();
     container_group->container_desc = container_group_meta.desc();
+    container_group->name = container_group_meta.name();
+    if (container_group_meta.status() == proto::kContainerGroupTerminated) {
+        container_group->terminated = true;
+    } else {
+        container_group->terminated = false;
+    }
 
     container_groups_[container_group->id] = container_group;
     container_group_queue_.insert(container_group);
@@ -609,6 +629,7 @@ bool Scheduler::ChangeReplica(const ContainerGroupId& container_group_id, int re
     } else {
         ScaleUp(container_group, replica);
     }
+    container_group->replica = replica;
     return true;
 }
 
@@ -701,6 +722,7 @@ void Scheduler::ChangeStatus(ContainerGroup::Ptr container_group,
         container->allocated_ports.clear();
         container->allocated_agent = "";
         container->require = container_group->require;
+        container->remote_info.Clear();
     }
     container->status = new_status;
 }
@@ -718,8 +740,37 @@ void Scheduler::CheckTagAndPool(Agent::Ptr agent) {
 }
 
 void Scheduler::Start() {
+    LOG(INFO) << "scheduler started";
+    std::vector<std::pair<ContainerGroupId, int> > replicas;
+    std::set<ContainerGroupId> need_kill;
+    {
+        MutexLock lock(&mu_);
+        stop_ = false;
+        std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+        for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+            replicas.push_back(std::make_pair(it->first, it->second->replica));
+            if (it->second->terminated) {
+                need_kill.insert(it->first);
+            }
+        }
+    }
+
+    for (size_t i = 0; i < replicas.size(); i++) {
+        const ContainerGroupId& group_id = replicas[i].first;
+        int replica = replicas[i].second;
+        ChangeReplica(group_id, replica);
+        if (need_kill.find(group_id) != need_kill.end()) {
+            Kill(group_id);
+        }
+    }
     AgentEndpoint fake_endpoint = "";
     ScheduleNextAgent(fake_endpoint);
+}
+
+void Scheduler::Stop() {
+    LOG(INFO) << "scheduler stopped.";
+    MutexLock lock(&mu_);
+    stop_ = true;
 }
 
 bool Scheduler::CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container) {
@@ -771,7 +822,12 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
     Agent::Ptr agent;
     AgentEndpoint endpoint;
     MutexLock lock(&mu_);
-        
+    if (stop_) {
+        VLOG(16) << "no scheduling, because scheduler is stoped.";
+        sched_pool_.DelayTask(FLAGS_sched_interval, 
+                    boost::bind(&Scheduler::ScheduleNextAgent, this, pre_endpoint));
+        return;
+    }    
     std::map<AgentEndpoint, Agent::Ptr>::iterator it;
     it = agents_.upper_bound(pre_endpoint);
     if (it != agents_.end()) {
@@ -900,9 +956,21 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                             const proto::AgentInfo& agent_info, 
                             std::vector<AgentCommand>& commands) {
     MutexLock locker(&mu_);
+    if (stop_) {
+        LOG(INFO) << "no command to agent, when scheduler stopped.";
+        return;
+    }
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(agent_endpoint);
     if (it == agents_.end()) {
-        LOG(WARNING) << "no such agent:" << agent_endpoint;
+        LOG(WARNING) << "no such agent, will kill all containers, " << agent_endpoint;
+        for (int i = 0; i < agent_info.container_info_size(); i++) {
+            const proto::ContainerInfo& container_remote = agent_info.container_info(i);
+            AgentCommand cmd;
+            LOG(INFO) << "unexpected remote containers: " << container_remote.id();
+            cmd.container_id = container_remote.id();
+            cmd.action = kDestroyContainer;
+            commands.push_back(cmd);
+        }
         return;
     }
     Agent::Ptr agent = it->second;
@@ -930,6 +998,11 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             continue;
         } 
         remote_status[container_remote.id()] = container_remote.status();
+        Container::Ptr container_local = it_local->second;
+        container_local->remote_info.set_cpu_used(container_remote.cpu_used());
+        container_local->remote_info.set_memory_used(container_remote.memory_used());
+        container_local->remote_info.mutable_volum_used()->CopyFrom(container_remote.volum_used());
+        container_local->remote_info.mutable_port_used()->CopyFrom(container_remote.port_used());
     }
     BOOST_FOREACH(ContainerMap::value_type& pair, containers_local) {
         Container::Ptr container_local = pair.second;
@@ -970,7 +1043,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             case kContainerDestroying:
                 if (remote_st == 0) {//not exit on remote
                     ChangeStatus(container_local, kContainerTerminated);
-                } else {
+                } else if (remote_st != kContainerTerminated) {
                     cmd.action = kDestroyContainer;
                     commands.push_back(cmd);
                 }
@@ -983,6 +1056,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
 }
 
 bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
+    mu_.AssertHeld();
     if (v1 == v2) {//same object 
         return false;
     }
@@ -1050,6 +1124,7 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
 
 void Scheduler::SetVolumsAndPorts(const Container::Ptr& container, 
                                   proto::ContainerDescription& container_desc) {
+    mu_.AssertHeld();
     size_t idx = 0;
     if (container_desc.workspace_volum().medium() != proto::kTmpfs) {
         if (idx >= container->allocated_volums.size()) {
@@ -1083,6 +1158,118 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
             );
         }
     }
+}
+
+bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+        int64_t cpu_assigned = 0; //for one container group
+        int64_t cpu_used = 0;
+        int64_t memory_assigned = 0;
+        int64_t memory_used = 0;
+        std::map<proto::VolumMedium, int64_t> volum_assigned;
+        std::map<proto::VolumMedium, int64_t> volum_used;
+
+        ContainerGroup::Ptr& container_group = it->second;
+        proto::ContainerGroupStatistics group_stat;
+        group_stat.set_id(container_group->id);
+        group_stat.set_name(container_group->name);
+        group_stat.set_replica(container_group->Replica());
+        group_stat.set_ready(container_group->states[kContainerReady].size());
+        group_stat.set_pending(container_group->states[kContainerPending].size());
+        group_stat.set_allocating(container_group->states[kContainerAllocating].size());
+        if (container_group->terminated) {
+            group_stat.set_status(proto::kContainerGroupTerminated);
+        } else {
+            group_stat.set_status(proto::kContainerGroupNormal);
+        }
+        std::map<ContainerId, Container::Ptr>::iterator jt;
+        for (jt = container_group->containers.begin(); 
+             jt != container_group->containers.end(); jt++) {
+            //sum up all containers
+            Container::Ptr container = jt->second;
+            if (container->status != kContainerReady) {
+                continue;
+            }
+            for (int i = 0; i < container->remote_info.volum_used_size(); i++) {
+                proto::VolumMedium medium = container->remote_info.volum_used(i).medium();
+                int64_t as = container->remote_info.volum_used(i).assigned_size();
+                int64_t us = container->remote_info.volum_used(i).used_size();
+                volum_assigned[medium] += as;
+                volum_used[medium] += us;
+            }
+            cpu_assigned += container->require->CpuNeed();
+            cpu_used += container->remote_info.cpu_used();
+            memory_assigned += container->require->MemoryNeed();
+            memory_used += container->remote_info.memory_used();
+        }
+        group_stat.mutable_cpu()->set_assigned(cpu_assigned);
+        group_stat.mutable_cpu()->set_used(cpu_used);
+        group_stat.mutable_memory()->set_assigned(memory_assigned);
+        group_stat.mutable_memory()->set_used(memory_used);
+        
+        std::map<proto::VolumMedium, int64_t>::iterator v_it;
+        for (v_it = volum_assigned.begin(); v_it != volum_assigned.end(); v_it++) {
+            proto::VolumResource* volum_stat = group_stat.add_volum();
+            proto::VolumMedium medium = v_it->first;
+            int64_t assigned_size = v_it->second;
+            int64_t used_size = volum_used[medium];
+            volum_stat->set_medium(medium);
+            volum_stat->mutable_volum()->set_assigned(assigned_size);
+            volum_stat->mutable_volum()->set_used(used_size);
+        }  
+        container_groups.push_back(group_stat);
+    }
+    return true;
+}
+
+bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
+                                   std::vector<proto::ContainerStatistics>& containers) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "no such container group: " << container_group_id;
+        return false;
+    }
+    ContainerGroup::Ptr container_group = it->second;
+    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
+        Container::Ptr container = pair.second;
+        proto::ContainerStatistics container_stat;
+        container_stat.set_id(container->id);
+        container_stat.set_status(container->status);
+        container_stat.set_endpoint(container->allocated_agent);
+        std::map<proto::VolumMedium, int64_t> volum_assigned;
+        std::map<proto::VolumMedium, int64_t> volum_used;
+        int64_t cpu_assigned = container->require->CpuNeed();
+        int64_t cpu_used = container->remote_info.cpu_used();
+        int64_t memory_assigned = container->require->MemoryNeed();
+        int64_t memory_used = container->remote_info.memory_used();
+        for (int i = 0; i < container->remote_info.volum_used_size(); i++) {
+            proto::VolumMedium medium = container->remote_info.volum_used(i).medium();
+            int64_t as = container->remote_info.volum_used(i).assigned_size();
+            int64_t us = container->remote_info.volum_used(i).used_size();
+            volum_assigned[medium] += as;
+            volum_used[medium] += us;
+        }
+        std::map<proto::VolumMedium, int64_t>::iterator v_it;
+        for (v_it = volum_assigned.begin(); v_it != volum_assigned.end(); v_it++) {
+            proto::VolumResource* volum_stat = container_stat.add_volum();
+            proto::VolumMedium medium = v_it->first;
+            int64_t assigned_size = v_it->second;
+            int64_t used_size = volum_used[medium];
+            volum_stat->set_medium(medium);
+            volum_stat->mutable_volum()->set_assigned(assigned_size);
+            volum_stat->mutable_volum()->set_used(used_size);
+        }
+        container_stat.mutable_cpu()->set_assigned(cpu_assigned);
+        container_stat.mutable_cpu()->set_used(cpu_used);
+        container_stat.mutable_memory()->set_assigned(memory_assigned);
+        container_stat.mutable_memory()->set_used(memory_used);  
+        containers.push_back(container_stat);
+    }
+    return true;
 }
 
 } //namespace sched

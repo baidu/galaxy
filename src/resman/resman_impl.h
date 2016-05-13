@@ -31,6 +31,7 @@ class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
     ResManImpl();
     ~ResManImpl();
+    bool Init();
     void EnterSafeMode(::google::protobuf::RpcController* controller,
                        const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
                        ::baidu::galaxy::proto::EnterSafeModeResponse* response,
@@ -170,6 +171,7 @@ private:
     bool LoadObjects(const std::string& prefix,
                      std::map<std::string, ProtoClass>& objs);
 
+    bool RemoveObject(const std::string& key);
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentMeta> agents_;

@@ -484,15 +484,18 @@ struct ShowContainerGroupRequest {
     User user;
     std::string id;
 };
-struct ShowContainerGroupResponse {
-    ErrorCode error_code;
+struct ContainerStatistics {
     ContainerStatus status;
     std::string endpoint;
     Resource cpu;
     Resource memroy;
     VolumResource volum;
 };
-
+struct ShowContainerGroupResponse {
+    ErrorCode error_code;
+    ContainerDescription desc;
+    std::vector<ContainerStatistics> containers;
+};
 struct SubmitJobRequest {
     User user;
     JobDescription job;

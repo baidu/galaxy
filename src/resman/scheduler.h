@@ -101,6 +101,7 @@ struct Container {
     std::vector<std::string> allocated_ports;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
+    proto::ContainerInfo remote_info;
     typedef boost::shared_ptr<Container> Ptr;
 };
 
@@ -121,8 +122,13 @@ struct ContainerGroup {
     std::map<ContainerId, Container::Ptr> states[8];
     int update_interval;
     int last_update_time;
+    int replica;
+    std::string name;
     proto::ContainerDescription container_desc;
-    ContainerGroup() : terminated(false) {};
+    ContainerGroup() : terminated(false),
+                       update_interval(0),
+                       last_update_time(0),
+                       replica(0) {};
     int Replica() const {
         return states[kContainerPending].size() 
                + states[kContainerAllocating].size() 
@@ -187,6 +193,7 @@ public:
     explicit Scheduler();
     //start the main schueduling loop
     void Start();
+    void Stop();
 
     void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
@@ -212,7 +219,9 @@ public:
     void MakeCommand(const std::string& agent_endpoint,
                      const proto::AgentInfo& agent_info, 
                      std::vector<AgentCommand>& commands);
-
+    bool ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups);
+    bool ShowContainerGroup(const ContainerGroupId& container_group_id,
+                            std::vector<proto::ContainerStatistics>& containers);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
@@ -240,6 +249,7 @@ private:
     Mutex mu_;
     ThreadPool sched_pool_;
     ThreadPool gc_pool_;
+    bool stop_;
 };
 
 } //namespace sched
