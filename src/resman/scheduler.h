@@ -123,6 +123,7 @@ struct ContainerGroup {
     int update_interval;
     int last_update_time;
     int replica;
+    std::string name;
     proto::ContainerDescription container_desc;
     ContainerGroup() : terminated(false),
                        update_interval(0),

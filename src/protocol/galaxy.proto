@@ -362,21 +362,22 @@ message ContainerStatistics {
     optional string endpoint = 3;
     optional Resource cpu = 4;
     optional Resource memroy = 5;
-    optional VolumResource volum = 6;
+    repeated VolumResource volum = 6; //different kinds of medium
 }
 
 message ContainerGroupStatistics {
     optional string id = 1;
-    optional ContainerGroupStatus status = 2;
-    optional uint32 replica = 3;
-    optional uint32 ready = 4;
-    optional uint32 pending = 5;
-    optional uint32 allocating = 6;
-    optional Resource cpu = 7;
-    optional Resource memroy = 8;
-    optional VolumResource volum = 9;
-    optional int64 submit_time = 10;
-    optional int64 update_time = 11;
+    optional string name = 2;
+    optional ContainerGroupStatus status = 3;
+    optional uint32 replica = 4;
+    optional uint32 ready = 5;
+    optional uint32 pending = 6;
+    optional uint32 allocating = 7;
+    optional Resource cpu = 8;
+    optional Resource memory = 9;
+    repeated VolumResource volum = 10; //different kinds of medium
+    optional int64 submit_time = 11;
+    optional int64 update_time = 12;
 }
 
 //proto that used to be saved in nexus

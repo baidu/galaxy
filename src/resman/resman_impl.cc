@@ -446,14 +446,38 @@ void ResManImpl::ListContainerGroups(::google::protobuf::RpcController* controll
                                      const ::baidu::galaxy::proto::ListContainerGroupsRequest* request,
                                      ::baidu::galaxy::proto::ListContainerGroupsResponse* response,
                                      ::google::protobuf::Closure* done) {
-
+    std::vector<proto::ContainerGroupStatistics> container_groups;
+    scheduler_->ListContainerGroups(container_groups);
+    for (size_t i = 0; i < container_groups.size(); i++) {
+        response->add_containers()->CopyFrom(container_groups[i]);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::ShowContainerGroup(::google::protobuf::RpcController* controller,
                                     const ::baidu::galaxy::proto::ShowContainerGroupRequest* request,
                                     ::baidu::galaxy::proto::ShowContainerGroupResponse* response,
                                     ::google::protobuf::Closure* done) {
-
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::ContainerGroupMeta>::iterator it;
+        it = container_groups_.find(request->id());
+        if (it == container_groups_.end()) {
+            response->mutable_error_code()->set_status(proto::kError);
+            response->mutable_error_code()->set_reason("no such group");
+            done->Run();
+            return;
+        }
+        response->mutable_desc()->CopyFrom(it->second.desc());
+    }
+    std::vector<proto::ContainerStatistics> containers;
+    scheduler_->ShowContainerGroup(request->id(), containers);
+    for (size_t i = 0; i < containers.size(); i++) {
+        response->add_containers()->CopyFrom(containers[i]);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();   
 }
 
 void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
