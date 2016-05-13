@@ -361,7 +361,7 @@ message ContainerStatistics {
     optional ContainerStatus status = 2;
     optional string endpoint = 3;
     optional Resource cpu = 4;
-    optional Resource memroy = 5;
+    optional Resource memory = 5;
     repeated VolumResource volum = 6; //different kinds of medium
 }
 

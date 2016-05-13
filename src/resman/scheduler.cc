@@ -1262,7 +1262,11 @@ bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
             volum_stat->set_medium(medium);
             volum_stat->mutable_volum()->set_assigned(assigned_size);
             volum_stat->mutable_volum()->set_used(used_size);
-        }  
+        }
+        container_stat.mutable_cpu()->set_assigned(cpu_assigned);
+        container_stat.mutable_cpu()->set_used(cpu_used);
+        container_stat.mutable_memory()->set_assigned(memory_assigned);
+        container_stat.mutable_memory()->set_used(memory_used);  
         containers.push_back(container_stat);
     }
     return true;
