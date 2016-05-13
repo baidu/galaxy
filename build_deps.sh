@@ -28,6 +28,14 @@ if [ ! -f "${FLAG_DIR}/boost_1_57_0" ] \
     touch "${FLAG_DIR}/boost_1_57_0"
 fi
 
+#rapidjson
+if [ ! -f "${FLAG_DIR}/rapidjson" ] \
+    || [ ! -d "${DEPS_PREFIX}/rapidjson" ]; then
+    git clone https://github.com/miloyip/rapidjson.git >/dev/null
+    rm -rf ${DEPS_PREFIX}/rapidjson
+    cp -rf rapidjson ${DEPS_PREFIX}
+fi
+
 # protobuf
 if [ ! -f "${FLAG_DIR}/protobuf_2_6_1" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libprotobuf.a" ] \
