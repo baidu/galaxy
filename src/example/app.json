@@ -10,7 +10,7 @@
      }, 
     "pod": {
         "workspace_volum": {
-            "size": 15,
+            "size": "15M",
             "type": "kEmptyDir",
             "medium": "kDisk",
             "source_path": "workspace_volum source_path",
@@ -21,7 +21,7 @@
         },
         "data_volums": [
             {
-                "size": 15,
+                "size": "15K",
                 "type": "kEmptyDir",
                 "medium": "kDisk",
                 "source_path":"data_volums0 source_path",
@@ -31,7 +31,7 @@
                 "use_symlink": true
             },
             {
-                "size": 10,
+                "size": "10K",
                 "type": "kEmptyDir",
                 "medium": "kDisk",
                 "source_path":"source_path1 source_path",
@@ -48,7 +48,7 @@
                     "excess": false
                 },
                 "mem": {
-                    "size": 13,
+                    "size": "13M",
                     "excess":false
                 },
                 "ports": [

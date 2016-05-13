@@ -2,14 +2,54 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <map>
 #include "galaxy_util.h"
 #include "rapidjson/document.h"
 #include "rapidjson/filereadstream.h"
-#include <iostream>
 
 namespace baidu {
 namespace galaxy {
 namespace client {
+
+//单位转换
+int UnitStringToByte(const std::string& input, int64_t* output) {
+    if (output == NULL) {
+        return -1;
+    }
+
+    std::map<char, int32_t> subfix_table;
+    subfix_table['K'] = 1;
+    subfix_table['M'] = 2;
+    subfix_table['G'] = 3;
+    subfix_table['T'] = 4;
+    subfix_table['B'] = 5;
+    subfix_table['Z'] = 6;
+
+    int64_t num = 0;
+    char subfix = 0;
+    int32_t shift = 0;
+    int32_t matched = sscanf(input.c_str(), "%ld%c", &num, &subfix);
+    if (matched <= 0) {
+        fprintf(stderr, "unit sscanf failed\n");
+        return -1;
+    }
+
+    if (matched == 2) {
+        std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
+        if (it == subfix_table.end()) {
+            fprintf(stderr, "unit is error, it must be in [K, M, G, T, B, Z]\n");
+            return -1;
+        }
+        shift = it->second;
+    }
+
+    while (shift > 0) {
+        num *= 1024;
+        shift--;
+    }
+    *output = num;
+    return 0;
+}
 
 int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deploy* deploy) {
     //deploy config:replica
@@ -44,12 +84,17 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
 }
 
 int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRequired* volum) {
+    int ok = 0;
     //size
-    if (!volum_json.HasMember("size") || volum_json["size"].GetInt() <= 0) {
+    if (!volum_json.HasMember("size")) {
         fprintf(stderr, "size is required in volum\n");
         return -1;
     }
-    volum->size = volum_json["size"].GetInt();
+    
+    ok = UnitStringToByte(volum_json["size"].GetString(), &volum->size);
+    if (ok != 0) {
+        return -1;
+    }
 
     //type
     if (!volum_json.HasMember("type")) {
@@ -88,7 +133,7 @@ int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRe
     
     //dest_path
     if (!volum_json.HasMember("dest_path")) {
-        fprintf(stderr, "size is required in volum\n");
+        fprintf(stderr, "dest_path is required in volum\n");
         return -1;
     }
     volum->dest_path = volum_json["dest_path"].GetString();
@@ -136,11 +181,16 @@ int ParseCpu(const rapidjson::Value& cpu_json, ::baidu::galaxy::sdk::CpuRequired
 }
 
 int ParseMem(const rapidjson::Value& mem_json, ::baidu::galaxy::sdk::MemoryRequired* mem) {
+    int ok = 0;
     if (!mem_json.HasMember("size")) {
         fprintf(stderr, "size is required in mem\n");
         return -1;
     }
-    mem->size = mem_json["size"].GetInt();
+    
+    ok = UnitStringToByte(mem_json["size"].GetString(), &mem->size);
+    if (ok != 0) {
+        return -1;
+    }
 
     if (!mem_json.HasMember("excess")) {
         mem->excess = false;
