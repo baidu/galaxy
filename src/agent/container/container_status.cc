@@ -110,9 +110,8 @@ baidu::galaxy::util::ErrorCode ContainerStatus::Enter(const std::set<baidu::gala
             baidu::galaxy::proto::ContainerStatus_Name(target_status).c_str());
 }
 
-baidu::galaxy::proto::ContainerStatus ContainerStatus::Status() const {
-    //boost::mutex::scoped_lock lock(mutex_);
-    assert(0 && "bug, compile failed , i donot kown why");
+baidu::galaxy::proto::ContainerStatus ContainerStatus::Status() {
+    boost::mutex::scoped_lock lock(mutex_);
     return status_;
 }
 
