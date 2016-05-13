@@ -357,6 +357,7 @@ message AgentInfo {
 
 //some statistics proto
 message ContainerStatistics {
+    optional string id = 1;
     optional ContainerStatus status = 2;
     optional string endpoint = 3;
     optional Resource cpu = 4;
@@ -366,15 +367,16 @@ message ContainerStatistics {
 
 message ContainerGroupStatistics {
     optional string id = 1;
-    optional uint32 replica = 2;
-    optional uint32 ready = 3;
-    optional uint32 pending = 4;
-    optional uint32 allocating = 5;
-    optional Resource cpu = 6;
-    optional Resource memroy = 7;
-    optional VolumResource volum = 8;
-    optional int64 submit_time = 9;
-    optional int64 update_time = 10;
+    optional ContainerGroupStatus status = 2;
+    optional uint32 replica = 3;
+    optional uint32 ready = 4;
+    optional uint32 pending = 5;
+    optional uint32 allocating = 6;
+    optional Resource cpu = 7;
+    optional Resource memroy = 8;
+    optional VolumResource volum = 9;
+    optional int64 submit_time = 10;
+    optional int64 update_time = 11;
 }
 
 //proto that used to be saved in nexus

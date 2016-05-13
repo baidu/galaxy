@@ -101,6 +101,7 @@ struct Container {
     std::vector<std::string> allocated_ports;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
+    proto::ContainerInfo remote_info;
     typedef boost::shared_ptr<Container> Ptr;
 };
 

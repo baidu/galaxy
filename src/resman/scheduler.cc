@@ -519,6 +519,7 @@ ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
     container_group->id = container_group_id;
     container_group->priority = priority;
     container_group->container_desc = container_desc;
+    container_group->replica = replica;
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
         container->container_group_id = container_group->id;
@@ -626,6 +627,7 @@ bool Scheduler::ChangeReplica(const ContainerGroupId& container_group_id, int re
     } else {
         ScaleUp(container_group, replica);
     }
+    container_group->replica = replica;
     return true;
 }
 
@@ -993,6 +995,11 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             continue;
         } 
         remote_status[container_remote.id()] = container_remote.status();
+        Container::Ptr container_local = it_local->second;
+        container_local->remote_info.set_cpu_used(container_remote.cpu_used());
+        container_local->remote_info.set_memory_used(container_remote.memory_used());
+        container_local->remote_info.mutable_volum_used()->CopyFrom(container_remote.volum_used());
+        container_local->remote_info.mutable_port_used()->CopyFrom(container_remote.port_used());
     }
     BOOST_FOREACH(ContainerMap::value_type& pair, containers_local) {
         Container::Ptr container_local = pair.second;
@@ -1046,6 +1053,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
 }
 
 bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
+    mu_.AssertHeld();
     if (v1 == v2) {//same object 
         return false;
     }
@@ -1113,6 +1121,7 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
 
 void Scheduler::SetVolumsAndPorts(const Container::Ptr& container, 
                                   proto::ContainerDescription& container_desc) {
+    mu_.AssertHeld();
     size_t idx = 0;
     if (container_desc.workspace_volum().medium() != proto::kTmpfs) {
         if (idx >= container->allocated_volums.size()) {
@@ -1149,11 +1158,44 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
 }
 
 bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+        ContainerGroup::Ptr& container_group = it->second;
+        proto::ContainerGroupStatistics group_stat;
+        group_stat.set_id(container_group->id);
+        group_stat.set_replica(container_group->Replica());
+        group_stat.set_ready(container_group->states[kContainerReady].size());
+        group_stat.set_pending(container_group->states[kContainerPending].size());
+        group_stat.set_allocating(container_group->states[kContainerAllocating].size());
+        if (container_group->terminated) {
+            group_stat.set_status(proto::kContainerGroupTerminated);
+        } else {
+            group_stat.set_status(proto::kContainerGroupNormal);
+        }
+        container_groups.push_back(group_stat);
+    }
     return true;
 }
 
 bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
                                    std::vector<proto::ContainerStatistics>& containers) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "no such container group: " << container_group_id;
+        return false;
+    }
+    ContainerGroup::Ptr container_group = it->second;
+    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
+        Container::Ptr container = pair.second;
+        proto::ContainerStatistics container_stat;
+        container_stat.set_id(container->id);
+        container_stat.set_status(container->status);
+        container_stat.set_endpoint(container->allocated_agent);
+        containers.push_back(container_stat);
+    }
     return true;
 }
 
