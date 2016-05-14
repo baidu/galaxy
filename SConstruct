@@ -9,7 +9,7 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 env = Environment(
         CPPPATH = ['.', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils', 'src', 'src/agent'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
+        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem', 'gtest'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
@@ -27,6 +27,10 @@ env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src
             + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
 env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
+
+#unittest
+agent_unittest_src=Glob('src/test_agent/*.cc')+ Glob('src/agent/*/*.cc') + ['src/agent/agent_flags.cc', 'src/protocol/galaxy.pb.cc']
+env.Program('agent_unittest', agent_unittest_src)
 
 #example
 test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc']

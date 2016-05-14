@@ -10,11 +10,22 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
 
+#include "gflags/gflags.h"
+
 #include <stdio.h>
+
+DECLARE_string(cgroup_root_path);
 
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
+    
+std::string Subsystem::RootPath(const std::string& name) {
+    boost::filesystem::path path(FLAGS_cgroup_root_path);
+    path.append(name);
+    path.append("galaxy");
+    return path.string();
+}
 
 int Subsystem::Destroy() {
     boost::filesystem::path path(this->Path());
@@ -30,12 +41,9 @@ int Subsystem::Destroy() {
 
 std::string Subsystem::Path() {
     std::string id = container_id_ + "_" + cgroup_->id();
-
-    boost::filesystem::path path("galaxy");
-    path.append(this->Name());
+    boost::filesystem::path path(Subsystem::RootPath(this->Name()));
     path.append(id);
     return path.string();
-
 }
 
 int Subsystem::Attach(pid_t pid) {

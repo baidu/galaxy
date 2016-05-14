@@ -24,7 +24,7 @@ public:
     baidu::galaxy::util::ErrorCode EnterError();
     baidu::galaxy::util::ErrorCode EnterDestroying();
     baidu::galaxy::util::ErrorCode EnterTerminated();
-    baidu::galaxy::proto::ContainerStatus Status(); 
+    baidu::galaxy::proto::ContainerStatus Status();
     bool CmpRetOld(const baidu::galaxy::proto::ContainerStatus status,
             baidu::galaxy::proto::ContainerStatus* old);
 
