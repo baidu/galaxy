@@ -115,13 +115,13 @@ int Attach(const std::string& file, int64_t value) {
 }
 
 int Attach(const std::string& file, const std::string& value) {
-    FILE* fd = ::fopen(file.c_str(), "we");
+    FILE* fd = ::fopen(file.c_str(), "a+");
 
     if (NULL == fd) {
         return -1;
     }
 
-    int ret = ::fprintf(fd, "%s", value.c_str());
+    int ret = ::fprintf(fd, "%s\n", value.c_str());
     ::fclose(fd);
 
     if (ret <= 0) {
