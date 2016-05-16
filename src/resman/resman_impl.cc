@@ -545,7 +545,26 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::proto::ListAgentsRequest* request,
                             ::baidu::galaxy::proto::ListAgentsResponse* response,
                             ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    std::map<std::string, proto::AgentMeta>::iterator it;
+    for (it = agents_.begin(); it != agents_.end(); it++) {
+        const std::string& endpoint = it->first;
+        const proto::AgentMeta& agent_meta = it->second;
+        proto::AgentStatistics* agent_st = response->add_agents();
+        agent_st->set_endpoint(endpoint);
+        agent_st->set_pool(agent_meta.pool());
+        agent_st->mutable_tags()->CopyFrom(agent_meta.tags());
+        std::map<std::string, AgentStat>::iterator jt = agent_stats_.find(endpoint);
+        if (jt == agent_stats_.end()) {
+            continue;
+        }
+        agent_st->set_status(jt->second.status);
+        agent_st->mutable_cpu()->CopyFrom(jt->second.info.cpu_resource());
+        agent_st->mutable_memory()->CopyFrom(jt->second.info.memory_resource());
+        agent_st->mutable_volum()->CopyFrom(jt->second.info.volum_resources());
+        agent_st->set_total_containers(jt->second.info.container_info().size());
+    }
+    done->Run();
 }
 
 void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
