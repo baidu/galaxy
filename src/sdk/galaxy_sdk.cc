@@ -5,18 +5,46 @@
 #include "src/rpc/rpc_client.h"
 #include "ins_sdk.h"
 
+//nexus
+DECLARE_string(nexus_addr);
+DECLARE_string(nexus_root);
+DECLARE_string(appmaster_nexus_path);
+DECLARE_string(appmaster_endpoint);
+
 namespace baidu {
 namespace galaxy {
 namespace sdk {
 
-ResourceManager::ResourceManager(const std::string& nexus_root) 
+ResourceManager::ResourceManager(const std::string& nexus_key) 
  										: rpc_client_(NULL),
- 										  nexus_root_(nexus_root) {
+ 										  res_stub_(NULL) {
 	rpc_client_ = new RpcClient();
+    full_key_ = FLAGS_nexus_root + nexus_key;
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
 }
 
 ResourceManager::~ResourceManager() {
 	delete rpc_client_;
+    if (NULL != res_stub_) {
+        delete res_stub_;
+    }
+    delete nexus_;
+}
+
+bool ResourceManager::GetStub() {
+    std::string end_point;
+    ::galaxy::ins::sdk::InsSDK::SDKError err;
+    bool ok = nexus_->Get(full_key_, &endpoint, &err);
+    if (!ok || err != ::galaxy::ins::sdk::kOK) {
+        fprintf(stderr, "get appmaster endpoint from nexus failed: %s\n",
+                ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        return false;
+    }
+    if(!rpc_client_.GetStub(endpoint, &res_stub_)) {
+        fprintf(stderr, "connect resmanager fail, resmanager: %s\n", endpoint_.c_str());
+        return false;
+    }
+    return true;
 }
 
 bool ResourceManager::Login(const std::string& user, const std::string& password) {
@@ -34,25 +62,28 @@ bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSa
 bool ResourceManager::Status(const StatusRequest& request, StatusResponse* response) {
     return false;
 }
-
 bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(res_stub_, &::proto::ResMan_Stub::CreateContainerGroup,
+                                        &request, response, 5, 1);
 }
-
 bool ResourceManager::RemoveContainerGroup(const RemoveContainerGroupRequest& request, RemoveContainerGroupResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(res_stub_, &::proto::ResMan_Stub::RemoveContainerGroup,
+                                        &request, response, 5, 1);
 }
 
 bool ResourceManager::UpdateContainerGroup(const UpdateContainerGroupRequest& request, UpdateContainerGroupResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(res_stub_, &::proto::ResMan_Stub::UpdateContainerGroup,
+                                        &request, response, 5, 1);
 }
 
 bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& request, ListContainerGroupsResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(res_stub_, &::proto::ResMan_Stub::ListContainerGroups,
+                                        &request, response, 5, 1);
 }
 
 bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& request, ShowContainerGroupResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(res_stub_, &::proto::ResMan_Stub::ShowContainerGroups,
+                                        &request, response, 5, 1);
 }
 
 bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse* response) {
@@ -131,43 +162,71 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
     return false;
 }
 
-AppMaster::AppMaster(const std::string& nexus_root) 
+AppMaster::AppMaster(const std::string& nexus_key) 
                                : rpc_client_(NULL),
-                                 nexus_root_(nexus_root) {
+                               : appmaster_stub_(NULL) {
+    full_key_ = FLAGS_nexus_root + nexus_key; 
 	rpc_client_ = new RpcClient();
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr); 
 }
 
 AppMaster::~AppMaster() {
 	delete rpc_client_;
+    if (NULL != appmaster_stub_) {
+        delete appmaster_stub_;
+    }
+    delete nexus_;
 }
 
+bool AppMaster::GetStub() {
+    std::string end_point;
+    ::galaxy::ins::sdk::InsSDK::SDKError err;
+    bool ok = nexus_->Get(full_key_, &endpoint, &err);
+    if (!ok || err != ::galaxy::ins::sdk::kOK) {
+        fprintf(stderr, "get appmaster endpoint from nexus failed: %s\n", 
+                ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        return false;
+    }
+    if(!rpc_client_.GetStub(endpoint, &appmaster_stub_)) {
+        fprintf(stderr, "connect appmaster fail, appmaster: %s\n", endpoint_.c_str());
+        return false;
+    }
+    return true;
+}
 
 bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::SubmitJob,
+                                        &request, response, 5, 1);
 }
 
 bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::UpdateJob,
+                                        &request, response, 5, 1);
 }
 
 bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::StopJob,
+                                        &request, response, 5, 1);
 }
 
 bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::RemoveJob,
+            &request, response, 5, 1);
 }
 
 bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::ListJobs,
+                                        &request, response, 5, 1);
 }
 
 bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::ShowJob,
+                                        &request, response, 5, 1);
 }
 
 bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) {
-    return false;
+    return rpc_client_->SendRequest(appmaster_stub_, &AppMaster_Stub::ExecuteCmd,
+                                    &request, response, 5, 1);
 }
 
 } //namespace sdk
