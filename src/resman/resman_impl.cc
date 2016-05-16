@@ -542,6 +542,13 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::AddAgentRequest* request,
                           ::baidu::galaxy::proto::AddAgentResponse* response,
                           ::google::protobuf::Closure* done) {
+    if (request->pool().empty()) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kAddAgentFail);
+        err->set_reason("agent must belongs to a Pool");
+        done->Run();
+        return;
+    }
     proto::AgentMeta agent_meta;
     agent_meta.set_endpoint(request->endpoint());
     agent_meta.set_pool(request->pool());
@@ -766,6 +773,13 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
     if (agents_.find(request->endpoint()) == agents_.end()) {
         response->mutable_error_code()->set_status(proto::kAddAgentToPoolFail);
         response->mutable_error_code()->set_reason("agent not exist");
+        done->Run();
+        return;
+    }
+    if (request->pool().empty()) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kAddAgentToPoolFail);
+        err->set_reason("the pool can not be empty");
         done->Run();
         return;
     }
