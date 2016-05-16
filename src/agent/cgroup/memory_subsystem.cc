@@ -8,7 +8,6 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 
-
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
@@ -36,7 +35,9 @@ int MemorySubsystem::Construct() {
     boost::filesystem::path memory_limit_path = path;
     memory_limit_path.append("memory.limit_in_bytes");
 
-    if (0 != baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(), this->cgroup_->memory().size())) {
+    if (0 != baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(),
+            this->cgroup_->memory().size(), 
+            false)) {
         return -1;
     }
 
@@ -44,14 +45,18 @@ int MemorySubsystem::Construct() {
     boost::filesystem::path excess_mode_path = path;
     excess_mode_path.append("memory.excess_mode");
 
-    if (0 != baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(), excess_mode)) {
+    if (0 != baidu::galaxy::cgroup::Attach(excess_mode_path.c_str(),
+            excess_mode,
+            false)) {
         return -1;
     }
 
     boost::filesystem::path kill_mode_path = path;
     kill_mode_path.append("memory.kill_mode");
 
-    if (0 != baidu::galaxy::cgroup::Attach(kill_mode_path.c_str(), 0L)) {
+    if (0 != baidu::galaxy::cgroup::Attach(kill_mode_path.c_str(),
+            0L,
+            false)) {
         return -1;
     }
 
