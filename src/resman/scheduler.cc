@@ -1237,7 +1237,14 @@ bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
         return false;
     }
     ContainerGroup::Ptr container_group = it->second;
-    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
+    GetContainersStatistics(container_group->containers, containers);
+    return true;
+}
+
+void Scheduler::GetContainersStatistics(const ContainerMap& containers_map,
+                                        std::vector<proto::ContainerStatistics>& containers) {
+    mu_.AssertHeld();
+    BOOST_FOREACH(const ContainerMap::value_type& pair, containers_map) {
         Container::Ptr container = pair.second;
         proto::ContainerStatistics container_stat;
         container_stat.set_id(container->id);
@@ -1272,6 +1279,19 @@ bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
         container_stat.mutable_memory()->set_used(memory_used);  
         containers.push_back(container_stat);
     }
+}
+
+bool Scheduler::ShowAgent(const AgentEndpoint& endpoint,
+                          std::vector<proto::ContainerStatistics>& containers) {
+    MutexLock lock(&mu_);
+    std::map<AgentEndpoint, Agent::Ptr>::iterator agent_it;
+    agent_it = agents_.find(endpoint);
+    if (agent_it == agents_.end()) {
+        LOG(WARNING) << "fail to show agent, not exist: " << endpoint;
+        return false;
+    }
+    Agent::Ptr agent = agent_it->second;
+    GetContainersStatistics(agent->containers_, containers);
     return true;
 }
 

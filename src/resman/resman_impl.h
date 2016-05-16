@@ -88,6 +88,10 @@ public:
                          const ::baidu::galaxy::proto::ListAgentsRequest* request,
                          ::baidu::galaxy::proto::ListAgentsResponse* response,
                          ::google::protobuf::Closure* done);
+    void ShowAgent(::google::protobuf::RpcController* controller,
+                   const ::baidu::galaxy::proto::ShowAgentRequest* request,
+                   ::baidu::galaxy::proto::ShowAgentResponse* response,
+                   ::google::protobuf::Closure* done);
     void CreateTag(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::CreateTagRequest* request,
                          ::baidu::galaxy::proto::CreateTagResponse* response,

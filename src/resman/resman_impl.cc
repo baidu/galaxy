@@ -564,6 +564,27 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         agent_st->mutable_volum()->CopyFrom(jt->second.info.volum_resources());
         agent_st->set_total_containers(jt->second.info.container_info().size());
     }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
+}
+
+void ResManImpl::ShowAgent(::google::protobuf::RpcController* controller,
+                           const ::baidu::galaxy::proto::ShowAgentRequest* request,
+                           ::baidu::galaxy::proto::ShowAgentResponse* response,
+                           ::google::protobuf::Closure* done) {
+    const std::string& endpoint = request->endpoint();
+    std::vector<proto::ContainerStatistics> containers;
+    bool ret = scheduler_->ShowContainerGroup(endpoint, containers);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("no such agent");
+        done->Run();
+        return;
+    }
+    for (size_t i = 0; i < containers.size(); i++) {
+        response->add_containers()->CopyFrom(containers[i]);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
 }
 
