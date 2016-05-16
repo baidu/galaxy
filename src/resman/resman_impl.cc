@@ -25,6 +25,9 @@ DECLARE_double(safe_mode_percent);
 const std::string sAgentPrefix = "/agent";
 const std::string sUserPrefix = "/user";
 const std::string sContainerGroupPrefix = "/container_group";
+const std::string sTagPrefix = "/tag";
+const std::string sRMLock = "/resman_lock";
+const std::string sRMAddr = "/resman";
 
 namespace baidu {
 namespace galaxy {
@@ -46,6 +49,29 @@ bool ResManImpl::Init() {
         LOG(WARNING) << "fail to load agent meta";
         return false;
     }
+    std::map<std::string, proto::AgentMeta>::const_iterator agent_it;
+    for (agent_it = agents_.begin(); agent_it != agents_.end(); agent_it++) {
+        const std::string& endpoint = agent_it->first;
+        const proto::AgentMeta& agent_meta = agent_it->second;
+        pools_[agent_meta.pool()].insert(endpoint);
+    }
+    
+    std::map<std::string, proto::TagMeta> tag_map;
+    load_ok = LoadObjects(sTagPrefix, tag_map);
+    if (!load_ok) {
+        LOG(WARNING) << "fail to load tags meta";
+        return false;
+    }
+    for (std::map<std::string, proto::TagMeta>::const_iterator tag_it = tag_map.begin();
+         tag_it != tag_map.end(); tag_it++) {
+        const std::string& tag_name = tag_it->first;
+        const proto::TagMeta& tag_meta = tag_it->second;
+        for (int i = 0 ; i < tag_meta.endpoints_size(); i++) {
+            tags_[tag_name].insert(tag_meta.endpoints(i));
+            agent_tags_[tag_meta.endpoints(i)].insert(tag_name);
+        }
+    }
+
     load_ok = LoadObjects(sUserPrefix, users_);
     if (!load_ok) {
         LOG(WARNING) << "fail to load user meta";
@@ -66,6 +92,40 @@ bool ResManImpl::Init() {
                  << "TRACE END";
     }
     return true;
+}
+
+bool ResManImpl::RegisterOnNexus(const std::string& endpoint) {
+    ::galaxy::ins::sdk::SDKError err;
+    bool ret = nexus_->Lock(FLAGS_nexus_root + sRMLock, &err);
+    if (!ret) {
+        LOG(WARNING) << "failed to acquire resman lock, " << err;
+        return false;
+    }
+    ret = nexus_->Put(FLAGS_nexus_root + sRMAddr, endpoint, &err);
+    if (!ret) {
+        LOG(WARNING) << "failed to write resman endpoint to nexus, " << err;
+        return false;
+    }
+    ret = nexus_->Watch(FLAGS_nexus_root + sRMLock, &OnRMLockChange, this, &err);
+    if (!ret) {
+        LOG(WARNING) << "failed to watch resman lock, " << err;
+        return false;
+    }
+    return true;
+}
+
+void ResManImpl::OnRMLockChange(const ::galaxy::ins::sdk::WatchParam& param,
+                                ::galaxy::ins::sdk::SDKError err) {
+    ResManImpl* rm = static_cast<ResManImpl*>(param.context);
+    rm->OnLockChange(param.value);
+}
+
+
+void ResManImpl::OnLockChange(std::string lock_session_id) {
+    std::string self_session_id = nexus_->GetSessionID();
+    if (self_session_id != lock_session_id) {
+        LOG(FATAL) << "RM lost lock , die.";
+    }
 }
 
 void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
@@ -176,10 +236,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
             vinfo.size = vres.volum().total();
             vinfo.medium = vres.medium();
         }
-        std::set<std::string> tags;
-        for (int i = 0; i < agent_meta.tags_size(); i++) {
-            tags.insert(agent_meta.tags(i));
-        }
+        const std::set<std::string>& tags = agent_tags_[agent_endpoint];
         std::string pool_name = agent_meta.pool();
         sched::Agent::Ptr agent(new sched::Agent(agent_endpoint,
                                                  cpu, memory,
@@ -553,7 +610,11 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         proto::AgentStatistics* agent_st = response->add_agents();
         agent_st->set_endpoint(endpoint);
         agent_st->set_pool(agent_meta.pool());
-        agent_st->mutable_tags()->CopyFrom(agent_meta.tags());
+        const std::set<std::string>& tags = agent_tags_[endpoint];
+        for (std::set<std::string>::iterator tag_it = tags.begin();
+             tag_it != tags.end(); tag_it++) {
+            agent_st->add_tags(*tag_it);
+        }
         std::map<std::string, AgentStat>::iterator jt = agent_stats_.find(endpoint);
         if (jt == agent_stats_.end()) {
             continue;
@@ -592,7 +653,53 @@ void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::proto::CreateTagRequest* request,
                            ::baidu::galaxy::proto::CreateTagResponse* response,
                            ::google::protobuf::Closure* done) {
-
+    LOG(INFO) << "create tag:" << request->tag();
+    MutexLock lock(&mu_);
+    const std::string& tag = request->tag();
+    proto::TagMeta tag_meta;
+    tag_meta.set_tag(tag);
+    std::set<std::string> tag_new;
+    for (int i = 0; i < request->endpoint_size(); i++) {
+        const std::string& endpoint = request->endpoint(i);
+        tag_new.insert(endpoint);
+        tag_meta.add_endpoints(endpoint);
+    }
+    bool ret = SaveObject(sTagPrefix + "/" + tag, tag_meta);
+    if (!ret) {
+        proto::ErrorCode* err = response->mutable_error_code();
+        err->set_status(proto::kCreateTagFail);
+        err->set_reason("fail to save tag to nexus");
+    } else {
+        std::set<std::string>& tag_old = tags_[tag];
+        std::set<std::string>::iterator it_old = tag_old.begin();
+        std::set<std::string>::iterator it_new = tag_new.begin();
+        while (it_old != tag_old.end() && it_new != tag_new.end()) {
+            if (*it_old < *it_new) {
+                agent_tags_[*it_old].erase(tag);
+                scheduler_->RemoveTag(*it_old, tag);
+                it_old++;
+            } else if (*it_old == *it_new) {
+                it_old++;
+                it_new++;
+            } else {
+                agent_tags_[*it_new].insert(tag);
+                scheduler_->AddTag(*it_new, tag);
+                it_new++;
+            }
+        }
+        while (it_old != tag_old.end()) {
+            agent_tags_[*it_old].erase(tag);
+            scheduler_->RemoveTag(*it_old, tag);
+            it_old++;
+        }
+        while (it_new != tag_new.end()) {
+            agent_tags_[*it_new].insert(tag);
+            scheduler_->AddTag(*it_new, tag);
+            it_new++;
+        }
+        tag_old = tag_new;
+    }
+    done->Run();
 }
 
 void ResManImpl::ListTags(::google::protobuf::RpcController* controller,
@@ -620,7 +727,28 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
                                 const ::baidu::galaxy::proto::AddAgentToPoolRequest* request,
                                 ::baidu::galaxy::proto::AddAgentToPoolResponse* response,
                                 ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    if (agents_.find(request->endpoint()) == agents_.end()) {
+        response->mutable_error_code()->set_status(proto::kAddAgentToPoolFail);
+        response->mutable_error_code()->set_reason("agent not exist");
+        done->Run();
+        return;
+    }
+    const std::string& endpoint = request->endpoint();
+    const std::string& pool = request->pool();
+    proto::AgentMeta agent_meta = agents_[endpoint];
+    agent_meta.set_pool(pool);
+    bool ret = SaveObject(sAgentPrefix + "/" + endpoint, agent_meta);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kAddAgentToPoolFail);
+        response->mutable_error_code()->set_reason("fail to save agent meta to nexus");
+    } else {
+        agents_[endpoint].set_pool(pool);
+        pools_[pool].erase(endpoint);
+        scheduler_->SetPool(endpoint, pool);
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::RemoveAgentFromPool(::google::protobuf::RpcController* controller,

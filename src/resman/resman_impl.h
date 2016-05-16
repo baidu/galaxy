@@ -32,6 +32,7 @@ public:
     ResManImpl();
     ~ResManImpl();
     bool Init();
+    bool RegisterOnNexus(const std::string& endpoint);
     void EnterSafeMode(::google::protobuf::RpcController* controller,
                        const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
                        ::baidu::galaxy::proto::EnterSafeModeResponse* response,
@@ -148,7 +149,7 @@ public:
                          const ::baidu::galaxy::proto::AssignQuotaRequest* request,
                          ::baidu::galaxy::proto::AssignQuotaResponse* response,
                          ::google::protobuf::Closure* done);
-   
+    
 private:
 
     void QueryAgent(const std::string& agent_endpoint, bool is_first_query);
@@ -176,12 +177,19 @@ private:
                      std::map<std::string, ProtoClass>& objs);
 
     bool RemoveObject(const std::string& key);
+    static void OnRMLockChange(const ::galaxy::ins::sdk::WatchParam& param,
+                               ::galaxy::ins::sdk::SDKError err);
+    void OnLockChange(std::string lock_session_id);
+
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentMeta> agents_;
     std::map<std::string, AgentStat> agent_stats_;
+    std::map<std::string, std::set<std::string> > agent_tags_;
     std::map<std::string, proto::UserMeta> users_;
     std::map<std::string, proto::ContainerGroupMeta> container_groups_;
+    std::map<std::string, std::set<std::string> > tags_;
+    std::map<std::string, std::set<std::string> > pools_;
     Mutex mu_;
     bool safe_mode_;
     ThreadPool query_pool_;
