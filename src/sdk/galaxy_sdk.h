@@ -145,7 +145,7 @@ struct ImagePackage {
 };
 struct DataPackage {
     std::vector<Package> packages;
-    std::vector<std::string> reload_cmd;
+    std::string reload_cmd;
 };
 struct Deploy {
     uint32_t replica;
@@ -194,6 +194,9 @@ struct ContainerDescription {
     std::vector<VolumRequired> data_volums;
     std::string cmd_line;
     std::vector<Cgroup> cgroups;
+    int32_t max_per_host;
+    std::string tag;
+    std::vector<std::string> pool_names;
 };
 enum ContainerStatus {
     kContainerPending=1,
@@ -434,7 +437,6 @@ struct AssignQuotaResponse {
 struct CreateContainerGroupRequest {
     User user;
     uint32_t replica;
-    uint32_t max_per_host;
     std::string name;
     ContainerDescription desc;
 };
@@ -482,15 +484,18 @@ struct ShowContainerGroupRequest {
     User user;
     std::string id;
 };
-struct ShowContainerGroupResponse {
-    ErrorCode error_code;
+struct ContainerStatistics {
     ContainerStatus status;
     std::string endpoint;
     Resource cpu;
     Resource memroy;
     VolumResource volum;
 };
-
+struct ShowContainerGroupResponse {
+    ErrorCode error_code;
+    ContainerDescription desc;
+    std::vector<ContainerStatistics> containers;
+};
 struct SubmitJobRequest {
     User user;
     JobDescription job;

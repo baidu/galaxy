@@ -1,0 +1,104 @@
+{
+    "name": "int-bogus_2.0.14.127884",
+    "type": "kJobService",
+    "version": "2.0.14.127884",
+    "deploy": {
+         "replica": 10, 
+         "step": 2,
+         "interval": 3,
+         "max_per_host": 1
+     }, 
+    "pod": {
+        "workspace_volum": {
+            "size": "15M",
+            "type": "kEmptyDir",
+            "medium": "kDisk",
+            "source_path": "workspace_volum source_path",
+            "dest_path": "/home/disk",
+            "readonly": false,
+            "exclusive": false,
+            "use_symlink": true
+        },
+        "data_volums": [
+            {
+                "size": "15K",
+                "type": "kEmptyDir",
+                "medium": "kDisk",
+                "source_path":"data_volums0 source_path",
+                "dest_path": "/home/disk",
+                "readonly": false,
+                "exclusive": false,
+                "use_symlink": true
+            },
+            {
+                "size": "10K",
+                "type": "kEmptyDir",
+                "medium": "kDisk",
+                "source_path":"source_path1 source_path",
+                "dest_path": "/home/disk",
+                "readonly": false,
+                "exclusive": false,
+                "use_symlink": true
+            }
+        ],
+        "tasks": [
+            {
+                "cpu": {
+                    "millicores": 6000,
+                    "excess": false
+                },
+                "mem": {
+                    "size": "13M",
+                    "excess":false
+                },
+                "ports": [
+                    {
+                        "name": "linkbase0",
+                        "port": "123"
+                    },
+                    {
+                        "name": "linkbase1",
+                        "port": "124"
+                    }
+                ],
+                "exec_package": {
+                    "start_cmd": "sh -x start.sh",
+                    "stop_cmd": "sh -x stop.sh",
+                    "package": {
+                        "source_path": "exec_package source_path",
+                        "dest_path": "exec_package dest_path",
+                        "version": "exec_package 1.0.1"
+                        
+                    }                   
+                },
+                "data_package": {
+                    "reload_cmd": "sh -x reload.sh",
+                    "packages": [
+                        {
+                            "source_path": "data_package0 source_path",
+                            "dest_path": "data_package0 dest_path",
+                            "version": "data_package0 1.0.1"
+                        },
+                        {
+                            "source_path": "data_package1 source_path",
+                            "dest_path": "data_package1 dest_path",
+                            "version": "data_package1 1.0.1"
+                        }
+                    ]
+                },
+                "services": [
+                    {
+                        "service_name": "service0",
+                        "port_name": "linkbase0",
+                        "use_bns": false
+                    },
+                    {
+                        "service_name": "service0",
+                        "port_name": "linkbase1",
+                        "use_bns": false
+                    }
+                ]
+            }
+        ]
+    }    
+}

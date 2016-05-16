@@ -79,6 +79,7 @@ message Volum {
     optional int64 used_size = 2;
     optional int64 assigned_size = 3;
     optional VolumMedium medium = 4;
+    optional bool exclusive = 5;
 }
 
 message CpuRequired {
@@ -106,7 +107,8 @@ message BlkioRequired {
 // report resource
 message PortRequired {
     optional string port_name = 1;
-    optional string port = 2;       // "dynamic" or num
+    optional string port = 2;       // "dynamic" or number
+    optional string real_port = 3; //allocated on agent
 }
 
 enum VolumType {
@@ -165,6 +167,16 @@ enum TaskStatus {
     kTaskFinished = 6;
 }
 
+message TaskInfo {
+    optional string taskid = 1;
+    optional string podid = 2;
+    optional string jobid = 3;
+    optional string workspace = 4;
+    optional string chroot_path = 5;
+    optional TaskDescription desc = 6;
+    optional TaskStatus status = 7;
+}
+
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
     optional string dest_path = 2;   // local path
@@ -201,36 +213,36 @@ message TaskDescription {
     optional CpuRequired cpu = 2;
     optional MemoryRequired memory = 3;
     repeated PortRequired ports = 4;
+    optional BlkioRequired blkio = 5;
+    optional TcpthrotRequired tcp_throt = 6;
 
     // package
-    optional ImagePackage exe_package = 5;
-    optional DataPackage data_package = 6;
+    optional ImagePackage exe_package = 7;
+    optional DataPackage data_package = 8;
 
     // service
-    repeated Service services = 7;
+    repeated Service services = 9;
 }
 
 // user -> resource manager
 message PodDescription {
     // workspace volum
     optional VolumRequired workspace_volum = 3;
-
     // Resource, volum is owned by Pod
     repeated VolumRequired data_volums = 4;
-    
-    // tasks 
+    // tasks
     repeated TaskDescription tasks = 5;
-
     // schedule-policy is necessary ?
 }
 
 message JobDescription {
     // Job
     optional string name = 1;
-    optional JobType type = 2;
+    optional uint32 priority = 2;
     optional string version = 3;
     optional Deploy deploy = 4;
     optional PodDescription pod_desc = 5;
+    optional string run_user = 6;
 }
 
 
@@ -244,6 +256,7 @@ message Cgroup {
    optional MemoryRequired memory = 3;
    optional TcpthrotRequired tcp_throt = 4;
    optional BlkioRequired blkio = 5;
+   repeated PortRequired ports = 6;
 }
 
 
@@ -256,7 +269,9 @@ message ContainerDescription {
     repeated VolumRequired data_volums = 5;      //
     optional string cmd_line = 6;                 // appmaster or appwork
     repeated Cgroup cgroups = 7;
-    
+    optional int32 max_per_host = 8;
+    optional string tag = 9;
+    repeated string pool_names = 10;
 }
 
 
@@ -264,9 +279,10 @@ enum ContainerStatus {
     kContainerPending = 1;     // in pending queue
     kContainerAllocating = 2;   // 
     kContainerReady = 3;       // ready, no process in container 
-    kContainerError = 4;       // an error occure
-    kContainerDestroying = 5;  // 
-    kContainerTerminated = 6;  // released by resource manager
+    kContainerFinish = 4;      // finish , when appworker exit with code 0
+    kContainerError = 5;       // an error occure
+    kContainerDestroying = 6;  // 
+    kContainerTerminated = 7;  // released by resource manager
 }
 
 enum ContainerGroupStatus {
@@ -281,7 +297,7 @@ message ContainerInfo {
     optional string group_id = 2;
     optional int64 created_time = 3;
     optional ContainerStatus status = 4; 
-    optional PodDescription pod_desc = 5; //when RM need full report
+    optional ContainerDescription container_desc = 5; //when RM need full report
     // resource?
     optional int64 cpu_used = 6;
     optional int64 memory_used = 7;
@@ -297,7 +313,15 @@ message ContainerInfo {
 ///////////////////////////////////////
 enum Status {
    kOk = 1;
-   kStop = 2;   //am stop pod 
+   kError = 2;
+   kTerminate = 3;
+   kAddAgentFail = 4;
+   kDeny = 5;
+   kJobNotFound = 6;
+   kCreateContainerGroupFail = 7;
+   kRemoveContainerGroupFail = 8;
+   kUpdateContainerGroupFail = 9;
+   kRemoveAgentFail = 10;
 }
 
 message ErrorCode {
@@ -324,25 +348,60 @@ message AgentInfo {
     repeated ContainerInfo container_info = 4;
 
     // resource
-    optional Resource cpu_resoruce = 5;
+    optional Resource cpu_resource = 5;
     optional Resource memory_resource = 6;
     repeated VolumResource volum_resources = 7;
 
     // exception statistics, eg: failed num of pod ..
 }
 
+//some statistics proto
+message ContainerStatistics {
+    optional string id = 1;
+    optional ContainerStatus status = 2;
+    optional string endpoint = 3;
+    optional Resource cpu = 4;
+    optional Resource memory = 5;
+    repeated VolumResource volum = 6; //different kinds of medium
+}
+
+message ContainerGroupStatistics {
+    optional string id = 1;
+    optional string name = 2;
+    optional ContainerGroupStatus status = 3;
+    optional uint32 replica = 4;
+    optional uint32 ready = 5;
+    optional uint32 pending = 6;
+    optional uint32 allocating = 7;
+    optional Resource cpu = 8;
+    optional Resource memory = 9;
+    repeated VolumResource volum = 10; //different kinds of medium
+    optional int64 submit_time = 11;
+    optional int64 update_time = 12;
+}
+
 //proto that used to be saved in nexus
 
-message AgentData {
+message AgentMeta {
     optional string endpoint = 1;
     optional string pool = 2;
     repeated string tags = 3;
 }
 
-message UserData {
+message UserMeta {
     optional string user_name = 1;
     optional string password = 2;
     repeated string pools = 3;
     repeated Authority authorites = 4;
     optional Quota quota = 5;
+}
+
+message ContainerGroupMeta {
+    optional string id = 1;
+    optional string name = 2;
+    optional string user_name = 3; 
+    optional uint32 replica = 4;
+    optional uint32 update_interval = 5;
+    optional ContainerDescription desc = 6;
+    optional ContainerGroupStatus status = 7;
 }

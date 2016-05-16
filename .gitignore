@@ -40,9 +40,17 @@ thirdsrc/
 
 # ctags
 tags
+GRTAGS
+GTAGS
+GPATH
 
 *~
 *.swp
 tmp
 
 *.orig
+
+# logs
+*.INFO*
+*.WARNING*
+*.ERROR*
