@@ -36,8 +36,8 @@ int MemorySubsystem::Construct() {
     memory_limit_path.append("memory.limit_in_bytes");
 
     if (0 != baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(),
-            this->cgroup_->memory().size()),
-            false) {
+            this->cgroup_->memory().size(), 
+            false)) {
         return -1;
     }
 
