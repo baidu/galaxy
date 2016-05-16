@@ -322,6 +322,8 @@ enum Status {
    kRemoveContainerGroupFail = 8;
    kUpdateContainerGroupFail = 9;
    kRemoveAgentFail = 10;
+   kCreateTagFail = 11;
+   kAddAgentToPoolFail = 12;
 }
 
 message ErrorCode {
@@ -385,7 +387,6 @@ message ContainerGroupStatistics {
 message AgentMeta {
     optional string endpoint = 1;
     optional string pool = 2;
-    repeated string tags = 3;
 }
 
 message UserMeta {
@@ -404,4 +405,9 @@ message ContainerGroupMeta {
     optional uint32 update_interval = 5;
     optional ContainerDescription desc = 6;
     optional ContainerGroupStatus status = 7;
+}
+
+message TagMeta {
+    optional string tag = 1;
+    repeated string endpoints = 2;
 }
