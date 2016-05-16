@@ -55,7 +55,7 @@ int Subsystem::Attach(pid_t pid) {
         return -1;
     }
 
-    return baidu::galaxy::cgroup::Attach(proc_path.c_str(), int64_t(pid));
+    return baidu::galaxy::cgroup::Attach(proc_path.c_str(), int64_t(pid), true);
 }
 
 int Subsystem::GetProcs(std::vector<int>& pids) {
@@ -110,12 +110,18 @@ const static int64_t CFS_PERIOD = 100000L; // cpu.cfs_period_us
 const static int64_t CFS_SHARE = 1000L; // unit
 const static int64_t MILLI_CORE = 1000L; // unit
 
-int Attach(const std::string& file, int64_t value) {
-    return Attach(file, boost::lexical_cast<std::string>(value));
+int Attach(const std::string& file, int64_t value, bool append) {
+    return Attach(file, boost::lexical_cast<std::string>(value), append);
 }
 
-int Attach(const std::string& file, const std::string& value) {
-    FILE* fd = ::fopen(file.c_str(), "a+");
+int Attach(const std::string& file, const std::string& value, bool append) {
+
+    FILE* fd = NULL;
+    if (append) {
+        fd = ::fopen(file.c_str(), "a+");
+    } else {
+        fd = ::fopen(file.c_str(), "w");
+    }
 
     if (NULL == fd) {
         return -1;

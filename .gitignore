@@ -44,3 +44,5 @@ tags
 *~
 *.swp
 tmp
+
+*.orig
