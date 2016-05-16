@@ -17,7 +17,7 @@ public:
     int Freeze();
     int Thaw();
 
-    boost::shared_ptr<google::protobuf::Message> Status();
+    baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     boost::shared_ptr<Subsystem> Clone();
     std::string Name();
     int Construct();

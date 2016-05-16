@@ -37,9 +37,8 @@ boost::shared_ptr<Subsystem> CpuacctSubsystem::Clone() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> CpuacctSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode CpuacctSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 }
