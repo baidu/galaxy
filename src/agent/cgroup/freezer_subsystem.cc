@@ -21,39 +21,13 @@ FreezerSubsystem::~FreezerSubsystem() {
 int FreezerSubsystem::Freeze() {
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
-    FILE* fd = ::fopen(path.string().c_str(), "we");
-
-    if (fd == NULL) {
-        return -1;
-    }
-
-    int ret = ::fprintf(fd, "%s", "FROZEN");
-    ::fclose(fd);
-
-    if (ret <= 0) {
-        return -1;
-    }
-
-    return 0;
+    return baidu::galaxy::cgroup::Attach(path.string(), "FROZEN", false);
 }
 
 int FreezerSubsystem::Thaw() {
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
-    FILE* fd = ::fopen(path.string().c_str(), "we");
-
-    if (fd == NULL) {
-        return -1;
-    }
-
-    int ret = ::fprintf(fd, "%s", "THAWED");
-    ::fclose(fd);
-
-    if (ret <= 0) {
-        return -1;
-    }
-
-    return 0;
+    return baidu::galaxy::cgroup::Attach(path.string(), "THAWED", false);
 }
 
 boost::shared_ptr<google::protobuf::Message> FreezerSubsystem::Status() {

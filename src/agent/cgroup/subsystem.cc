@@ -10,11 +10,22 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
 
+#include "gflags/gflags.h"
+
 #include <stdio.h>
+
+DECLARE_string(cgroup_root_path);
 
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
+
+std::string Subsystem::RootPath(const std::string& name) {
+    boost::filesystem::path path(FLAGS_cgroup_root_path);
+    path.append(name);
+    path.append("galaxy");
+    return path.string();
+}
 
 int Subsystem::Destroy() {
     boost::filesystem::path path(this->Path());
@@ -30,12 +41,9 @@ int Subsystem::Destroy() {
 
 std::string Subsystem::Path() {
     std::string id = container_id_ + "_" + cgroup_->id();
-
-    boost::filesystem::path path("galaxy");
-    path.append(this->Name());
+    boost::filesystem::path path(Subsystem::RootPath(this->Name()));
     path.append(id);
     return path.string();
-
 }
 
 int Subsystem::Attach(pid_t pid) {
@@ -47,7 +55,7 @@ int Subsystem::Attach(pid_t pid) {
         return -1;
     }
 
-    return baidu::galaxy::cgroup::Attach(proc_path.c_str(), int64_t(pid));
+    return baidu::galaxy::cgroup::Attach(proc_path.c_str(), int64_t(pid), true);
 }
 
 int Subsystem::GetProcs(std::vector<int>& pids) {
@@ -102,18 +110,24 @@ const static int64_t CFS_PERIOD = 100000L; // cpu.cfs_period_us
 const static int64_t CFS_SHARE = 1000L; // unit
 const static int64_t MILLI_CORE = 1000L; // unit
 
-int Attach(const std::string& file, int64_t value) {
-    return Attach(file, boost::lexical_cast<std::string>(value));
+int Attach(const std::string& file, int64_t value, bool append) {
+    return Attach(file, boost::lexical_cast<std::string>(value), append);
 }
 
-int Attach(const std::string& file, const std::string& value) {
-    FILE* fd = ::fopen(file.c_str(), "we");
+int Attach(const std::string& file, const std::string& value, bool append) {
+    FILE* fd = NULL;
+
+    if (append) {
+        fd = ::fopen(file.c_str(), "a+");
+    } else {
+        fd = ::fopen(file.c_str(), "w");
+    }
 
     if (NULL == fd) {
         return -1;
     }
 
-    int ret = ::fprintf(fd, "%s", value.c_str());
+    int ret = ::fprintf(fd, "%s\n", value.c_str());
     ::fclose(fd);
 
     if (ret <= 0) {
