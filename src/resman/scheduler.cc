@@ -1011,6 +1011,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
         Container::Ptr container_local = pair.second;
         AgentCommand cmd;
         cmd.container_id = container_local->id;
+        cmd.container_group_id = container_local->container_group_id;
         ContainerStatus remote_st;
         remote_st = remote_status[container_local->id];
         ContainerGroup::Ptr container_group;

@@ -5,7 +5,8 @@ option cc_generic_services = true;
 
 message CreateContainerRequest {
     optional string id = 1;
-    optional ContainerDescription container = 2;
+    optional string container_group_id = 2;
+    optional ContainerDescription container = 3;
 }
 
 message CreateContainerResponse {
