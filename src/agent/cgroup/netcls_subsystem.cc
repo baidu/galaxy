@@ -9,6 +9,8 @@
 #include "boost/thread/thread_time.hpp"
 #include "boost/filesystem/operations.hpp"
 
+#include <stdio.h>
+
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
