@@ -6,6 +6,7 @@
 #include <string>
 #include <stdint.h>
 #include <vector>
+#include "protocol/appmaster.pb.h"
 
 namespace baidu {
 namespace galaxy {
@@ -571,6 +572,7 @@ struct ShowJobResponse {
     JobInfo job;
 };
 struct ExecuteCmdRequest {
+    User user;
     std::string jobid;
     std::string cmd;
 };
@@ -590,6 +592,7 @@ class ResourceManager {
 public:
     explicit ResourceManager(const std::string& nexus_root) ;
     ~ResourceManager();
+    bool GetStub();
     bool Login(const std::string& user, const std::string& password);
     bool EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response);
     bool LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response);
@@ -619,14 +622,17 @@ public:
     bool GrantUser(const GrantUserRequest& request, GrantUserResponse* response);
     bool AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response);
 private:
+    ::galaxy::ins::sdk::InsSDK* nexus_;
     RpcClient* rpc_client_;
-    std::string nexus_root_;
+    ::proto::ResMan_Stub* res_stub_;
+    std::string full_key_;
 };
 
 class AppMaster {
 public:
     explicit AppMaster(const std::string& nexus_root);
     ~AppMaster();
+    bool GetStub();
     bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response);
     bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response);
     bool StopJob(const StopJobRequest& request, StopJobResponse* response);
@@ -635,8 +641,10 @@ public:
     bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response);
     bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response);
 private:
+    ::galaxy::ins::sdk::InsSDK* nexus_;
+    ::proto::AppMaster_Stub* appmaster_stub_;
     RpcClient* rpc_client_;
-    std::string nexus_root_;
+    std::string full_key_;
 };
 
 } //namespace sdk

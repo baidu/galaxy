@@ -11,11 +11,14 @@ namespace baidu {
 namespace galaxy {
 namespace client {
 
-//json解析
+//job json解析
 int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job);
 
 //时间戳转换
 std::string FormatDate(int64_t datetime);
+
+//获取主机名
+bool GetHostname(std::string* hostname);
 
 } //end namespace client
 } //end namespace galaxy
