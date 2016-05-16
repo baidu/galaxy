@@ -32,6 +32,9 @@ env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
 agent_unittest_src=Glob('src/test_agent/*.cc')+ Glob('src/agent/*/*.cc') + ['src/agent/agent_flags.cc', 'src/protocol/galaxy.pb.cc']
 env.Program('agent_unittest', agent_unittest_src)
 
+cpu_tool_src = ['src/example/cpu_tool.cc']
+env.Program('cpu_tool', cpu_tool_src)
+
 #example
 test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc']
 env.Program('test_cpu_subsystem', test_cpu_subsystem_src)
