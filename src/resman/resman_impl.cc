@@ -706,21 +706,55 @@ void ResManImpl::ListTags(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::ListTagsRequest* request,
                           ::baidu::galaxy::proto::ListTagsResponse* response,
                           ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    std::map<std::string, std::set<std::string> >::iterator it;
+    for (it = tags_.begin(); it != tags_.end(); it++) {
+        response->add_tags(it->first);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::ListAgentsByTag(::google::protobuf::RpcController* controller,
                                  const ::baidu::galaxy::proto::ListAgentsByTagRequest* request,
                                  ::baidu::galaxy::proto::ListAgentsByTagResponse* response,
                                  ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    std::map<std::string, std::set<std::string> >::iterator it;
+    it = tags_.find(request->tag());
+    if (it == tags_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("fail to list agents, no such tag");
+        done->Run();
+        return;
+    }
+    std::set<std::string>::const_iterator jt;
+    for (jt = it->second.begin(); jt != it->second.end(); jt++) {
+        response->add_endpoint(*jt);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::GetTagsByAgent(::google::protobuf::RpcController* controller,
                                 const ::baidu::galaxy::proto::GetTagsByAgentRequest* request,
                                 ::baidu::galaxy::proto::GetTagsByAgentResponse* response,
                                 ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    std::map<std::string, std::set<std::string> >::iterator it;
+    it = agent_tags_.find(request->endpoint());
+    if (it == agent_tags_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("no such agent");
+        done->Run();
+        return;
+    }
+    std::set<std::string>::iterator jt;
+    for (jt = it->second.begin(); jt != it->second.end(); jt++) {
+        response->add_tags(*jt);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
@@ -762,14 +796,37 @@ void ResManImpl::ListAgentsByPool(::google::protobuf::RpcController* controller,
                                   const ::baidu::galaxy::proto::ListAgentsByPoolRequest* request,
                                   ::baidu::galaxy::proto::ListAgentsByPoolResponse* response,
                                   ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    std::map<std::string, std::set<std::string> >::iterator it;
+    it = pools_.find(request->pool());
+    if (it == pools_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("fail to list agents, no such pool");
+        done->Run();
+        return;
+    }
+    std::set<std::string>::const_iterator jt;
+    for (jt = it->second.begin(); jt != it->second.end(); jt++) {
+        response->add_endpoint(*jt);
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::GetPoolByAgent(::google::protobuf::RpcController* controller,
                                 const ::baidu::galaxy::proto::GetPoolByAgentRequest* request,
                                 ::baidu::galaxy::proto::GetPoolByAgentResponse* response,
                                 ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    if (agents_.find(request->endpoint()) == agents_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("agent not exist");
+        done->Run();
+        return;
+    }
+    response->set_pool(agents_[request->endpoint()].pool());
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::AddUser(::google::protobuf::RpcController* controller,
