@@ -102,7 +102,7 @@ message AgentStatistics {
     repeated string tags = 4;
     optional Resource cpu = 5;
     optional Resource memory = 6;
-    optional VolumResource volum = 7;
+    repeated VolumResource volum = 7;
     optional uint32 total_containers = 8;
     
 }
@@ -307,6 +307,16 @@ message ShowContainerGroupResponse {
     repeated ContainerStatistics containers = 3;
 }
 
+message ShowAgentRequest {
+    optional User user = 1;
+    optional string endpoint = 2;
+}
+
+message ShowAgentResponse {
+    optional ErrorCode error_code = 1;
+    repeated ContainerStatistics containers = 2;
+}
+
 service ResMan {
 
     //op api
@@ -338,6 +348,7 @@ service ResMan {
     rpc OnlineAgent(OnlineAgentRequest) returns (OnlineAgentResponse);
     rpc OfflineAgent(OfflineAgentRequest) returns (OfflineAgentResponse);
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+    rpc ShowAgent(ShowAgentRequest) returns (ShowAgentResponse);
 
     //tag man
     rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);
