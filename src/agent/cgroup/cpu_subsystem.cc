@@ -64,9 +64,8 @@ int CpuSubsystem::Construct() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> CpuSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode CpuSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> CpuSubsystem::Clone() {

@@ -53,11 +53,12 @@ int TcpThrotSubsystem::Construct() {
 
     uint64_t limit = 0L;
     std::stringstream ss;
+
     if (cgroup_->tcp_throt().recv_bps_excess()) {
         limit = (uint64_t)(-1L);
     }
-    ss << limit;
 
+    ss << limit;
     boost::filesystem::path recv_bps_limit = path;
     recv_bps_limit.append("tcp_throt.recv_bps_limit");
 
@@ -91,9 +92,8 @@ int TcpThrotSubsystem::Construct() {
     return 0;
 }
 
-boost::shared_ptr<google::protobuf::Message> TcpThrotSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode TcpThrotSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> TcpThrotSubsystem::Clone() {

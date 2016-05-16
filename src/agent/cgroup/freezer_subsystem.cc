@@ -30,9 +30,8 @@ int FreezerSubsystem::Thaw() {
     return baidu::galaxy::cgroup::Attach(path.string(), "THAWED", false);
 }
 
-boost::shared_ptr<google::protobuf::Message> FreezerSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode FreezerSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> FreezerSubsystem::Clone() {
