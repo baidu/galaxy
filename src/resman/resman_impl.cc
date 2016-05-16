@@ -293,6 +293,7 @@ void ResManImpl::SendCommandsToAgent(const std::string& agent_endpoint,
             proto::CreateContainerRequest* request = new proto::CreateContainerRequest();
             proto::CreateContainerResponse* response = new proto::CreateContainerResponse();
             request->set_id(cmd.container_id);
+            request->set_container_group_id(cmd.container_group_id);
             request->mutable_container()->CopyFrom(cmd.desc);
             boost::function<void (const proto::CreateContainerRequest*,
                                   proto::CreateContainerResponse*,
