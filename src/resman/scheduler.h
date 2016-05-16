@@ -222,6 +222,10 @@ public:
     bool ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups);
     bool ShowContainerGroup(const ContainerGroupId& container_group_id,
                             std::vector<proto::ContainerStatistics>& containers);
+    bool ShowAgent(const AgentEndpoint& endpoint,
+                   std::vector<proto::ContainerStatistics>& containers);
+    void GetContainersStatistics(const ContainerMap& containers_map,
+                                 std::vector<proto::ContainerStatistics>& containers);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
