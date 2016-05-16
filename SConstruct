@@ -8,20 +8,20 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 
 env = Environment(
-        CPPPATH = ['.', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils', 'src', 'src/agent'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc','unwind', 'pthread', 'z', 'rt', 'boost_filesystem', 'gtest'],
+        CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', './thirdparty/rapidjson/include', 'src/utils'] ,
+        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem', 'gtest'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
 
 env.Program('resman', Glob('src/resman/*.cc') + Glob('src/utils/*.cc') 
-            + ['src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc'])
+            + ['src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/agent.pb.cc'])
 
 env.Program('appmaster', Glob('src/appmaster/*.cc') + Glob('src/utils/*.cc')
             + ['src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
 env.Program('appworker', Glob('src/appworker/*.cc') + Glob('src/utils/*.cc')
-            + ['src/protocol/galaxy.pb.cc'])
+            + ['src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc'])
 
 env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src/agent/*/*.cc')
             + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc'])
@@ -50,6 +50,9 @@ env.Program('test_volum', test_volum_src);
 
 test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc')
 env.Program('test_container', test_container_src);
+
+test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_parse.cc']
+env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
 

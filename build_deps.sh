@@ -28,6 +28,14 @@ if [ ! -f "${FLAG_DIR}/boost_1_57_0" ] \
     touch "${FLAG_DIR}/boost_1_57_0"
 fi
 
+#rapidjson
+if [ ! -f "${FLAG_DIR}/rapidjson" ] \
+    || [ ! -d "${DEPS_PREFIX}/rapidjson" ]; then
+    git clone https://github.com/miloyip/rapidjson.git >/dev/null
+    rm -rf ${DEPS_PREFIX}/rapidjson
+    cp -rf rapidjson ${DEPS_PREFIX}
+fi
+
 # protobuf
 if [ ! -f "${FLAG_DIR}/protobuf_2_6_1" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libprotobuf.a" ] \
@@ -181,8 +189,9 @@ if [ ! -f "${FLAG_DIR}/ins" ] \
     cd ins
     sed -i "s|^PREFIX=.*|PREFIX=${DEPS_PREFIX}|" Makefile
     sed -i "s|^PROTOC=.*|PROTOC=${DEPS_PREFIX}/bin/protoc|" Makefile
-    BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0 make install_sdk
-    make -j4 install_sdk
+    export BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0
+    make -j4 ins >/dev/null && make -j4 install_sdk >/dev/null
+    mkdir -p output/bin && cp ins output/bin
     cd -
     touch "${FLAG_DIR}/ins"
 fi
