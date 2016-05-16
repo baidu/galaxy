@@ -21,9 +21,9 @@ class Subsystem {
 public:
     Subsystem() {}
     virtual ~Subsystem() {}
-    
+
     static std::string RootPath(const std::string& name);
-    
+
     Subsystem* SetContainerId(const std::string& container_id) {
         container_id_ = container_id;
         return this;

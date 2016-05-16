@@ -27,7 +27,6 @@ int FreezerSubsystem::Freeze() {
 int FreezerSubsystem::Thaw() {
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
-
     return baidu::galaxy::cgroup::Attach(path.string(), "THAWED", false);
 }
 
