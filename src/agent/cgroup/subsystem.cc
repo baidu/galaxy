@@ -19,7 +19,7 @@ DECLARE_string(cgroup_root_path);
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
-    
+
 std::string Subsystem::RootPath(const std::string& name) {
     boost::filesystem::path path(FLAGS_cgroup_root_path);
     path.append(name);
@@ -115,8 +115,8 @@ int Attach(const std::string& file, int64_t value, bool append) {
 }
 
 int Attach(const std::string& file, const std::string& value, bool append) {
-
     FILE* fd = NULL;
+
     if (append) {
         fd = ::fopen(file.c_str(), "a+");
     } else {
