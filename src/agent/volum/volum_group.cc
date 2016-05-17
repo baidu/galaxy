@@ -65,6 +65,7 @@ int VolumGroup::Construct() {
         for (size_t i = 0; i < data_volum_.size(); i++) {
             data_volum_[i]->Destroy();
         }
+
         return -1;
     }
 
@@ -88,7 +89,6 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env) {
     env["baidu_galaxy_container_workspace_abstargetpath"] = workspace_volum_->TargetPath();
     env["baidu_galaxy_container_workspace_abssourcepath"] = workspace_volum_->SourcePath();
     env["baidu_galaxy_container_workspace_datavolum_size"] = boost::lexical_cast<std::string>(data_volum_.size());
-    
     return 0;
 }
 
@@ -119,41 +119,47 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
 int VolumGroup::MountRootfs() {
     std::vector<std::string> vm;
     boost::algorithm::split(vm, FLAGS_mount_templat, boost::is_any_of(","));
-    
     std::string container_path = workspace_volum_->TargetPath();
+
     for (size_t i = 0; i < vm.size(); i++) {
         if (vm[i].empty()) {
             continue;
         }
+
         boost::system::error_code ec;
         boost::filesystem::path path(container_path);
         path.append(vm[i]);
-        
+
         if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
             LOG(WARNING) << "create_directories failed: " << path.string() << ": " << ec.message();
             return -1;
         }
-        
-        if(boost::filesystem::is_directory(path, ec)) {
+
+        if (boost::filesystem::is_directory(path, ec)) {
             LOG(INFO) << "create_directories sucessfully: " << path.string();
         }
-        
+
         if ("/proc" == vm[i]) {
             baidu::galaxy::util::ErrorCode errc = MountProc(path.string());
+
             if (0 != errc.Code()) {
                 LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
                 return -1;
             }
+
             LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
         } else {
             baidu::galaxy::util::ErrorCode errc = MountDir(vm[i], path.string());
+
             if (0 != errc.Code()) {
                 LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
                 return -1;
             }
+
             LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
         }
     }
+
     return 0;
 }
 
