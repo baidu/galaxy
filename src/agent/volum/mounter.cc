@@ -4,8 +4,6 @@
 
 #include "mounter.h"
 
-#include "util/error_code.h"
-
 #include "boost/filesystem/path.hpp"
 #include "boost/thread/thread_time.hpp"
 #include "boost/filesystem/operations.hpp"
@@ -13,6 +11,7 @@
 #include <sys/mount.h>
 
 #include <string>
+#include <fstream>
 
 
 namespace baidu {
@@ -88,6 +87,45 @@ baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t si
 
     return ERRORCODE_OK;
 }
+
+baidu::galaxy::util::ErrorCode ListMounters(std::map<std::string, boost::shared_ptr<Mounter> >& mounters) {
+    std::ifstream inf("/proc/mounts", std::ios::in);
+
+    if (!inf.is_open()) {
+        return ERRORCODE(-1, "open file failed");
+    }
+
+    std::string line;
+    char source[256];
+    char target[256];
+    char filesystem[256];
+    char option[256];
+    char t1[256];
+    char t2[256];
+
+    while (getline(inf, line)) {
+        if (6 != sscanf(line.c_str(), "%s %s %s %s %s %s",
+                source,
+                target,
+                filesystem,
+                option,
+                t1,
+                t2
+                                                )) {
+            continue;
+        }
+
+        boost::shared_ptr<Mounter> m(new Mounter());
+        m->source = source;
+        m->target = target;
+        m->filesystem = filesystem;
+        m->option = option;
+        mounters[m->target] = m;
+    }
+
+    return ERRORCODE_OK;
+}
+
 }
 }
 }
