@@ -37,7 +37,7 @@ message StatusResponse {
 
     optional Resource cpu = 5;
     optional Resource memory = 6;
-    optional VolumResource volum = 7;
+    repeated VolumResource volum = 7;
 
     optional uint32 total_groups = 8;
     optional uint32 total_containers = 9;
