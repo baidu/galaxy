@@ -6,12 +6,12 @@
 #include "util/error_code.h"
 
 namespace baidu {
-    namespace galaxy {
-        namespace volum {
-            
-            baidu::galaxy::util::ErrorCode MountProc(const std::string& target);
-            baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target);
-            baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly = false);
-        }
-    }
+namespace galaxy {
+namespace volum {
+
+baidu::galaxy::util::ErrorCode MountProc(const std::string& target);
+baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target);
+baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly = false);
+}
+}
 }

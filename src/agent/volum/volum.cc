@@ -49,8 +49,8 @@ const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Volum::Description(
 std::string Volum::SourcePath() {
     boost::filesystem::path path(vr_->source_path());
     path.append("galaxy");
-    path.append("container");
     path.append(container_id_);
+    path.append(vr_->dest_path());
     return path.string();
 }
 

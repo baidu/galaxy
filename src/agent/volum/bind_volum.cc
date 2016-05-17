@@ -25,15 +25,15 @@ int BindVolum::Construct() {
     assert(vr->medium() == baidu::galaxy::proto::kDisk
             || vr->medium() == baidu::galaxy::proto::kSsd);
     assert(!vr->use_symlink());
-
     boost::system::error_code ec;
-
     boost::filesystem::path target_path(this->TargetPath());
+
     if (!boost::filesystem::exists(target_path, ec) && !boost::filesystem::create_directories(target_path, ec)) {
         return -1;
     }
 
     boost::filesystem::path source_path(this->SourcePath());
+
     if (!boost::filesystem::exists(source_path, ec) && !boost::filesystem::create_directories(source_path, ec)) {
         return -1;
     }
