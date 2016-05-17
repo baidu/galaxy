@@ -23,10 +23,16 @@ DECLARE_string(mount_templat);
 namespace baidu {
 namespace galaxy {
 namespace volum {
-VolumGroup::VolumGroup() {
+VolumGroup::VolumGroup() :
+    gc_index_(-1) {
 }
 
 VolumGroup::~VolumGroup() {
+}
+
+void VolumGroup::SetGcIndex(int gc_index) {
+    assert(gc_index >= 0);
+    gc_index_ = gc_index;
 }
 
 void VolumGroup::AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum) {
@@ -99,6 +105,7 @@ boost::shared_ptr<google::protobuf::Message> VolumGroup::Report() {
 
 boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp) {
     assert(NULL != dp.get());
+    assert(gc_index_ >= 0);
     boost::shared_ptr<Volum> volum = Volum::CreateVolum(dp);
 
     if (NULL == volum.get()) {
@@ -107,6 +114,7 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
 
     volum->SetDescription(dp);
     volum->SetContainerId(this->container_id_);
+    volum->SetGcIndex(gc_index_);
 
     if (0 != volum->Construct()) {
         volum.reset();
