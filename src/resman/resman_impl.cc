@@ -164,7 +164,50 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
                         const ::baidu::galaxy::proto::StatusRequest* request,
                         ::baidu::galaxy::proto::StatusResponse* response,
                         ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    uint32_t total_agents = agents_.size();
+    uint32_t alive_agents = 0;
+    uint32_t dead_agents = 0;
+    int64_t cpu_total = 0;
+    int64_t cpu_assigned = 0;
+    int64_t cpu_used = 0;
+    int64_t memory_total = 0;
+    int64_t memory_assigned = 0;
+    int64_t memory_used = 0;
+    std::map<proto::VolumMedium, int64_t> volum_total;
+    std::map<proto::VolumMedium, int64_t> volum_assigned;
+    std::map<proto::VolumMedium, int64_t> volum_used; 
+    std::map<std::string, AgentStat>::const_iterator it;
+    for (it = agent_stats_.begin(); it != agent_stats_.end(); it ++) { 
+        proto::AgentStatus agent_status = it->second.status;
+        const proto::AgentInfo& agent_info = it->second.info;
+        if (agent_status == proto::kAgentAlive) {
+            alive_agents++;
+        } else if (agent_status == proto::kAgentDead) {
+            dead_agents++;
+        }
+        cpu_total += agent_info.cpu_resource().total();
+        cpu_assigned += agent_info.cpu_resource().assigned();
+        cpu_used += agent_info.cpu_resource().used();
+        memory_total += agent_info.memory_resource().total();
+        memory_assigned += agent_info.memory_resource().assigned();
+        memory_used += agent_info.memory_resource().used();
+        for (int i = 0; i < agent_info.volum_resources_size(); i++) {
+            proto::VolumMedium medium = agent_info.volum_resources(i).medium(); 
+            const proto::Resource& vs = agent_info.volum_resources(i).volum();
+            volum_total[medium] += vs.total();
+            volum_assigned[medium] += vs.assigned();
+            volum_used[medium] += vs.used();
+        }
+    }
+    response->mutable_error_code()->set_status(proto::kOk);
+    response->mutable_cpu()->set_total(cpu_total);
+    response->mutable_cpu()->set_assigned(cpu_assigned);
+    response->mutable_cpu()->set_used(cpu_used);
+    response->mutable_memory()->set_total(memory_total);
+    response->mutable_memory()->set_assigned(memory_assigned);
+    response->mutable_memory()->set_used(memory_used);
+    done->Run();
 }
 
 void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_query) {
