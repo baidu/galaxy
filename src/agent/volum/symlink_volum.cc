@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "symlink_volum.h"
+#include "protocol/galaxy.pb.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -82,7 +83,49 @@ int SymlinkVolum::Construct() {
 }
 
 int SymlinkVolum::Destroy() {
-    return -1;
+    boost::filesystem::path source_path(SourcePath());
+    boost::filesystem::path target_path(TargetPath());
+    boost::filesystem::path gc_source_path(SourceGcPath());
+    boost::filesystem::path gc_target_path(TargetGcPath());
+    boost::system::error_code ec;
+
+    if (boost::filesystem::exists(source_path, ec)) {
+        boost::filesystem::rename(source_path, gc_source_path, ec);
+
+        if (0 != ec.value()) {
+            LOG(WARNING) << ContainerId() << " rename file failed :" << source_path << "->" << gc_source_path
+                         << " : " << ec.message();
+            return -1;
+        }
+    }
+
+    boost::filesystem::remove_all(target_path, ec);
+
+    if (ec.value() != 0) {
+        LOG(WARNING) << ContainerId() << " remove target_path failed: " << target_path << " " << ec.message();
+        return -1;
+    }
+
+    if (!boost::filesystem::exists(gc_target_path.parent_path(), ec)
+            && !boost::filesystem::create_directories(gc_target_path.parent_path(), ec)) {
+        LOG(WARNING) << ContainerId() << " " << gc_target_path.parent_path()
+                     << "path do not exist and is created failed: " << ec.message();
+        return -1;
+    }
+
+    boost::filesystem::create_symlink(gc_source_path, gc_target_path, ec);
+
+    if (ec.value() != 0) {
+        LOG(WARNING) << ContainerId() << " create_symlink failed: "
+                     << gc_target_path << " -> " << gc_source_path  << ec.message();
+        return -1;
+    }
+
+    return 0;
+}
+
+int SymlinkVolum::Gc() {
+    return 0;
 }
 
 int64_t SymlinkVolum::Used() {
@@ -90,7 +133,10 @@ int64_t SymlinkVolum::Used() {
 }
 
 std::string SymlinkVolum::ToString() {
-    return "";
+    std::stringstream ss;
+    ss << "Symlink: " << this->TargetPath() << " -> " << this->SourcePath() << "\t"
+       << "Size: " << this->Description()->size();
+    return ss.str();
 }
 
 }

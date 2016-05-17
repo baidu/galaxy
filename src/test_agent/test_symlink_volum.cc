@@ -35,8 +35,11 @@ TEST_F(TestSymlinkVolum, SourcePath_TargetPath) {
     vr->set_use_symlink(true);
     vr->set_type(baidu::galaxy::proto::kEmptyDir);
     volum.SetDescription(vr);
+    volum.SetGcIndex(1);
     EXPECT_STREQ(volum.SourcePath().c_str(), "/home/disk1/galaxy/container_id/home/disk10");
     EXPECT_STREQ(volum.TargetPath().c_str(), "/home/galaxy/work_dir/container_id/home/disk10");
+    EXPECT_STREQ(volum.SourceGcPath().c_str(), "/home/disk1/galaxy/container_id/home/disk10.1");
+    EXPECT_STREQ(volum.TargetGcPath().c_str(), "/home/galaxy/gc_dir/container_id.1/home/disk10");
 }
 
 TEST_F(TestSymlinkVolum, Construct) {
