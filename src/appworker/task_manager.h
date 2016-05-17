@@ -13,46 +13,40 @@
 
 #include "protocol/galaxy.pb.h"
 #include "task_collector.h"
+#include "process_manager.h"
 
 namespace baidu {
 namespace galaxy {
 
 typedef proto::TaskDescription TaskDescription;
 typedef proto::TaskStatus TaskStatus;
+typedef proto::Package Package;
 typedef proto::ProcessStatus ProcessStatus;
 
-struct Process {
-    std::string process_id;
-    int32_t pid;
-    ProcessStatus status;
-    int32_t exit_code;
-};
-
 struct Task {
+    std::string task_id;
     TaskDescription desc;
     TaskStatus status;
-    TaskCollector collector;
-    Process deploy_process;
-    Process main_process;
-    Process stop_process;
 };
 
 class TaskManager {
 public:
     TaskManager();
     ~TaskManager();
-    int CreateTask(const TaskDescription* task_desc);
+    int CreateTask(const std::string& task_id, const TaskDescription& task_desc);
     int DeleteTask(const std::string& task_id);
-    void LoopWait();
-    int GetProcessInfo(Process& process);
+    int DeployTask(const std::string& task_id);
+    int StartTask(const std::string& task_id);
+    int CheckTask(const std::string& task_id, Task& task);
+    int ClearTasks();
 
 private:
     Mutex mutex_task_manager_;
     std::map<std::string, Task*> tasks_;
+    ProcessManager process_manager_;
     ThreadPool background_pool_;
     ThreadPool killer_pool_;
 };
-
 
 }   // ending namespace galaxy
 }   // ending namespace baidu

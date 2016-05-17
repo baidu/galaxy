@@ -13,11 +13,27 @@
 #include <boost/bind.hpp>
 #include <snappy.h>
 
+#include <glog/logging.h>
+DECLARE_string(nexus_servers);
+DECLARE_string(nexus_root_path);
+DECLARE_string(appmaster_nexus_path);
+DECLARE_string(appmaster_endpoint);
+
 namespace baidu {
 namespace galaxy {
 
-AppMasterImpl::AppMasterImpl() {
-
+AppMasterImpl::AppMasterImpl() :
+        endpoint_(FLAGS_appmaster_endpoint),
+        nexus_(NULL) {
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
+    SDKError err;
+    bool ok = false;
+    std::string key = FLAGS_nexus_root_path + "/" + FLAGS_appmaster_nexus_path;
+    ok = nexus_->Put(key, endpoint_, &err);
+    if (!ok) {
+        LOG(INFO) << "appmaster write endpoint failed";
+        abort();
+    }
 }
 
 AppMasterImpl::~AppMasterImpl() {
@@ -60,7 +76,25 @@ void AppMasterImpl::ExecuteCmd(::google::protobuf::RpcController* controller,
                                ::google::protobuf::Closure* done) {
 }
 
-}
+void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
+                               const ::baidu::galaxy::proto::FetchTaskRequest* request,
+                               ::baidu::galaxy::proto::FetchTaskResponse* response,
+                               ::google::protobuf::Closure* done) {
+    if (!request->has_podid()) {
+        PodDescription* pod = response->mutable_pod();
+        TaskDescription* task_desc = pod->add_tasks();
+        task_desc->set_id("task-1");
+        ImagePackage* image_package = task_desc->mutable_exe_package();
+        image_package->set_start_cmd("sleep 3000");
+        image_package->set_stop_cmd("");
+        Package* e_package = image_package->mutable_package();
+        e_package->set_source_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/rtg_galaxy_test/galaxy.tar.gz");
+        e_package->set_dest_path("./");
+        e_package->set_version("1");
+    }
+    done->Run();
+    return;
 }
 
-
+}
+}

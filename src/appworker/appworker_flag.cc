@@ -26,7 +26,9 @@ DEFINE_int32(pod_manager_change_pod_status_interval, 1000, "pod manager check po
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 10, "task manager background thread pool size");
 DEFINE_int32(task_manager_killer_thread_pool_size, 10, "task manager killer thread pool size");
-DEFINE_int32(task_manager_loop_wait_interval, 1000, "task manager loop wait child pid interval");
 
 // task_collector
 DEFINE_int32(task_collector_collect_interval, 1000, "task collector collect interval");
+
+// process_manager
+DEFINE_int32(process_manager_loop_wait_interval, 1000, "process manager loop wait processes interval");

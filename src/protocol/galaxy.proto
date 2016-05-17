@@ -160,9 +160,9 @@ enum PodStatus {
 
 enum ProcessStatus {
     kProcessRunning = 0;
-    kProcessTerminate = 1;
-    kProcessKilled = 2;
-    kProcessCoreDump = 3;
+    kProcessTerminated = 1;
+//    kProcessKilled = 2;
+//    kProcessCoreDump = 3;
 }
 
 message ProcessInfo {
@@ -176,9 +176,9 @@ enum TaskStatus {
     kTaskPending = 1;
     kTaskDeploying = 2;
     kTaskStarting = 3;
-    kTaskServing = 4;
+    kTaskRunning = 4;
     kTaskFailed = 5;
-    kTaskFinished = 6;
+    kTaskTerminated = 6;
 }
 
 message TaskInfo {

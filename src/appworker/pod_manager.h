@@ -21,9 +21,10 @@ typedef proto::PodDescription PodDescription;
 typedef proto::PodStatus PodStatus;
 
 struct Pod {
+    std::string pod_id;
     PodDescription desc;
     PodStatus status;
-    std::map<std::string, Task*> tasks;
+    int32_t fail_count;
 };
 
 class PodManager {
@@ -36,12 +37,15 @@ public:
     void LoopChangePodStatus();
 
 private:
-    int DeployPod();
-    int StartPod();
-    int ReadyPodCheck();
-    int DeployingPodCheck();
-    int StartingPodCheck();
-    int RunningPodCheck();
+    int DoDeployPod();
+    int DoStartPod();
+    int DoStopPod();
+    int DoCleanPod();
+    void ReadyPodCheck();
+    void DeployingPodCheck();
+    void StartingPodCheck();
+    void RunningPodCheck();
+    void FailedPodCheck();
 
 private:
     Mutex mutex_pod_manager_;

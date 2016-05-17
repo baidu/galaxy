@@ -116,8 +116,8 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       bool failed, int /*error*/) {
     MutexLock lock(&mutex_appworker_);
     ErrorCode* error_code = response->mutable_error_code();
-    LOG(WARNING) << "get status: " << proto::Status_Name(error_code->status()).c_str()\
-        << " from appmaster, appworker will exit.";
+    LOG(WARNING) << "fetch task get status: " << proto::Status_Name(error_code->status()).c_str()\
+        << " from appmaster";
     switch (error_code->status()) {
         case proto::kJobNotFound:
             exit(-1);

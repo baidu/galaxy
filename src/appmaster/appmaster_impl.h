@@ -7,10 +7,19 @@
 #include <map>
 #include <set>
 
+#include "ins_sdk.h"
 #include "src/protocol/appmaster.pb.h"
 
 namespace baidu {
 namespace galaxy {
+
+typedef ::galaxy::ins::sdk::InsSDK InsSDK;
+typedef::galaxy::ins::sdk::SDKError  SDKError;
+typedef proto::PodDescription PodDescription;
+typedef proto::TaskDescription TaskDescription;
+typedef proto::ImagePackage ImagePackage;
+typedef proto::DataPackage DataPackage;
+typedef proto::Package Package;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
@@ -48,7 +57,17 @@ void ExecuteCmd(::google::protobuf::RpcController* controller,
                                ::baidu::galaxy::proto::ExecuteCmdResponse* response,
                                ::google::protobuf::Closure* done);
 
+
+void FetchTask(::google::protobuf::RpcController* controller,
+               const::baidu::galaxy::proto::FetchTaskRequest* request,
+               ::baidu::galaxy::proto::FetchTaskResponse* response,
+               ::google::protobuf::Closure* done);
+
+private:
+    std::string endpoint_;
+    InsSDK* nexus_;
 };
+
 
 } //namespace galaxy
 } //namespace baidu

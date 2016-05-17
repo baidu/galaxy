@@ -9,12 +9,12 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 env = Environment(
         CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', 'src/utils'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem'],
+        LIBS = ['ins_sdk', 'sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'pthread', 'z', 'rt', 'boost_filesystem'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
 
-env.Program('resman', Glob('src/resman/*.cc') + Glob('src/utils/*.cc') 
+env.Program('resman', Glob('src/resman/*.cc') + Glob('src/utils/*.cc')
             + ['src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/agent.pb.cc'])
 
 env.Program('appmaster', Glob('src/appmaster/*.cc') + Glob('src/utils/*.cc')
