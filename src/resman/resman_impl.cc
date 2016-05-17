@@ -174,18 +174,30 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
     int64_t memory_total = 0;
     int64_t memory_assigned = 0;
     int64_t memory_used = 0;
+    int64_t total_containers = 0;
+    int64_t total_container_groups = container_groups_.size();
     std::map<proto::VolumMedium, int64_t> volum_total;
     std::map<proto::VolumMedium, int64_t> volum_assigned;
     std::map<proto::VolumMedium, int64_t> volum_used; 
     std::map<std::string, AgentStat>::const_iterator it;
+    std::map<std::string, int64_t> pool_total;
+    std::map<std::string, int64_t> pool_alive;
     for (it = agent_stats_.begin(); it != agent_stats_.end(); it ++) { 
+        const std::string& endpoint = it->first;
+        if (agents_.find(endpoint) == agents_.end()) {
+            continue;
+        }
+        std::string pool_name = agents_[endpoint].pool();
         proto::AgentStatus agent_status = it->second.status;
         const proto::AgentInfo& agent_info = it->second.info;
+        pool_total[pool_name]++;
         if (agent_status == proto::kAgentAlive) {
             alive_agents++;
+            pool_alive[pool_name]++;
         } else if (agent_status == proto::kAgentDead) {
             dead_agents++;
         }
+        total_containers += agent_info.container_info_size();
         cpu_total += agent_info.cpu_resource().total();
         cpu_assigned += agent_info.cpu_resource().assigned();
         cpu_used += agent_info.cpu_resource().used();
@@ -207,6 +219,27 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
     response->mutable_memory()->set_total(memory_total);
     response->mutable_memory()->set_assigned(memory_assigned);
     response->mutable_memory()->set_used(memory_used);
+    response->set_total_agents(total_agents);
+    response->set_alive_agents(alive_agents);
+    response->set_dead_agents(dead_agents);
+    std::map<proto::VolumMedium,int64_t>::const_iterator v_it;
+    for (v_it = volum_total.begin(); v_it != volum_total.end(); v_it++) {
+        proto::VolumMedium medium = v_it->first;
+        int64_t size_total = v_it->second;
+        proto::VolumResource* vrs = response->add_volum();
+        vrs->mutable_volum()->set_total(size_total);
+        vrs->mutable_volum()->set_assigned(volum_assigned[medium]);
+        vrs->mutable_volum()->set_used(volum_used[medium]);
+    }
+    response->set_total_containers(total_containers);
+    response->set_total_groups(total_container_groups);
+    std::map<std::string, int64_t >::const_iterator p_it;
+    for (p_it = pool_total.begin(); p_it != pool_total.end(); p_it++) {
+        const std::string& pool_name = p_it->first;
+        proto::PoolStatus* pool_status = response->add_pools();
+        pool_status->set_total_agents(p_it->second);
+        pool_status->set_alive_agents(pool_alive[pool_name]);
+    }
     done->Run();
 }
 
@@ -450,7 +483,6 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
                                       ::baidu::galaxy::proto::RemoveContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
 
-    proto::ContainerGroupMeta new_meta;
     {
         MutexLock lock(&mu_);
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
@@ -461,22 +493,19 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
             done->Run();
             return;
         }
-        new_meta = it->second;
-        new_meta.set_status(proto::kContainerGroupTerminated);
     }
     
-    bool ret = SaveObject(sContainerGroupPrefix + "/" + new_meta.id(), 
-                          new_meta);
+    bool ret = RemoveObject(sContainerGroupPrefix + "/" + request->id());
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();
         err->set_status(proto::kRemoveContainerGroupFail);
-        err->set_reason("fail to save container group meta in nexus");
+        err->set_reason("fail to remove container group meta from nexus");
     } else {
         {
             MutexLock lock(&mu_);
-            container_groups_[new_meta.id()] = new_meta;
+            container_groups_.erase(request->id());
         }
-        scheduler_->Kill(new_meta.id());
+        scheduler_->Kill(request->id());
         response->mutable_error_code()->set_status(proto::kOk);
     }
     done->Run();
