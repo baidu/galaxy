@@ -26,6 +26,7 @@ namespace baidu {
 namespace galaxy {
 
 bool PrepareStdFds(const std::string& pwd,
+                   const std::string& process_id,
                    int* stdout_fd,
                    int* stderr_fd) {
     if (stdout_fd == NULL || stderr_fd == NULL) {
@@ -37,8 +38,8 @@ bool PrepareStdFds(const std::string& pwd,
     GetStrFTime(&now_str_time);
     pid_t pid = ::getpid();
     std::string str_pid = boost::lexical_cast<std::string>(pid);
-    std::string stdout_file = pwd + "/stdout_" + str_pid + "_" + now_str_time;
-    std::string stderr_file = pwd + "/stderr_" + str_pid + "_" + now_str_time;
+    std::string stdout_file = pwd + "/" + process_id + "_stdout_" + str_pid + "_" + now_str_time;
+    std::string stderr_file = pwd + "/" + process_id + "_stderr_" + str_pid + "_" + now_str_time;
 
     const int STD_FILE_OPEN_FLAG = O_CREAT | O_APPEND | O_WRONLY;
     const int STD_FILE_OPEN_MODE = S_IRWXU | S_IRWXG | S_IROTH;
@@ -152,7 +153,7 @@ int ProcessManager::CreateProcess(const std::string& process_id,
     int stdin_fd = -1;
     int stdout_fd = -1;
     int stderr_fd = -1;
-    if (!PrepareStdFds(path, &stdout_fd, &stderr_fd)) {
+    if (!PrepareStdFds(path, process_id, &stdout_fd, &stderr_fd)) {
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
@@ -213,7 +214,7 @@ int ProcessManager::CreateProcess(const std::string& process_id,
         char* argv[] = {
             const_cast<char*>("sh"),
             const_cast<char*>("-c"),
-            const_cast<char*>(("\"" + cmd + "\"").c_str()),
+            const_cast<char*>(cmd.c_str()),
             NULL};
 
         // prepare envs

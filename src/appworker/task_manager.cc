@@ -82,13 +82,13 @@ int TaskManager::StartTask(const std::string& task_id) {
     if (task->desc.has_exe_package()) {
         LOG(INFO) << task_id.c_str() << " has exe_package";
         std::string deploy_process_id = task->task_id + "_main";
-        std::string cmd = "bash -c ";
-        cmd.append(task->desc.exe_package().start_cmd());
+        std::string cmd = task->desc.exe_package().start_cmd();
         if (0 != process_manager_.CreateProcess(deploy_process_id, cmd, task_id)) {
             LOG(WARNING) << "command execute fail,command: " << cmd.c_str();
             return -1;
         }
     }
+    task->status = proto::kTaskRunning;
     return 0;
 }
 

@@ -85,7 +85,7 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         TaskDescription* task_desc = pod->add_tasks();
         task_desc->set_id("task-1");
         ImagePackage* image_package = task_desc->mutable_exe_package();
-        image_package->set_start_cmd("sleep 3000");
+        image_package->set_start_cmd("sleep 10");
         image_package->set_stop_cmd("");
         Package* e_package = image_package->mutable_package();
         e_package->set_source_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/rtg_galaxy_test/galaxy.tar.gz");
