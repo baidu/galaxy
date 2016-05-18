@@ -1258,10 +1258,13 @@ void Scheduler::GetContainersStatistics(const ContainerMap& containers_map,
         int64_t cpu_used = container->remote_info.cpu_used();
         int64_t memory_assigned = container->require->MemoryNeed();
         int64_t memory_used = container->remote_info.memory_used();
-        for (int i = 0; i < container->remote_info.volum_used_size(); i++) {
-            proto::VolumMedium medium = container->remote_info.volum_used(i).medium();
-            int64_t as = container->remote_info.volum_used(i).assigned_size();
-            int64_t us = container->remote_info.volum_used(i).used_size();
+        for (size_t i = 0; i < container->require->volums.size(); i++) {
+            proto::VolumMedium medium = container->require->volums[i].medium();
+            int64_t as = container->require->volums[i].size();
+            int64_t us = 0;
+            if ((int)i < container->remote_info.volum_used_size()) {
+                us = container->remote_info.volum_used(i).used_size();
+            }
             volum_assigned[medium] += as;
             volum_used[medium] += us;
         }
