@@ -442,6 +442,8 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::CreateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::CreateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
+    std::string user = request->user().user();
+    LOG(INFO) << "user:" << user << " create container group";
     proto::ContainerGroupMeta container_group_meta;
     container_group_meta.set_name(request->name());
     container_group_meta.set_user_name(request->user().user());
@@ -460,6 +462,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
         return;
     }
     container_group_meta.set_id(container_group_id);
+    LOG(INFO) << container_group_meta.DebugString();
     bool ret = SaveObject(sContainerGroupPrefix + "/" + container_group_id, 
                           container_group_meta);
     if (!ret) {
@@ -494,7 +497,8 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
             return;
         }
     }
-    
+    std::string user = request->user().user();
+    LOG(INFO) << "user: " << user << " remove container group: " << request->id();
     bool ret = RemoveObject(sContainerGroupPrefix + "/" + request->id());
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();
@@ -1004,6 +1008,7 @@ bool ResManImpl::LoadObjects(const std::string& prefix,
             LOG(WARNING) << "parse protobuf object fail ";
             return false;
         }
+        result->Next();
     }
     return result->Error() == ::galaxy::ins::sdk::kOK;
 }

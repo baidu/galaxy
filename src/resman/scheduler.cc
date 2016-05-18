@@ -303,7 +303,7 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
 
 
 Scheduler::Scheduler() : stop_(true) {
-
+    srand(time(NULL));
 }
 
 void Scheduler::SetRequirement(Requirement::Ptr require, 
