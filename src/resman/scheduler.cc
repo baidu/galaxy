@@ -63,12 +63,12 @@ void Agent::SetAssignment(int64_t cpu_assigned,
 bool Agent::TryPut(const Container* container, ResourceError& err) {
     if (!container->require->tag.empty() &&
         tags_.find(container->require->tag) == tags_.end()) {
-        err = kTagMismatch;
+        err = proto::kTagMismatch;
         return false;
     }
     if (container->require->pool_names.find(pool_name_) 
         == container->require->pool_names.end()) {
-        err = kPoolMismatch;
+        err = proto::kPoolMismatch;
         return false;
     }
 
@@ -78,18 +78,18 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         if (it != container_counts_.end()) {
             int cur_counts = it->second;
             if (cur_counts >= container->require->max_per_host) {
-                err = kTooManyPods;
+                err = proto::kTooManyPods;
                 return false;
             } 
         }
     }
 
     if (container->require->CpuNeed() + cpu_assigned_ > cpu_total_) {
-        err = kNoCpu;
+        err = proto::kNoCpu;
         return false;
     }
     if (container->require->MemoryNeed() + memory_assigned_ > memory_total_) {
-        err = kNoMemory;
+        err = proto::kNoMemory;
         return false;
     }
 
@@ -106,19 +106,19 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     }
 
     if (size_ramdisk + memory_assigned_ + container->require->MemoryNeed()> memory_total_) {
-        err = kNoMemoryForTmpfs;
+        err = proto::kNoMemoryForTmpfs;
         return false;
     }
 
     std::vector<DevicePath> devices;
     if (!SelectDevices(volums_no_ramdisk, devices)) {
-        err = kNoDevice;
+        err = proto::kNoDevice;
         return false;
     }
 
     if (container->require->ports.size() + port_assigned_.size() 
         > port_total_) {
-        err = kNoPort;
+        err = proto::kNoPort;
         return false;
     }
 
@@ -126,7 +126,7 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     BOOST_FOREACH(const proto::PortRequired& port, ports) {
         if (port.port() != kDynamicPort
             && port_assigned_.find(port.port()) != port_assigned_.end()) {
-            err = kPortConflict;
+            err = proto::kPortConflict;
             return false;
         } 
     }
@@ -203,7 +203,7 @@ void Agent::Put(Container::Ptr container) {
     }
     //put on this agent succesfully
     container->allocated_agent = endpoint_;
-    container->last_res_err = kOk;
+    container->last_res_err = proto::kResOk;
     containers_[container->id] = container;
     container_counts_[container->container_group_id] += 1;
 }
@@ -781,12 +781,12 @@ bool Scheduler::CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container) 
     bool check_passed = true;
     if (!container->require->tag.empty()
         && agent->tags_.find(container->require->tag) == agent->tags_.end()) {
-        container->last_res_err = kTagMismatch;
+        container->last_res_err = proto::kTagMismatch;
         check_passed = false;
     }
     if (container->require->pool_names.find(agent->pool_name_) 
         == container->require->pool_names.end()) {
-        container->last_res_err = kPoolMismatch;
+        container->last_res_err = proto::kPoolMismatch;
         check_passed = false;
     }
     return check_passed;
@@ -1251,6 +1251,7 @@ void Scheduler::GetContainersStatistics(const ContainerMap& containers_map,
         container_stat.set_id(container->id);
         container_stat.set_status(container->status);
         container_stat.set_endpoint(container->allocated_agent);
+        container_stat.set_last_res_err(container->last_res_err);
         std::map<proto::VolumMedium, int64_t> volum_assigned;
         std::map<proto::VolumMedium, int64_t> volum_used;
         int64_t cpu_assigned = container->require->CpuNeed();

@@ -26,25 +26,12 @@ using proto::kContainerError;
 using proto::kContainerDestroying;
 using proto::kContainerTerminated;
 using proto::kContainerFinish;
+using proto::ResourceError;
 
 typedef std::string AgentEndpoint;
 typedef std::string ContainerGroupId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
-
-enum ResourceError {
-    kOk = 0,
-    kNoCpu = 1,
-    kNoMemory = 2,
-    kNoMedium = 3,
-    kNoDevice = 4,
-    kNoPort = 5,
-    kPortConflict = 6,
-    kTagMismatch = 7,
-    kNoMemoryForTmpfs = 8,
-    kPoolMismatch = 9,
-    kTooManyPods = 10
-};
 
 enum AgentCommandAction {
     kCreateContainer = 0,
