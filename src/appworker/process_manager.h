@@ -9,6 +9,7 @@
 #include <map>
 
 #include <thread_pool.h>
+#include <mutex.h>
 
 #include "protocol/galaxy.pb.h"
 
@@ -28,11 +29,25 @@ class ProcessManager {
 public:
     ProcessManager();
     ~ProcessManager();
-    int CreateProcess(const std::string& process_id, const std::string& cmd);
+    int CreateProcess(const std::string& process_id,
+                      const std::string& cmd,
+                      const std::string& path);
     int QueryProcess(const std::string& process_id, Process& process);
     void LoopWaitProcesses();
 
+//private:
+//    void GetStrFTime(std::string* time_str);
+//    bool PrepareStdFds(const std::string& pwd,
+//                       int* stdout_fd,
+//                       int* stderr_fd);
+//    void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir);
+//    void PrepareChildProcessEnvStep2(const int stdin_fd,
+//                                     const int stdout_fd,
+//                                     const int stderr_fd,
+//                                     const std::vector<int>& fd_vector);
+
 private:
+    Mutex lock_;
     ThreadPool background_pool_;
     std::map<std::string, Process*> processes_;
 };

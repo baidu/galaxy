@@ -57,8 +57,8 @@ int TaskManager::DeployTask(const std::string& task_id) {
         proto::Package* package = task->desc.mutable_exe_package()->mutable_package();
         cmd.append(package->source_path());
         std::string deploy_process_id = task->task_id + "_deploy";
-        if (0 != process_manager_.CreateProcess(deploy_process_id, cmd)) {
-            LOG(WARNING) << "command execute fail,command: " << cmd.c_str();
+        if (0 != process_manager_.CreateProcess(deploy_process_id, cmd, task_id)) {
+            LOG(WARNING) << "command execute fail, command: " << cmd.c_str();
             return -1;
         }
     }
@@ -81,11 +81,10 @@ int TaskManager::StartTask(const std::string& task_id) {
     Task* task = it->second;
     if (task->desc.has_exe_package()) {
         LOG(INFO) << task_id.c_str() << " has exe_package";
-        std::string cmd = "wget -O image.tar.gz ";
-        proto::Package* package = task->desc.mutable_exe_package()->mutable_package();
-        cmd.append(package->source_path());
-        std::string deploy_process_id = task->task_id + "_deploy";
-        if (0 != process_manager_.CreateProcess(deploy_process_id, cmd)) {
+        std::string deploy_process_id = task->task_id + "_main";
+        std::string cmd = "bash -c ";
+        cmd.append(task->desc.exe_package().start_cmd());
+        if (0 != process_manager_.CreateProcess(deploy_process_id, cmd, task_id)) {
             LOG(WARNING) << "command execute fail,command: " << cmd.c_str();
             return -1;
         }
@@ -106,38 +105,39 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
     Process process;
     std::string process_id;
     switch (it->second->status) {
-        case proto::kTaskDeploying:
-            process_id = task_id + "_deploy";
-            if (0 != process_manager_.QueryProcess(process_id, process)) {
-                LOG(INFO) << "query deploy process: " << process_id.c_str() << " fail";
-                return -1;
+    case proto::kTaskDeploying:
+        process_id = task_id + "_deploy";
+        if (0 != process_manager_.QueryProcess(process_id, process)) {
+            LOG(INFO) << "query deploy process: " << process_id.c_str() << " fail";
+            return -1;
+        }
+        if (process.status != proto::kProcessRunning) {
+            if (0 == process.exit_code) {
+                it->second->status = proto::kTaskStarting;
+                LOG(INFO) << "deploy process finished successful";
+            } else {
+                LOG(INFO) << "deploy process failed";
+                it->second->status = proto::kTaskFailed;
             }
-            if (process.status != proto::kProcessRunning) {
-                if (0 == process.exit_code) {
-                    it->second->status = proto::kTaskStarting;
-                    LOG(INFO) << "deploy process finished successful";
-                } else {
-                    it->second->status = proto::kTaskFailed;
-                }
+        }
+        break;
+    case proto::kTaskRunning:
+        process_id = task_id + "_main";
+        if (0 != process_manager_.QueryProcess(process_id, process)) {
+            LOG(INFO) << "query main process: " << process_id.c_str() << " fail";
+            return -1;
+        }
+        if (process.status != proto::kProcessRunning) {
+            if (0 == process.exit_code) {
+                it->second->status = proto::kTaskFinished;
+                LOG(INFO) << "main process finished successful";
+            } else {
+                it->second->status = proto::kTaskFailed;
             }
-            break;
-        case proto::kTaskRunning:
-            process_id = task_id + "_main";
-            if (0 != process_manager_.QueryProcess(process_id, process)) {
-                LOG(INFO) << "query main process: " << process_id.c_str() << " fail";
-                return -1;
-            }
-            if (process.status != proto::kProcessRunning) {
-                if (0 == process.exit_code) {
-                    it->second->status = proto::kTaskTerminated;
-                    LOG(INFO) << "main process finished successful";
-                } else {
-                    it->second->status = proto::kTaskFailed;
-                }
-            }
-            break;
-         default:
-             LOG(INFO) << "nothing to do";
+        }
+        break;
+     default:
+         break;
      }
 
     task.task_id = it->second->task_id;

@@ -67,15 +67,13 @@ void AppWorkerImpl::UpdateAppMasterStub() {
     bool ok = nexus_->Get(key, &new_endpoint, &err);
     do {
         if (!ok) {
-           LOG(INFO) << "get appmaster endpoint from nexus failed: "\
+           LOG(WARNING) << "get appmaster endpoint from nexus failed: "\
                << ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str();
            break;
         }
         if (appmaster_endpoint_ == new_endpoint) {
            break;
         }
-        LOG(INFO) << "appmaster endpoint updated, from: " << appmaster_endpoint_.c_str()\
-           << ", to: " << new_endpoint.c_str();
         appmaster_endpoint_ = new_endpoint;
         if(rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
             LOG(INFO) << "appmaster stub updated, endpoint: " << appmaster_endpoint_.c_str();
@@ -91,7 +89,6 @@ void AppWorkerImpl::UpdateAppMasterStub() {
 void AppWorkerImpl::FetchTask () {
     MutexLock lock(&mutex_appworker_);
     if (NULL == appmaster_stub_) {
-        LOG(INFO) << "appmaster stub is NULL, can not fetch task";
         backgroud_pool_.DelayTask(
             FLAGS_appworker_fetch_task_interval,
             boost::bind(&AppWorkerImpl::FetchTask, this)
@@ -116,8 +113,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       bool failed, int /*error*/) {
     MutexLock lock(&mutex_appworker_);
     ErrorCode* error_code = response->mutable_error_code();
-    LOG(WARNING) << "fetch task get status: " << proto::Status_Name(error_code->status()).c_str()\
-        << " from appmaster";
+//    LOG(INFO) << "appwoker fetch task: " << proto::Status_Name(error_code->status()).c_str();
     switch (error_code->status()) {
         case proto::kJobNotFound:
             exit(-1);
@@ -128,7 +124,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             pod_manager_.CreatePod(response->mutable_pod());
             break;
         default:
-            LOG(INFO) << "appworker fetch task ok, nope";
+            break;
     }
 
     backgroud_pool_.DelayTask(

@@ -20,8 +20,9 @@ DEFINE_string(appworker_endpoint, "", "appworker endpoint");
 DEFINE_string(appworker_container_id, "", "appworker container id");
 
 // pod_manager
-DEFINE_int32(pod_manager_check_pod_interval, 1000, "pod manager check pod interval");
+DEFINE_int32(pod_manager_check_pod_interval, 5000, "pod manager check pod interval");
 DEFINE_int32(pod_manager_change_pod_status_interval, 1000, "pod manager check pod status change interval");
+DEFINE_int32(pod_manager_pod_max_fail_count, 3, "pod manager pod max fail count");
 
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 10, "task manager background thread pool size");

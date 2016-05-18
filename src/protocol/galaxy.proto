@@ -140,9 +140,9 @@ enum JobType {
 // update incrementally may cause new problems: version confusion 
 // Appmaster must save descrition of last 2 versions, and  a complete desc.
 enum JobStatus {
-   kJobPending = 1; 
+   kJobPending = 1;
    kJobRunning = 2;
-   kJobFinished = 3; 
+   kJobFinished = 3;
    kJobDestroying = 4;
 }
 
@@ -155,14 +155,15 @@ enum PodStatus {
     kPodStarting = 4;
     kPodRunning = 5;
     kPodFailed = 6;
-    kPodTerminated = 7;
+    kPodFinished = 7;
 }
 
 enum ProcessStatus {
     kProcessRunning = 0;
-    kProcessTerminated = 1;
-//    kProcessKilled = 2;
-//    kProcessCoreDump = 3;
+    kProcessFinished = 1;
+    kProcessFailed = 2;
+    kProcessKilled = 3;
+    kProcessCoreDump = 4;
 }
 
 message ProcessInfo {
@@ -178,7 +179,7 @@ enum TaskStatus {
     kTaskStarting = 3;
     kTaskRunning = 4;
     kTaskFailed = 5;
-    kTaskTerminated = 6;
+    kTaskFinished = 6;
 }
 
 message TaskInfo {
