@@ -5,7 +5,9 @@
 #ifndef BAIDU_GALAXY_CLIENT_UTIL_H
 #define BAIDU_GALAXY_CLIENT_UTIL_H
 
+#include <time.h>
 #include "sdk/galaxy_sdk.h"
+#include "string_util.h"
 
 namespace baidu {
 namespace galaxy {

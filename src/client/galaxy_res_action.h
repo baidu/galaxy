@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "galaxy_util.h"
-
 #ifndef BAIDU_GALAXY_CLIENT_RES_ACTION_H
 #define BAIDU_GALAXY_CLIENT_RES_ACTION_H
+
+#include "galaxy_util.h"
+#include <gflags/gflags.h>
+#include "sdk/galaxy_sdk_resman.h"
 
 namespace baidu {
 namespace galaxy {
@@ -14,13 +16,19 @@ namespace client {
 class ResAction {
 
 public:
-    explicit ResAction(const std::string& name, const std::string& token, const std::string& nexus_key);
+    //explicit ResAction(const std::string& name, const std::string& token, const std::string& nexus_key);
+    explicit ResAction(const std::string& name, const std::string& token);
     ~ResAction();
     bool CreateContainerGroup(const std::string& json_file);
-    bool UpdateContainerGroup(const std::string& json_file, const std::string& jobid);
-    bool RemoveContainerGroup();
+    bool UpdateContainerGroup(const std::string& json_file, const std::string& id);
+    bool RemoveContainerGroup(const std::string& id);
     bool ListContainerGroups();
-    bool ShowContainerGroup();
+    bool ShowContainerGroup(const std::string& id);
+    bool AddAgent(const std::string& pool, const std::string& endpoint);
+    bool RemoveAgent(const std::string& endpoint);
+    bool ListAgents(const std::string& pool);
+    bool EnterSafeMode();
+    bool LeaveSafeMode();
 
 private:
     bool Init();
