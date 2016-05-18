@@ -821,7 +821,7 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
 }
 
 void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
-    VLOG(16) << "scheduling the agent after: " << pre_endpoint;
+    VLOG(20) << "scheduling the agent after: " << pre_endpoint;
     Agent::Ptr agent;
     AgentEndpoint endpoint;
     MutexLock lock(&mu_);

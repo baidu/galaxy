@@ -240,6 +240,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         pool_status->set_total_agents(p_it->second);
         pool_status->set_alive_agents(pool_alive[pool_name]);
     }
+    response->set_in_safe_mode(safe_mode_);
     done->Run();
 }
 
@@ -586,6 +587,7 @@ void ResManImpl::ListContainerGroups(::google::protobuf::RpcController* controll
         response->add_containers()->CopyFrom(container_groups[i]);
     }
     response->mutable_error_code()->set_status(proto::kOk);
+    VLOG(16) << "list containers:" << response->DebugString();
     done->Run();
 }
 
@@ -611,6 +613,7 @@ void ResManImpl::ShowContainerGroup(::google::protobuf::RpcController* controlle
         response->add_containers()->CopyFrom(containers[i]);
     }
     response->mutable_error_code()->set_status(proto::kOk);
+    VLOG(16) << "show containers:" << response->DebugString();
     done->Run();   
 }
 

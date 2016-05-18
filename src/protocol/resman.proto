@@ -43,6 +43,7 @@ message StatusResponse {
     optional uint32 total_containers = 9;
 
     repeated PoolStatus pools = 10;
+    optional bool in_safe_mode = 11;
 }
 
 message KeepAliveRequest {
