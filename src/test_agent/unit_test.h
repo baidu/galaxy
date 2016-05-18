@@ -15,4 +15,6 @@
 //#define TEST_SYMLINK_VOLUM_ON
 //#define TEST_TMPFS_VOLUM_ON
 //#define TEST_MOUNTER_ON
-#define TEST_VOLUM_GROUP_ON
+//#define TEST_VOLUM_GROUP_ON
+
+#define TEST_PROCESS_ON

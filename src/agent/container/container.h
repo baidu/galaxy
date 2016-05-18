@@ -31,6 +31,9 @@ public:
     Container(const std::string& id, const baidu::galaxy::proto::ContainerDescription& desc);
     ~Container();
 
+    void AddEnv(const std::string& key, const std::string& value);
+    void AddEnv(const std::map<std::string, std::string>& env);
+
     std::string Id() const;
     int Construct();
     int Destroy();
