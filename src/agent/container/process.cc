@@ -36,30 +36,6 @@ pid_t Process::SelfPid() {
     return getpid();
 }
 
-void Process::AddEnv(const std::string& key, const std::string& value) {
-    env_[key] = value;
-}
-
-void Process::AddEnv(const std::map<std::string, std::string>& env) {
-    if (env.empty()) {
-        return;
-    }
-
-    std::map<std::string, std::string>::const_iterator iter = env.begin();
-
-    while (iter != env.end()) {
-        env_[iter->first] = iter->second;
-        iter++;
-    }
-}
-
-
-// Fix me: check user exist
-int Process::SetRunUser(const std::string& user) {
-    user_ = user;
-    return 0;
-}
-
 int Process::RedirectStderr(const std::string& path) {
     stderr_path_ = path;
     return 0;
@@ -105,14 +81,20 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     context->self = this;
     context->routine = routine;
     context->parameter = param;
+
     const static int CLONE_FLAG = CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS;
     const static int CLONE_STACK_SIZE = 1024 * 1024;
     static char CLONE_STACK[CLONE_STACK_SIZE];
-    pid_ = ::clone(&Process::CloneRoutine,
+    pid = ::clone(&Process::CloneRoutine,
             CLONE_STACK + CLONE_STACK_SIZE,
             CLONE_FLAG | SIGCHLD,
             context);
+
     int en = errno;
+    if (pid != 0) {
+        pid_ = pid;
+    }
+
     ::close(context->stdout_fd);
     ::close(context->stderr_fd);
 
@@ -121,7 +103,7 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
         return -1;
     }
 
-    return 0;
+    return pid_;
 }
 
 int Process::CloneRoutine(void* param) {
@@ -140,6 +122,7 @@ int Process::CloneRoutine(void* param) {
             && errno == EINTR) {
     }
 
+
     for (size_t i = 0; i < context->fds.size(); i++) {
         if (STDOUT_FILENO == context->fds[i]
                 || STDERR_FILENO == context->fds[i]
@@ -155,18 +138,6 @@ int Process::CloneRoutine(void* param) {
 
     if (0 != ::setpgid(pid, pid)) {
         return -1;
-    }
-
-    // export env
-    std::map<std::string, std::string>::const_iterator iter = context->envs.begin();
-
-    while (iter != context->envs.end()) {
-        if (0 != ::setenv(iter->first.c_str(), iter->second.c_str(), 1)) {
-            // LOG
-            return -1;
-        }
-
-        iter++;
     }
 
     return context->routine(context->parameter);
