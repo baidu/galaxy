@@ -23,6 +23,9 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client list_agents -p pool\n"
                                  "      galaxy_res_client enter_safemode\n"
                                  "      galaxy_res_client leave_safemode\n"
+                                 "      galaxy_res_client online_agent -e endpoint\n"
+                                 "      galaxy_res_client offline_agent -e endpoint\n"
+                                 "      galaxy_res_client status\n"
                                  "Optionss: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -i specify container id.\n"
@@ -114,6 +117,8 @@ int main(int argc, char** argv) {
             return -1;
         }
         return resAction->OfflineAgent(FLAGS_e);
+    } else if (strcmp(argv[1], "status") == 0) {
+        return resAction->Status();
     } else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;

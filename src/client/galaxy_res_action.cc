@@ -242,7 +242,7 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
             pools += response.desc.pool_names[i] + ", ";
         }
         fprintf(stdout, "pool_names: %s\n", pools.c_str());
-        fprintf(stdout, "workspace_volum size: %d\n", response.desc.workspace_volum.size);
+        fprintf(stdout, "workspace_volum size: %ld\n", response.desc.workspace_volum.size);
         fprintf(stdout, "workspace_volum type: %d\n", response.desc.workspace_volum.type);
         fprintf(stdout, "workspace_volum medium: %d\n", response.desc.workspace_volum.medium);
         fprintf(stdout, "workspace_volum source_path: %s\n", response.desc.workspace_volum.source_path.c_str());
@@ -252,9 +252,9 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         fprintf(stdout, "workspace_volum use_symlink: %d\n", response.desc.workspace_volum.use_symlink);
 
         fprintf(stdout, "data_volums[]:\n");
-        for (size_t i = 0; i < response.desc.data_volums.size(); ++i) {
+        for (uint32_t i = 0; i < response.desc.data_volums.size(); ++i) {
             fprintf(stdout, "   data_volums[%u]\n", i);
-            fprintf(stdout, "   data_volum size: %d\n", response.desc.data_volums[i].size);
+            fprintf(stdout, "   data_volum size: %ld\n", response.desc.data_volums[i].size);
             fprintf(stdout, "   data_volum type: %d\n", response.desc.data_volums[i].type);
             fprintf(stdout, "   data_volum medium: %d\n", response.desc.data_volums[i].medium);
             fprintf(stdout, "   data_volum source_path: %s\n", response.desc.data_volums[i].source_path.c_str());
@@ -266,17 +266,17 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         }
         
         fprintf(stdout, "cgroups[]:\n");
-        for (size_t i = 0; i < response.desc.cgroups.size(); ++i) {
+        for (uint32_t i = 0; i < response.desc.cgroups.size(); ++i) {
             fprintf(stdout, "   cgroups[%u]\n", i);
             fprintf(stdout, "   cgroup id: %s\n", response.desc.cgroups[i].id.c_str());
-            fprintf(stdout, "   cgroup cpu millcores: %d\n", response.desc.cgroups[i].cpu.milli_core);
+            fprintf(stdout, "   cgroup cpu millcores: %ld\n", response.desc.cgroups[i].cpu.milli_core);
             fprintf(stdout, "   cgroup cpu excess: %d\n", response.desc.cgroups[i].cpu.excess);
-            fprintf(stdout, "   cgroup memory size: %d\n", response.desc.cgroups[i].memory.size);
+            fprintf(stdout, "   cgroup memory size: %ld\n", response.desc.cgroups[i].memory.size);
             fprintf(stdout, "   cgroup memory excess: %d\n", response.desc.cgroups[i].memory.excess);
 
-            fprintf(stdout, "   tcp_throt recv_bps_quota %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_quota);
+            fprintf(stdout, "   tcp_throt recv_bps_quota %ld:\n", response.desc.cgroups[i].tcp_throt.recv_bps_quota);
             fprintf(stdout, "   tcp_throt recv_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_excess);
-            fprintf(stdout, "   tcp_throt send_bps_quota %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_quota);
+            fprintf(stdout, "   tcp_throt send_bps_quota %ld:\n", response.desc.cgroups[i].tcp_throt.send_bps_quota);
             fprintf(stdout, "   tcp_throt send_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_excess);
 
             fprintf(stdout, "   blkio weight %d:\n", response.desc.cgroups[i].blkio.weight);
@@ -286,24 +286,24 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
 
                 
         fprintf(stdout, "containers[]:\n");
-        for (size_t i = 0; i < response.containers.size(); ++i) {
+        for (uint32_t i = 0; i < response.containers.size(); ++i) {
             fprintf(stdout, "   containers[%u]\n", i);
             fprintf(stdout, "   container status: %d\n", response.containers[i].status);
-            fprintf(stdout, "   container endpoint: %d\n", response.containers[i].endpoint.c_str());
-            fprintf(stdout, "   container cpu total: %d\n", response.containers[i].cpu.total);
-            fprintf(stdout, "   container cpu assigned: %d\n", response.containers[i].cpu.assigned);
-            fprintf(stdout, "   container cpu used: %d\n", response.containers[i].cpu.used);
-            fprintf(stdout, "   container mem total: %d\n", response.containers[i].memory.total);
-            fprintf(stdout, "   container mem assigned: %d\n", response.containers[i].memory.assigned);
-            fprintf(stdout, "   container mem used: %d\n", response.containers[i].memory.used);
+            fprintf(stdout, "   container endpoint: %s\n", response.containers[i].endpoint.c_str());
+            fprintf(stdout, "   container cpu total: %ld\n", response.containers[i].cpu.total);
+            fprintf(stdout, "   container cpu assigned: %ld\n", response.containers[i].cpu.assigned);
+            fprintf(stdout, "   container cpu used: %ld\n", response.containers[i].cpu.used);
+            fprintf(stdout, "   container mem total: %ld\n", response.containers[i].memory.total);
+            fprintf(stdout, "   container mem assigned: %ld\n", response.containers[i].memory.assigned);
+            fprintf(stdout, "   container mem used: %ld\n", response.containers[i].memory.used);
 
-            for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
+            for (uint32_t j = 0; j < response.containers[i].volums.size(); ++j) {
                 fprintf(stdout, "   container volums[%u]\n", j);
                 fprintf(stdout, "       container volum medium : %d\n", response.containers[i].volums[j].medium);
                 fprintf(stdout, "       container volum device_path : %s\n", response.containers[i].volums[j].device_path.c_str());
-                fprintf(stdout, "       container volum total: %d\n", response.containers[i].volums[j].volum.total);
-                fprintf(stdout, "       container volum assigned: %d\n", response.containers[i].volums[j].volum.assigned);
-                fprintf(stdout, "       container volum used: %d\n", response.containers[i].volums[j].volum.used);
+                fprintf(stdout, "       container volum total: %ld\n", response.containers[i].volums[j].volum.total);
+                fprintf(stdout, "       container volum assigned: %ld\n", response.containers[i].volums[j].volum.assigned);
+                fprintf(stdout, "       container volum used: %ld\n", response.containers[i].volums[j].volum.used);
             }
 
             fprintf(stdout, "\n");
@@ -529,7 +529,7 @@ bool ResAction::Status() {
     if (ret) {
         printf("cluster agent infomation\n");
         ::baidu::common::TPrinter agent(3); 
-        agent.AddRow(3, "agent total", "live count", "dead count");
+        agent.AddRow(3, "total", "alive", "dead");
         agent.AddRow(3, baidu::common::NumToString(response.total_agents).c_str(), 
                         baidu::common::NumToString(response.alive_agents).c_str(),
                         baidu::common::NumToString(response.dead_agents).c_str());
