@@ -4,7 +4,7 @@ package baidu.galaxy.proto;
 option cc_generic_services = true;
 
 message EnterSafeModeRequest {
-    optional string user = 1;
+    optional User user = 1;
 }
 
 message EnterSafeModeResponse {
@@ -12,7 +12,7 @@ message EnterSafeModeResponse {
 }
 
 message LeaveSafeModeRequest {
-    optional string user = 1;
+    optional User user = 1;
 }
 
 message LeaveSafeModeResponse {
@@ -103,7 +103,7 @@ message AgentStatistics {
     repeated string tags = 4;
     optional Resource cpu = 5;
     optional Resource memory = 6;
-    repeated VolumResource volum = 7;
+    repeated VolumResource volums = 7;
     optional uint32 total_containers = 8;
     
 }
@@ -236,7 +236,8 @@ message ShowUserResponse {
 
 message GrantUserRequest {
     optional User admin = 1;
-    optional Grant grant = 2;
+    optional User user = 2;
+    optional Grant grant = 3;
 }
 
 message GrantUserResponse {

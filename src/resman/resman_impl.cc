@@ -712,7 +712,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         agent_st->set_status(jt->second.status);
         agent_st->mutable_cpu()->CopyFrom(jt->second.info.cpu_resource());
         agent_st->mutable_memory()->CopyFrom(jt->second.info.memory_resource());
-        agent_st->mutable_volum()->CopyFrom(jt->second.info.volum_resources());
+        agent_st->mutable_volums()->CopyFrom(jt->second.info.volum_resources());
         agent_st->set_total_containers(jt->second.info.container_info().size());
     }
     response->mutable_error_code()->set_status(proto::kOk);
