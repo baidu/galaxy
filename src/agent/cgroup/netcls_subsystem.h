@@ -8,18 +8,17 @@
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
-
-class BlkioSubsystem : public Subsystem {
+class NetclsSubsystem : public Subsystem {
 public:
-    BlkioSubsystem();
-    ~BlkioSubsystem();
+    NetclsSubsystem();
+    ~NetclsSubsystem();
+
     std::string Name();
     int Construct();
     boost::shared_ptr<Subsystem> Clone();
     boost::shared_ptr<google::protobuf::Message> Status();
+    void PortRange(int* min_port, int* max_port);
 
-private:
-    int GetDeviceNum(const std::string& path, int& major, int& minor);
 };
 }
 }

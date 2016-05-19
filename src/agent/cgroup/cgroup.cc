@@ -33,12 +33,11 @@ int Cgroup::Construct() {
     assert(subsystem_.empty());
     std::vector<std::string> subsystems;
     factory_->GetSubsystems(subsystems);
-
     bool ok = true;
+
     for (size_t i = 0; i < subsystems.size(); i++) {
         boost::shared_ptr<Subsystem> ss = factory_->CreateSubsystem(subsystems[i]);
         assert(NULL != ss.get());
-
         ss->SetContainerId(container_id_);
         ss->SetCgroup(cgroup_);
 
@@ -51,16 +50,15 @@ int Cgroup::Construct() {
 
         if (0 != ss->Construct()) {
             LOG(WARNING) << "construct subsystem " << ss->Name().c_str()
-                << " for cgroup " << ss->Path().c_str()
-                << " failed";
-
+                         << " for cgroup " << ss->Path().c_str()
+                         << " failed";
             ok = false;
             break;
         }
 
-        VLOG(10) << "create subsystem " << ss->Name() 
-            << "(path: " << ss->Path() 
-            <<") successfully for container " << container_id_;
+        VLOG(10) << "create subsystem " << ss->Name()
+                 << "(path: " << ss->Path()
+                 << ") successfully for container " << container_id_;
     }
 
     if (!ok) {
@@ -68,12 +66,14 @@ int Cgroup::Construct() {
         for (size_t i = 0; i < subsystem_.size(); i++) {
             subsystem_[i]->Destroy();
         }
+
         subsystem_.clear();
 
         if (NULL != freezer_.get()) {
             freezer_->Destroy();
             freezer_.reset();
         }
+
         return -1;
     }
 
@@ -89,11 +89,12 @@ int Cgroup::Destroy() {
             ret = -1;
         }
     }
+
     subsystem_.clear();
 
     if (NULL !=  freezer_.get()) {
-         freezer_->Destroy();
-         freezer_.reset();
+        freezer_->Destroy();
+        freezer_.reset();
     }
 
     return ret;

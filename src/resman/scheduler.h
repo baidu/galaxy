@@ -54,6 +54,7 @@ enum AgentCommandAction {
 struct AgentCommand {
     AgentCommandAction action;
     ContainerId container_id;
+    ContainerGroupId container_group_id;
     proto::ContainerDescription desc;
 };
 

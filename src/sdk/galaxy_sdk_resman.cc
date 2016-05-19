@@ -174,7 +174,6 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
         container.replica = pb_container.replica();
         container.ready = pb_container.ready();
         container.pending = pb_container.pending();
-        //container.destroying = pb_container.destroying();
         container.cpu.total = pb_container.cpu().total();
         container.cpu.assigned = pb_container.cpu().assigned();
         container.cpu.used = pb_container.cpu().used();
@@ -307,11 +306,35 @@ bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgent
 }
 
 bool ResourceManager::OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::OnlineAgentRequest pb_request;
+    ::baidu::galaxy::proto::OnlineAgentResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::OnlineAgent, &pb_request, &pb_response, 5, 1);
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    return true;
 }
 
 bool ResourceManager::OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::OfflineAgentRequest pb_request;
+    ::baidu::galaxy::proto::OfflineAgentResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::OfflineAgent, &pb_request, &pb_response, 5, 1);
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    return true;
 }
 
 bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsResponse* response) {
