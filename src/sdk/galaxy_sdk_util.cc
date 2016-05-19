@@ -174,8 +174,6 @@ void FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
 void FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::VolumRequired* volum) {
     volum->set_size(sdk_volum.size);
 
-    ::baidu::galaxy::proto::VolumType type;
-    //VolumType_Parse("kEmptyDir", &type);
     if (sdk_volum.type == kEmptyDir) {
         volum->set_type(::baidu::galaxy::proto::kEmptyDir);
     } else if (sdk_volum.type == kHostDir) {
@@ -183,7 +181,6 @@ void FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::V
     }
 
     ::baidu::galaxy::proto::VolumMedium medium;
-    //VolumMedium_Parse(sdk_volum.medium, &medium);
     if (sdk_volum.medium == kSsd) {
         volum->set_medium(baidu::galaxy::proto::kSsd);
     } else if (sdk_volum.medium == kDisk) {
