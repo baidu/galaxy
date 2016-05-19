@@ -19,6 +19,12 @@ public:
     ~ContainerStatus();
     static void Setup();
 
+    // for test
+    void SetStatus(baidu::galaxy::proto::ContainerStatus cs) {
+        boost::mutex::scoped_lock lock(mutex_);
+        status_ = cs;
+    }
+
     baidu::galaxy::util::ErrorCode EnterAllocating();
     baidu::galaxy::util::ErrorCode EnterReady();
     baidu::galaxy::util::ErrorCode EnterError();

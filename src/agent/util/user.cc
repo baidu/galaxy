@@ -18,7 +18,8 @@ namespace baidu {
 namespace galaxy {
 namespace user {
 
-baidu::galaxy::util::ErrorCode Su(const std::string& user_name) {
+baidu::galaxy::util::ErrorCode Su(const std::string& user_name)
+{
     uid_t uid;
     gid_t gid;
     baidu::galaxy::util::ErrorCode ec = GetUidAndGid(user_name, &uid, &gid);
@@ -35,16 +36,20 @@ baidu::galaxy::util::ErrorCode Su(const std::string& user_name) {
         return PERRORCODE(-1, errno, "setuid %d failed", (int)uid);
     }
 
+
+
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode Chown(const std::string& file, const std::string& user) {
+baidu::galaxy::util::ErrorCode Chown(const std::string& file, const std::string& user)
+{
     //boost::filesystem::path path(file);
     //if (boost::)
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
+baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid)
+{
     // i can not get uid & gid by getpwnam_r after calling chroot, i donot know why
     std::ifstream in("/etc/passwd", std::ios::in);
 

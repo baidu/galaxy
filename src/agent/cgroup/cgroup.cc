@@ -8,6 +8,7 @@
 #include "freezer_subsystem.h"
 #include "protocol/galaxy.pb.h"
 
+#include <iostream>
 #include <glog/logging.h>
 
 namespace baidu {
@@ -15,24 +16,31 @@ namespace galaxy {
 namespace cgroup {
 
 Cgroup::Cgroup(const boost::shared_ptr<SubsystemFactory> factory) :
-    factory_(factory) {
+    factory_(factory)
+{
 }
 
-Cgroup::~Cgroup() {
+Cgroup::~Cgroup()
+{
 }
 
-void Cgroup::SetContainerId(const std::string& container_id) {
+void Cgroup::SetContainerId(const std::string& container_id)
+{
     container_id_ = container_id;
 }
 
-void Cgroup::SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup) {
+void Cgroup::SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup)
+{
     cgroup_ = cgroup;
 }
 
-int Cgroup::Construct() {
+int Cgroup::Construct()
+{
     assert(subsystem_.empty());
     std::vector<std::string> subsystems;
     factory_->GetSubsystems(subsystems);
+    assert(subsystems.size() > 0);
+
     bool ok = true;
 
     for (size_t i = 0; i < subsystems.size(); i++) {
@@ -56,9 +64,9 @@ int Cgroup::Construct() {
             break;
         }
 
-        VLOG(10) << "create subsystem " << ss->Name()
-                 << "(path: " << ss->Path()
-                 << ") successfully for container " << container_id_;
+        LOG(INFO) << "create subsystem " << ss->Name()
+                  << "(path: " << ss->Path()
+                  << ") successfully for container " << container_id_;
     }
 
     if (!ok) {
@@ -81,7 +89,8 @@ int Cgroup::Construct() {
 }
 
 // Fixme: freeze first, and than kill
-int Cgroup::Destroy() {
+int Cgroup::Destroy()
+{
     int ret = 0;
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
@@ -100,12 +109,14 @@ int Cgroup::Destroy() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> Cgroup::Report() {
+boost::shared_ptr<google::protobuf::Message> Cgroup::Report()
+{
     boost::shared_ptr<google::protobuf::Message> ret;
     return ret;
 }
 
-void Cgroup::ExportEnv(std::map<std::string, std::string>& env) {
+void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
+{
     for (size_t i = 0; i < subsystem_.size(); i++) {
         std::stringstream ss;
         ss << "baidu_galaxy_contianer_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
@@ -113,7 +124,8 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env) {
     }
 }
 
-std::string Cgroup::Id() {
+std::string Cgroup::Id()
+{
     return cgroup_->id();
 }
 

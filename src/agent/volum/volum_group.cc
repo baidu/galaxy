@@ -13,6 +13,7 @@
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "util/error_code.h"
+#include "util/path_tree.h"
 #include "boost/lexical_cast/lexical_cast_old.hpp"
 
 #include <glog/logging.h>
@@ -24,33 +25,40 @@ namespace baidu {
 namespace galaxy {
 namespace volum {
 VolumGroup::VolumGroup() :
-    gc_index_(-1) {
+    gc_index_(-1)
+{
 }
 
-VolumGroup::~VolumGroup() {
+VolumGroup::~VolumGroup()
+{
 }
 
-void VolumGroup::SetGcIndex(int gc_index) {
+void VolumGroup::SetGcIndex(int gc_index)
+{
     assert(gc_index >= 0);
     gc_index_ = gc_index;
 }
 
-void VolumGroup::AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum) {
+void VolumGroup::AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum)
+{
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum(new baidu::galaxy::proto::VolumRequired());
     volum->CopyFrom(data_volum);
     dv_description_.push_back(volum);
 }
 
-void VolumGroup::SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum) {
+void VolumGroup::SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum)
+{
     ws_description_.reset(new baidu::galaxy::proto::VolumRequired);
     ws_description_->CopyFrom(ws_volum);
 }
 
-void VolumGroup::SetContainerId(const std::string& container_id) {
+void VolumGroup::SetContainerId(const std::string& container_id)
+{
     container_id_ = container_id;
 }
 
-int VolumGroup::Construct() {
+int VolumGroup::Construct()
+{
     workspace_volum_ = Construct(this->ws_description_);
 
     if (NULL == workspace_volum_.get()) {
@@ -78,7 +86,8 @@ int VolumGroup::Construct() {
     return 0;
 }
 
-int VolumGroup::Destroy() {
+int VolumGroup::Destroy()
+{
     int ret = 0;
 
     for (size_t i = 0; i < data_volum_.size(); i++) {
@@ -90,7 +99,8 @@ int VolumGroup::Destroy() {
     return ret;
 }
 
-int VolumGroup::ExportEnv(std::map<std::string, std::string>& env) {
+int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
+{
     env["baidu_galaxy_container_workspace_path"] = workspace_volum_->Description()->dest_path();
     env["baidu_galaxy_container_workspace_abstargetpath"] = workspace_volum_->TargetPath();
     env["baidu_galaxy_container_workspace_abssourcepath"] = workspace_volum_->SourcePath();
@@ -98,12 +108,14 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env) {
     return 0;
 }
 
-boost::shared_ptr<google::protobuf::Message> VolumGroup::Report() {
+boost::shared_ptr<google::protobuf::Message> VolumGroup::Report()
+{
     boost::shared_ptr<google::protobuf::Message> ret;
     return ret;
 }
 
-boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp) {
+boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp)
+{
     assert(NULL != dp.get());
     assert(gc_index_ >= 0);
     boost::shared_ptr<Volum> volum = Volum::CreateVolum(dp);
@@ -124,10 +136,12 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
 }
 
 // FIX: a single class
-int VolumGroup::MountRootfs() {
+int VolumGroup::MountRootfs()
+{
     std::vector<std::string> vm;
     boost::algorithm::split(vm, FLAGS_mount_templat, boost::is_any_of(","));
-    std::string container_path = workspace_volum_->TargetPath();
+
+    std::string container_path = baidu::galaxy::path::ContainerRootPath(container_id_);
 
     for (size_t i = 0; i < vm.size(); i++) {
         if (vm[i].empty()) {
