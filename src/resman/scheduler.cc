@@ -1220,7 +1220,7 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
         
         std::map<proto::VolumMedium, int64_t>::iterator v_it;
         for (v_it = volum_assigned.begin(); v_it != volum_assigned.end(); v_it++) {
-            proto::VolumResource* volum_stat = group_stat.add_volum();
+            proto::VolumResource* volum_stat = group_stat.add_volums();
             proto::VolumMedium medium = v_it->first;
             int64_t assigned_size = v_it->second;
             int64_t used_size = volum_used[medium];
@@ -1275,7 +1275,7 @@ void Scheduler::GetContainersStatistics(const ContainerMap& containers_map,
         }
         std::map<proto::VolumMedium, int64_t>::iterator v_it;
         for (v_it = volum_assigned.begin(); v_it != volum_assigned.end(); v_it++) {
-            proto::VolumResource* volum_stat = container_stat.add_volum();
+            proto::VolumResource* volum_stat = container_stat.add_volums();
             proto::VolumMedium medium = v_it->first;
             int64_t assigned_size = v_it->second;
             int64_t used_size = volum_used[medium];

@@ -255,7 +255,7 @@ message JobDescription {
     optional uint32 priority = 2;
     optional string version = 3;
     optional Deploy deploy = 4;
-    optional PodDescription pod_desc = 5;
+    optional PodDescription pod = 5;
     optional string run_user = 6;
 }
 
@@ -380,7 +380,7 @@ message ContainerStatistics {
     optional string endpoint = 3;
     optional Resource cpu = 4;
     optional Resource memory = 5;
-    repeated VolumResource volum = 6; //different kinds of medium
+    repeated VolumResource volums = 6; //different kinds of medium
     optional ResourceError last_res_err = 7;
 }
 
@@ -394,7 +394,7 @@ message ContainerGroupStatistics {
     optional uint32 allocating = 7;
     optional Resource cpu = 8;
     optional Resource memory = 9;
-    repeated VolumResource volum = 10; //different kinds of medium
+    repeated VolumResource volums = 10; //different kinds of medium
     optional int64 submit_time = 11;
     optional int64 update_time = 12;
     optional string user_name = 13;
