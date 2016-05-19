@@ -28,8 +28,8 @@ public:
     bool ListAgents(const std::string& pool);
     bool EnterSafeMode();
     bool LeaveSafeMode();
-    bool OnlineAgent();
-    bool offlineAgent();
+    bool OnlineAgent(const std::string& endpoint);
+    bool OfflineAgent(const std::string& endpoint);
 
 private:
     bool Init();

@@ -492,7 +492,7 @@ bool ResAction::OnlineAgent(const std::string& endpoint) {
     return ret;
 
 }
-bool ResAction::offlineAgent(const std::string& endpoint) {
+bool ResAction::OfflineAgent(const std::string& endpoint) {
     if (endpoint.empty()) {
         return false;
     }
