@@ -35,6 +35,20 @@ enum Authority {
     // auhority
 }
 
+enum ResourceError {
+    kResOk = 0;
+    kNoCpu = 1;
+    kNoMemory = 2;
+    kNoMedium = 3;
+    kNoDevice = 4;
+    kNoPort = 5;
+    kPortConflict = 6;
+    kTagMismatch = 7;
+    kNoMemoryForTmpfs = 8;
+    kPoolMismatch = 9;
+    kTooManyPods = 10;
+}
+
 enum AuthorityAction {
     kActionAdd = 1;
     kActionRemove = 2;
@@ -365,6 +379,7 @@ message ContainerStatistics {
     optional Resource cpu = 4;
     optional Resource memory = 5;
     repeated VolumResource volum = 6; //different kinds of medium
+    optional ResourceError last_res_err = 7;
 }
 
 message ContainerGroupStatistics {
