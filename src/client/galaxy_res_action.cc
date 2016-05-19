@@ -468,6 +468,53 @@ bool ResAction::LeaveSafeMode() {
     return ret;
 }
 
+bool ResAction::OnlineAgent(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::OnlineAgentRequest request;
+    ::baidu::galaxy::sdk::OnlineAgentResponse response;
+    request.user = user_;
+    request.endpoint = endpoint; 
+
+    bool ret = resman_->OnlineAgent(request, &response);
+    if (ret) {
+        printf("Online agent successfully");
+    } else {
+        printf("Online agent failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+bool ResAction::offlineAgent(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::OfflineAgentRequest request;
+    ::baidu::galaxy::sdk::OfflineAgentResponse response;
+    request.user = user_;
+    request.endpoint = endpoint; 
+
+    bool ret = resman_->OfflineAgent(request, &response);
+    if (ret) {
+        printf("Offline agent successfully");
+    } else {
+        printf("Offline agent failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+}
 
 } // end namespace client
 } // end namespace galaxy

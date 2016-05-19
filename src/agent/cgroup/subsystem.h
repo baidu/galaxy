@@ -21,6 +21,9 @@ class Subsystem {
 public:
     Subsystem() {}
     virtual ~Subsystem() {}
+
+    static std::string RootPath(const std::string& name);
+
     Subsystem* SetContainerId(const std::string& container_id) {
         container_id_ = container_id;
         return this;
@@ -48,8 +51,8 @@ protected:
 
 };
 
-int Attach(const std::string& file, int64_t value);
-int Attach(const std::string& file, const std::string& value);
+int Attach(const std::string& file, int64_t value, bool append = false);
+int Attach(const std::string& file, const std::string& value, bool append = false);
 
 
 int64_t CfsToMilliCore(int64_t cfs);

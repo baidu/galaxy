@@ -101,7 +101,20 @@ int main(int argc, char** argv) {
         return resAction->EnterSafeMode();
     } else if (strcmp(argv[1], "leave_safemode") == 0) {
         return resAction->LeaveSafeMode();
-    }else {
+    } else if (strcmp(argv[1], "online_agent") == 0) {
+        if (FLAGS_e.empty()) {
+            fprintf(stderr, "-e is needed\n");
+            return -1;
+        }
+
+        return resAction->OnlineAgent();
+    } else if (strcmp(argv[1], "offline_agent") == 0)
+        if (FLAGS_e.empty()) {
+            fprintf(stderr, "-e is needed\n");
+            return -1;
+        }
+        return resAction->OfflineAgent();
+    } else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;
     }

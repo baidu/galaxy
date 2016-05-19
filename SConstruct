@@ -9,7 +9,7 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 env = Environment(
         CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', './thirdparty/rapidjson/include', 'src/utils'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem', 'common'],
+        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem', 'gtest', 'common'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
@@ -29,21 +29,27 @@ env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src
 env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
 
 env.Program('galaxy_res_client', Glob('src/client/galaxy_res_*.cc')
-            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_resman.cc', 
-            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc', 
+            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_resman.cc',
+            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
             'src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
 env.Program('galaxy_client', Glob('src/client/galaxy_job_*.cc')
-            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_appmaster.cc', 
-            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc', 
+            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_appmaster.cc',
+            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
             'src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
+#unittest
+agent_unittest_src=Glob('src/test_agent/*.cc')+ Glob('src/agent/*/*.cc') + ['src/agent/agent_flags.cc', 'src/protocol/galaxy.pb.cc']
+env.Program('agent_unittest', agent_unittest_src)
+
+cpu_tool_src = ['src/example/cpu_tool.cc']
+env.Program('cpu_tool', cpu_tool_src)
 
 #example
-test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc']
+test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc', 'src/agent/agent_flags.cc']
 env.Program('test_cpu_subsystem', test_cpu_subsystem_src)
 
-test_cgroup_src=Glob('src/agent/cgroup/*.cc') + ['src/example/test_cgroup.cc', 'src/protocol/galaxy.pb.cc']
+test_cgroup_src=Glob('src/agent/cgroup/*.cc') + ['src/example/test_cgroup.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc']
 env.Program('test_cgroup', test_cgroup_src)
 
 test_process_src=['src/example/test_process.cc', 'src/agent/container/process.cc']
@@ -59,4 +65,3 @@ test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_pa
 env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
-
