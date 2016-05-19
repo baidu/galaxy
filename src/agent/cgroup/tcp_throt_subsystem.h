@@ -16,7 +16,7 @@ public:
 
     std::string Name();
     int Construct();
-    boost::shared_ptr<google::protobuf::Message> Status();
+    baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     boost::shared_ptr<Subsystem> Clone();
 
 };

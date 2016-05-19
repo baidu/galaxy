@@ -9,8 +9,6 @@
 #include "boost/thread/thread_time.hpp"
 #include "boost/filesystem/operations.hpp"
 
-#include <stdio.h>
-
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
@@ -78,10 +76,10 @@ boost::shared_ptr<Subsystem> NetclsSubsystem::Clone() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> NetclsSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> sta;
-    return sta;
+baidu::galaxy::util::ErrorCode NetclsSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
+
 }
 }
 }
