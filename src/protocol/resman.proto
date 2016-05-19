@@ -236,7 +236,8 @@ message ShowUserResponse {
 
 message GrantUserRequest {
     optional User admin = 1;
-    optional Grant grant = 2;
+    optional User user = 2;
+    optional Grant grant = 3;
 }
 
 message GrantUserResponse {

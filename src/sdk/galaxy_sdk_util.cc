@@ -137,6 +137,35 @@ bool ContainerStatusSwitch(const ::baidu::galaxy::proto::ContainerStatus& pb_sta
     return true;
 }
 
+bool AuthoritySwitch(const ::baidu::galaxy::proto::Authority& pb_authority, ::baidu::galaxy::sdk::Authority* authority) {
+    switch(pb_authority) {
+    case ::baidu::galaxy::proto::kAuthorityCreateContainer:
+        *authority = kAuthorityCreateContainer;
+        break;
+    case ::baidu::galaxy::proto::kAuthorityRemoveContainer:
+        *authority = kAuthorityRemoveContainer;
+        break;
+    case ::baidu::galaxy::proto::kAuthorityUpdateContainer:
+        *authority = kAuthorityUpdateContainer;
+        break;
+    case ::baidu::galaxy::proto::kAuthorityListContainer:
+        *authority = kAuthorityListContainer;
+        break;
+    case ::baidu::galaxy::proto::kAuthoritySubmitJob:
+        *authority = kAuthoritySubmitJob;
+        break;
+    case ::baidu::galaxy::proto::kAuthorityUpdateJob:
+        *authority = kAuthorityUpdateJob;
+        break;
+    case ::baidu::galaxy::proto::kAuthorityListJobs:
+        *authority = kAuthorityListJobs;
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
 void FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
     user->set_user(sdk_user.user);
     user->set_token(sdk_user.token);

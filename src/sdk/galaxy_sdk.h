@@ -290,10 +290,11 @@ struct StatusResponse {
     uint32_t total_agents;
     Resource cpu;
     Resource memory;
-    VolumResource volum;
+    std::vector<VolumResource> volum;
     uint32_t total_groups;
     uint32_t total_containers;
     std::vector<PoolStatus> pools;
+    bool in_safe_mode;
 };
 
 struct AddAgentRequest {
@@ -439,6 +440,7 @@ struct ShowUserResponse {
 };
 struct GrantUserRequest {
     User admin;
+    User user;
     Grant grant;
 };
 struct GrantUserResponse {

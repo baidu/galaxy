@@ -90,7 +90,57 @@ bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSa
 }
 
 bool ResourceManager::Status(const StatusRequest& request, StatusResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::StatusRequest pb_request;
+    ::baidu::galaxy::proto::StatusResponse pb_response;
+
+    FillUser(request.user, pb_request.mutable_user());
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::Status, &pb_request, &pb_response, 5, 1);
+
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
+        return false;
+    }
+
+    response->alive_agents = pb_response.alive_agents();
+    response->dead_agents = pb_response.dead_agents();
+    response->total_agents = pb_response.total_agents();
+    response->total_groups = pb_response.total_groups();
+    response->total_containers = pb_response.total_containers();
+    response->in_safe_mode = pb_response.in_safe_mode();
+    
+    response->cpu.total = pb_response.cpu().total();
+    response->cpu.assigned = pb_response.cpu().assigned();
+    response->cpu.used = pb_response.cpu().used();
+    response->memory.total = pb_response.memory().total();
+    response->memory.assigned = pb_response.memory().assigned();
+    response->memory.used = pb_response.memory().used();
+        
+    for (int i = 0; i < pb_response.volum().size(); ++i) {
+        const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_response.volum(i);
+        VolumResource volum;
+        if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+            return false;
+        }
+        volum.volum.total = pb_volum.volum().total();
+        volum.volum.assigned = pb_volum.volum().assigned();
+        volum.volum.used = pb_volum.volum().used();
+        volum.device_path = pb_volum.device_path();
+        response->volum.push_back(volum);
+    }
+
+    for (int i = 0; i < pb_response.pools().size(); ++i) {
+        const ::baidu::galaxy::proto::PoolStatus& pb_status = pb_response.pools(i);
+        PoolStatus status;
+        status.name = pb_status.name();
+        status.total_agents = pb_status.total_agents();
+        status.alive_agents = pb_status.alive_agents();
+        response->pools.push_back(status);
+    }
+
+    return true;
 }
 
 bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response) {
@@ -391,59 +441,301 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
 }
 
 bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::CreateTagRequest pb_request;
+    ::baidu::galaxy::proto::CreateTagResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_tag(request.tag);
+    for(size_t i = 0; i < request.endpoint.size(); ++i) {
+        pb_request.add_endpoint(request.endpoint[i]);
+    }
+    
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::CreateTag, &pb_request, &pb_response, 5, 1);
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    return true;
 }
 
 bool ResourceManager::ListTags(const ListTagsRequest& request, ListTagsResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::ListTagsRequest  pb_request;
+    ::baidu::galaxy::proto::ListTagsResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListTags, &pb_request, &pb_response, 5, 1);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    for (int i = 0; i < pb_response.tags().size(); ++i) {
+        response->tags.push_back(pb_response.tags(i));
+    }
+
+    return true;
 }
 
 bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, ListAgentsByTagResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::ListAgentsByTagRequest  pb_request;
+    ::baidu::galaxy::proto::ListAgentsByTagResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_tag(request.tag);
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByTag, &pb_request, &pb_response, 5, 1);
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    for (int i = 0; i < pb_response.endpoint().size(); ++i) {
+        response->endpoint.push_back(pb_response.endpoint(i));
+    }
+
+    return true;
 }
 
 bool ResourceManager::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTagsByAgentResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::GetTagsByAgentRequest pb_request;
+    ::baidu::galaxy::proto::GetTagsByAgentResponse pb_response;
+    
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GetTagsByAgent, &pb_request, &pb_response, 5, 1);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    for (int i = 0; i < pb_response.tags().size(); ++i) {
+        response->tags.push_back(pb_response.tags(i));
+    }
+
+    return true;
 }
 
 bool ResourceManager::AddAgentToPool(const AddAgentToPoolRequest& request, AddAgentToPoolResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::AddAgentToPoolRequest pb_request;
+    ::baidu::galaxy::proto::AddAgentToPoolResponse pb_response;
+
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_pool(request.pool);
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AddAgentToPool, &pb_request, &pb_response, 5, 1);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    return true;
 }
 
 bool ResourceManager::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& request, RemoveAgentFromPoolResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::RemoveAgentFromPoolRequest pb_request;
+    ::baidu::galaxy::proto::RemoveAgentFromPoolResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveAgentFromPool, &pb_request, &pb_response, 5, 1);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    return true;
 }
 
 bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, ListAgentsByPoolResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::ListAgentsByPoolRequest pb_request;
+    ::baidu::galaxy::proto::ListAgentsByPoolResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByPool, &pb_request, &pb_response, 5, 1);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    for (int i = 0; i < pb_response.endpoint().size(); ++i) {
+        response->endpoint.push_back(pb_response.endpoint(i));
+    }
+    return true;
 }
 
 bool ResourceManager::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPoolByAgentResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::GetPoolByAgentRequest pb_request;
+    ::baidu::galaxy::proto::GetPoolByAgentResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GetPoolByAgent, &pb_request, &pb_response, 5, 1);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    response->pool = pb_response.pool();
+    return true;
 }
 
 bool ResourceManager::AddUser(const AddUserRequest& request, AddUserResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::AddUserRequest pb_request;
+    ::baidu::galaxy::proto::AddUserResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    FillUser(request.admin, pb_request.mutable_admin());
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AddUser, &pb_request, &pb_response, 5, 1);
+
+    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    return true;
 }
 
 bool ResourceManager::RemoveUser(const RemoveUserRequest& request, RemoveUserResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::RemoveUserRequest pb_request;
+    ::baidu::galaxy::proto::RemoveUserResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    FillUser(request.admin, pb_request.mutable_admin());
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveUser, &pb_request, &pb_response, 5, 1);
+
+    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    return true;
 }
 
 bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::ListUsersRequest pb_request;
+    ::baidu::galaxy::proto::ListUsersResponse pb_response;
+
+    FillUser(request.user, pb_request.mutable_user());
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListUsers, &pb_request, &pb_response, 5, 1);
+
+    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    for (int i = 0; i < pb_response.user().size(); ++i) {
+        response->user.push_back(pb_response.user(i));
+    }
+    return true;
 }
 
 bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::ShowUserRequest pb_request;
+    ::baidu::galaxy::proto::ShowUserResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    FillUser(request.admin, pb_request.mutable_admin());
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ShowUser, &pb_request, &pb_response, 5, 1);
+
+    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    for (int i = 0; i < pb_response.pools().size(); ++i) {
+        response->pools.push_back(pb_response.pools(i));
+    }
+    for (int i = 0; i < pb_response.authority().size(); ++i) {
+        Authority authority;
+        if (! AuthoritySwitch(pb_response.authority(i), &authority)) {
+            return false;
+        }
+        response->authority.push_back(authority);
+    }
+    response->quota.millicore = pb_response.quota().millicore();
+    response->quota.memory = pb_response.quota().memory();
+    response->quota.disk = pb_response.quota().disk();
+    response->quota.ssd = pb_response.quota().ssd();
+    response->quota.replica = pb_response.quota().replica();
+    
+    response->assigned.millicore = pb_response.assigned().millicore();
+    response->assigned.memory = pb_response.assigned().memory();
+    response->assigned.disk = pb_response.assigned().disk();
+    response->assigned.ssd = pb_response.assigned().ssd();
+    response->assigned.replica = pb_response.assigned().replica();
+
+    return true;
 }
 
 bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::GrantUserRequest pb_request;
+    ::baidu::galaxy::proto::GrantUserResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    FillUser(request.admin, pb_request.mutable_admin());
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GrantUser, &pb_request, &pb_response, 5, 1);
+
+    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    return true;
 }
 
 bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response) {
-    return false;
+    ::baidu::galaxy::proto::AssignQuotaRequest pb_request;
+    ::baidu::galaxy::proto::AssignQuotaResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    FillUser(request.admin, pb_request.mutable_admin());
+    ::baidu::galaxy::proto::Quota* quota = pb_request.mutable_quota();
+    quota->set_millicore(request.quota.millicore);
+    quota->set_memory(request.quota.memory);
+    quota->set_disk(request.quota.disk);
+    quota->set_ssd(request.quota.ssd);
+    quota->set_replica(request.quota.replica);
+
+    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AssignQuota, &pb_request, &pb_response, 5, 1);
+
+    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    return true;
 }
 
 } //namespace sdk
