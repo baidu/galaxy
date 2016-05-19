@@ -69,6 +69,24 @@ struct Requirement {
         }
         return total;
     }
+    int64_t DiskNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kDisk) {
+                total += volums[i].size();
+            }
+        }
+        return total;
+    }
+    int64_t SsdNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kSsd) {
+                total += volums[i].size();
+            }
+        }
+        return total;
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
@@ -112,6 +130,7 @@ struct ContainerGroup {
     int last_update_time;
     int replica;
     std::string name;
+    std::string user_name;
     proto::ContainerDescription container_desc;
     ContainerGroup() : terminated(false),
                        update_interval(0),
@@ -214,6 +233,7 @@ public:
                    std::vector<proto::ContainerStatistics>& containers);
     void GetContainersStatistics(const ContainerMap& containers_map,
                                  std::vector<proto::ContainerStatistics>& containers);
+    void ShowUserAlloc(const std::string& user_name, proto::Quota& alloc);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
