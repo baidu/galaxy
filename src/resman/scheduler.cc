@@ -63,12 +63,12 @@ void Agent::SetAssignment(int64_t cpu_assigned,
 bool Agent::TryPut(const Container* container, ResourceError& err) {
     if (!container->require->tag.empty() &&
         tags_.find(container->require->tag) == tags_.end()) {
-        err = kTagMismatch;
+        err = proto::kTagMismatch;
         return false;
     }
     if (container->require->pool_names.find(pool_name_) 
         == container->require->pool_names.end()) {
-        err = kPoolMismatch;
+        err = proto::kPoolMismatch;
         return false;
     }
 
@@ -78,18 +78,18 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         if (it != container_counts_.end()) {
             int cur_counts = it->second;
             if (cur_counts >= container->require->max_per_host) {
-                err = kTooManyPods;
+                err = proto::kTooManyPods;
                 return false;
             } 
         }
     }
 
     if (container->require->CpuNeed() + cpu_assigned_ > cpu_total_) {
-        err = kNoCpu;
+        err = proto::kNoCpu;
         return false;
     }
     if (container->require->MemoryNeed() + memory_assigned_ > memory_total_) {
-        err = kNoMemory;
+        err = proto::kNoMemory;
         return false;
     }
 
@@ -105,20 +105,20 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         }
     }
 
-    if (size_ramdisk + memory_assigned_ > memory_total_) {
-        err = kNoMemoryForTmpfs;
+    if (size_ramdisk + memory_assigned_ + container->require->MemoryNeed()> memory_total_) {
+        err = proto::kNoMemoryForTmpfs;
         return false;
     }
 
     std::vector<DevicePath> devices;
     if (!SelectDevices(volums_no_ramdisk, devices)) {
-        err = kNoDevice;
+        err = proto::kNoDevice;
         return false;
     }
 
     if (container->require->ports.size() + port_assigned_.size() 
         > port_total_) {
-        err = kNoPort;
+        err = proto::kNoPort;
         return false;
     }
 
@@ -126,7 +126,7 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     BOOST_FOREACH(const proto::PortRequired& port, ports) {
         if (port.port() != kDynamicPort
             && port_assigned_.find(port.port()) != port_assigned_.end()) {
-            err = kPortConflict;
+            err = proto::kPortConflict;
             return false;
         } 
     }
@@ -203,12 +203,16 @@ void Agent::Put(Container::Ptr container) {
     }
     //put on this agent succesfully
     container->allocated_agent = endpoint_;
-    container->last_res_err = kOk;
+    container->last_res_err = proto::kResOk;
     containers_[container->id] = container;
     container_counts_[container->container_group_id] += 1;
 }
 
 void Agent::Evict(Container::Ptr container) {
+    if (containers_.find(container->id) == containers_.end()) {
+        LOG(WARNING) << "invalid evict, no such container:" << container->id;
+        return;
+    }
     //cpu 
     cpu_assigned_ -= container->require->CpuNeed();
     assert(cpu_assigned_ >= 0);
@@ -299,7 +303,7 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
 
 
 Scheduler::Scheduler() : stop_(true) {
-
+    srand(time(NULL));
 }
 
 void Scheduler::SetRequirement(Requirement::Ptr require, 
@@ -339,7 +343,7 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             continue;
         }
         if (container_groups_.find(container_info.group_id()) == container_groups_.end()) {
-            LOG(WARNING) << "no such container group:" << container_info.group_id();
+            LOG(WARNING) << "add agent exception, no such container group:" << container_info.group_id();
             continue;
         }
         ContainerGroup::Ptr& container_group = container_groups_[container_info.group_id()];
@@ -443,7 +447,7 @@ void Scheduler::AddTag(const AgentEndpoint& endpoint, const std::string& tag) {
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
-        LOG(WARNING) << "no such agent:" << endpoint;
+        LOG(WARNING) << "add tag fail, no such agent:" << endpoint;
         return;
     }
     Agent::Ptr agent = it->second;
@@ -454,7 +458,7 @@ void Scheduler::RemoveTag(const AgentEndpoint& endpoint, const std::string& tag)
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
-        LOG(WARNING) << "no such agent:" << endpoint;
+        LOG(WARNING) << "remove tag fail, no such agent:" << endpoint;
         return;
     }
     Agent::Ptr agent = it->second;
@@ -465,7 +469,7 @@ void Scheduler::SetPool(const AgentEndpoint& endpoint, const std::string& pool_n
     MutexLock locker(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator it = agents_.find(endpoint);
     if (it == agents_.end()) {
-        LOG(WARNING) << "no such agent:" << endpoint;
+        LOG(WARNING) << "set pool fail, no such agent:" << endpoint;
         return;
     }
     Agent::Ptr agent = it->second;
@@ -691,7 +695,7 @@ void Scheduler::ChangeStatus(Container::Ptr container,
     ContainerGroupId container_group_id = container->container_group_id;
     std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
     if (it == container_groups_.end()) {
-        LOG(WARNING) << "no such container_group:" << container_group_id;
+        LOG(WARNING) << "change status fail, no such container_group:" << container_group_id;
         return;
     }
     ContainerGroup::Ptr container_group = it->second;
@@ -704,14 +708,13 @@ void Scheduler::ChangeStatus(ContainerGroup::Ptr container_group,
     mu_.AssertHeld();
     ContainerId container_id = container->id;
     if (container_group->containers.find(container_id) == container_group->containers.end()) {
-        LOG(WARNING) << "no such container id: " << container_id;
+        LOG(WARNING) << "change status fail, no such container id: " << container_id;
         return;
     }
     ContainerStatus old_status = container->status;
     container_group->states[old_status].erase(container_id);
     container_group->states[new_status][container_id] = container;
-    if ((new_status == kContainerPending || new_status == kContainerTerminated)
-        && container->allocated_agent != "") {
+    if (new_status == kContainerPending || new_status == kContainerTerminated) {
         std::map<AgentEndpoint, Agent::Ptr>::iterator it;
         it = agents_.find(container->allocated_agent);
         if (it != agents_.end()) {
@@ -778,12 +781,12 @@ bool Scheduler::CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container) 
     bool check_passed = true;
     if (!container->require->tag.empty()
         && agent->tags_.find(container->require->tag) == agent->tags_.end()) {
-        container->last_res_err = kTagMismatch;
+        container->last_res_err = proto::kTagMismatch;
         check_passed = false;
     }
     if (container->require->pool_names.find(agent->pool_name_) 
         == container->require->pool_names.end()) {
-        container->last_res_err = kPoolMismatch;
+        container->last_res_err = proto::kPoolMismatch;
         check_passed = false;
     }
     return check_passed;
@@ -797,7 +800,7 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
         ContainerGroupId container_group_id = container->container_group_id;
         std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
         if (it == container_groups_.end()) {
-            LOG(WARNING) << "no such container_group, so evict it" << container_group_id;
+            LOG(WARNING) << "check version exception, no such container_group, so evict it" << container_group_id;
             agent->Evict(container);
             continue;
         }
@@ -818,7 +821,7 @@ void Scheduler::CheckVersion(Agent::Ptr agent) {
 }
 
 void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
-    VLOG(16) << "scheduling the agent after: " << pre_endpoint;
+    VLOG(20) << "scheduling the agent after: " << pre_endpoint;
     Agent::Ptr agent;
     AgentEndpoint endpoint;
     MutexLock lock(&mu_);
@@ -870,18 +873,18 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
     std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator container_group_it;
     agent_it = agents_.find(endpoint);
     if (agent_it == agents_.end()) {
-        LOG(WARNING) << "no such agent:" << endpoint;
+        LOG(WARNING) << "manual scheduling fail, no such agent:" << endpoint;
         return false;
     }
     Agent::Ptr agent = agent_it->second;
     container_group_it = container_groups_.find(container_group_id);
     if (container_group_it == container_groups_.end()) {
-        LOG(WARNING) << "no such container_group:" << container_group_id;
+        LOG(WARNING) << "manual scheduling fail, no such container_group:" << container_group_id;
         return false;
     }
     ContainerGroup::Ptr container_group = container_group_it->second;
     if (container_group->states[kContainerPending].size() == 0) {
-        LOG(WARNING) << "no pending containers to put, " << container_group_id;
+        LOG(WARNING) << "manual scheduling exception, no pending containers to put, " << container_group_id;
         return false;
     }
     Container::Ptr container_manual = container_group->states[kContainerPending].begin()->second;
@@ -926,7 +929,7 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
     MutexLock locker(&mu_);
     std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
     if (it == container_groups_.end()) {
-        LOG(WARNING) << "no such container_group: " << container_group_id;
+        LOG(WARNING) << "update fail, no such container_group: " << container_group_id;
         return false;
     }
     ContainerGroup::Ptr container_group = it->second;
@@ -1008,13 +1011,14 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
         Container::Ptr container_local = pair.second;
         AgentCommand cmd;
         cmd.container_id = container_local->id;
+        cmd.container_group_id = container_local->container_group_id;
         ContainerStatus remote_st;
         remote_st = remote_status[container_local->id];
         ContainerGroup::Ptr container_group;
         if (container_groups_.find(container_local->container_group_id) != container_groups_.end()) {
             container_group = container_groups_[container_local->container_group_id];
         } else {
-            LOG(WARNING) << "no such container group: " << container_local->container_group_id;
+            LOG(WARNING) << "make commands exception, no such container group: " << container_local->container_group_id;
             agent->Evict(container_local);
             continue;
         }
@@ -1230,26 +1234,37 @@ bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
     std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
     it = container_groups_.find(container_group_id);
     if (it == container_groups_.end()) {
-        LOG(WARNING) << "no such container group: " << container_group_id;
+        LOG(WARNING) << "show container-group fail, no such container group: " << container_group_id;
         return false;
     }
     ContainerGroup::Ptr container_group = it->second;
-    BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
+    GetContainersStatistics(container_group->containers, containers);
+    return true;
+}
+
+void Scheduler::GetContainersStatistics(const ContainerMap& containers_map,
+                                        std::vector<proto::ContainerStatistics>& containers) {
+    mu_.AssertHeld();
+    BOOST_FOREACH(const ContainerMap::value_type& pair, containers_map) {
         Container::Ptr container = pair.second;
         proto::ContainerStatistics container_stat;
         container_stat.set_id(container->id);
         container_stat.set_status(container->status);
         container_stat.set_endpoint(container->allocated_agent);
+        container_stat.set_last_res_err(container->last_res_err);
         std::map<proto::VolumMedium, int64_t> volum_assigned;
         std::map<proto::VolumMedium, int64_t> volum_used;
         int64_t cpu_assigned = container->require->CpuNeed();
         int64_t cpu_used = container->remote_info.cpu_used();
         int64_t memory_assigned = container->require->MemoryNeed();
         int64_t memory_used = container->remote_info.memory_used();
-        for (int i = 0; i < container->remote_info.volum_used_size(); i++) {
-            proto::VolumMedium medium = container->remote_info.volum_used(i).medium();
-            int64_t as = container->remote_info.volum_used(i).assigned_size();
-            int64_t us = container->remote_info.volum_used(i).used_size();
+        for (size_t i = 0; i < container->require->volums.size(); i++) {
+            proto::VolumMedium medium = container->require->volums[i].medium();
+            int64_t as = container->require->volums[i].size();
+            int64_t us = 0;
+            if ((int)i < container->remote_info.volum_used_size()) {
+                us = container->remote_info.volum_used(i).used_size();
+            }
             volum_assigned[medium] += as;
             volum_used[medium] += us;
         }
@@ -1269,6 +1284,19 @@ bool Scheduler::ShowContainerGroup(const ContainerGroupId& container_group_id,
         container_stat.mutable_memory()->set_used(memory_used);  
         containers.push_back(container_stat);
     }
+}
+
+bool Scheduler::ShowAgent(const AgentEndpoint& endpoint,
+                          std::vector<proto::ContainerStatistics>& containers) {
+    MutexLock lock(&mu_);
+    std::map<AgentEndpoint, Agent::Ptr>::iterator agent_it;
+    agent_it = agents_.find(endpoint);
+    if (agent_it == agents_.end()) {
+        LOG(WARNING) << "fail to show agent, not exist: " << endpoint;
+        return false;
+    }
+    Agent::Ptr agent = agent_it->second;
+    GetContainersStatistics(agent->containers_, containers);
     return true;
 }
 
