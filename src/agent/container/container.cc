@@ -160,6 +160,23 @@ int Container::Construct_()
     }
 
     LOG(INFO) << "succed in creating cgroup for container " << id_.c_str();
+
+    volum_group_->SetContainerId(id_);
+    volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
+    volum_group_->SetGcIndex((int)time(NULL));
+
+    for (int i = 0; i < desc_.data_volums_size(); i++) {
+        volum_group_->AddDataVolum(desc_.data_volums(i));
+    }
+
+    if (0 != volum_group_->Construct()) {
+        LOG(WARNING) << "construct volum group failed";
+        return -1;
+    }
+
+    LOG(INFO) << "succed in constructing volum group";
+
+
     // clone
     LOG(INFO) << "to clone appwork process for container " << id_.c_str();
     std::string container_root_path = baidu::galaxy::path::ContainerRootPath(id_);
@@ -184,6 +201,8 @@ int Container::Construct_()
 
 int Container::Destroy_()
 {
+    // kill appwork
+
     // destroy cgroup
     for (size_t i = 0; i < cgroup_.size(); i++) {
         if (0 != cgroup_[i]->Destroy()) {
@@ -191,28 +210,17 @@ int Container::Destroy_()
         }
     }
 
+    // destroy volum
+    if (0 != volum_group_->Destroy()) {
+        return -1;
+    }
+    // mv to gc queue
+
     return 0;
 }
 
 int Container::RunRoutine(void*)
 {
-    // construct volum in child process
-    volum_group_->SetContainerId(id_);
-    volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
-    volum_group_->SetGcIndex((int)time(NULL));
-
-    for (int i = 0; i < desc_.data_volums_size(); i++) {
-        volum_group_->AddDataVolum(desc_.data_volums(i));
-    }
-
-    // mount volum
-    if (0 != volum_group_->Construct()) {
-        LOG(WARNING) << "construct volum group failed";
-        return -1;
-    }
-
-    LOG(INFO) << "succed in constructing volum group";
-
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
         std::cerr << "mount root fs failed" << std::endl;

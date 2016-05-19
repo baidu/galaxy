@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <iostream>
 
 DECLARE_string(mount_templat);
 
@@ -94,6 +95,10 @@ int VolumGroup::Destroy()
         if (0 != data_volum_[i]->Destroy()) {
             ret = -1;
         }
+    }
+
+    if (0 == ret) {
+        ret = workspace_volum_->Destroy();
     }
 
     return ret;

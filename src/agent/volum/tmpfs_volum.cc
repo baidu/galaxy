@@ -12,18 +12,21 @@
 #include <boost/filesystem/operations.hpp>
 
 #include <assert.h>
+#include <sys/mount.h>
 
 #include <sstream>
 
 namespace baidu {
 namespace galaxy {
 namespace volum {
-TmpfsVolum::TmpfsVolum() {
+TmpfsVolum::TmpfsVolum()
+{
 }
 
 TmpfsVolum::~TmpfsVolum() {}
 
-int TmpfsVolum::Construct() {
+int TmpfsVolum::Construct()
+{
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     assert(baidu::galaxy::proto::kTmpfs == vr->medium());
     // create target dir
@@ -58,16 +61,24 @@ int TmpfsVolum::Construct() {
     return 0;
 }
 
-int TmpfsVolum::Destroy() {
+int TmpfsVolum::Destroy()
+{
     // do nothing
+
+    baidu::galaxy::util::ErrorCode ec = Umount(this->TargetPath());
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "umount tmpfs falied:" << ec.Message();
+    }
+    return ec.Code();
+}
+
+int64_t TmpfsVolum::Used()
+{
     return 0;
 }
 
-int64_t TmpfsVolum::Used() {
-    return 0;
-}
-
-std::string TmpfsVolum::ToString() {
+std::string TmpfsVolum::ToString()
+{
     return "";
 }
 

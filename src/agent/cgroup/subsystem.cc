@@ -20,14 +20,16 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-std::string Subsystem::RootPath(const std::string& name) {
+std::string Subsystem::RootPath(const std::string& name)
+{
     boost::filesystem::path path(FLAGS_cgroup_root_path);
     path.append(name);
     path.append("galaxy");
     return path.string();
 }
 
-int Subsystem::Destroy() {
+int Subsystem::Destroy()
+{
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
@@ -39,16 +41,18 @@ int Subsystem::Destroy() {
     return boost::filesystem::exists(path, ec) ? -1 : 0;
 }
 
-std::string Subsystem::Path() {
+std::string Subsystem::Path()
+{
     std::string id = container_id_ + "_" + cgroup_->id();
     boost::filesystem::path path(Subsystem::RootPath(this->Name()));
     path.append(id);
     return path.string();
 }
 
-int Subsystem::Attach(pid_t pid) {
+int Subsystem::Attach(pid_t pid)
+{
     boost::filesystem::path proc_path(Path());
-    proc_path.append("cgroup.procs");
+    proc_path.append("tasks");
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(proc_path, ec)) {
@@ -58,7 +62,8 @@ int Subsystem::Attach(pid_t pid) {
     return baidu::galaxy::cgroup::Attach(proc_path.c_str(), int64_t(pid), true);
 }
 
-int Subsystem::GetProcs(std::vector<int>& pids) {
+int Subsystem::GetProcs(std::vector<int>& pids)
+{
     boost::filesystem::path proc_path(Path());
     proc_path.append("cgroup.procs");
     boost::system::error_code ec;
@@ -110,11 +115,13 @@ const static int64_t CFS_PERIOD = 100000L; // cpu.cfs_period_us
 const static int64_t CFS_SHARE = 1000L; // unit
 const static int64_t MILLI_CORE = 1000L; // unit
 
-int Attach(const std::string& file, int64_t value, bool append) {
+int Attach(const std::string& file, int64_t value, bool append)
+{
     return Attach(file, boost::lexical_cast<std::string>(value), append);
 }
 
-int Attach(const std::string& file, const std::string& value, bool append) {
+int Attach(const std::string& file, const std::string& value, bool append)
+{
     FILE* fd = NULL;
 
     if (append) {
@@ -137,7 +144,8 @@ int Attach(const std::string& file, const std::string& value, bool append) {
     return 0;
 }
 
-int64_t CfsToMilliCore(int64_t cfs) {
+int64_t CfsToMilliCore(int64_t cfs)
+{
     if (cfs <= 0) {
         return -1L;
     }
@@ -145,7 +153,8 @@ int64_t CfsToMilliCore(int64_t cfs) {
     return cfs * MILLI_CORE / CFS_PERIOD;
 }
 
-int64_t ShareToMilliCore(int64_t share) {
+int64_t ShareToMilliCore(int64_t share)
+{
     if (share <= 0) {
         return 0;
     }
@@ -153,7 +162,8 @@ int64_t ShareToMilliCore(int64_t share) {
     return share * MILLI_CORE / CFS_SHARE;
 }
 
-int64_t MilliCoreToCfs(int64_t millicore) {
+int64_t MilliCoreToCfs(int64_t millicore)
+{
     if (millicore <= 0) {
         return -1L;
     }
@@ -161,7 +171,8 @@ int64_t MilliCoreToCfs(int64_t millicore) {
     return millicore * CFS_PERIOD / MILLI_CORE;
 }
 
-int64_t MilliCoreToShare(int64_t millicore) {
+int64_t MilliCoreToShare(int64_t millicore)
+{
     if (millicore <= 0) {
         return 0L;
     }
