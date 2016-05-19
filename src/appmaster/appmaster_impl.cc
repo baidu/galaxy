@@ -85,12 +85,17 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         TaskDescription* task_desc = pod->add_tasks();
         task_desc->set_id("task-1");
         ImagePackage* image_package = task_desc->mutable_exe_package();
-        image_package->set_start_cmd("sleep 10");
+        image_package->set_start_cmd("sleep 10 && exit 1");
         image_package->set_stop_cmd("");
         Package* e_package = image_package->mutable_package();
-        e_package->set_source_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/rtg_galaxy_test/galaxy.tar.gz");
-        e_package->set_dest_path("./");
-        e_package->set_version("1");
+        e_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/rtg_galaxy_test/galaxy.tar.gz");
+        e_package->set_dst_path("galaxy.tar.gz");
+        e_package->set_version("123457");
+        DataPackage* data_package = task_desc->mutable_data_package();
+        Package* d_package = data_package->add_packages();
+        d_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/rtg_galaxy_test/galaxy");
+        d_package->set_dst_path("galaxy");
+        d_package->set_version("123456");
     }
     done->Run();
     return;

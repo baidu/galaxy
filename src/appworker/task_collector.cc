@@ -13,7 +13,8 @@ DECLARE_int32(task_collector_collect_interval);
 namespace baidu {
 namespace galaxy {
 
-TaskCollector::TaskCollector() : background_pool_(1) {
+TaskCollector::TaskCollector() :
+    background_pool_(1) {
 }
 
 TaskCollector::~TaskCollector() {

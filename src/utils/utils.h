@@ -25,11 +25,12 @@ std::string GenerateTaskId(const std::string& pod_id);
 
 namespace process {
 
-void GetProcessOpenFds(const pid_t pid, 
+void GetProcessOpenFds(const pid_t pid,
                        std::vector<int>* fd_vector);
 
-bool PrepareStdFds(const std::string& pwd, 
-                   int* stdout_fd, 
+bool PrepareStdFds(const std::string& pwd,
+                   const std::string& process_id,
+                   int* stdout_fd,
                    int* stderr_fd);
 
 void ReplaceEmptyChar(std::string& str);
@@ -82,9 +83,11 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path);
 
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number);
 
+bool GetFileMd5(const std::string& path, std::string& md5);
+
 }   // ending namespace file
 }   // ending namespace galaxy
 }   // ending namespace baidu
 
-#endif // BAIDU_GALAXY_UTILS_UTILS_H
 
+#endif // BAIDU_GALAXY_UTILS_UTILS_H

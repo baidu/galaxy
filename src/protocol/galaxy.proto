@@ -195,8 +195,8 @@ message TaskInfo {
 }
 
 message Package {
-    optional string source_path = 1; // support nfs/hdfs/ftp
-    optional string dest_path = 2;   // local path
+    optional string src_path = 1; // support nfs/hdfs/ftp
+    optional string dst_path = 2;   // local path
     optional string version = 3;
 }
 message ImagePackage {

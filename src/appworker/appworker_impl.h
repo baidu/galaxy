@@ -42,6 +42,7 @@ private:
 
 private:
     Mutex mutex_appworker_;
+    std::map<std::string, std::string> envs;
     std::string job_id_;
     std::string container_id_;
     std::string endpoint_;

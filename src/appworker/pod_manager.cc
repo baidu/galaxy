@@ -4,6 +4,8 @@
 
 #include "pod_manager.h"
 
+#include "stdlib.h"
+
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
@@ -12,7 +14,6 @@
 #include "protocol/appmaster.pb.h"
 
 DECLARE_string(appworker_container_id);
-DECLARE_int32(pod_manager_pod_max_fail_count);
 DECLARE_int32(pod_manager_check_pod_interval);
 DECLARE_int32(pod_manager_change_pod_status_interval);
 
@@ -20,9 +21,10 @@ namespace baidu {
 namespace galaxy {
 
 PodManager::PodManager() :
-        mutex_pod_manager_(),
-        pod_(NULL),
-        background_pool_(10) {
+    mutex_pod_manager_(),
+    pod_(NULL),
+    background_pool_(10) {
+
     background_pool_.DelayTask(
         FLAGS_pod_manager_check_pod_interval,
         boost::bind(&PodManager::LoopCheckPod, this)
@@ -88,7 +90,7 @@ void PodManager::LoopCheckPod() {
         int64_t disk = 0;
         int64_t ssd = 0;
         LOG(INFO)\
-            << "loop check pod, status: " << PodStatus_Name(pod_->status).c_str()\
+            << "loop check pod, status: " << PodStatus_Name(pod_->status)\
             << ", read_bytes_ps: " << read_bytes_ps\
             << ", read_io_ps: " << read_io_ps\
             << ", write_bytes_ps: " << write_bytes_ps\
@@ -145,11 +147,11 @@ int PodManager::DoDeployPod() {
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_->pod_id + "_" + boost::lexical_cast<std::string>(i);
         if (0 != task_manager_.DeployTask(task_id)) {
-            LOG(WARNING) << "create deploy process for task: " << task_id.c_str() << " fail";
+            LOG(WARNING) << "create deploy process for task: " << task_id << " fail";
             DoCleanPod();
             return -1;
         }
-        LOG(INFO) << "create deploy process for task: " << task_id.c_str() << " ok";
+        LOG(INFO) << "create deploy process for task: " << task_id << " ok";
     }
     return 0;
 }
@@ -212,7 +214,6 @@ void PodManager::ReadyPodCheck() {
 void PodManager::DeployingPodCheck() {
     mutex_pod_manager_.AssertHeld();
     int tasks_size = pod_->desc.tasks().size();
-    LOG(INFO) << "deploying pod check, total tasks size: " << tasks_size;
     TaskStatus task_status = proto::kTaskStarting;
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_->pod_id + "_" + boost::lexical_cast<std::string>(i);
@@ -220,8 +221,8 @@ void PodManager::DeployingPodCheck() {
         if (0 != task_manager_.CheckTask(task_id, task)) {
             return;
         }
-        LOG(INFO) << "task: " << task_id.c_str()\
-            << ", status: " << proto::TaskStatus_Name(task.status).c_str();
+        LOG(INFO) << "task: " << task_id\
+            << ", status: " << proto::TaskStatus_Name(task.status);
         if (task.status == proto::kTaskFailed) {
             task_status = proto::kTaskFailed;
             break;
@@ -245,7 +246,6 @@ void PodManager::DeployingPodCheck() {
 // if all created ok, pod status changed to running
 void PodManager::StartingPodCheck() {
     mutex_pod_manager_.AssertHeld();
-    LOG(INFO) << "starting pod check";
     if (0 == DoStartPod()) {
         LOG(INFO) << "pod status change to kPodRunning";
         pod_->status = proto::kPodRunning;
@@ -262,7 +262,6 @@ void PodManager::StartingPodCheck() {
 void PodManager::RunningPodCheck() {
     mutex_pod_manager_.AssertHeld();
     int tasks_size = pod_->desc.tasks().size();
-    LOG(INFO) << "running pod check, total tasks size: " << tasks_size;
     TaskStatus task_status = proto::kTaskFinished;
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_->pod_id + "_" + boost::lexical_cast<std::string>(i);
@@ -284,8 +283,8 @@ void PodManager::RunningPodCheck() {
             LOG(INFO) << "pod status change to kPodFinished";
             pod_->status = proto::kPodFinished;
         } else {
-            LOG(INFO) << "pod status change to kPodFinished";
-            pod_->status = proto::kPodFinished;
+            LOG(INFO) << "pod status change to kPodFailed";
+            pod_->status = proto::kPodFailed;
         }
     }
     return;
@@ -294,11 +293,6 @@ void PodManager::RunningPodCheck() {
 // clean all tasks and set pod status to kPodReady and increase fail_count
 void PodManager::FailedPodCheck() {
     mutex_pod_manager_.AssertHeld();
-    if (pod_->fail_count < FLAGS_pod_manager_pod_max_fail_count) {
-        LOG(INFO) << "failed pod check, clean all processes";
-        pod_->fail_count += 1;
-        pod_->status = proto::kPodReady;
-    }
     return;
 }
 

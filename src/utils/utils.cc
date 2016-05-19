@@ -134,6 +134,7 @@ bool GetCwd(std::string* dir) {
 }
 
 bool PrepareStdFds(const std::string& pwd,
+                   const::std::string& process_id,
                    int* stdout_fd,
                    int* stderr_fd) {
     if (stdout_fd == NULL || stderr_fd == NULL) {
@@ -143,8 +144,9 @@ bool PrepareStdFds(const std::string& pwd,
     baidu::galaxy::file::Mkdir(pwd);
     std::string now_str_time;
     GetStrFTime(&now_str_time);
-    pid_t pid = ::getpid();
-    std::string str_pid = boost::lexical_cast<std::string>(pid);
+//    pid_t pid = ::getpid();
+//    std::string str_pid = boost::lexical_cast<std::string>(pid);
+    std::string str_pid = process_id;
     std::string stdout_file = pwd + "/stdout_" + str_pid + "_" + now_str_time;
     std::string stderr_file = pwd + "/stderr_" + str_pid + "_" + now_str_time;
 
@@ -512,6 +514,11 @@ bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number) 
      }
      major_number = major(sb.st_dev);
      return true;
+}
+
+bool GetFileMd5(const std::string& path, std::string& md5) {
+    md5 = "123456";
+    return true;
 }
 
 }   // ending namespace file

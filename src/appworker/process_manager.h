@@ -7,6 +7,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 #include <thread_pool.h>
 #include <mutex.h>
@@ -25,26 +26,29 @@ struct Process {
     int32_t exit_code;
 };
 
+struct ProcessContext {
+    std::string process_id;
+    std::string cmd;
+    std::string work_dir;
+    std::vector<std::string> envs;
+    bool is_deploy;
+    virtual ~ProcessContext() {};
+};
+
+struct DownloadProcessContext : ProcessContext {
+    std::string src_path;
+    std::string dst_path;
+    std::string version;
+};
+
 class ProcessManager {
 public:
     ProcessManager();
     ~ProcessManager();
-    int CreateProcess(const std::string& process_id,
-                      const std::string& cmd,
-                      const std::string& path);
+    int CreateProcess(const ProcessContext* context);
+    int DeleteProcess(const std::string& process_id);
     int QueryProcess(const std::string& process_id, Process& process);
     void LoopWaitProcesses();
-
-//private:
-//    void GetStrFTime(std::string* time_str);
-//    bool PrepareStdFds(const std::string& pwd,
-//                       int* stdout_fd,
-//                       int* stderr_fd);
-//    void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir);
-//    void PrepareChildProcessEnvStep2(const int stdin_fd,
-//                                     const int stdout_fd,
-//                                     const int stderr_fd,
-//                                     const std::vector<int>& fd_vector);
 
 private:
     Mutex lock_;

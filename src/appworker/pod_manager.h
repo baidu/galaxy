@@ -24,7 +24,6 @@ struct Pod {
     std::string pod_id;
     PodDescription desc;
     PodStatus status;
-    int32_t fail_count;
 };
 
 class PodManager {

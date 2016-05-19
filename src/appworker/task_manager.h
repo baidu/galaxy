@@ -7,6 +7,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 #include <mutex.h>
 #include <thread_pool.h>
@@ -27,6 +28,8 @@ struct Task {
     std::string task_id;
     TaskDescription desc;
     TaskStatus status;
+    int32_t packages_size;
+    int32_t fail_retry_times;
 };
 
 class TaskManager {

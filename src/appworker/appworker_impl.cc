@@ -26,14 +26,15 @@ namespace baidu {
 namespace galaxy {
 
 AppWorkerImpl::AppWorkerImpl() :
-        mutex_appworker_(),
-        job_id_(FLAGS_appworker_job_id),
-        container_id_(FLAGS_appworker_container_id),
-        endpoint_(FLAGS_appworker_endpoint),
-        start_time_(),
-        nexus_(NULL),
-        appmaster_stub_(NULL),
-        backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
+    mutex_appworker_(),
+    job_id_(FLAGS_appworker_job_id),
+    container_id_(FLAGS_appworker_container_id),
+    endpoint_(FLAGS_appworker_endpoint),
+    start_time_(),
+    nexus_(NULL),
+    appmaster_stub_(NULL),
+    backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
+
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
     backgroud_pool_.DelayTask(
         FLAGS_appworker_fetch_task_interval,
@@ -57,6 +58,9 @@ void AppWorkerImpl::Start() {
     LOG(INFO) << "appworker start, job_id: " << job_id_.c_str()\
         << ", container_id: " << container_id_.c_str()\
         << ", endpoint: " << endpoint_.c_str();
+    // prepare envs
+    char* job_id = getenv("BAIDU_GALAXY_CONTAINERGROUP_ID");
+    LOG(WARNING) << "getenv job_id: " << job_id;
 }
 
 void AppWorkerImpl::UpdateAppMasterStub() {
