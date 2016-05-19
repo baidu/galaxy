@@ -50,61 +50,50 @@ TEST_F(TestNetclsSubsystem, Path) {
 
 TEST_F(TestNetclsSubsystem, Construct) {
     {
-    FLAGS_cgroup_root_path = "./";
-    boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup(new baidu::galaxy::proto::Cgroup);
-    cgroup->set_id("cgroup_id1");
-    
-    baidu::galaxy::proto::PortRequired* pr = cgroup->add_ports();
-    pr->set_port("1234");
-    pr->set_real_port("1234");
-    pr->set_port_name("port1");
-    
-    pr = cgroup->add_ports();
-    pr->set_port("1236");
-    pr->set_real_port("1236");
-    pr->set_port_name("port2");
-    
-    pr = cgroup->add_ports();
-    pr->set_port("1235");
-    pr->set_real_port("1235");
-    pr->set_port_name("port3");
-    
-    baidu::galaxy::cgroup::NetclsSubsystem ss;
-    ss.SetContainerId("container_id");
-    ss.SetCgroup(cgroup);
-    
-    int min_port;
-    int max_port;
-    ss.PortRange(&min_port, &max_port);
-    EXPECT_EQ(min_port, 1234);
-    EXPECT_EQ(max_port, 1236);
-    
-    EXPECT_EQ(0, ss.Construct());
-    EXPECT_EQ(0, ss.Construct());
-    //EXPECT_EQ(0, ss.Destroy());
-    //EXPECT_EQ(0, ss.Destroy());
-    }
-
-    {
         FLAGS_cgroup_root_path = "./";
         boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup(new baidu::galaxy::proto::Cgroup);
-        cgroup->set_id("cgroup_id2");
-
+        cgroup->set_id("cgroup_id1");
         baidu::galaxy::proto::PortRequired* pr = cgroup->add_ports();
         pr->set_port("1234");
         pr->set_real_port("1234");
         pr->set_port_name("port1");
-
+        pr = cgroup->add_ports();
+        pr->set_port("1236");
+        pr->set_real_port("1236");
+        pr->set_port_name("port2");
+        pr = cgroup->add_ports();
+        pr->set_port("1235");
+        pr->set_real_port("1235");
+        pr->set_port_name("port3");
         baidu::galaxy::cgroup::NetclsSubsystem ss;
         ss.SetContainerId("container_id");
         ss.SetCgroup(cgroup);
-
+        int min_port;
+        int max_port;
+        ss.PortRange(&min_port, &max_port);
+        EXPECT_EQ(min_port, 1234);
+        EXPECT_EQ(max_port, 1236);
+        EXPECT_EQ(0, ss.Construct());
+        EXPECT_EQ(0, ss.Construct());
+        //EXPECT_EQ(0, ss.Destroy());
+        //EXPECT_EQ(0, ss.Destroy());
+    }
+    {
+        FLAGS_cgroup_root_path = "./";
+        boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup(new baidu::galaxy::proto::Cgroup);
+        cgroup->set_id("cgroup_id2");
+        baidu::galaxy::proto::PortRequired* pr = cgroup->add_ports();
+        pr->set_port("1234");
+        pr->set_real_port("1234");
+        pr->set_port_name("port1");
+        baidu::galaxy::cgroup::NetclsSubsystem ss;
+        ss.SetContainerId("container_id");
+        ss.SetCgroup(cgroup);
         int min_port;
         int max_port;
         ss.PortRange(&min_port, &max_port);
         EXPECT_EQ(min_port, 1234);
         EXPECT_EQ(max_port, 1234);
-
         EXPECT_EQ(0, ss.Construct());
         EXPECT_EQ(0, ss.Construct());
         EXPECT_EQ(0, ss.Destroy());

@@ -16,7 +16,7 @@ public:
     std::string Name();
     int Construct();
     boost::shared_ptr<Subsystem> Clone();
-    boost::shared_ptr<google::protobuf::Message> Status();
+    baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     void PortRange(int* min_port, int* max_port);
 
 };

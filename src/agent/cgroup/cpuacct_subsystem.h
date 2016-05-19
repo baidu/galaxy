@@ -11,13 +11,13 @@ namespace galaxy {
 namespace cgroup {
 
 class CpuacctSubsystem : public Subsystem {
-    public:
-        CpuacctSubsystem();
-        ~CpuacctSubsystem();
-        std::string Name();
-        int Construct();
-        boost::shared_ptr<Subsystem> Clone();
-        boost::shared_ptr<google::protobuf::Message> Status();
+public:
+    CpuacctSubsystem();
+    ~CpuacctSubsystem();
+    std::string Name();
+    int Construct();
+    boost::shared_ptr<Subsystem> Clone();
+    baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
 };
 
 }

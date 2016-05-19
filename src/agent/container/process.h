@@ -40,9 +40,6 @@ public:
 
     // return pid of call process
     static pid_t SelfPid();
-    void AddEnv(const std::string& key, const std::string& value);
-    void AddEnv(const std::map<std::string, std::string>& env);
-    int  SetRunUser(const std::string& user);
 
     int RedirectStderr(const std::string& path);
     int RedirectStdout(const std::string& path);
@@ -61,6 +58,7 @@ private:
             routine(NULL),
             parameter(NULL) {
         }
+
     public:
         Process* self;
         int stdout_fd;
@@ -68,7 +66,6 @@ private:
         boost::function<int (void*)> routine;
         void* parameter;
         std::vector<int> fds;
-        std::map<std::string, std::string> envs;
     };
 
     static int CloneRoutine(void* self);
@@ -81,7 +78,6 @@ private:
     std::string _user_group;
     std::string stderr_path_;
     std::string stdout_path_;
-    std::map<std::string, std::string> env_;
 
 };
 

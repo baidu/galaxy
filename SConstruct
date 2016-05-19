@@ -24,7 +24,7 @@ env.Program('appworker', Glob('src/appworker/*.cc') + Glob('src/utils/*.cc')
             + ['src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc'])
 
 env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src/agent/*/*.cc')
-            + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc'])
+            + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/resman.pb.cc'])
 
 env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
 
