@@ -17,7 +17,8 @@
 namespace baidu {
 namespace galaxy {
 namespace volum {
-baidu::galaxy::util::ErrorCode MountProc(const std::string& target) {
+baidu::galaxy::util::ErrorCode MountProc(const std::string& target)
+{
     boost::filesystem::path path(target);
     boost::system::error_code ec;
 
@@ -36,7 +37,8 @@ baidu::galaxy::util::ErrorCode MountProc(const std::string& target) {
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target) {
+baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target)
+{
     boost::filesystem::path source_path(source);
     boost::system::error_code ec;
 
@@ -65,7 +67,8 @@ baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::st
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly) {
+baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly)
+{
     boost::system::error_code ec;
     boost::filesystem::path target_path(target);
 
@@ -88,7 +91,27 @@ baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t si
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode ListMounters(std::map<std::string, boost::shared_ptr<Mounter> >& mounters) {
+
+baidu::galaxy::util::ErrorCode Umount(const std::string& target_path)
+{
+    std::map<std::string, boost::shared_ptr<Mounter> > mounters;
+    ListMounters(mounters);
+    std::map<std::string, boost::shared_ptr<Mounter> >::iterator iter = mounters.find(target_path);
+
+    if (mounters.end() == iter) {
+        return ERRORCODE_OK;
+    }
+
+    if (0 != ::umount(target_path.c_str())) {
+        return PERRORCODE(-1, errno, "umount path %s failed", target_path.c_str());
+    }
+
+    return ERRORCODE_OK;
+
+}
+
+baidu::galaxy::util::ErrorCode ListMounters(std::map<std::string, boost::shared_ptr<Mounter> >& mounters)
+{
     std::ifstream inf("/proc/mounts", std::ios::in);
 
     if (!inf.is_open()) {

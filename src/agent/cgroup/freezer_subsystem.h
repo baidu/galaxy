@@ -16,6 +16,7 @@ public:
 
     int Freeze();
     int Thaw();
+    bool Empty();
 
     baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     boost::shared_ptr<Subsystem> Clone();

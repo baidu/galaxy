@@ -29,6 +29,9 @@ public:
     void AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum);
     void SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum);
     void SetContainerId(const std::string& container_id);
+    std::string Id() {
+        return container_id_;
+    }
 
     int Construct();
     int Destroy();

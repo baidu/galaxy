@@ -8,8 +8,10 @@
 #include "freezer_subsystem.h"
 #include "protocol/galaxy.pb.h"
 
-#include <iostream>
 #include <glog/logging.h>
+
+#include <sys/types.h>
+#include <signal.h>
 
 namespace baidu {
 namespace galaxy {
@@ -92,6 +94,25 @@ int Cgroup::Construct()
 int Cgroup::Destroy()
 {
     int ret = 0;
+
+    if (0 != freezer_->Freeze()) {
+        return -1;
+    }
+
+    std::vector<int> pids;
+    freezer_->GetProcs(pids);
+    for (size_t i = 0; i < pids.size(); i++) {
+        ::kill(pids[i], SIGKILL);
+    }
+
+    if (0 != freezer_->Thaw()) {
+        return -1;
+    }
+    pids.clear();
+    freezer_->GetProcs(pids);
+    if (pids.size() > 0) {
+        return -1;
+    }
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
         if (0 != subsystem_[i]->Destroy()) {
