@@ -36,8 +36,7 @@ int MemorySubsystem::Construct() {
     memory_limit_path.append("memory.limit_in_bytes");
 
     if (0 != baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(),
-            this->cgroup_->memory().size(), 
-            false)) {
+            this->cgroup_->memory().size(), false)) {
         return -1;
     }
 
@@ -63,9 +62,8 @@ int MemorySubsystem::Construct() {
     return 0;
 }
 
-boost::shared_ptr<google::protobuf::Message> MemorySubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> MemorySubsystem::Clone() {

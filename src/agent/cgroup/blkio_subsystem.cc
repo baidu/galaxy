@@ -54,9 +54,8 @@ boost::shared_ptr<Subsystem> BlkioSubsystem::Clone() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> BlkioSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode BlkioSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 int BlkioSubsystem::GetDeviceNum(const std::string& path, int& major, int& minor) {
