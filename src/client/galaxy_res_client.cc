@@ -5,8 +5,6 @@
 #include "galaxy_res_action.h"
 
 DEFINE_string(f, "", "specify config file");
-DEFINE_string(u, "", "specify username");
-DEFINE_string(t, "", "specify token");
 DEFINE_string(i, "", "specify container id");
 DEFINE_string(p, "", "specify agent pool");
 DEFINE_string(e, "", "specify agent endpoint");
@@ -15,20 +13,18 @@ DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "Usage:\n"
-                                 "      galaxy_res_client create_container -f <jobconfig> -u user -t token\n"
-                                 "      galaxy_res_client update_container -f <jobconfig> -i id -u user -t token\n"
-                                 "      galaxy_res_client remove_container -i id -u user -t token\n"
-                                 "      galaxy_res_client list_container -u user -t token\n"
-                                 "      galaxy_res_client show_container -i id -u user -t token\n"
-                                 "      galaxy_res_client add_agent -p pool -e endpoint-u user -t token\n"
-                                 "      galaxy_res_client remove_agent -e endpoint -u user -t token\n"
-                                 "      galaxy_res_client list_agents -p pool -u user -t token\n"
-                                 "      galaxy_res_client enter_safemode -u user -t token\n"
-                                 "      galaxy_res_client leave_safemode -u user -t token\n"
+                                 "      galaxy_res_client create_container -f <jobconfig>\n"
+                                 "      galaxy_res_client update_container -f <jobconfig> -i id\n"
+                                 "      galaxy_res_client remove_container -i id\n"
+                                 "      galaxy_res_client list_container\n"
+                                 "      galaxy_res_client show_container -i id\n"
+                                 "      galaxy_res_client add_agent -p pool -e endpoint\n"
+                                 "      galaxy_res_client remove_agent -e endpoint\n"
+                                 "      galaxy_res_client list_agents -p pool\n"
+                                 "      galaxy_res_client enter_safemode\n"
+                                 "      galaxy_res_client leave_safemode\n"
                                  "Optionss: \n"
                                  "      -f specify config file, job config file or label config file.\n"
-                                 "      -u specify username.\n"
-                                 "      -t specify token.\n"
                                  "      -i specify container id.\n"
                                  "      -p specify agent pool.\n"
                                  "      -e specify agent tag.\n";
@@ -43,13 +39,8 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    if (FLAGS_u.empty() || FLAGS_t.empty()) {
-        fprintf(stderr, "-u and -t are needed\n");
-        return -1;
-    }
-
     ::baidu::galaxy::client::ResAction* resAction = new 
-                ::baidu::galaxy::client::ResAction(FLAGS_u, FLAGS_t);
+                ::baidu::galaxy::client::ResAction();
     if (strcmp(argv[1], "create_container") == 0) {
         if (FLAGS_f.empty()) {
             fprintf(stderr, "-f is needed\n");

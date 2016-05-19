@@ -325,8 +325,9 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
 int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescription* task) {
     int ok = 0;
 
-    //task->id = MasterUtil::UUID();
-    task->id = "1";
+    time_t timestamp;
+    time(&timestamp);
+    task->id = baidu::common::NumToString(timestamp);
 
     if (!task_json.HasMember("cpu")) {
         fprintf(stderr, "cpu is required in task\n");
@@ -541,7 +542,7 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     }
     const rapidjson::Value& pod_json = doc["pod"];
 
-    ::baidu::galaxy::sdk::PodDescription& pod = job->pod_desc;
+    ::baidu::galaxy::sdk::PodDescription& pod = job->pod;
     
     ok = ParsePod(pod_json, &pod);
     return ok;

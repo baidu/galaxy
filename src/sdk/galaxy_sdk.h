@@ -6,7 +6,10 @@
 #include <string>
 #include <stdint.h>
 #include <vector>
-#include "protocol/appmaster.pb.h"
+#include "rpc/rpc_client.h"
+#include "ins_sdk.h"
+//#include "protocol/resman.pb.h"
+//#include "protocol/galaxy.pb.h"
 
 namespace baidu {
 namespace galaxy {
@@ -90,6 +93,7 @@ struct BlkioRequired {
 struct PortRequired {
     std::string port_name;
     std::string port;
+    std::string real_port;
 };
 enum VolumType {
     kEmptyDir=1,
@@ -178,7 +182,8 @@ struct JobDescription {
     JobType type;
     std::string version;
     Deploy deploy;
-    PodDescription pod_desc;
+    PodDescription pod;
+    std::string run_user;
 };
 struct Cgroup {
     std::string id;
@@ -186,6 +191,7 @@ struct Cgroup {
     MemoryRequired memory;
     TcpthrotRequired tcp_throt;
     BlkioRequired blkio;
+    std::vector<PortRequired> ports;
 };
 struct ContainerDescription {
     uint32_t priority;
@@ -203,9 +209,10 @@ enum ContainerStatus {
     kContainerPending=1,
     kContainerAllocating=2,
     kContainerReady=3,
-    kContainerError=4,
-    kContainerDestroying=5,
-    kContainerTerminated=6,
+     kContainerFinish = 4,      // finish , when appworker exit with code 0
+    kContainerError=5,
+    kContainerDestroying=6,
+    kContainerTerminated=7,
 };
 enum ContainerGroupStatus {
     kContainerGroupNormal=1,
@@ -224,8 +231,18 @@ struct ContainerInfo {
     uint32_t restart_counter;
 };
 enum Status {
-    kOk=1,
-    kStop=2,
+   kOk = 1,
+   kError = 2,
+   kTerminate = 3,
+   kAddAgentFail = 4,
+   kDeny = 5,
+   kJobNotFound = 6,
+   kCreateContainerGroupFail = 7,
+   kRemoveContainerGroupFail = 8,
+   kUpdateContainerGroupFail = 9,
+   kRemoveAgentFail = 10,
+   kCreateTagFail = 11,
+   kAddAgentToPoolFail = 12,
 };
 struct ErrorCode {
     Status status;
@@ -247,13 +264,13 @@ struct AgentInfo {
 };
 
 struct EnterSafeModeRequest {
-    std::string user;
+    User user;
 };
 struct EnterSafeModeResponse {
     ErrorCode error_code;
 };
 struct LeaveSafeModeRequest {
-    std::string user;
+    User user;
 };
 struct LeaveSafeModeResponse {
     ErrorCode error_code;
@@ -319,7 +336,7 @@ struct AgentStatistics {
     std::vector<std::string> tags;
     Resource cpu;
     Resource memory;
-    VolumResource volum;
+    std::vector<VolumResource> volums;
     uint32_t total_containers;
 };
 struct ListAgentsResponse {
@@ -472,8 +489,8 @@ struct ContainerGroupStatistics {
     uint32_t pending;
     uint32_t destroying;
     Resource cpu;
-    Resource memroy;
-    VolumResource volum;
+    Resource memory;
+    std::vector<VolumResource> volums;
     int64_t submit_time;
     int64_t update_time;
 };
@@ -489,8 +506,8 @@ struct ContainerStatistics {
     ContainerStatus status;
     std::string endpoint;
     Resource cpu;
-    Resource memroy;
-    VolumResource volum;
+    Resource memory;
+    std::vector<VolumResource> volums;
 };
 struct ShowContainerGroupResponse {
     ErrorCode error_code;
@@ -586,65 +603,6 @@ struct StopJobRequest {
 };
 struct StopJobResponse {
     ErrorCode error_code;
-};
-
-class ResourceManager {
-public:
-    explicit ResourceManager(const std::string& nexus_root) ;
-    ~ResourceManager();
-    bool GetStub();
-    bool Login(const std::string& user, const std::string& password);
-    bool EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response);
-    bool LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response);
-    bool Status(const StatusRequest& request, StatusResponse* response);
-    bool CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response);
-    bool RemoveContainerGroup(const RemoveContainerGroupRequest& request, RemoveContainerGroupResponse* response);
-    bool UpdateContainerGroup(const UpdateContainerGroupRequest& request, UpdateContainerGroupResponse* response);
-    bool ListContainerGroups(const ListContainerGroupsRequest& request, ListContainerGroupsResponse* response);
-    bool ShowContainerGroup(const ShowContainerGroupRequest& request, ShowContainerGroupResponse* response);
-    bool AddAgent(const AddAgentRequest& request, AddAgentResponse* response);
-    bool RemoveAgent(const RemoveAgentRequest& request, RemoveAgentResponse* response);
-    bool OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response);
-    bool OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response);
-    bool ListAgents(const ListAgentsRequest& request, ListAgentsResponse* response);
-    bool CreateTag(const CreateTagRequest& request, CreateTagResponse* response);
-    bool ListTags(const ListTagsRequest& request, ListTagsResponse* response);
-    bool ListAgentsByTag(const ListAgentsByTagRequest& request, ListAgentsByTagResponse* response);
-    bool GetTagsByAgent(const GetTagsByAgentRequest& request, GetTagsByAgentResponse* response);
-    bool AddAgentToPool(const AddAgentToPoolRequest& request, AddAgentToPoolResponse* response);
-    bool RemoveAgentFromPool(const RemoveAgentFromPoolRequest& request, RemoveAgentFromPoolResponse* response);
-    bool ListAgentsByPool(const ListAgentsByPoolRequest& request, ListAgentsByPoolResponse* response);
-    bool GetPoolByAgent(const GetPoolByAgentRequest& request, GetPoolByAgentResponse* response);
-    bool AddUser(const AddUserRequest& request, AddUserResponse* response);
-    bool RemoveUser(const RemoveUserRequest& request, RemoveUserResponse* response);
-    bool ListUsers(const ListUsersRequest& request, ListUsersResponse* response);
-    bool ShowUser(const ShowUserRequest& request, ShowUserResponse* response);
-    bool GrantUser(const GrantUserRequest& request, GrantUserResponse* response);
-    bool AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response);
-private:
-    ::galaxy::ins::sdk::InsSDK* nexus_;
-    RpcClient* rpc_client_;
-    ::proto::ResMan_Stub* res_stub_;
-    std::string full_key_;
-};
-
-class AppMaster {
-public:
-    explicit AppMaster(const std::string& nexus_root);
-    ~AppMaster();
-    bool GetStub();
-    bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response);
-    bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response);
-    bool StopJob(const StopJobRequest& request, StopJobResponse* response);
-    bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response);
-    bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response);
-    bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response);
-    bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response);
-private:
-    ::galaxy::ins::sdk::InsSDK* nexus_;
-    ::proto::AppMaster_Stub* appmaster_stub_;
-    RpcClient* rpc_client_;
-    std::string full_key_;
 };
 
 } //namespace sdk

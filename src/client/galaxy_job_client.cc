@@ -5,8 +5,6 @@
 #include "galaxy_job_action.h"
 
 DEFINE_string(f, "", "specify config file");
-DEFINE_string(u, "", "specify username");
-DEFINE_string(t, "", "specify token");
 DEFINE_string(i, "", "specify job id");
 DEFINE_string(c, "", "specify cmd");
 
@@ -14,18 +12,16 @@ DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "galaxy.\n"
                                  "Usage:\n"
-                                 "      galaxy submit -f <jobconfig> -u user -t token\n"
-                                 "      galaxy update -f <jobconfig> -i id -u user -t token\n"
-                                 "      galaxy remove -i id -u user -t token\n"
-                                 "      galaxy stop -u user -t token\n"
-                                 "      galaxy remove -i id -u user -t token\n"
-                                 "      galaxy list -p pool -e endpoint-u user -t token\n"
-                                 "      galaxy show -e endpoint -u user -t token\n"
-                                 "      galaxy exec -p pool -u user -t token\n"
+                                 "      galaxy submit -f <jobconfig>\n"
+                                 "      galaxy update -f <jobconfig> -i id\n"
+                                 "      galaxy remove -i id\n"
+                                 "      galaxy stop -i id\n"
+                                 "      galaxy remove -i id\n"
+                                 "      galaxy list -p pool -e endpoint\n"
+                                 "      galaxy show -e endpoint\n"
+                                 "      galaxy exec -p pool\n"
                                  "Optionss: \n"
                                  "      -f specify config file, job config file or label config file.\n"
-                                 "      -u specify username.\n"
-                                 "      -t specify token.\n"
                                  "      -c specify cmd.\n"
                                  "      -i specify job id.\n";
 
@@ -39,13 +35,8 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    if (FLAGS_u.empty() || FLAGS_t.empty()) {
-        fprintf(stderr, "-u and -t are needed\n");
-        return -1;
-    }
-
     ::baidu::galaxy::client::JobAction* jobAction = new 
-                ::baidu::galaxy::client::JobAction(FLAGS_u, FLAGS_t);
+                ::baidu::galaxy::client::JobAction();
     if (strcmp(argv[1], "create") == 0) {
         if (FLAGS_f.empty()) {
             fprintf(stderr, "-f is needed\n");

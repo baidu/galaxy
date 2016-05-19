@@ -26,83 +26,83 @@ int main(int argc, char** argv) {
 
     std::cout << "  pod: " << std::endl;
     std::cout << "      workspace_volum: " << std::endl;
-    std::cout << "          size: " << job.pod_desc.workspace_volum.size << std::endl;
-    std::cout << "          type: " << job.pod_desc.workspace_volum.type << std::endl;
-    std::cout << "          medium: " << job.pod_desc.workspace_volum.medium << std::endl;
-    std::cout << "          source_path: " << job.pod_desc.workspace_volum.source_path << std::endl;
-    std::cout << "          dest_path: " << job.pod_desc.workspace_volum.dest_path << std::endl;
-    std::cout << "          readonly: " << job.pod_desc.workspace_volum.readonly << std::endl;
-    std::cout << "          exclusive: " << job.pod_desc.workspace_volum.exclusive << std::endl;
-    std::cout << "          use_symlink: " << job.pod_desc.workspace_volum.use_symlink << std::endl;
+    std::cout << "          size: " << job.pod.workspace_volum.size << std::endl;
+    std::cout << "          type: " << job.pod.workspace_volum.type << std::endl;
+    std::cout << "          medium: " << job.pod.workspace_volum.medium << std::endl;
+    std::cout << "          source_path: " << job.pod.workspace_volum.source_path << std::endl;
+    std::cout << "          dest_path: " << job.pod.workspace_volum.dest_path << std::endl;
+    std::cout << "          readonly: " << job.pod.workspace_volum.readonly << std::endl;
+    std::cout << "          exclusive: " << job.pod.workspace_volum.exclusive << std::endl;
+    std::cout << "          use_symlink: " << job.pod.workspace_volum.use_symlink << std::endl;
 
-    std::cout << "      data_volum: " << job.pod_desc.data_volums.size() << std::endl;
-    for (size_t i = 0; i< job.pod_desc.data_volums.size(); ++i) {
+    std::cout << "      data_volum: " << job.pod.data_volums.size() << std::endl;
+    for (size_t i = 0; i< job.pod.data_volums.size(); ++i) {
         std::cout << "          data_volums No." << i << std::endl;
-        std::cout << "              size: " << job.pod_desc.data_volums[i].size << std::endl;
-        std::cout << "              type: " << job.pod_desc.data_volums[i].type << std::endl;
-        std::cout << "              medium: " << job.pod_desc.data_volums[i].medium << std::endl;
-        std::cout << "              source_path: " << job.pod_desc.data_volums[i].source_path << std::endl;
-        std::cout << "              dest_path: " << job.pod_desc.data_volums[i].dest_path << std::endl;
-        std::cout << "              readonly: " << job.pod_desc.data_volums[i].readonly << std::endl;
-        std::cout << "              exclusive: " << job.pod_desc.data_volums[i].exclusive << std::endl;
-        std::cout << "              use_symlink: " << job.pod_desc.data_volums[i].use_symlink << std::endl;
+        std::cout << "              size: " << job.pod.data_volums[i].size << std::endl;
+        std::cout << "              type: " << job.pod.data_volums[i].type << std::endl;
+        std::cout << "              medium: " << job.pod.data_volums[i].medium << std::endl;
+        std::cout << "              source_path: " << job.pod.data_volums[i].source_path << std::endl;
+        std::cout << "              dest_path: " << job.pod.data_volums[i].dest_path << std::endl;
+        std::cout << "              readonly: " << job.pod.data_volums[i].readonly << std::endl;
+        std::cout << "              exclusive: " << job.pod.data_volums[i].exclusive << std::endl;
+        std::cout << "              use_symlink: " << job.pod.data_volums[i].use_symlink << std::endl;
     }
 
-    std::cout << "      tasks: " << job.pod_desc.tasks.size() << std::endl;
-    for (size_t i = 0; i < job.pod_desc.tasks.size(); ++i) {
+    std::cout << "      tasks: " << job.pod.tasks.size() << std::endl;
+    for (size_t i = 0; i < job.pod.tasks.size(); ++i) {
         std::cout << "          task No." << i << std::endl;
-        std::cout << "              id: " << job.pod_desc.tasks[i].id << std::endl;
+        std::cout << "              id: " << job.pod.tasks[i].id << std::endl;
         std::cout << "              cpu: " << std::endl;
-        std::cout << "                  millicores: " << job.pod_desc.tasks[i].cpu.milli_core << std::endl;
-        std::cout << "                  excess: " << job.pod_desc.tasks[i].cpu.excess << std::endl;
+        std::cout << "                  millicores: " << job.pod.tasks[i].cpu.milli_core << std::endl;
+        std::cout << "                  excess: " << job.pod.tasks[i].cpu.excess << std::endl;
         std::cout << "              mem: " << std::endl;
-        std::cout << "                  size: " << job.pod_desc.tasks[i].memory.size << std::endl;
-        std::cout << "                  excess: " << job.pod_desc.tasks[i].memory.excess << std::endl;
+        std::cout << "                  size: " << job.pod.tasks[i].memory.size << std::endl;
+        std::cout << "                  excess: " << job.pod.tasks[i].memory.excess << std::endl;
 
-        std::cout << "              ports: " << job.pod_desc.tasks[i].ports.size()<< std::endl;
-        for (size_t j = 0; j < job.pod_desc.tasks[i].ports.size(); ++j) {
+        std::cout << "              ports: " << job.pod.tasks[i].ports.size()<< std::endl;
+        for (size_t j = 0; j < job.pod.tasks[i].ports.size(); ++j) {
             std::cout << "              port No." << i << std::endl;
-            std::cout << "                  port_name: " << job.pod_desc.tasks[i].ports[j].port_name << std::endl;
-            std::cout << "                  port: " << job.pod_desc.tasks[i].ports[j].port << std::endl;
+            std::cout << "                  port_name: " << job.pod.tasks[i].ports[j].port_name << std::endl;
+            std::cout << "                  port: " << job.pod.tasks[i].ports[j].port << std::endl;
         }
 
         std::cout << "              exe_package: " << std::endl;
         std::cout << "                  start_cmd: " 
-                  << job.pod_desc.tasks[i].exe_package.start_cmd << std::endl;
+                  << job.pod.tasks[i].exe_package.start_cmd << std::endl;
         std::cout << "                  stop_cmd: " 
-                  << job.pod_desc.tasks[i].exe_package.stop_cmd << std::endl;
+                  << job.pod.tasks[i].exe_package.stop_cmd << std::endl;
         std::cout << "                  source_path: " 
-                  << job.pod_desc.tasks[i].exe_package.package.source_path << std::endl;
+                  << job.pod.tasks[i].exe_package.package.source_path << std::endl;
         std::cout << "                  dest_path: " 
-                  << job.pod_desc.tasks[i].exe_package.package.dest_path << std::endl;
+                  << job.pod.tasks[i].exe_package.package.dest_path << std::endl;
         std::cout << "                  version: " 
-                  << job.pod_desc.tasks[i].exe_package.package.version << std::endl;
+                  << job.pod.tasks[i].exe_package.package.version << std::endl;
 
         std::cout << "              data_package: " << std::endl;
         std::cout << "                  reload_cmd: " 
-                  << job.pod_desc.tasks[i].data_package.reload_cmd << std::endl;
+                  << job.pod.tasks[i].data_package.reload_cmd << std::endl;
         std::cout << "                  packages: " 
-                  << job.pod_desc.tasks[i].data_package.packages.size() << std::endl;
-        for (size_t j = 0; j < job.pod_desc.tasks[i].data_package.packages.size(); ++j) {
+                  << job.pod.tasks[i].data_package.packages.size() << std::endl;
+        for (size_t j = 0; j < job.pod.tasks[i].data_package.packages.size(); ++j) {
             std::cout << "                  package No." << i << std::endl;
             std::cout << "                      source_path:" 
-                      << job.pod_desc.tasks[i].data_package.packages[j].source_path << std::endl;
+                      << job.pod.tasks[i].data_package.packages[j].source_path << std::endl;
             std::cout << "                      dest_path:" 
-                      << job.pod_desc.tasks[i].data_package.packages[j].dest_path << std::endl;
+                      << job.pod.tasks[i].data_package.packages[j].dest_path << std::endl;
             std::cout << "                      version:" 
-                      << job.pod_desc.tasks[i].data_package.packages[j].version << std::endl;
+                      << job.pod.tasks[i].data_package.packages[j].version << std::endl;
         }
         
         std::cout << "              services: " 
-                  << job.pod_desc.tasks[i].services.size() << std::endl;
-        for (size_t j = 0; j < job.pod_desc.tasks[i].services.size(); ++j) {
+                  << job.pod.tasks[i].services.size() << std::endl;
+        for (size_t j = 0; j < job.pod.tasks[i].services.size(); ++j) {
             std::cout << "                  service No." << i << std::endl;
             std::cout << "                      service_name:" 
-                      << job.pod_desc.tasks[i].services[j].service_name << std::endl;
+                      << job.pod.tasks[i].services[j].service_name << std::endl;
             std::cout << "                      port_name:" 
-                      << job.pod_desc.tasks[i].services[j].port_name  << std::endl;
+                      << job.pod.tasks[i].services[j].port_name  << std::endl;
             std::cout << "                      use_bns:" 
-                      << job.pod_desc.tasks[i].services[j].use_bns << std::endl;
+                      << job.pod.tasks[i].services[j].use_bns << std::endl;
         }
 
     }

@@ -16,7 +16,7 @@ namespace client {
 class JobAction {
 
 public:
-    explicit JobAction(const std::string& name, const std::string& token);
+    JobAction();
     ~JobAction();
     bool SubmitJob(const std::string& json_file);
     bool UpdateJob(const std::string& json_file, const std::string& jobid);

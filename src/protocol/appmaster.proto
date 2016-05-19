@@ -90,8 +90,8 @@ message ShowJobResponse {
 //ignore exec
 message ExecuteCmdRequest {
     optional User user = 1;
-    optional string jobid = 1;
-    optional string cmd = 2;
+    optional string jobid = 2;
+    optional string cmd = 3;
 }
 
 message ExecuteCmdResponse {
