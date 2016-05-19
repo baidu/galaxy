@@ -338,6 +338,8 @@ enum Status {
    kRemoveAgentFail = 10;
    kCreateTagFail = 11;
    kAddAgentToPoolFail = 12;
+   kAddUserFail = 13;
+   kRemoveUserFail = 14;
 }
 
 message ErrorCode {
@@ -395,6 +397,7 @@ message ContainerGroupStatistics {
     repeated VolumResource volum = 10; //different kinds of medium
     optional int64 submit_time = 11;
     optional int64 update_time = 12;
+    optional string user_name = 13;
 }
 
 //proto that used to be saved in nexus
@@ -405,11 +408,10 @@ message AgentMeta {
 }
 
 message UserMeta {
-    optional string user_name = 1;
-    optional string password = 2;
-    repeated string pools = 3;
-    repeated Authority authorites = 4;
-    optional Quota quota = 5;
+    optional User user = 1;
+    repeated string pools = 2;
+    repeated Authority authorites = 3;
+    optional Quota quota = 4;
 }
 
 message ContainerGroupMeta {
