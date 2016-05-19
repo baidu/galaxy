@@ -26,25 +26,12 @@ using proto::kContainerError;
 using proto::kContainerDestroying;
 using proto::kContainerTerminated;
 using proto::kContainerFinish;
+using proto::ResourceError;
 
 typedef std::string AgentEndpoint;
 typedef std::string ContainerGroupId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
-
-enum ResourceError {
-    kOk = 0,
-    kNoCpu = 1,
-    kNoMemory = 2,
-    kNoMedium = 3,
-    kNoDevice = 4,
-    kNoPort = 5,
-    kPortConflict = 6,
-    kTagMismatch = 7,
-    kNoMemoryForTmpfs = 8,
-    kPoolMismatch = 9,
-    kTooManyPods = 10
-};
 
 enum AgentCommandAction {
     kCreateContainer = 0,
@@ -54,6 +41,7 @@ enum AgentCommandAction {
 struct AgentCommand {
     AgentCommandAction action;
     ContainerId container_id;
+    ContainerGroupId container_group_id;
     proto::ContainerDescription desc;
 };
 
@@ -222,6 +210,10 @@ public:
     bool ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups);
     bool ShowContainerGroup(const ContainerGroupId& container_group_id,
                             std::vector<proto::ContainerStatistics>& containers);
+    bool ShowAgent(const AgentEndpoint& endpoint,
+                   std::vector<proto::ContainerStatistics>& containers);
+    void GetContainersStatistics(const ContainerMap& containers_map,
+                                 std::vector<proto::ContainerStatistics>& containers);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);

@@ -35,6 +35,20 @@ enum Authority {
     // auhority
 }
 
+enum ResourceError {
+    kResOk = 0;
+    kNoCpu = 1;
+    kNoMemory = 2;
+    kNoMedium = 3;
+    kNoDevice = 4;
+    kNoPort = 5;
+    kPortConflict = 6;
+    kTagMismatch = 7;
+    kNoMemoryForTmpfs = 8;
+    kPoolMismatch = 9;
+    kTooManyPods = 10;
+}
+
 enum AuthorityAction {
     kActionAdd = 1;
     kActionRemove = 2;
@@ -322,6 +336,8 @@ enum Status {
    kRemoveContainerGroupFail = 8;
    kUpdateContainerGroupFail = 9;
    kRemoveAgentFail = 10;
+   kCreateTagFail = 11;
+   kAddAgentToPoolFail = 12;
 }
 
 message ErrorCode {
@@ -363,6 +379,7 @@ message ContainerStatistics {
     optional Resource cpu = 4;
     optional Resource memory = 5;
     repeated VolumResource volum = 6; //different kinds of medium
+    optional ResourceError last_res_err = 7;
 }
 
 message ContainerGroupStatistics {
@@ -385,7 +402,6 @@ message ContainerGroupStatistics {
 message AgentMeta {
     optional string endpoint = 1;
     optional string pool = 2;
-    repeated string tags = 3;
 }
 
 message UserMeta {
@@ -404,4 +420,9 @@ message ContainerGroupMeta {
     optional uint32 update_interval = 5;
     optional ContainerDescription desc = 6;
     optional ContainerGroupStatus status = 7;
+}
+
+message TagMeta {
+    optional string tag = 1;
+    repeated string endpoints = 2;
 }
