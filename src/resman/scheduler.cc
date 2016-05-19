@@ -552,6 +552,7 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     container_group->update_interval = container_group_meta.update_interval();
     container_group->container_desc = container_group_meta.desc();
     container_group->name = container_group_meta.name();
+    container_group->user_name = container_group_meta.user_name();
     if (container_group_meta.status() == proto::kContainerGroupTerminated) {
         container_group->terminated = true;
     } else {
@@ -1183,6 +1184,7 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
         group_stat.set_ready(container_group->states[kContainerReady].size());
         group_stat.set_pending(container_group->states[kContainerPending].size());
         group_stat.set_allocating(container_group->states[kContainerAllocating].size());
+        group_stat.set_user_name(container_group->user_name);
         if (container_group->terminated) {
             group_stat.set_status(proto::kContainerGroupTerminated);
         } else {
@@ -1197,9 +1199,12 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
                 continue;
             }
             for (int i = 0; i < container->remote_info.volum_used_size(); i++) {
-                proto::VolumMedium medium = container->remote_info.volum_used(i).medium();
-                int64_t as = container->remote_info.volum_used(i).assigned_size();
-                int64_t us = container->remote_info.volum_used(i).used_size();
+                proto::VolumMedium medium = container->require->volums[i].medium();
+                int64_t as = container->require->volums[i].size();
+                int64_t us = 0;
+                if ((int)i < container->remote_info.volum_used_size()) {
+                    us = container->remote_info.volum_used(i).used_size();
+                }
                 volum_assigned[medium] += as;
                 volum_used[medium] += us;
             }
@@ -1298,6 +1303,33 @@ bool Scheduler::ShowAgent(const AgentEndpoint& endpoint,
     Agent::Ptr agent = agent_it->second;
     GetContainersStatistics(agent->containers_, containers);
     return true;
+}
+
+void Scheduler::ShowUserAlloc(const std::string& user_name, proto::Quota& alloc) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    int64_t cpu_alloc = 0; //for one user
+    int64_t memory_alloc = 0;
+    int64_t ssd_alloc = 0;
+    int64_t disk_alloc = 0;
+    int64_t replica_alloc = 0;
+    for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+        const ContainerGroup::Ptr& container_group = it->second;
+        if (container_group->user_name != user_name) {
+            continue;
+        }
+        int64_t replica = container_group->replica;
+        replica_alloc +=  replica;
+        cpu_alloc += container_group->require->CpuNeed() * replica;
+        memory_alloc += container_group->require->MemoryNeed() * replica;
+        disk_alloc += container_group->require->DiskNeed() * replica;
+        ssd_alloc += container_group->require->SsdNeed() * replica;  
+    }
+    alloc.set_millicore(cpu_alloc);
+    alloc.set_memory(memory_alloc);
+    alloc.set_replica(replica_alloc);
+    alloc.set_disk(disk_alloc);
+    alloc.set_ssd(ssd_alloc);
 }
 
 } //namespace sched

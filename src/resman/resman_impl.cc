@@ -651,21 +651,24 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
                              ::baidu::galaxy::proto::RemoveAgentResponse* response,
                              ::google::protobuf::Closure* done) {
     LOG(INFO) << "remove agent:" << request->endpoint();
-    MutexLock lock(&mu_);
-    if (agents_.find(request->endpoint()) == agents_.end()) {
-        response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
-        response->mutable_error_code()->set_reason("agent not exist");
-        done->Run();
-        return;
+    {
+        MutexLock lock(&mu_);
+        if (agents_.find(request->endpoint()) == agents_.end()) {
+            response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
+            response->mutable_error_code()->set_reason("agent not exist");
+            done->Run();
+            return;
+        }
     }
-    agents_.erase(request->endpoint());
-    agent_stats_.erase(request->endpoint());
-    scheduler_->RemoveAgent(request->endpoint());
     bool remove_ok = RemoveObject(sAgentPrefix + "/" + request->endpoint());
     if (!remove_ok) {
         response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
         response->mutable_error_code()->set_reason("fail to delete meta from nexus");
     } else {
+        MutexLock lock(&mu_);
+        agents_.erase(request->endpoint());
+        agent_stats_.erase(request->endpoint());
+        scheduler_->RemoveAgent(request->endpoint());
         response->mutable_error_code()->set_status(proto::kOk);
     }
     done->Run();
@@ -741,7 +744,6 @@ void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
                            ::baidu::galaxy::proto::CreateTagResponse* response,
                            ::google::protobuf::Closure* done) {
     LOG(INFO) << "create tag:" << request->tag();
-    MutexLock lock(&mu_);
     const std::string& tag = request->tag();
     proto::TagMeta tag_meta;
     tag_meta.set_tag(tag);
@@ -757,6 +759,7 @@ void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
         err->set_status(proto::kCreateTagFail);
         err->set_reason("fail to save tag to nexus");
     } else {
+        MutexLock lock(&mu_);
         std::set<std::string>& tag_old = tags_[tag];
         std::set<std::string>::iterator it_old = tag_old.begin();
         std::set<std::string>::iterator it_new = tag_new.begin();
@@ -848,12 +851,14 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
                                 const ::baidu::galaxy::proto::AddAgentToPoolRequest* request,
                                 ::baidu::galaxy::proto::AddAgentToPoolResponse* response,
                                 ::google::protobuf::Closure* done) {
-    MutexLock lock(&mu_);
-    if (agents_.find(request->endpoint()) == agents_.end()) {
-        response->mutable_error_code()->set_status(proto::kAddAgentToPoolFail);
-        response->mutable_error_code()->set_reason("agent not exist");
-        done->Run();
-        return;
+    {
+        MutexLock lock(&mu_);
+        if (agents_.find(request->endpoint()) == agents_.end()) {
+            response->mutable_error_code()->set_status(proto::kAddAgentToPoolFail);
+            response->mutable_error_code()->set_reason("agent not exist");
+            done->Run();
+            return;
+        }
     }
     if (request->pool().empty()) {
         proto::ErrorCode* err = response->mutable_error_code();
@@ -871,6 +876,7 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
         response->mutable_error_code()->set_status(proto::kAddAgentToPoolFail);
         response->mutable_error_code()->set_reason("fail to save agent meta to nexus");
     } else {
+        MutexLock lock(&mu_);
         agents_[endpoint].set_pool(pool);
         pools_[pool].erase(endpoint);
         scheduler_->SetPool(endpoint, pool);
@@ -927,28 +933,88 @@ void ResManImpl::AddUser(::google::protobuf::RpcController* controller,
                         const ::baidu::galaxy::proto::AddUserRequest* request,
                         ::baidu::galaxy::proto::AddUserResponse* response,
                         ::google::protobuf::Closure* done) {
-
+    const std::string& user_name = request->user().user();
+    {
+        MutexLock lock(&mu_);
+        if (users_.find(user_name) != users_.end()) {
+            response->mutable_error_code()->set_status(proto::kAddUserFail);
+            response->mutable_error_code()->set_reason("user already exist");
+            done->Run();
+            return;
+        }
+    }
+    proto::UserMeta user_meta;
+    user_meta.mutable_user()->CopyFrom(request->user());
+    LOG(INFO) << "add user: " << user_meta.DebugString();
+    bool ret = SaveObject(sUserPrefix + "/" + user_name, user_meta);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kAddUserFail);
+        response->mutable_error_code()->set_reason("fail to save user meta in nexus");
+    } else {
+        MutexLock lock(&mu_);
+        users_[user_name] = user_meta;
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::RemoveUser(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::proto::RemoveUserRequest* request,
                             ::baidu::galaxy::proto::RemoveUserResponse* response,
                             ::google::protobuf::Closure* done) {
-
+    const std::string& user_name = request->user().user();
+    LOG(INFO) << "remove user: " << user_name;
+    {
+        MutexLock lock(&mu_);
+        if (users_.find(user_name) == users_.end()) {
+            response->mutable_error_code()->set_status(proto::kRemoveUserFail);
+            response->mutable_error_code()->set_reason("user not exist");
+            done->Run();
+            return;
+        }
+    }
+    bool ret = RemoveObject(sUserPrefix + "/" + user_name);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kRemoveUserFail);
+        response->mutable_error_code()->set_reason("fail to delete user meta from nexus");
+    } else {
+        MutexLock lock(&mu_);
+        users_.erase(user_name);
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::ListUsers(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::proto::ListUsersRequest* request,
                            ::baidu::galaxy::proto::ListUsersResponse* response,
                            ::google::protobuf::Closure* done) {
-
+    MutexLock lock(&mu_);
+    std::map<std::string, proto::UserMeta>::const_iterator it;
+    for (it = users_.begin(); it != users_.end(); it++) {
+        response->add_user(it->first);
+    }
+    done->Run();
 }
 
 void ResManImpl::ShowUser(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::ShowUserRequest* request,
                           ::baidu::galaxy::proto::ShowUserResponse* response,
                           ::google::protobuf::Closure* done) {
-
+    const std::string& user_name = request->user().user();
+    MutexLock lock(&mu_);
+    if (users_.find(user_name) == users_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("no such user");
+        done->Run();
+        return;
+    }
+    proto::Quota alloc;
+    scheduler_->ShowUserAlloc(user_name, alloc);
+    response->mutable_assigned()->CopyFrom(alloc);
+    response->mutable_quota()->CopyFrom(users_[user_name].quota());
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,
