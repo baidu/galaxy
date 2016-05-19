@@ -16,8 +16,7 @@ namespace client {
 class ResAction {
 
 public:
-    //explicit ResAction(const std::string& name, const std::string& token, const std::string& nexus_key);
-    explicit ResAction(const std::string& name, const std::string& token);
+    ResAction();
     ~ResAction();
     bool CreateContainerGroup(const std::string& json_file);
     bool UpdateContainerGroup(const std::string& json_file, const std::string& id);

@@ -5,14 +5,18 @@
 #include <tprinter.h>
 #include "galaxy_job_action.h"
 
+//user
+DECLARE_string(username);
+DECLARE_string(token);
+
 namespace baidu {
 namespace galaxy {
 namespace client {
 
-JobAction::JobAction(const std::string& name, const std::string& token) { 
+JobAction::JobAction() { 
     app_master_ = new ::baidu::galaxy::sdk::AppMaster();
-    user_. user =  name;
-    user_. token = token;
+    user_.user = FLAGS_username;
+    user_.token = FLAGS_token;
 }
 
 JobAction::~JobAction() {

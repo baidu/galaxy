@@ -181,11 +181,20 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
         container.memory.total = pb_container.memory().total();
         container.memory.assigned = pb_container.memory().assigned();
         container.memory.used = pb_container.memory().used();
-        //container.volum.medium = pb_container.volum().medium();
-        //container.volum.volum.total = pb_container.volum().volum().total();
-        //container.volum.volum.assigned = pb_container.volum().volum().assigned();
-        //container.volum.volum.used = pb_container.volum().volum().used();
-        //container.volum.device_path = pb_container.volum().device_path();
+        
+        for (int j = 0; j < pb_container.volums().size(); ++j) {
+            const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
+            VolumResource volum;
+            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                return false;
+            }
+            volum.volum.total = pb_volum.volum().total();
+            volum.volum.assigned = pb_volum.volum().assigned();
+            volum.volum.used = pb_volum.volum().used();
+            volum.device_path = pb_volum.device_path();
+            container.volums.push_back(volum);
+        }
+
         container.submit_time = pb_container.submit_time();
         container.update_time = pb_container.update_time();
         response->containers.push_back(container);
@@ -218,8 +227,8 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
     response->desc.tag = pb_response.desc().tag();
     response->desc.workspace_volum.size = pb_response.desc().workspace_volum().size();
     
-    if (!VolumTypeSwitch(pb_response.desc().workspace_volum().type(), &response->desc.workspace_volum.type)) {
- //           || !VolumMediumSwitch(pb_response.desc().workspace_volum().medium(), &&response->desc.workspace_volum.medium)) {
+    if (! VolumTypeSwitch(pb_response.desc().workspace_volum().type(), &response->desc.workspace_volum.type) 
+            || ! VolumMediumSwitch(pb_response.desc().workspace_volum().medium(), &response->desc.workspace_volum.medium)) {
         return false;
     }
     response->desc.workspace_volum.source_path = pb_response.desc().workspace_volum().source_path();
@@ -232,18 +241,28 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         const ::baidu::galaxy::proto::ContainerStatistics& pb_container = pb_response.containers(i);
         ContainerStatistics container;
         container.endpoint = pb_container.endpoint();
-        ContainerStatusSwitch(pb_container.status(), &container.status);
+        if (! ContainerStatusSwitch(pb_container.status(), &container.status)) {
+            return false;
+        }
         container.cpu.total = pb_container.cpu().total();
         container.cpu.assigned = pb_container.cpu().assigned();
         container.cpu.used = pb_container.cpu().used();
         container.memory.total = pb_container.memory().total();
         container.memory.assigned = pb_container.memory().assigned();
         container.memory.used = pb_container.memory().used();
-        //container.volum.medium = pb_container.volum().medium();
-        //container.volum.volum.total = pb_container.volum().volum().total();
-        //container.volum.volum.assigned = pb_container.volum().volum().assigned();
-        //container.volum.volum.used = pb_container.volum().volum().used();
-        //container.volum.device_path = pb_container.volum().device_path();
+        
+        for (int j = 0; j < pb_container.volums().size(); ++j) {
+            const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
+            VolumResource volum;
+            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                return false;
+            }
+            volum.volum.total = pb_volum.volum().total();
+            volum.volum.assigned = pb_volum.volum().assigned();
+            volum.volum.used = pb_volum.volum().used();
+            volum.device_path = pb_volum.device_path();
+            container.volums.push_back(volum);
+        }
         response->containers.push_back(container);
     }
 
@@ -259,7 +278,9 @@ bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse*
     pb_request.set_pool(request.pool);
     rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AddAgent, &pb_request, &pb_response, 5, 1);
 
-    StatusSwitch(pb_response.error_code().status(), &response->error_code.status);
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -275,7 +296,9 @@ bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgent
     pb_request.set_endpoint(request.endpoint);
     rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveAgent, &pb_request, &pb_response, 5, 1);
 
-    StatusSwitch(pb_response.error_code().status(), &response->error_code.status);
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -299,7 +322,9 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
     pb_request.set_pool(request.pool);
     rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgents, &pb_request, &pb_response, 5, 1);
 
-    StatusSwitch(pb_response.error_code().status(), &response->error_code.status);
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        return false;
+    }
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -309,7 +334,9 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
         const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
-        AgentStatusSwitch(pb_agent.status(), &agent.status);
+        if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
+            return false;
+        }
         agent.pool = pb_agent.pool();
         agent.cpu.total = pb_agent.cpu().total();
         agent.cpu.assigned = pb_agent.cpu().assigned();
@@ -320,7 +347,9 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
         for (int j = 0; j < pb_agent.volums().size(); ++j) {
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
-            VolumMediumSwitch(pb_volum.medium(), &volum.medium);
+            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                return false;
+            }
             volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();

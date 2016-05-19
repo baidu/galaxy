@@ -5,16 +5,18 @@
 #include <tprinter.h>
 #include "galaxy_res_action.h"
 
+//user
+DECLARE_string(username);
+DECLARE_string(token);
+
 namespace baidu {
 namespace galaxy {
 namespace client {
 
-//ResAction::ResAction(const std::string& name, const std::string& token, const std::string& nexus_key) { 
-ResAction::ResAction(const std::string& name, const std::string& token) { 
-    //resman_ = new ::baidu::galaxy::sdk::ResourceManager(nexus_key);
+ResAction::ResAction() { 
     resman_ = new ::baidu::galaxy::sdk::ResourceManager();
-    user_.user =  name;
-    user_.token = token;
+    user_.user =  FLAGS_username;
+    user_.token = FLAGS_token;
 }
 
 ResAction::~ResAction() {
@@ -172,29 +174,34 @@ bool ResAction::ListContainerGroups() {
 
     bool ret = resman_->ListContainerGroups(request, &response);
     if (ret) {
-        ::baidu::common::TPrinter tp(11);
-        tp.AddRow(11, "", "id", "replica", "stat(p/d)", "cpu(t/a/u)", "mem(t/a/u)", "vol_type", "vol(t/a/u)", "vol_path","create", "update");
+        ::baidu::common::TPrinter tp(9);
+        tp.AddRow(9, "", "id", "replica", "stat(p/d)", "cpu(t/a/u)", "mem(t/a/u)", "volums(med/t/a/u)", "create", "update");
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString(i + 1));
             vs.push_back(response.containers[i].id);
-            vs.push_back(baidu::common::NumToString(response.containers[i].replica));
-            vs.push_back(baidu::common::NumToString(response.containers[i].pending));
-            vs.push_back(baidu::common::NumToString(response.containers[i].destroying));
-            vs.push_back(baidu::common::NumToString(response.containers[i].cpu.total) + "/" +
-                         baidu::common::NumToString(response.containers[i].cpu.assigned) + "/" +
-                        baidu::common::NumToString(response.containers[i].cpu.used)
+            vs.push_back(::baidu::common::NumToString(response.containers[i].replica));
+            vs.push_back(::baidu::common::NumToString(response.containers[i].pending) + "/" +
+                         ::baidu::common::NumToString(response.containers[i].destroying)
                         );
-            vs.push_back(baidu::common::NumToString(response.containers[i].memory.total) + "/" +
-                         baidu::common::NumToString(response.containers[i].memory.assigned) + "/" +
-                        baidu::common::NumToString(response.containers[i].memory.used)
+            vs.push_back(::baidu::common::NumToString(response.containers[i].cpu.total) + "/" +
+                         ::baidu::common::NumToString(response.containers[i].cpu.assigned) + "/" +
+                         ::baidu::common::NumToString(response.containers[i].cpu.used)
                         );
-            vs.push_back(baidu::common::NumToString(response.containers[i].volum.medium));
-            vs.push_back(baidu::common::NumToString(response.containers[i].volum.volum.total) + "/" +
-                         baidu::common::NumToString(response.containers[i].volum.volum.assigned) + "/" +
-                         baidu::common::NumToString(response.containers[i].volum.volum.used)
+            vs.push_back(::baidu::common::NumToString(response.containers[i].memory.total) + "/" +
+                         ::baidu::common::NumToString(response.containers[i].memory.assigned) + "/" +
+                         ::baidu::common::NumToString(response.containers[i].memory.used)
                         );
-            vs.push_back(response.containers[i].volum.device_path);
+
+            std::string volums;
+            for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
+                volums += ::baidu::common::NumToString(response.containers[i].volums[j].medium) + "/";
+                volums += ::baidu::common::NumToString(response.containers[i].volums[j].volum.total) + "/"; 
+                volums += ::baidu::common::NumToString(response.containers[i].volums[j].volum.assigned) + "/"; 
+                volums += ::baidu::common::NumToString(response.containers[i].volums[j].volum.used) + "/"; 
+                volums += response.containers[i].volums[j].device_path + "\n";
+            }
+            vs.push_back(volums);
             vs.push_back(FormatDate(response.containers[i].submit_time));
             vs.push_back(FormatDate(response.containers[i].update_time));
             
@@ -246,33 +253,33 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
 
         fprintf(stdout, "data_volums[]:\n");
         for (size_t i = 0; i < response.desc.data_volums.size(); ++i) {
-            fprintf(stdout, "data_volums[%u]\n", i);
-            fprintf(stdout, "data_volum size: %d\n", response.desc.data_volums[i].size);
-            fprintf(stdout, "data_volum type: %d\n", response.desc.data_volums[i].type);
-            fprintf(stdout, "data_volum medium: %d\n", response.desc.data_volums[i].medium);
-            fprintf(stdout, "data_volum source_path: %s\n", response.desc.data_volums[i].source_path.c_str());
-            fprintf(stdout, "data_volum dest_path: %s\n", response.desc.data_volums[i].dest_path.c_str());
-            fprintf(stdout, "data_volum readonly: %d\n", response.desc.data_volums[i].readonly);
-            fprintf(stdout, "data_volum exclusive: %d\n", response.desc.data_volums[i].exclusive);
-            fprintf(stdout, "data_volum use_symlink: %d\n", response.desc.data_volums[i].use_symlink);
+            fprintf(stdout, "   data_volums[%u]\n", i);
+            fprintf(stdout, "   data_volum size: %d\n", response.desc.data_volums[i].size);
+            fprintf(stdout, "   data_volum type: %d\n", response.desc.data_volums[i].type);
+            fprintf(stdout, "   data_volum medium: %d\n", response.desc.data_volums[i].medium);
+            fprintf(stdout, "   data_volum source_path: %s\n", response.desc.data_volums[i].source_path.c_str());
+            fprintf(stdout, "   data_volum dest_path: %s\n", response.desc.data_volums[i].dest_path.c_str());
+            fprintf(stdout, "   data_volum readonly: %d\n", response.desc.data_volums[i].readonly);
+            fprintf(stdout, "   data_volum exclusive: %d\n", response.desc.data_volums[i].exclusive);
+            fprintf(stdout, "   data_volum use_symlink: %d\n", response.desc.data_volums[i].use_symlink);
             fprintf(stdout, "\n");
         }
         
         fprintf(stdout, "cgroups[]:\n");
         for (size_t i = 0; i < response.desc.cgroups.size(); ++i) {
-            fprintf(stdout, "cgroups[%u]\n", i);
-            fprintf(stdout, "cgroup id: %s\n", response.desc.cgroups[i].id.c_str());
-            fprintf(stdout, "cgroup cpu millcores: %d\n", response.desc.cgroups[i].cpu.milli_core);
-            fprintf(stdout, "cgroup cpu excess: %d\n", response.desc.cgroups[i].cpu.excess);
-            fprintf(stdout, "cgroup memory size: %d\n", response.desc.cgroups[i].memory.size);
-            fprintf(stdout, "cgroup memory excess: %d\n", response.desc.cgroups[i].memory.excess);
+            fprintf(stdout, "   cgroups[%u]\n", i);
+            fprintf(stdout, "   cgroup id: %s\n", response.desc.cgroups[i].id.c_str());
+            fprintf(stdout, "   cgroup cpu millcores: %d\n", response.desc.cgroups[i].cpu.milli_core);
+            fprintf(stdout, "   cgroup cpu excess: %d\n", response.desc.cgroups[i].cpu.excess);
+            fprintf(stdout, "   cgroup memory size: %d\n", response.desc.cgroups[i].memory.size);
+            fprintf(stdout, "   cgroup memory excess: %d\n", response.desc.cgroups[i].memory.excess);
 
-            fprintf(stdout, "tcp_throt recv_bps_quota %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_quota);
-            fprintf(stdout, "tcp_throt recv_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_excess);
-            fprintf(stdout, "tcp_throt send_bps_quota %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_quota);
-            fprintf(stdout, "tcp_throt send_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_excess);
+            fprintf(stdout, "   tcp_throt recv_bps_quota %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_quota);
+            fprintf(stdout, "   tcp_throt recv_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_excess);
+            fprintf(stdout, "   tcp_throt send_bps_quota %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_quota);
+            fprintf(stdout, "   tcp_throt send_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_excess);
 
-            fprintf(stdout, "tcp_throt weight %d:\n", response.desc.cgroups[i].blkio.weight);
+            fprintf(stdout, "   blkio weight %d:\n", response.desc.cgroups[i].blkio.weight);
 
             fprintf(stdout, "\n");
         }
@@ -280,21 +287,24 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                 
         fprintf(stdout, "containers[]:\n");
         for (size_t i = 0; i < response.containers.size(); ++i) {
-            fprintf(stdout, "containers[%u]\n", i);
-            fprintf(stdout, "container status: %d\n", response.containers[i].status);
-            fprintf(stdout, "container endpoint: %d\n", response.containers[i].endpoint.c_str());
-            fprintf(stdout, "container cpu total: %d\n", response.containers[i].cpu.total);
-            fprintf(stdout, "container cpu assigned: %d\n", response.containers[i].cpu.assigned);
-            fprintf(stdout, "container cpu used: %d\n", response.containers[i].cpu.used);
-            fprintf(stdout, "container mem total: %d\n", response.containers[i].memory.total);
-            fprintf(stdout, "container mem assigned: %d\n", response.containers[i].memory.assigned);
-            fprintf(stdout, "container mem used: %d\n", response.containers[i].memory.used);
+            fprintf(stdout, "   containers[%u]\n", i);
+            fprintf(stdout, "   container status: %d\n", response.containers[i].status);
+            fprintf(stdout, "   container endpoint: %d\n", response.containers[i].endpoint.c_str());
+            fprintf(stdout, "   container cpu total: %d\n", response.containers[i].cpu.total);
+            fprintf(stdout, "   container cpu assigned: %d\n", response.containers[i].cpu.assigned);
+            fprintf(stdout, "   container cpu used: %d\n", response.containers[i].cpu.used);
+            fprintf(stdout, "   container mem total: %d\n", response.containers[i].memory.total);
+            fprintf(stdout, "   container mem assigned: %d\n", response.containers[i].memory.assigned);
+            fprintf(stdout, "   container mem used: %d\n", response.containers[i].memory.used);
 
-            fprintf(stdout, "container volum medium: %d\n", response.containers[i].volum.medium);
-            fprintf(stdout, "container volum device_path: %s\n", response.containers[i].volum.device_path.c_str());
-            fprintf(stdout, "container volum total: %d\n", response.containers[i].volum.volum.total);
-            fprintf(stdout, "container volum assigned: %d\n", response.containers[i].volum.volum.assigned);
-            fprintf(stdout, "container volum used: %d\n", response.containers[i].volum.volum.used);
+            for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
+                fprintf(stdout, "   container volums[%u]\n", j);
+                fprintf(stdout, "       container volum medium : %d\n", response.containers[i].volums[j].medium);
+                fprintf(stdout, "       container volum device_path : %s\n", response.containers[i].volums[j].device_path.c_str());
+                fprintf(stdout, "       container volum total: %d\n", response.containers[i].volums[j].volum.total);
+                fprintf(stdout, "       container volum assigned: %d\n", response.containers[i].volums[j].volum.assigned);
+                fprintf(stdout, "       container volum used: %d\n", response.containers[i].volums[j].volum.used);
+            }
 
             fprintf(stdout, "\n");
         }
