@@ -254,6 +254,9 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
     }
     AgentStat& agent = agent_it->second;
     int32_t now_tm = common::timer::now_time();
+    VLOG(10) << agent_endpoint << ",  last:" << agent.last_heartbeat_time 
+             << ",timeout:" << FLAGS_agent_timeout
+             << ",now_tm:" << now_tm;
     if (agent.last_heartbeat_time + FLAGS_agent_timeout < now_tm) {
         LOG(INFO) << "this agent maybe dead:" << agent_endpoint;
         agent.status = proto::kAgentDead;
@@ -426,11 +429,12 @@ void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
     if (agent_first_heartbeat) {
         LOG(INFO) << "first heartbeat of: " << agent_ep;
     }
-    AgentStat agent = agent_stats_[agent_ep];
+    AgentStat& agent = agent_stats_[agent_ep];
     if (agent.status != proto::kAgentOffline) {
         agent.status = proto::kAgentAlive;
     }
     agent.last_heartbeat_time = common::timer::now_time();
+    VLOG(10) << "heartbeat of: " << agent_ep << ", last: " << agent.last_heartbeat_time;
     if (agent_first_heartbeat) {
         query_pool_.AddTask(
             boost::bind(&ResManImpl::QueryAgent, this, agent_ep, true)
