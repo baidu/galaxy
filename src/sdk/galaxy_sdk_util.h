@@ -26,12 +26,13 @@ void FillCgroup(const Cgroup& sdk_cgroup, ::baidu::galaxy::proto::Cgroup* cgroup
 void FillContainerDescription(const ContainerDescription& sdk_container,
                                 ::baidu::galaxy::proto::ContainerDescription* container);
 
-bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, Status* status);
-bool VolumTypeSwitch(const baidu::galaxy::proto::VolumType& pb_type, baidu::galaxy::sdk::VolumType* type);
+bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, ::baidu::galaxy::sdk::Status* status);
+bool VolumTypeSwitch(const baidu::galaxy::proto::VolumType& pb_type, ::baidu::galaxy::sdk::VolumType* type);
 bool ContainerStatusSwitch(const ::baidu::galaxy::proto::ContainerStatus& pb_status, 
-                                baidu::galaxy::sdk::ContainerStatus* status); 
-bool AgentStatusSwitch(const ::baidu::galaxy::proto::AgentStatus& pb_status, baidu::galaxy::sdk::AgentStatus* status);
-bool VolumMediumSwitch(const ::baidu::galaxy::proto::VolumMedium& pb_medium, baidu::galaxy::sdk::VolumMedium* medium);
+                                 ::baidu::galaxy::sdk::ContainerStatus* status); 
+bool AgentStatusSwitch(const ::baidu::galaxy::proto::AgentStatus& pb_status, ::baidu::galaxy::sdk::AgentStatus* status);
+bool VolumMediumSwitch(const ::baidu::galaxy::proto::VolumMedium& pb_medium, ::baidu::galaxy::sdk::VolumMedium* medium);
+bool AuthoritySwitch(const ::baidu::galaxy::proto::Authority& pb_authority, ::baidu::galaxy::sdk::Authority* authority);
 
 } // end namespace sdk
 } // end namespace galaxy

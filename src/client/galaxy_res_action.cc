@@ -516,6 +516,81 @@ bool ResAction::OfflineAgent(const std::string& endpoint) {
     return ret;
 }
 
+bool ResAction::Status() {
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::StatusRequest request;
+    ::baidu::galaxy::sdk::StatusResponse response;
+    request.user = user_;
+
+    bool ret = resman_->Status(request, &response);
+    if (ret) {
+        printf("cluster agent infomation\n");
+        ::baidu::common::TPrinter agent(3); 
+        agent.AddRow(3, "agent total", "live count", "dead count");
+        agent.AddRow(3, baidu::common::NumToString(response.total_agents).c_str(), 
+                        baidu::common::NumToString(response.alive_agents).c_str(),
+                        baidu::common::NumToString(response.dead_agents).c_str());
+        printf("%s\n", agent.ToString().c_str());
+
+        printf("cluster cpu infomation\n");
+        ::baidu::common::TPrinter cpu(3);
+        cpu.AddRow(3, "total", "assigned", "used");
+        cpu.AddRow(3, ::baidu::common::NumToString(response.cpu.total).c_str(), 
+                        ::baidu::common::NumToString(response.cpu.assigned).c_str(),
+                        ::baidu::common::NumToString(response.cpu.used).c_str());
+        printf("%s\n", cpu.ToString().c_str());
+
+        printf("cluster memory infomation\n");
+        ::baidu::common::TPrinter mem(3);
+        mem.AddRow(3, "total", "assigned", "used");
+        mem.AddRow(3, ::baidu::common::NumToString(response.memory.total).c_str(), 
+                      ::baidu::common::NumToString(response.memory.assigned).c_str(),
+                      ::baidu::common::NumToString(response.memory.used).c_str());
+        printf("%s\n", mem.ToString().c_str());
+
+        printf("cluster volumes infomation\n");
+        ::baidu::common::TPrinter volum(6);
+        volum.AddRow(6, "", "medium", "total", "assigned", "used", "device_path");
+        for (uint32_t i = 0; i < response.volum.size(); ++i) {
+            volum.AddRow(6, ::baidu::common::NumToString(i).c_str(),  
+                            ::baidu::common::NumToString(response.volum[i].medium).c_str(), 
+                            ::baidu::common::NumToString(response.volum[i].volum.total).c_str(),
+                            ::baidu::common::NumToString(response.volum[i].volum.assigned).c_str(),
+                            ::baidu::common::NumToString(response.volum[i].volum.used).c_str(),
+                            response.volum[i].device_path.c_str());
+        }
+        printf("%s\n", volum.ToString().c_str());
+
+        printf("cluster pools infomation\n");
+        ::baidu::common::TPrinter pool(4);
+        pool.AddRow(4, "", "name", "total", "alive");
+        for (uint32_t i = 0; i < response.pools.size(); ++i) {
+            pool.AddRow(4, ::baidu::common::NumToString(i).c_str(),
+                           response.pools[i].name.c_str(), 
+                           ::baidu::common::NumToString(response.pools[i].total_agents).c_str(),
+                           ::baidu::common::NumToString(response.pools[i].alive_agents).c_str());
+        }
+        printf("%s\n", pool.ToString().c_str());
+
+        printf("cluster other infomation\n");
+        ::baidu::common::TPrinter other(3);
+        other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
+        other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
+                        ::baidu::common::NumToString(response.total_containers).c_str(),
+                        ::baidu::common::NumToString(response.in_safe_mode).c_str());
+        printf("%s\n", other.ToString().c_str());
+
+    } else {
+        printf("Get Status failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
 } // end namespace client
 } // end namespace galaxy
 } // end namespace baidu

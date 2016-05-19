@@ -30,6 +30,7 @@ public:
     bool LeaveSafeMode();
     bool OnlineAgent(const std::string& endpoint);
     bool OfflineAgent(const std::string& endpoint);
+    bool Status();
 
 private:
     bool Init();

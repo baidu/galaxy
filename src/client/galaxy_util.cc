@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include<string>
+#include <string>
 
 namespace baidu {
 namespace galaxy {
 namespace client {
 
-std::string FormatDate(int64_t datetime) {
+std::string FormatDate(uint64_t datetime) {
     if (datetime < 100) {
         return "-";
     }
