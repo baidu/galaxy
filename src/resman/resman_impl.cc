@@ -987,7 +987,20 @@ void ResManImpl::ShowUser(::google::protobuf::RpcController* controller,
                           const ::baidu::galaxy::proto::ShowUserRequest* request,
                           ::baidu::galaxy::proto::ShowUserResponse* response,
                           ::google::protobuf::Closure* done) {
-
+    const std::string& user_name = request->user().user();
+    MutexLock lock(&mu_);
+    if (users_.find(user_name) == users_.end()) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("no such user");
+        done->Run();
+        return;
+    }
+    proto::Quota alloc;
+    scheduler_->ShowUserAlloc(user_name, alloc);
+    response->mutable_assigned()->CopyFrom(alloc);
+    response->mutable_quota()->CopyFrom(users_[user_name].quota());
+    response->mutable_error_code()->set_status(proto::kOk);
+    done->Run();
 }
 
 void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,

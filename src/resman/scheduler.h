@@ -233,6 +233,7 @@ public:
                    std::vector<proto::ContainerStatistics>& containers);
     void GetContainersStatistics(const ContainerMap& containers_map,
                                  std::vector<proto::ContainerStatistics>& containers);
+    void ShowUserAlloc(const std::string& user_name, proto::Quota& alloc);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
@@ -254,7 +255,6 @@ private:
                         const proto::ContainerDescription& container_desc);
     void SetVolumsAndPorts(const Container::Ptr& container, 
                            proto::ContainerDescription& container_desc);
-    void ShowUserAlloc(const std::string& user_name, proto::Quota& alloc);
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;
