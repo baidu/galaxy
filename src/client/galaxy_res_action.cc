@@ -523,7 +523,6 @@ bool ResAction::ListAgentsByPool(const std::string& pool) {
     ::baidu::galaxy::sdk::ListAgentsByPoolRequest request;
     ::baidu::galaxy::sdk::ListAgentsByPoolResponse response;
     request.user = user_;
-    request.pool = pool;
 
     bool ret = resman_->ListAgentsByPool(request, &response);
     if (ret) {

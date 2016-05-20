@@ -254,6 +254,9 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
     }
     AgentStat& agent = agent_it->second;
     int32_t now_tm = common::timer::now_time();
+    VLOG(10) << agent_endpoint << ",  last:" << agent.last_heartbeat_time 
+             << ",timeout:" << FLAGS_agent_timeout
+             << ",now_tm:" << now_tm;
     if (agent.last_heartbeat_time + FLAGS_agent_timeout < now_tm) {
         LOG(INFO) << "this agent maybe dead:" << agent_endpoint;
         agent.status = proto::kAgentDead;
@@ -426,11 +429,12 @@ void ResManImpl::KeepAlive(::google::protobuf::RpcController* controller,
     if (agent_first_heartbeat) {
         LOG(INFO) << "first heartbeat of: " << agent_ep;
     }
-    AgentStat agent = agent_stats_[agent_ep];
+    AgentStat& agent = agent_stats_[agent_ep];
     if (agent.status != proto::kAgentOffline) {
         agent.status = proto::kAgentAlive;
     }
     agent.last_heartbeat_time = common::timer::now_time();
+    VLOG(10) << "heartbeat of: " << agent_ep << ", last: " << agent.last_heartbeat_time;
     if (agent_first_heartbeat) {
         query_pool_.AddTask(
             boost::bind(&ResManImpl::QueryAgent, this, agent_ep, true)
@@ -651,13 +655,23 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
                              ::baidu::galaxy::proto::RemoveAgentResponse* response,
                              ::google::protobuf::Closure* done) {
     LOG(INFO) << "remove agent:" << request->endpoint();
+    std::set<std::string> agent_tags;
+    std::string agent_pool;
+    const std::string& endpoint = request->endpoint();
     {
         MutexLock lock(&mu_);
-        if (agents_.find(request->endpoint()) == agents_.end()) {
+        std::map<std::string, proto::AgentMeta>::const_iterator it;
+        it = agents_.find(endpoint);
+        if (it == agents_.end()) {
             response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
             response->mutable_error_code()->set_reason("agent not exist");
             done->Run();
             return;
+        } else {
+            agent_pool = it->second.pool();
+            if (agent_tags_.find(endpoint) != agent_tags_.end()) {
+                agent_tags = agent_tags_[endpoint];
+            }
         }
     }
     bool remove_ok = RemoveObject(sAgentPrefix + "/" + request->endpoint());
@@ -666,9 +680,15 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
         response->mutable_error_code()->set_reason("fail to delete meta from nexus");
     } else {
         MutexLock lock(&mu_);
-        agents_.erase(request->endpoint());
-        agent_stats_.erase(request->endpoint());
-        scheduler_->RemoveAgent(request->endpoint());
+        agents_.erase(endpoint);
+        agent_stats_.erase(endpoint);
+        pools_[agent_pool].erase(endpoint);
+        std::set<std::string>::const_iterator tag_it;
+        for (tag_it = agent_tags.begin(); tag_it != agent_tags.end(); tag_it++) {
+            const std::string& tag_name = *tag_it;
+            tags_[tag_name].erase(endpoint);
+        }
+        scheduler_->RemoveAgent(endpoint);
         response->mutable_error_code()->set_status(proto::kOk);
     }
     done->Run();
@@ -820,7 +840,25 @@ void ResManImpl::ListAgentsByTag(::google::protobuf::RpcController* controller,
     }
     std::set<std::string>::const_iterator jt;
     for (jt = it->second.begin(); jt != it->second.end(); jt++) {
-        response->add_endpoint(*jt);
+        const std::string& endpoint = *jt;
+        const proto::AgentMeta& agent_meta = agents_[endpoint];
+        proto::AgentStatistics* agent_st = response->add_agents();
+        agent_st->set_endpoint(endpoint);
+        agent_st->set_pool(agent_meta.pool());
+        const std::set<std::string>& tags = agent_tags_[endpoint];
+        for (std::set<std::string>::iterator tag_it = tags.begin();
+            tag_it != tags.end(); tag_it++) {
+            agent_st->add_tags(*tag_it);
+        }
+        std::map<std::string, AgentStat>::iterator stat_it = agent_stats_.find(endpoint);
+        if (stat_it == agent_stats_.end()) {
+            continue;
+        }
+        agent_st->set_status(stat_it->second.status);
+        agent_st->mutable_cpu()->CopyFrom(stat_it->second.info.cpu_resource());
+        agent_st->mutable_memory()->CopyFrom(stat_it->second.info.memory_resource());
+        agent_st->mutable_volums()->CopyFrom(stat_it->second.info.volum_resources());
+        agent_st->set_total_containers(stat_it->second.info.container_info().size());
     }
     response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
@@ -907,7 +945,25 @@ void ResManImpl::ListAgentsByPool(::google::protobuf::RpcController* controller,
     }
     std::set<std::string>::const_iterator jt;
     for (jt = it->second.begin(); jt != it->second.end(); jt++) {
-        response->add_endpoint(*jt);
+        const std::string& endpoint = *jt;
+        const proto::AgentMeta& agent_meta = agents_[endpoint];
+        proto::AgentStatistics* agent_st = response->add_agents();
+        agent_st->set_endpoint(endpoint);
+        agent_st->set_pool(agent_meta.pool());
+        const std::set<std::string>& tags = agent_tags_[endpoint];
+        for (std::set<std::string>::iterator tag_it = tags.begin();
+            tag_it != tags.end(); tag_it++) {
+            agent_st->add_tags(*tag_it);
+        }
+        std::map<std::string, AgentStat>::iterator stat_it = agent_stats_.find(endpoint);
+        if (stat_it == agent_stats_.end()) {
+            continue;
+        }
+        agent_st->set_status(stat_it->second.status);
+        agent_st->mutable_cpu()->CopyFrom(stat_it->second.info.cpu_resource());
+        agent_st->mutable_memory()->CopyFrom(stat_it->second.info.memory_resource());
+        agent_st->mutable_volums()->CopyFrom(stat_it->second.info.volum_resources());
+        agent_st->set_total_containers(stat_it->second.info.container_info().size());
     }
     response->mutable_error_code()->set_status(proto::kOk);
     done->Run();

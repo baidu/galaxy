@@ -139,8 +139,12 @@ message ListAgentsByTagRequest {
 
 message ListAgentsByTagResponse {
     optional ErrorCode error_code = 1;
+<<<<<<< HEAD
     repeated string endpoint = 2;
     //repeated AgentStatistics agents = 2;
+=======
+    repeated AgentStatistics agents = 2;
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
 }
 
 message GetTagsByAgentRequest {
@@ -179,8 +183,12 @@ message ListAgentsByPoolRequest {
 
 message ListAgentsByPoolResponse {
     optional ErrorCode error_code = 1;
+<<<<<<< HEAD
     repeated string endpoint = 2;
     //repeated AgentStatistics agents = 2;
+=======
+    repeated AgentStatistics agents = 2;
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
 }
 
 message GetPoolByAgentRequest {
