@@ -35,6 +35,20 @@ enum Authority {
     // auhority
 }
 
+enum ResourceError {
+    kResOk = 0;
+    kNoCpu = 1;
+    kNoMemory = 2;
+    kNoMedium = 3;
+    kNoDevice = 4;
+    kNoPort = 5;
+    kPortConflict = 6;
+    kTagMismatch = 7;
+    kNoMemoryForTmpfs = 8;
+    kPoolMismatch = 9;
+    kTooManyPods = 10;
+}
+
 enum AuthorityAction {
     kActionAdd = 1;
     kActionRemove = 2;
@@ -43,10 +57,9 @@ enum AuthorityAction {
 }
 
 message Grant {
-    optional User user = 1;
-    repeated string pool = 2;
-    optional AuthorityAction action = 3;
-    repeated Authority authority = 4;
+    optional string pool = 1;
+    optional AuthorityAction action = 2;
+    repeated Authority authority = 3;
 }
 
 
@@ -108,7 +121,7 @@ message BlkioRequired {
 message PortRequired {
     optional string port_name = 1;
     optional string port = 2;       // "dynamic" or number
-    optional int32 real_port = 3; //allocated on agent
+    optional string real_port = 3;  //allocated on agent
 }
 
 enum VolumType {
@@ -249,7 +262,7 @@ message JobDescription {
     optional uint32 priority = 2;
     optional string version = 3;
     optional Deploy deploy = 4;
-    optional PodDescription pod_desc = 5;
+    optional PodDescription pod = 5;
     optional string run_user = 6;
     optional string tag = 7;
     repeated string pool_names = 8;
@@ -289,9 +302,10 @@ enum ContainerStatus {
     kContainerPending = 1;     // in pending queue
     kContainerAllocating = 2;   // 
     kContainerReady = 3;       // ready, no process in container 
-    kContainerError = 4;       // an error occure
-    kContainerDestroying = 5;  // 
-    kContainerTerminated = 6;  // released by resource manager
+    kContainerFinish = 4;      // finish , when appworker exit with code 0
+    kContainerError = 5;       // an error occure
+    kContainerDestroying = 6;  // 
+    kContainerTerminated = 7;  // released by resource manager
 }
 
 enum ContainerGroupStatus {
@@ -327,11 +341,20 @@ enum Status {
    kAddAgentFail = 4;
    kDeny = 5;
    kJobNotFound = 6;
-   kRebuild = 7;
-   kReload = 8;
-   kStatusConflict = 9;
-   kJobTerminateFail = 10;
-   kSafeMode = 11;
+   kCreateContainerGroupFail = 7;
+   kRemoveContainerGroupFail = 8;
+   kUpdateContainerGroupFail = 9;
+   kRemoveAgentFail = 10;
+   kCreateTagFail = 11;
+   kAddAgentToPoolFail = 12;
+   kAddUserFail = 13;
+   kRemoveUserFail = 14;
+   kGrantUserFail = 15;
+   kAssignQuotaFail = 16;
+   kRebuild = 17;
+   kReload = 18;
+   kStatusConflict = 19;
+   kJobTerminateFail = 20;
 }
 
 message ErrorCode {
@@ -340,6 +363,7 @@ message ErrorCode {
 }
 
 enum AgentStatus {
+    kAgentUnkown = 0;
     kAgentAlive = 1;
     kAgentDead = 2;
     kAgentOffline = 3;
@@ -365,20 +389,44 @@ message AgentInfo {
     // exception statistics, eg: failed num of pod ..
 }
 
+//some statistics proto
+message ContainerStatistics {
+    optional string id = 1;
+    optional ContainerStatus status = 2;
+    optional string endpoint = 3;
+    optional Resource cpu = 4;
+    optional Resource memory = 5;
+    repeated VolumResource volums = 6; //different kinds of medium
+    optional ResourceError last_res_err = 7;
+}
+
+message ContainerGroupStatistics {
+    optional string id = 1;
+    optional string name = 2;
+    optional ContainerGroupStatus status = 3;
+    optional uint32 replica = 4;
+    optional uint32 ready = 5;
+    optional uint32 pending = 6;
+    optional uint32 allocating = 7;
+    optional Resource cpu = 8;
+    optional Resource memory = 9;
+    repeated VolumResource volums = 10; //different kinds of medium
+    optional int64 submit_time = 11;
+    optional int64 update_time = 12;
+    optional string user_name = 13;
+}
+
 //proto that used to be saved in nexus
 
 message AgentMeta {
     optional string endpoint = 1;
     optional string pool = 2;
-    repeated string tags = 3;
 }
 
 message UserMeta {
-    optional string user_name = 1;
-    optional string password = 2;
-    repeated string pools = 3;
-    repeated Authority authorites = 4;
-    optional Quota quota = 5;
+    optional User user = 1;
+    repeated Grant grants = 2;
+    optional Quota quota = 3;
 }
 
 message ContainerGroupMeta {
@@ -389,4 +437,9 @@ message ContainerGroupMeta {
     optional uint32 update_interval = 5;
     optional ContainerDescription desc = 6;
     optional ContainerGroupStatus status = 7;
+}
+
+message TagMeta {
+    optional string tag = 1;
+    repeated string endpoints = 2;
 }

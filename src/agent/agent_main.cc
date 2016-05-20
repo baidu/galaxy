@@ -17,11 +17,13 @@
 DECLARE_string(agent_port);
 
 static volatile bool s_quit = false;
-static void SignalIntHandler(int /*sig*/) {
+static void SignalIntHandler(int /*sig*/)
+{
     s_quit = true;
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("agent");
@@ -40,6 +42,8 @@ int main(int argc, char* argv[]) {
         LOG(WARNING) << "failed to start server on " << endpoint;
         exit(-2);
     }
+
+    agent->Setup();
 
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);

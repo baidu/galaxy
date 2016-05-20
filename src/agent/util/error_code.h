@@ -14,74 +14,76 @@
 #include <sstream>
 
 namespace baidu {
-    namespace galaxy {
-        namespace util {
+namespace galaxy {
+namespace util {
+typedef enum {
+    kErrorOk = 0,
+    kErrorFailed = -1,
+    kErrorRepeated = 1,
+    kErrorNotAllowed = 2
+} ErrorNum;
 
-            class ErrorCode {
-            public:
+class ErrorCode {
+public:
 
-                ErrorCode() : code_(-1) {
-
-                }
-
-                ErrorCode(int code, const std::string& msg) :
-                code_(code),
-                message_(msg) {
-                }
-
-                ErrorCode(const char* file, const char* function, uint32_t line, int code, const char* format, ...) : code_(code) {
-                    assert(NULL != file);
-                    assert(NULL != function);
-                    assert(NULL != format);
-
-                    std::stringstream ss;
-                    ss << "[" << file << ":" << function << ":" << line << "] ";
-                    char buf[2048];
-                    va_list va;
-                    va_start(va, format);
-                    vsnprintf(buf, sizeof buf, format, va);
-                    va_end(va);
-                    ss << buf;
-                    message_ = ss.str();
-                }
-
-                ErrorCode(const char* file,
-                        const char* function,
-                        uint32_t line,
-                        int code,
-                        int errnum,
-                        const char* format) : code_(code) {
-
-                    assert(NULL != file);
-                    assert(NULL != function);
-                    assert(NULL != format);
-
-                    std::stringstream ss;
-                    ss << "[" << file << ":" << function << ":" << line << "] ";
-                    char buf[2048];
-                    va_list va;
-                    va_start(va, format);
-                    vsnprintf(buf, sizeof buf, format, va);
-                    va_end(va);
-                    ss << buf << ": " << strerror(errnum);
-                    message_ = ss.str();
-                }
-
-                int Code() const {
-                    return code_;
-                }
-
-                const std::string Message() const {
-                    return message_;
-                }
-
-
-            private:
-                int code_;
-                std::string message_;
-            };
-        }
+    ErrorCode() : code_(-1) {
     }
+
+    ErrorCode(int code, const std::string& msg) :
+        code_(code),
+        message_(msg) {
+    }
+
+    ErrorCode(const char* file, const char* function, uint32_t line, int code, const char* format, ...) : code_(code) {
+        assert(NULL != file);
+        assert(NULL != function);
+        assert(NULL != format);
+        std::stringstream ss;
+        ss << "[" << file << ":" << function << ":" << line << "] ";
+        char buf[2048];
+        va_list va;
+        va_start(va, format);
+        vsnprintf(buf, sizeof buf, format, va);
+        va_end(va);
+        ss << buf;
+        message_ = ss.str();
+    }
+
+    ErrorCode(const char* file,
+            const char* function,
+            uint32_t line,
+            int code,
+            int errnum,
+            const char* format) : code_(code) {
+        assert(NULL != file);
+        assert(NULL != function);
+        assert(NULL != format);
+        std::stringstream ss;
+        ss << "[" << file << ":" << function << ":" << line << "] ";
+        char buf[2048];
+        va_list va;
+        va_start(va, format);
+        vsnprintf(buf, sizeof buf, format, va);
+        va_end(va);
+        ss << buf << ": " << strerror(errnum);
+        message_ = ss.str();
+    }
+
+    int Code() const {
+        return code_;
+    }
+
+    const std::string Message() const {
+        return message_;
+    }
+
+
+private:
+    int code_;
+    std::string message_;
+};
+}
+}
 }
 
 #define SET_ERRORCODE_MSG(obj, format, args...) obj.SetMessage(__FILE__, __FUNCTION__, __LINE__, format, ##args);

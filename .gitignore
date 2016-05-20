@@ -48,6 +48,8 @@ GPATH
 *.swp
 tmp
 
+*.orig
+
 # logs
 *.INFO*
 *.WARNING*

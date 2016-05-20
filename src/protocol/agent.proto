@@ -5,11 +5,12 @@ option cc_generic_services = true;
 
 message CreateContainerRequest {
     optional string id = 1;
-    optional ContainerDescription container = 2;
+    optional string container_group_id = 2;
+    optional ContainerDescription container = 3;
 }
 
 message CreateContainerResponse {
-    optional ErrorCode code = 1; 
+    optional ErrorCode code = 1;
 }
 
 message RemoveContainerRequest {
@@ -17,7 +18,7 @@ message RemoveContainerRequest {
 }
 
 message RemoveContainerResponse {
-    optional ErrorCode code = 1; 
+    optional ErrorCode code = 1;
 }
 
 message ListContainersRequest {
@@ -25,7 +26,7 @@ message ListContainersRequest {
 }
 
 message ListContainersResponse {
-    optional ErrorCode code = 1; 
+    optional ErrorCode code = 1;
     repeated ContainerInfo container_infos = 2;
 }
 
@@ -34,15 +35,15 @@ message QueryRequest {
 }
 
 message QueryResponse {
-    optional ErrorCode code = 1; 
+    optional ErrorCode code = 1;
     optional AgentInfo agent_info = 2;
 }
 
 service Agent {
-    rpc CreateContainer(CreateContainerRequest) returns (CreateContainerResponse);
-    rpc RemoveContainer(RemoveContainerRequest) returns (RemoveContainerResponse);
-    rpc ListContainers(ListContainersRequest) returns (ListContainersResponse); 
+    rpc CreateContainer(CreateContainerRequest) returns(CreateContainerResponse);
+    rpc RemoveContainer(RemoveContainerRequest) returns(RemoveContainerResponse);
+    rpc ListContainers(ListContainersRequest) returns(ListContainersResponse);
     //rpc UpdateContainer();
-    rpc Query(QueryRequest) returns (QueryResponse);
+    rpc Query(QueryRequest) returns(QueryResponse);
 }
 

@@ -23,8 +23,9 @@ message UpdateJobResponse {
     optional ErrorCode error_code = 1;
 }
 message RemoveJobRequest {
-    optional string jobid = 1;
-    optional string hostname = 2;
+    optional User user = 1;
+    optional string jobid = 2;
+    optional string hostname = 3;
 }
 message RemoveJobResponse {
     optional ErrorCode error_code = 1;
@@ -93,8 +94,9 @@ message ShowJobResponse {
 
 //ignore exec
 message ExecuteCmdRequest {
-    optional string jobid = 1;
-    optional string cmd = 2;
+    optional User user = 1;
+    optional string jobid = 2;
+    optional string cmd = 3;
 }
 
 message ExecuteCmdResponse {
@@ -120,8 +122,10 @@ message FetchTaskResponse {
 
 
 message StopJobRequest {
-    optional string jobid = 1;
-} 
+    optional User user = 1;
+    optional string jobid = 2;
+}
+
 message StopJobResponse {
     optional ErrorCode error_code = 1;
 }
