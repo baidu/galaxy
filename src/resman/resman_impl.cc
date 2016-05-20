@@ -736,6 +736,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         }
         std::map<std::string, AgentStat>::iterator jt = agent_stats_.find(endpoint);
         if (jt == agent_stats_.end()) {
+            agent_st->set_status(proto::kAgentUnkown);
             continue;
         }
         agent_st->set_status(jt->second.status);
@@ -744,6 +745,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         agent_st->mutable_volums()->CopyFrom(jt->second.info.volum_resources());
         agent_st->set_total_containers(jt->second.info.container_info().size());
     }
+    VLOG(10) << "list agents:" << response->DebugString();
     response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
 }
