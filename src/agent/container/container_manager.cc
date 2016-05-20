@@ -23,8 +23,7 @@ ContainerManager::~ContainerManager()
 int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
 {
     baidu::galaxy::util::ErrorCode ec = stage_.EnterCreatingStage(id.SubId());
-
-    if (ec.Code() != baidu::galaxy::util::kErrorRepeated) {
+    if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << ec.Message();
         return 0;
     }
