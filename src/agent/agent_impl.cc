@@ -6,6 +6,8 @@
 #include "rpc/rpc_client.h"
 #include "boost/thread/mutex.hpp"
 #include "protocol/resman.pb.h"
+#include "cgroup/subsystem_factory.h"
+#include "util/path_tree.h"
 
 #include <string>
 #include <sstream>
@@ -74,6 +76,11 @@ void AgentImpl::Setup()
         LOG(FATAL) << "resource manager loads resource failed";
         exit(1);
     }
+
+    baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
+    baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
+    baidu::galaxy::container::ContainerStatus::Setup();
+
     LOG(INFO) << "resource manager load resource successfully: " << rm_->ToString();
 
     if (!rm_watcher_->Init(boost::bind(&AgentImpl::HandleMasterChange, this, _1))) {
