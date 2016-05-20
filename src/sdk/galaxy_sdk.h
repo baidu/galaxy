@@ -46,8 +46,7 @@ enum AuthorityAction {
     kActionClear=4,
 };
 struct Grant {
-    User user;
-    std::vector<std::string> pool;
+    std::string pool;
     AuthorityAction action;
     std::vector<Authority> authority;
 };
@@ -365,7 +364,6 @@ struct ListAgentsByTagRequest {
 struct ListAgentsByTagResponse {
     ErrorCode error_code;
     std::vector<AgentStatistics> agents;
-    //std::vector<std::string> endpoint;
 };
 struct GetTagsByAgentRequest {
     User user;
@@ -396,7 +394,6 @@ struct ListAgentsByPoolRequest {
 };
 struct ListAgentsByPoolResponse {
     ErrorCode error_code;
-    //std::vector<std::string> endpoint;
     std::vector<AgentStatistics> agents;
 };
 struct GetPoolByAgentRequest {
