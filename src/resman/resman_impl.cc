@@ -29,11 +29,19 @@ const std::string sTagPrefix = "/tag";
 const std::string sRMLock = "/resman_lock";
 const std::string sRMAddr = "/resman";
 
+#define CHECK_USER() do {\
+    if (!CheckUserExist(request, response, done)) {\
+        LOG(WARNING) << "rpc refused, method:" << __FUNCTION__;\
+        return;\
+    }\
+} while(0);
+
 namespace baidu {
 namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()),
-                           safe_mode_(true) {
+                           safe_mode_(true),
+                           force_safe_mode_(false) {
     nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
 
@@ -135,6 +143,7 @@ void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
     MutexLock lock(&mu_);
     if (!safe_mode_) {
         safe_mode_ = true;
+        force_safe_mode_ = true;
         scheduler_->Stop();
         response->mutable_error_code()->set_status(proto::kOk);
     } else {
@@ -151,6 +160,7 @@ void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
     MutexLock lock(&mu_);
     if (safe_mode_) {
         safe_mode_ = false;
+        force_safe_mode_ = false;
         scheduler_->Start();
         response->mutable_error_code()->set_status(proto::kOk);
     } else {
@@ -292,7 +302,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
     if (response->code().status() != proto::kOk || rpc_fail) {
         LOG(WARNING) << "failed to query on: " << agent_endpoint
                      << " err: " << err << ", rpc_fail:" << rpc_fail;
-        query_pool_.DelayTask(FLAGS_agent_query_interval,
+        query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
             boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
         );
         return;
@@ -328,6 +338,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         LOG(INFO) << "TRACE BEGIN, first query result from:" << agent_endpoint
                   << "\n" << agent_info.DebugString()
                   << "\nTRACE END";
+        is_first_query = false;
     } else {
         VLOG(10) << "TRACE BEGIN, query result from: " << agent_endpoint
                  << "\n" << response->agent_info().DebugString()
@@ -345,7 +356,8 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
             return;
         }
         agent_stats_[agent_endpoint].info = response->agent_info();
-        if (safe_mode_ && 
+        if (!force_safe_mode_ && 
+            safe_mode_ && 
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
             LOG(INFO) << "leave safe mode";
             safe_mode_ = false;
@@ -356,7 +368,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         scheduler_->Start();
     }
     //query again later
-    query_pool_.DelayTask(FLAGS_agent_query_interval,
+    query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
         boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
     );
 }
@@ -447,6 +459,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::CreateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::CreateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
+    CHECK_USER()
     std::string user = request->user().user();
     LOG(INFO) << "user:" << user << " create container group";
     proto::ContainerGroupMeta container_group_meta;
@@ -490,7 +503,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::RemoveContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::RemoveContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
-
+    CHECK_USER()
     {
         MutexLock lock(&mu_);
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
@@ -524,6 +537,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::UpdateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::UpdateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
+    CHECK_USER()
     proto::ContainerGroupMeta new_meta;
     bool replica_changed = false;
     {
@@ -632,6 +646,17 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
         done->Run();
         return;
     }
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::AgentMeta>::const_iterator it;
+        it = agents_.find(request->endpoint());
+        if (it != agents_.end()) {
+            response->mutable_error_code()->set_status(proto::kAddAgentFail);
+            response->mutable_error_code()->set_reason("agent already exist");
+            done->Run();
+            return;
+        }
+    }
     proto::AgentMeta agent_meta;
     agent_meta.set_endpoint(request->endpoint());
     agent_meta.set_pool(request->pool());
@@ -727,6 +752,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         }
         std::map<std::string, AgentStat>::iterator jt = agent_stats_.find(endpoint);
         if (jt == agent_stats_.end()) {
+            agent_st->set_status(proto::kAgentUnkown);
             continue;
         }
         agent_st->set_status(jt->second.status);
@@ -735,6 +761,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         agent_st->mutable_volums()->CopyFrom(jt->second.info.volum_resources());
         agent_st->set_total_containers(jt->second.info.container_info().size());
     }
+    VLOG(10) << "list agents:" << response->DebugString();
     response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
 }
@@ -1077,14 +1104,95 @@ void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::proto::GrantUserRequest* request,
                            ::baidu::galaxy::proto::GrantUserResponse* response,
                            ::google::protobuf::Closure* done) {
+    const std::string& user_name = request->user().user();
+    proto::UserMeta user_meta;
+    {
+        MutexLock lock(&mu_);
+        if (users_.find(user_name) == users_.end()) {
+            response->mutable_error_code()->set_status(proto::kGrantUserFail);
+            response->mutable_error_code()->set_reason("no such user");
+            done->Run();
+            return;
+        }
+        user_meta = users_[user_name];
+    }
+    const proto::Grant& grant = request->grant();
+    /// pool_name -> [auth1, auth2, auth3]
+    std::map<std::string, std::set<proto::Authority> > user_grants;
+    for (int i = 0; i < user_meta.grants_size(); i++) {
+        const std::string& pool_name = user_meta.grants(i).pool();
+        for (int j =0; j < user_meta.grants(i).authority_size(); j++) {
+            user_grants[pool_name].insert(user_meta.grants(i).authority(j));
+        }
+    }
+    if (grant.action() == proto::kActionSet) {
+        user_grants[grant.pool()].clear();
+        for (int i = 0; i < grant.authority_size(); i++) {
+            user_grants[grant.pool()].insert(grant.authority(i));
+        }
+    } else if (grant.action() == proto::kActionClear) {
+        user_grants[grant.pool()].clear();
+    } else if (grant.action() == proto::kActionAdd) {
+        for (int i = 0; i < grant.authority_size(); i++) {
+            user_grants[grant.pool()].insert(grant.authority(i));
+        }
+    } else if (grant.action() == proto::kActionRemove) {
+        for (int i = 0; i < grant.authority_size(); i++) {
+            user_grants[grant.pool()].erase(grant.authority(i));
+        }
+    }
+    user_meta.mutable_grants()->Clear();
+    std::map<std::string, std::set<proto::Authority> >::const_iterator it;
+    for (it = user_grants.begin(); it != user_grants.end(); it++) {
+        proto::Grant* the_grant = user_meta.add_grants();
+        const std::string& pool_name = it->first;
+        const std::set<proto::Authority>& auths = it->second;
+        the_grant->set_pool(pool_name);
+        std::set<proto::Authority>::const_iterator jt;
+        for (jt = auths.begin(); jt != auths.end(); jt++) {
+            the_grant->add_authority(*jt);
+        }
+    }
 
+    bool save_ret = SaveObject(sUserPrefix + "/" + user_name, user_meta);
+    if (!save_ret) {
+        response->mutable_error_code()->set_status(proto::kGrantUserFail);
+        response->mutable_error_code()->set_reason("fail to save meta to nexus");
+    } else {
+        MutexLock lock(&mu_);
+        users_[user_name] = user_meta;
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
                              const ::baidu::galaxy::proto::AssignQuotaRequest* request,
                              ::baidu::galaxy::proto::AssignQuotaResponse* response,
                              ::google::protobuf::Closure* done) {
-
+    const std::string& user_name = request->user().user();
+    proto::UserMeta user_meta;
+    {
+        MutexLock lock(&mu_);
+        if (users_.find(user_name) == users_.end()) {
+            response->mutable_error_code()->set_status(proto::kAssignQuotaFail);
+            response->mutable_error_code()->set_reason("no such user");
+            done->Run();
+            return;
+        }
+        user_meta = users_[user_name];
+    }
+    user_meta.mutable_quota()->CopyFrom(request->quota());
+    bool save_ret = SaveObject(sUserPrefix + "/" + user_name, user_meta);
+    if (!save_ret) {
+        response->mutable_error_code()->set_status(proto::kAssignQuotaFail);
+        response->mutable_error_code()->set_reason("fail to save meta to nexus");
+    } else {
+        MutexLock lock(&mu_);
+        users_[user_name] = user_meta;
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 bool ResManImpl::RemoveObject(const std::string& key) {
@@ -1152,7 +1260,11 @@ void ResManImpl::CreateContainerCallback(std::string agent_endpoint,
     if (response->code().status() != proto::kOk) {
         LOG(WARNING) << "fail to create contaienr, reason:" 
                      << response->code().reason()
-                     << ", agent:" << agent_endpoint;
+                     << ", agent:" << agent_endpoint
+                     << ", contaienr_id: " << request->id();
+        const std::string& container_group_id = request->container_group_id();
+        const std::string& container_id = request->id();
+        scheduler_->ChangeStatus(container_group_id, container_id, proto::kContainerPending);
         return;
     }
 }
@@ -1174,6 +1286,22 @@ void ResManImpl::RemoveContainerCallback(std::string agent_endpoint,
                      << ", agent:" << agent_endpoint;
         return;
     }
+}
+
+template <class RpcRequest, class RpcResponse, class DoneClosure>
+bool ResManImpl::CheckUserExist(const RpcRequest* request, 
+                                RpcResponse* response,
+                                DoneClosure* done) {
+    MutexLock lock(&mu_);
+    const std::string& user_name = request->user().user();
+    if (users_.find(user_name) == users_.end()) {
+        LOG(WARNING) << "unexpected user:" << request->user().user();
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("user not exist:" + user_name);
+        done->Run();
+        return false;
+    }
+    return true;
 }
 
 } //namespace galaxy
