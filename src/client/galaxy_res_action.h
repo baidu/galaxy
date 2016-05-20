@@ -25,12 +25,33 @@ public:
     bool ShowContainerGroup(const std::string& id);
     bool AddAgent(const std::string& pool, const std::string& endpoint);
     bool RemoveAgent(const std::string& endpoint);
-    bool ListAgents(const std::string& pool);
+    bool ListAgentsByPool(const std::string& pool);
+    bool ListAgentsByTag(const std::string& tag);
+    bool ListAgents();
     bool EnterSafeMode();
     bool LeaveSafeMode();
     bool OnlineAgent(const std::string& endpoint);
     bool OfflineAgent(const std::string& endpoint);
     bool Status();
+    //NO finish
+    bool CreateTag(const std::string& tag);
+    bool ListTags();
+    bool GetPoolByAgent(const std::string& endpoint);
+    bool AddUser(const std::string& user, const std::string& token);
+    bool RemoveUser(const std::string& user, const std::string& token);
+    bool ListUsers();
+    bool ShowUser(const std::string& user, const std::string& token);
+    bool GrantUser(const std::string& user, const std::string& token, 
+                   const std::string& pool, const std::string& opration, 
+                   const std::string& authority);
+    bool AssignQuota(const std::string& user,
+                 const std::string& token,
+                 uint32_t millicores,
+                 const std::string& memory,
+                 const std::string& disk,
+                 const std::string& ssd,
+                 int replica
+                 );
 
 private:
     bool Init();

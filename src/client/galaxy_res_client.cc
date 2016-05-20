@@ -8,6 +8,7 @@ DEFINE_string(f, "", "specify config file");
 DEFINE_string(i, "", "specify container id");
 DEFINE_string(p, "", "specify agent pool");
 DEFINE_string(e, "", "specify agent endpoint");
+DEFINE_string(t, "", "specify agent tag");
 
 DECLARE_string(flagfile);
 
@@ -20,7 +21,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client show_container -i id\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
                                  "      galaxy_res_client remove_agent -e endpoint\n"
-                                 "      galaxy_res_client list_agents -p pool\n"
+                                 "      galaxy_res_client list_agents [-p pool -e tag]\n"
                                  "      galaxy_res_client enter_safemode\n"
                                  "      galaxy_res_client leave_safemode\n"
                                  "      galaxy_res_client online_agent -e endpoint\n"
@@ -95,11 +96,13 @@ int main(int argc, char** argv) {
         }
         return resAction->RemoveAgent(FLAGS_e);
     } else if (strcmp(argv[1], "list_agents") == 0) {
-        if (FLAGS_p.empty()) {
-            fprintf(stderr, "-p is needed\n");
-            return -1;
+        if (!FLAGS_p.empty()) {
+            return resAction->ListAgentsByPool(FLAGS_p);
+        } else if (!FLAGS_t.empty()) {
+            return resAction->ListAgentsByTag(FLAGS_t);
+        } else {
+            return resAction->ListAgents();
         }
-        return resAction->ListAgents(FLAGS_p);
     } else if (strcmp(argv[1], "enter_safemode") == 0) { 
         return resAction->EnterSafeMode();
     } else if (strcmp(argv[1], "leave_safemode") == 0) {

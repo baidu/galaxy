@@ -93,7 +93,6 @@ message OfflineAgentResponse {
 
 message ListAgentsRequest {
     optional User user = 1;
-    optional string pool = 2;
 }
 
 message AgentStatistics {
@@ -141,6 +140,7 @@ message ListAgentsByTagRequest {
 message ListAgentsByTagResponse {
     optional ErrorCode error_code = 1;
     repeated string endpoint = 2;
+    //repeated AgentStatistics agents = 2;
 }
 
 message GetTagsByAgentRequest {
@@ -180,6 +180,7 @@ message ListAgentsByPoolRequest {
 message ListAgentsByPoolResponse {
     optional ErrorCode error_code = 1;
     repeated string endpoint = 2;
+    //repeated AgentStatistics agents = 2;
 }
 
 message GetPoolByAgentRequest {
