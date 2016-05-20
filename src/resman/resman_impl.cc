@@ -824,7 +824,25 @@ void ResManImpl::ListAgentsByTag(::google::protobuf::RpcController* controller,
     }
     std::set<std::string>::const_iterator jt;
     for (jt = it->second.begin(); jt != it->second.end(); jt++) {
-        response->add_endpoint(*jt);
+        const std::string& endpoint = *jt;
+        const proto::AgentMeta& agent_meta = agents_[endpoint];
+        proto::AgentStatistics* agent_st = response->add_agents();
+        agent_st->set_endpoint(endpoint);
+        agent_st->set_pool(agent_meta.pool());
+        const std::set<std::string>& tags = agent_tags_[endpoint];
+        for (std::set<std::string>::iterator tag_it = tags.begin();
+            tag_it != tags.end(); tag_it++) {
+            agent_st->add_tags(*tag_it);
+        }
+        std::map<std::string, AgentStat>::iterator stat_it = agent_stats_.find(endpoint);
+        if (stat_it == agent_stats_.end()) {
+            continue;
+        }
+        agent_st->set_status(stat_it->second.status);
+        agent_st->mutable_cpu()->CopyFrom(stat_it->second.info.cpu_resource());
+        agent_st->mutable_memory()->CopyFrom(stat_it->second.info.memory_resource());
+        agent_st->mutable_volums()->CopyFrom(stat_it->second.info.volum_resources());
+        agent_st->set_total_containers(stat_it->second.info.container_info().size());
     }
     response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
@@ -911,7 +929,25 @@ void ResManImpl::ListAgentsByPool(::google::protobuf::RpcController* controller,
     }
     std::set<std::string>::const_iterator jt;
     for (jt = it->second.begin(); jt != it->second.end(); jt++) {
-        response->add_endpoint(*jt);
+        const std::string& endpoint = *jt;
+        const proto::AgentMeta& agent_meta = agents_[endpoint];
+        proto::AgentStatistics* agent_st = response->add_agents();
+        agent_st->set_endpoint(endpoint);
+        agent_st->set_pool(agent_meta.pool());
+        const std::set<std::string>& tags = agent_tags_[endpoint];
+        for (std::set<std::string>::iterator tag_it = tags.begin();
+            tag_it != tags.end(); tag_it++) {
+            agent_st->add_tags(*tag_it);
+        }
+        std::map<std::string, AgentStat>::iterator stat_it = agent_stats_.find(endpoint);
+        if (stat_it == agent_stats_.end()) {
+            continue;
+        }
+        agent_st->set_status(stat_it->second.status);
+        agent_st->mutable_cpu()->CopyFrom(stat_it->second.info.cpu_resource());
+        agent_st->mutable_memory()->CopyFrom(stat_it->second.info.memory_resource());
+        agent_st->mutable_volums()->CopyFrom(stat_it->second.info.volum_resources());
+        agent_st->set_total_containers(stat_it->second.info.container_info().size());
     }
     response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
