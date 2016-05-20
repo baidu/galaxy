@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
-#include <sys/utsname.h>
+//#include <sys/utsname.h>
 #include <gflags/gflags.h>
 #include <boost/bind.hpp>
 #include <snappy.h>
@@ -30,8 +30,14 @@ AgentImpl::AgentImpl() :
     rm_watcher_(new baidu::galaxy::MasterWatcher()),
     resman_stub_(NULL),
     agent_endpoint_(FLAGS_agent_ip + ":" + FLAGS_agent_port),
-    running_(false)
+    running_(false),
+    rm_(new baidu::galaxy::resource::ResourceManager),
+    cm_(new baidu::galaxy::container::ContainerManager(rm_)),
+    health_checker_(new baidu::galaxy::health::HealthChecker()),
+    start_time_(baidu::common::timer::get_micros())
 {
+    version_ = "0.0.1";
+    //version_ = __DATE__ + __TIME__;
 }
 
 AgentImpl::~AgentImpl()
@@ -64,16 +70,25 @@ void AgentImpl::HandleMasterChange(const std::string& new_master_endpoint)
 void AgentImpl::Setup()
 {
     running_ = true;
+    if (0 != rm_->Load()) {
+        LOG(FATAL) << "resource manager loads resource failed";
+        exit(1);
+    }
+    LOG(INFO) << "resource manager load resource successfully: " << rm_->ToString();
+
     if (!rm_watcher_->Init(boost::bind(&AgentImpl::HandleMasterChange, this, _1))) {
         LOG(FATAL) << "init res manager watch failed, agent will exit ...";
         exit(1);
     }
+    LOG(INFO) << "init resource manager watcher successfully";
+
+
     heartbeat_pool_.AddTask(boost::bind(&AgentImpl::KeepAlive, this, FLAGS_keepalive_interval));
+    LOG(INFO) << "start keep alive thread, interval is " << FLAGS_keepalive_interval << "ms";
 }
 
 void AgentImpl::KeepAlive(int internal_ms)
 {
-
     baidu::galaxy::proto::KeepAliveRequest request;
     baidu::galaxy::proto::KeepAliveResponse response;
     request.set_endpoint(agent_endpoint_);
@@ -96,9 +111,20 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
         ::baidu::galaxy::proto::CreateContainerResponse* response,
         ::google::protobuf::Closure* done)
 {
-    //
-}
+    baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
+    baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
 
+    if (0 != cm_->CreateContainer(id, request->container())) {
+        ec->set_status(baidu::galaxy::proto::kError);
+        ec->set_reason("failed");
+    } else {
+        ec->set_status(baidu::galaxy::proto::kOk);
+        ec->set_reason("sucess");
+    }
+
+    response->set_allocated_code(ec);
+    done->Run();
+}
 
 void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
         const ::baidu::galaxy::proto::RemoveContainerRequest* request,
@@ -107,7 +133,6 @@ void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
 {
 }
 
-
 void AgentImpl::ListContainers(::google::protobuf::RpcController* controller,
         const ::baidu::galaxy::proto::ListContainersRequest* request,
         ::baidu::galaxy::proto::ListContainersResponse* response,
@@ -115,12 +140,52 @@ void AgentImpl::ListContainers(::google::protobuf::RpcController* controller,
 {
 }
 
-
 void AgentImpl::Query(::google::protobuf::RpcController* controller,
         const ::baidu::galaxy::proto::QueryRequest* request,
         ::baidu::galaxy::proto::QueryResponse* response,
         ::google::protobuf::Closure* done)
 {
+
+    baidu::galaxy::proto::AgentInfo* ai = new baidu::galaxy::proto::AgentInfo();
+    ai->set_unhealthy(!health_checker_->Healthy());
+    ai->set_start_time(start_time_);
+    ai->set_version(version_);
+
+    baidu::galaxy::proto::Resource* cpu_resource = new baidu::galaxy::proto::Resource();
+    cpu_resource->CopyFrom(*(rm_->GetCpuResource()));
+    //cpu_resource->set_used(0);
+    ai->set_allocated_cpu_resource(cpu_resource);
+
+    baidu::galaxy::proto::Resource* memory_resource = new baidu::galaxy::proto::Resource();
+    memory_resource->CopyFrom(*(rm_->GetMemoryResource()));
+    //memory_resource->set_used(0);
+    ai->set_allocated_memory_resource(memory_resource);
+
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> > vrs;
+    rm_->GetVolumResource(vrs);
+
+    for (size_t i = 0; i < vrs.size(); i++) {
+        baidu::galaxy::proto::VolumResource* vr = ai->add_volum_resources();
+        vr->set_device_path(vrs[i]->device_path());
+        vr->set_medium(vrs[i]->medium());
+        baidu::galaxy::proto::Resource* r = new baidu::galaxy::proto::Resource();
+        r->set_total(vrs[i]->volum().total());
+        r->set_assigned(vrs[i]->volum().assigned());
+        //r->set_used();
+        vr->set_allocated_volum(r);
+    }
+
+    //std::cerr << ai->DebugString() << std::endl;
+
+    if (request->has_full_report() && request->full_report()) {
+
+    }
+
+    baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
+    ec->set_status(baidu::galaxy::proto::kOk);
+    response->set_allocated_agent_info(ai);
+    response->set_allocated_code(ec);
+    done->Run();
 }
 
 

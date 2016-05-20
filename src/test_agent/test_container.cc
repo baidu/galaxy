@@ -33,7 +33,8 @@ protected:
     }
 };
 
-TEST_F(TestContainer, Construct1) {
+TEST_F(TestContainer, Construct1)
+{
     baidu::galaxy::proto::ContainerDescription desc;
     desc.set_cmd_line("sh -x test.sh");
     desc.set_run_user("galaxy");
@@ -79,7 +80,8 @@ TEST_F(TestContainer, Construct1) {
     tr->set_send_bps_excess(false);
     tr->set_send_bps_quota(1000000);
     cgroup->set_allocated_tcp_throt(tr);
-    baidu::galaxy::container::Container container("container_id", desc);
+    baidu::galaxy::container::ContainerId id("container_group_id", "container_id");
+    baidu::galaxy::container::Container container(id, desc);
     EXPECT_EQ(0, container.Construct());
     EXPECT_EQ(0, container.Destroy());
 }
