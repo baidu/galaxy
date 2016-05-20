@@ -21,11 +21,11 @@ public:
     ~MasterWatcher();
     bool Init(boost::function<void(const std::string& new_master_endpoint)> handler);
     std::string GetMasterEndpoint();
-    
+
 private:
     bool IssueNewWatch();
-    static void EventMasterChange(const ::galaxy::ins::sdk::WatchParam& param, 
-                ::galaxy::ins::sdk::SDKError /*error*/);
+    static void EventMasterChange(const ::galaxy::ins::sdk::WatchParam& param,
+            ::galaxy::ins::sdk::SDKError /*error*/);
 
 
     InsSDK* nexus_;

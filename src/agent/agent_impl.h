@@ -13,6 +13,10 @@
 #include "rpc/rpc_client.h"
 #include "boost/scoped_ptr.hpp"
 #include "boost/thread/mutex.hpp"
+#include "resource/resource_manager.h"
+#include "container/container.h"
+#include "container/container_manager.h"
+#include "health/health.h"
 
 namespace baidu {
 namespace galaxy {
@@ -62,6 +66,12 @@ private:
     const std::string agent_endpoint_;
     bool running_;
     boost::mutex rpc_mutex_;
+
+    boost::shared_ptr<baidu::galaxy::resource::ResourceManager> rm_;
+    boost::shared_ptr<baidu::galaxy::container::ContainerManager> cm_;
+    boost::shared_ptr<baidu::galaxy::health::HealthChecker> health_checker_;
+    int64_t start_time_;
+    std::string version_;
 
 };
 
