@@ -29,6 +29,13 @@ const std::string sTagPrefix = "/tag";
 const std::string sRMLock = "/resman_lock";
 const std::string sRMAddr = "/resman";
 
+#define CHECK_USER() do {\
+    if (!CheckUserExist(request, response, done)) {\
+        LOG(WARNING) << "rpc refused, method:" << __FUNCTION__;\
+        return;\
+    }\
+} while(0);
+
 namespace baidu {
 namespace galaxy {
 
@@ -447,6 +454,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::CreateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::CreateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
+    CHECK_USER()
     std::string user = request->user().user();
     LOG(INFO) << "user:" << user << " create container group";
     proto::ContainerGroupMeta container_group_meta;
@@ -490,7 +498,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::RemoveContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::RemoveContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
-
+    CHECK_USER()
     {
         MutexLock lock(&mu_);
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
@@ -524,6 +532,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
                                       const ::baidu::galaxy::proto::UpdateContainerGroupRequest* request,
                                       ::baidu::galaxy::proto::UpdateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
+    CHECK_USER()
     proto::ContainerGroupMeta new_meta;
     bool replica_changed = false;
     {
@@ -1178,6 +1187,22 @@ void ResManImpl::RemoveContainerCallback(std::string agent_endpoint,
                      << ", agent:" << agent_endpoint;
         return;
     }
+}
+
+template <class RpcRequest, class RpcResponse, class DoneClosure>
+bool ResManImpl::CheckUserExist(const RpcRequest* request, 
+                                RpcResponse* response,
+                                DoneClosure* done) {
+    MutexLock lock(&mu_);
+    const std::string& user_name = request->user().user();
+    if (users_.find(user_name) == users_.end()) {
+        LOG(WARNING) << "unexpected user:" << request->user().user();
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("user not exist:" + user_name);
+        done->Run();
+        return false;
+    }
+    return true;
 }
 
 } //namespace galaxy
