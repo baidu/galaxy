@@ -655,13 +655,23 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
                              ::baidu::galaxy::proto::RemoveAgentResponse* response,
                              ::google::protobuf::Closure* done) {
     LOG(INFO) << "remove agent:" << request->endpoint();
+    std::set<std::string> agent_tags;
+    std::string agent_pool;
+    const std::string& endpoint = request->endpoint();
     {
         MutexLock lock(&mu_);
-        if (agents_.find(request->endpoint()) == agents_.end()) {
+        std::map<std::string, proto::AgentMeta>::const_iterator it;
+        it = agents_.find(endpoint);
+        if (it == agents_.end()) {
             response->mutable_error_code()->set_status(proto::kRemoveAgentFail);
             response->mutable_error_code()->set_reason("agent not exist");
             done->Run();
             return;
+        } else {
+            agent_pool = it->second.pool();
+            if (agent_tags_.find(endpoint) != agent_tags_.end()) {
+                agent_tags = agent_tags_[endpoint];
+            }
         }
     }
     bool remove_ok = RemoveObject(sAgentPrefix + "/" + request->endpoint());
@@ -670,9 +680,15 @@ void ResManImpl::RemoveAgent(::google::protobuf::RpcController* controller,
         response->mutable_error_code()->set_reason("fail to delete meta from nexus");
     } else {
         MutexLock lock(&mu_);
-        agents_.erase(request->endpoint());
-        agent_stats_.erase(request->endpoint());
-        scheduler_->RemoveAgent(request->endpoint());
+        agents_.erase(endpoint);
+        agent_stats_.erase(endpoint);
+        pools_[agent_pool].erase(endpoint);
+        std::set<std::string>::const_iterator tag_it;
+        for (tag_it = agent_tags.begin(); tag_it != agent_tags.end(); tag_it++) {
+            const std::string& tag_name = *tag_it;
+            tags_[tag_name].erase(endpoint);
+        }
+        scheduler_->RemoveAgent(endpoint);
         response->mutable_error_code()->set_status(proto::kOk);
     }
     done->Run();
