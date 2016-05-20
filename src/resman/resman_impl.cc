@@ -1152,7 +1152,11 @@ void ResManImpl::CreateContainerCallback(std::string agent_endpoint,
     if (response->code().status() != proto::kOk) {
         LOG(WARNING) << "fail to create contaienr, reason:" 
                      << response->code().reason()
-                     << ", agent:" << agent_endpoint;
+                     << ", agent:" << agent_endpoint
+                     << ", contaienr_id: " << request->id();
+        const std::string& container_group_id = request->container_group_id();
+        const std::string& container_id = request->id();
+        scheduler_->ChangeStatus(container_group_id, container_id, proto::kContainerPending);
         return;
     }
 }
