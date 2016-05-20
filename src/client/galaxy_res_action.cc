@@ -65,8 +65,8 @@ bool ResAction::CreateContainerGroup(const std::string& json_file) {
     request.desc.workspace_volum = job.pod.workspace_volum;
     request.desc.data_volums.assign(job.pod.data_volums.begin(), job.pod.data_volums.end());
     request.desc.cmd_line = "sh appworker.sh";
-    request.desc.tag = "test";
-    request.desc.pool_names.push_back("test");
+    request.desc.tag = job.deploy.tag;
+    request.desc.pool_names.assign(job.deploy.pools.begin(), job.deploy.pools.end());
     
     for (size_t i = 0; i < job.pod.tasks.size(); ++i) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
@@ -119,9 +119,9 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
     request.desc.workspace_volum = job.pod.workspace_volum;
     request.desc.data_volums.assign(job.pod.data_volums.begin(), job.pod.data_volums.end());
     request.desc.cmd_line = "sh appworker.sh";
-    request.desc.tag = "test";
-    request.desc.pool_names.push_back("test");
-    
+    request.desc.tag = job.deploy.tag;
+    request.desc.pool_names.assign(job.deploy.pools.begin(), job.deploy.pools.end());
+
     for (size_t i = 0; i < job.pod.tasks.size(); ++i) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
         cgroup.id = i;
@@ -735,7 +735,7 @@ bool ResAction::Status() {
 
 }
 
-bool ResAction::CreateTag(const std::string& tag) {
+bool ResAction::CreateTag(const std::string& tag, const std::string& file) {
 
     if (tag.empty()) {
         return false;
@@ -749,6 +749,10 @@ bool ResAction::CreateTag(const std::string& tag) {
     ::baidu::galaxy::sdk::CreateTagResponse response;
     request.user = user_;
     request.tag = tag;
+
+    if (!LoadAgentEndpointsFromFile(file, &request.endpoint)) {
+        return false;
+    }
 
     bool ret = resman_->CreateTag(request, &response);
     if (ret) {
@@ -1031,7 +1035,7 @@ bool ResAction::GrantUser(const std::string& user,
     return ret;
 }
 
-bool AssignQuota(const std::string& user,
+bool ResAction::AssignQuota(const std::string& user,
                  const std::string& token,
                  uint32_t millicores,
                  const std::string& memory,
@@ -1039,7 +1043,43 @@ bool AssignQuota(const std::string& user,
                  const std::string& ssd,
                  int replica
                  ) {
-    return false;
+
+    if (user.empty() || token.empty()) {
+        return false;
+    }
+    if(!this->Init()) {
+        return false;
+    }
+    ::baidu::galaxy::sdk::Quota quota;
+    quota.millicore = millicores;
+    quota.replica = replica;
+    if (UnitStringToByte(memory, &quota.memory)) {
+        return false;
+    }
+
+    if (UnitStringToByte(disk, &quota.disk)) {
+        return false;
+    }
+
+    if (UnitStringToByte(ssd, &quota.ssd)) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::AssignQuotaRequest request;
+    ::baidu::galaxy::sdk::AssignQuotaResponse response;
+    request.admin = user_;
+    request.user.user  = user;
+    request.user.token = token;
+    request.quota = quota;
+
+    bool ret = resman_->AssignQuota(request, &response);
+    if (ret) {
+        printf("Assign quota Success\n");
+    } else {
+        printf("Assign quota failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
 } 
 
 } // end namespace client

@@ -156,6 +156,8 @@ struct Deploy {
     uint32_t step;
     uint32_t interval;
     uint32_t max_per_host;
+    std::string tag;
+    std::vector<std::string> pools;
 };
 struct Service {
     std::string service_name;

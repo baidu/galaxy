@@ -6,7 +6,9 @@
          "replica": 10, 
          "step": 2,
          "interval": 3,
-         "max_per_host": 1
+         "max_per_host": 1,
+         "tag": "int-bogus",
+         "pools": "linkbase,docjoin,ubm"
      }, 
     "pod": {
         "workspace_volum": {
