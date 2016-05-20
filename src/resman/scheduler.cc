@@ -690,6 +690,26 @@ void Scheduler::ScaleUp(ContainerGroup::Ptr container_group, int replica) {
     }
 }
 
+bool Scheduler::ChangeStatus(const ContainerGroupId& container_group_id,
+                             const ContainerId& container_id,
+                             ContainerStatus new_status) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it = container_groups_.find(container_group_id);
+    if (it == container_groups_.end()) {
+        LOG(WARNING) << "change status fail, no such container_group:" << container_group_id;
+        return false;
+    }
+    ContainerGroup::Ptr container_group = it->second;
+    ContainerMap::iterator container_it = container_group->containers.find(container_id);
+    if (container_it == container_group->containers.end()) {
+        LOG(WARNING) << "change status fail, no such container: " << container_id;
+        return false;
+    }
+    Container::Ptr container = container_it->second;
+    ChangeStatus(container_group, container, new_status);
+    return true;
+}
+
 void Scheduler::ChangeStatus(Container::Ptr container,
                              ContainerStatus new_status) {
     mu_.AssertHeld();

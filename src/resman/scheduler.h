@@ -234,6 +234,10 @@ public:
     void GetContainersStatistics(const ContainerMap& containers_map,
                                  std::vector<proto::ContainerStatistics>& containers);
     void ShowUserAlloc(const std::string& user_name, proto::Quota& alloc);
+    bool ChangeStatus(const ContainerGroupId& container_group_id,
+                      const ContainerId& container_id,
+                      ContainerStatus new_status);
+
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
