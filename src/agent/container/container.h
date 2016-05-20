@@ -32,7 +32,7 @@ public:
     ContainerId() {}
     ContainerId(const std::string& group_id, const std::string& container_id) :
         group_id_(group_id),
-        container_id_(container_id_) {
+        container_id_(container_id) {
     }
 
     bool Empty() {
