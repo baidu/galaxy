@@ -58,6 +58,9 @@ bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, Status* statu
 
 bool AgentStatusSwitch(const ::baidu::galaxy::proto::AgentStatus& pb_status, baidu::galaxy::sdk::AgentStatus* status) {
     switch(pb_status) {
+    case ::baidu::galaxy::proto::kAgentUnkown:
+        *status = kAgentUnkown;
+        break;
     case ::baidu::galaxy::proto::kAgentAlive:
         *status = kAgentAlive;
         break;
