@@ -26,6 +26,8 @@ void FillCgroup(const Cgroup& sdk_cgroup, ::baidu::galaxy::proto::Cgroup* cgroup
 void FillContainerDescription(const ContainerDescription& sdk_container,
                                 ::baidu::galaxy::proto::ContainerDescription* container);
 
+void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant);
+
 bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, ::baidu::galaxy::sdk::Status* status);
 bool VolumTypeSwitch(const baidu::galaxy::proto::VolumType& pb_type, ::baidu::galaxy::sdk::VolumType* type);
 bool ContainerStatusSwitch(const ::baidu::galaxy::proto::ContainerStatus& pb_status, 

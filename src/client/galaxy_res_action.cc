@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <tprinter.h>
+#include <boost/algorithm/string.hpp>
 #include "galaxy_res_action.h"
 
 //user
@@ -231,84 +232,107 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
 
     bool ret = resman_->ShowContainerGroup(request, &response);
     if (ret) {
-        fprintf(stdout, "run_user: %s\n", response.desc.run_user.c_str());
-        fprintf(stdout, "version: %s\n", response.desc.version.c_str());
-        fprintf(stdout, "priority: %d\n", response.desc.priority);
-        fprintf(stdout, "cmd_line: %s\n", response.desc.cmd_line.c_str());
-        fprintf(stdout, "max_per_host: %d\n", response.desc.max_per_host);
-        fprintf(stdout, "tag: %s\n", response.desc.tag.c_str());
-        std::string pools;
+        printf("base infomation\n");
+        ::baidu::common::TPrinter base(7);
+        base.AddRow(7, "user", "version", "priority", "cmd_line", "max_per_host", "tag", "pools");
+        std::string pools; 
         for (size_t i = 0; i < response.desc.pool_names.size(); ++i) {
             pools += response.desc.pool_names[i] + ", ";
         }
-        fprintf(stdout, "pool_names: %s\n", pools.c_str());
-        fprintf(stdout, "workspace_volum size: %ld\n", response.desc.workspace_volum.size);
-        fprintf(stdout, "workspace_volum type: %d\n", response.desc.workspace_volum.type);
-        fprintf(stdout, "workspace_volum medium: %d\n", response.desc.workspace_volum.medium);
-        fprintf(stdout, "workspace_volum source_path: %s\n", response.desc.workspace_volum.source_path.c_str());
-        fprintf(stdout, "workspace_volum dest_path: %s\n", response.desc.workspace_volum.dest_path.c_str());
-        fprintf(stdout, "workspace_volum readonly: %d\n", response.desc.workspace_volum.readonly);
-        fprintf(stdout, "workspace_volum exclusive: %d\n", response.desc.workspace_volum.exclusive);
-        fprintf(stdout, "workspace_volum use_symlink: %d\n", response.desc.workspace_volum.use_symlink);
+        base.AddRow(7,  response.desc.run_user.c_str(),
+                        response.desc.version.c_str(),
+                        ::baidu::common::NumToString(response.desc.priority).c_str(),
+                        response.desc.cmd_line.c_str(),
+                        ::baidu::common::NumToString(response.desc.max_per_host).c_str(),
+                        response.desc.tag.c_str(),
+                        pools.c_str()
+                   );
 
-        fprintf(stdout, "data_volums[]:\n");
+        printf("%s\n", base.ToString().c_str());
+
+        printf("workspace volum infomation\n");
+        ::baidu::common::TPrinter workspace_volum(8);
+        workspace_volum.AddRow(8, "size", "type", "medium", "source_path", "dest_path", "readonly", "exclusive", "use_symlink");
+        workspace_volum.AddRow(8, ::baidu::common::NumToString(response.desc.workspace_volum.size).c_str(),
+                                  ::baidu::common::NumToString(response.desc.workspace_volum.type).c_str(),
+                                  ::baidu::common::NumToString(response.desc.workspace_volum.medium).c_str(),
+                                  response.desc.workspace_volum.source_path.c_str(),
+                                  response.desc.workspace_volum.dest_path.c_str(),
+                                  ::baidu::common::NumToString(response.desc.workspace_volum.readonly).c_str(),
+                                  ::baidu::common::NumToString(response.desc.workspace_volum.exclusive).c_str(),
+                                  ::baidu::common::NumToString(response.desc.workspace_volum.use_symlink).c_str()
+                               );
+        printf("%s\n", workspace_volum.ToString().c_str());
+
+
+        printf("data volums infomation\n");
+         ::baidu::common::TPrinter data_volums(9);
+         data_volums.AddRow(9, "", "size", "type", "medium", "source_path", "dest_path", "readonly", "exclusive", "use_symlink");
+
         for (uint32_t i = 0; i < response.desc.data_volums.size(); ++i) {
-            fprintf(stdout, "   data_volums[%u]\n", i);
-            fprintf(stdout, "   data_volum size: %ld\n", response.desc.data_volums[i].size);
-            fprintf(stdout, "   data_volum type: %d\n", response.desc.data_volums[i].type);
-            fprintf(stdout, "   data_volum medium: %d\n", response.desc.data_volums[i].medium);
-            fprintf(stdout, "   data_volum source_path: %s\n", response.desc.data_volums[i].source_path.c_str());
-            fprintf(stdout, "   data_volum dest_path: %s\n", response.desc.data_volums[i].dest_path.c_str());
-            fprintf(stdout, "   data_volum readonly: %d\n", response.desc.data_volums[i].readonly);
-            fprintf(stdout, "   data_volum exclusive: %d\n", response.desc.data_volums[i].exclusive);
-            fprintf(stdout, "   data_volum use_symlink: %d\n", response.desc.data_volums[i].use_symlink);
-            fprintf(stdout, "\n");
+            data_volums.AddRow(9, ::baidu::common::NumToString(i).c_str(),
+                                  ::baidu::common::NumToString(response.desc.data_volums[i].size).c_str(),
+                                  ::baidu::common::NumToString(response.desc.data_volums[i].type).c_str(),
+                                  ::baidu::common::NumToString(response.desc.data_volums[i].medium).c_str(),
+                                  response.desc.data_volums[i].source_path.c_str(),
+                                  response.desc.data_volums[i].dest_path.c_str(),
+                                  ::baidu::common::NumToString(response.desc.data_volums[i].readonly).c_str(),
+                                  ::baidu::common::NumToString(response.desc.data_volums[i].exclusive).c_str(),
+                                  ::baidu::common::NumToString(response.desc.data_volums[i].use_symlink).c_str()
+                              );
         }
+        printf("%s\n", data_volums.ToString().c_str());
         
-        fprintf(stdout, "cgroups[]:\n");
+        printf("cgroups infomation\n");
+        ::baidu::common::TPrinter cgroups(11);
+        cgroups.AddRow(11, "", "id", "cpu millcores", "cpu excess", "mem size", "mem excess", "tcp_throt recv_bps_quota", "tcp_throt recv_bps_excess", "tcp_throt send_bps_quota", "tcp_throt send_bps_excess", "blkio weight");
+
         for (uint32_t i = 0; i < response.desc.cgroups.size(); ++i) {
-            fprintf(stdout, "   cgroups[%u]\n", i);
-            fprintf(stdout, "   cgroup id: %s\n", response.desc.cgroups[i].id.c_str());
-            fprintf(stdout, "   cgroup cpu millcores: %ld\n", response.desc.cgroups[i].cpu.milli_core);
-            fprintf(stdout, "   cgroup cpu excess: %d\n", response.desc.cgroups[i].cpu.excess);
-            fprintf(stdout, "   cgroup memory size: %ld\n", response.desc.cgroups[i].memory.size);
-            fprintf(stdout, "   cgroup memory excess: %d\n", response.desc.cgroups[i].memory.excess);
-
-            fprintf(stdout, "   tcp_throt recv_bps_quota %ld:\n", response.desc.cgroups[i].tcp_throt.recv_bps_quota);
-            fprintf(stdout, "   tcp_throt recv_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.recv_bps_excess);
-            fprintf(stdout, "   tcp_throt send_bps_quota %ld:\n", response.desc.cgroups[i].tcp_throt.send_bps_quota);
-            fprintf(stdout, "   tcp_throt send_bps_excess %d:\n", response.desc.cgroups[i].tcp_throt.send_bps_excess);
-
-            fprintf(stdout, "   blkio weight %d:\n", response.desc.cgroups[i].blkio.weight);
-
-            fprintf(stdout, "\n");
+            cgroups.AddRow(11, ::baidu::common::NumToString(i).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].cpu.milli_core).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].cpu.excess).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].memory.size).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].memory.excess).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].tcp_throt.recv_bps_quota).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].tcp_throt.recv_bps_excess).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].tcp_throt.send_bps_quota).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].tcp_throt.send_bps_excess).c_str(),
+                               ::baidu::common::NumToString(response.desc.cgroups[i].blkio.weight).c_str()
+                            );
         }
-
+        printf("%s\n", cgroups.ToString().c_str());
                 
-        fprintf(stdout, "containers[]:\n");
+        printf("containers infomation\n");
+        ::baidu::common::TPrinter containers(11);
+        containers.AddRow(11, "endpoint", "status", "cpu(t/a/u)", "mem(t/a/u)" "volums");
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
-            fprintf(stdout, "   containers[%u]\n", i);
-            fprintf(stdout, "   container status: %d\n", response.containers[i].status);
-            fprintf(stdout, "   container endpoint: %s\n", response.containers[i].endpoint.c_str());
-            fprintf(stdout, "   container cpu total: %ld\n", response.containers[i].cpu.total);
-            fprintf(stdout, "   container cpu assigned: %ld\n", response.containers[i].cpu.assigned);
-            fprintf(stdout, "   container cpu used: %ld\n", response.containers[i].cpu.used);
-            fprintf(stdout, "   container mem total: %ld\n", response.containers[i].memory.total);
-            fprintf(stdout, "   container mem assigned: %ld\n", response.containers[i].memory.assigned);
-            fprintf(stdout, "   container mem used: %ld\n", response.containers[i].memory.used);
-
+            std::string scpu = ::baidu::common::NumToString(response.containers[i].cpu.total) + "/" +
+                               ::baidu::common::NumToString(response.containers[i].cpu.assigned) + "/" +
+                               ::baidu::common::NumToString(response.containers[i].cpu.total);
+             
+            std::string smem = ::baidu::common::NumToString(response.containers[i].memory.total) + "/" +
+                               ::baidu::common::NumToString(response.containers[i].memory.assigned) + "/" +
+                               ::baidu::common::NumToString(response.containers[i].memory.total);
+                   
+            std::string svolums; 
             for (uint32_t j = 0; j < response.containers[i].volums.size(); ++j) {
-                fprintf(stdout, "   container volums[%u]\n", j);
-                fprintf(stdout, "       container volum medium : %d\n", response.containers[i].volums[j].medium);
-                fprintf(stdout, "       container volum device_path : %s\n", response.containers[i].volums[j].device_path.c_str());
-                fprintf(stdout, "       container volum total: %ld\n", response.containers[i].volums[j].volum.total);
-                fprintf(stdout, "       container volum assigned: %ld\n", response.containers[i].volums[j].volum.assigned);
-                fprintf(stdout, "       container volum used: %ld\n", response.containers[i].volums[j].volum.used);
+                svolums += "" + ::baidu::common::NumToString(j) + "\t" 
+                              + ::baidu::common::NumToString(response.containers[i].volums[j].medium) + "\t" 
+                              + ::baidu::common::NumToString(response.containers[i].volums[j].volum.total) + "/"
+                              + ::baidu::common::NumToString(response.containers[i].volums[j].volum.assigned) + "/"
+                              + ::baidu::common::NumToString(response.containers[i].volums[j].volum.used) + "\t"
+                              + response.containers[i].volums[j].device_path + "\n";
             }
 
-            fprintf(stdout, "\n");
+            containers.AddRow(11, ::baidu::common::NumToString(i).c_str(),
+                                  response.containers[i].endpoint.c_str(),
+                                  ::baidu::common::NumToString(response.containers[i].status).c_str(),
+                                  scpu.c_str(),
+                                  smem.c_str(),
+                                  svolums.c_str()
+                             );
+            printf("%s\n", containers.ToString().c_str());
         }
-
 
     } else {
         printf("Show container group failed for reason %d:%s\n", 
@@ -366,11 +390,8 @@ bool ResAction::RemoveAgent(const std::string& endpoint) {
     return ret;
 
 }
-bool ResAction::ListAgents(const std::string& pool) {
-    if (pool.empty()) {
-        return false;
-    }
-    
+
+bool ResAction::ListAgents() {
     if(!this->Init()) {
         return false;
     }
@@ -378,12 +399,11 @@ bool ResAction::ListAgents(const std::string& pool) {
     ::baidu::galaxy::sdk::ListAgentsRequest request;
     ::baidu::galaxy::sdk::ListAgentsResponse response;
     request.user = user_;
-    request.pool = pool;
 
     bool ret = resman_->ListAgents(request, &response);
     if (ret) {
-        ::baidu::common::TPrinter tp(11);
-        tp.AddRow(11, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol_type", "vol(t/a/u)", "vol_path","total_containers");
+        ::baidu::common::TPrinter tp(9);
+        tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::vector<std::string> vs;
             vs.push_back(baidu::common::NumToString(i + 1));
@@ -418,6 +438,131 @@ bool ResAction::ListAgents(const std::string& pool) {
             tp.AddRow(vs);
         }
         printf("%s\n", tp.ToString().c_str());
+
+    } else {
+        printf("List agents failed for reason %d:%s\n", 
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+
+    return ret;
+
+}
+
+bool ResAction::ListAgentsByTag(const std::string& tag) {
+    if (tag.empty()) {
+        return false;
+    }
+    
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::ListAgentsByTagRequest request;
+    ::baidu::galaxy::sdk::ListAgentsByTagResponse response;
+    request.user = user_;
+    request.tag = tag;
+
+    bool ret = resman_->ListAgentsByTag(request, &response);
+    if (ret) {
+        /*::baidu::common::TPrinter tp(9);
+        tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
+        for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            std::vector<std::string> vs;
+            vs.push_back(baidu::common::NumToString(i + 1));
+            vs.push_back(response.agents[i].endpoint);
+            vs.push_back(baidu::common::NumToString(response.agents[i].status));
+            vs.push_back(response.agents[i].pool);
+            std::string tags;
+            for (size_t j = 0; j < response.agents[i].tags.size(); ++j) {
+                tags += response.agents[i].tags[j] + ", ";
+            }
+
+            vs.push_back(tags);
+
+            vs.push_back(baidu::common::NumToString(response.agents[i].cpu.total) + "/" +
+                         baidu::common::NumToString(response.agents[i].cpu.assigned) + "/" +
+                        baidu::common::NumToString(response.agents[i].cpu.used)
+                        );
+            vs.push_back(baidu::common::NumToString(response.agents[i].memory.total) + "/" +
+                         baidu::common::NumToString(response.agents[i].memory.assigned) + "/" +
+                        baidu::common::NumToString(response.agents[i].memory.used)
+                        );
+            std::string volums;
+            for (size_t j = 0; j < response.agents[i].volums.size(); ++j) {
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].medium) + ":";
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].volum.total) + ":";
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].volum.assigned) + ":";
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].volum.used) + ":"; 
+                volums += response.agents[i].volums[j].device_path;
+            }
+            vs.push_back(volums);
+            vs.push_back(baidu::common::NumToString(response.agents[i].total_containers));
+            tp.AddRow(vs);
+        }
+        printf("%s\n", tp.ToString().c_str());*/
+
+    } else {
+        printf("List agents failed for reason %d:%s\n", 
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+
+    return ret;
+
+}
+
+
+bool ResAction::ListAgentsByPool(const std::string& pool) {
+    if (pool.empty()) {
+        return false;
+    }
+    
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::ListAgentsByPoolRequest request;
+    ::baidu::galaxy::sdk::ListAgentsByPoolResponse response;
+    request.user = user_;
+    request.pool = pool;
+
+    bool ret = resman_->ListAgentsByPool(request, &response);
+    if (ret) {
+        /*::baidu::common::TPrinter tp(9);
+        tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
+        for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            std::vector<std::string> vs;
+            vs.push_back(baidu::common::NumToString(i + 1));
+            vs.push_back(response.agents[i].endpoint);
+            vs.push_back(baidu::common::NumToString(response.agents[i].status));
+            vs.push_back(response.agents[i].pool);
+            std::string tags;
+            for (size_t j = 0; j < response.agents[i].tags.size(); ++j) {
+                tags += response.agents[i].tags[j] + ", ";
+            }
+
+            vs.push_back(tags);
+
+            vs.push_back(baidu::common::NumToString(response.agents[i].cpu.total) + "/" +
+                         baidu::common::NumToString(response.agents[i].cpu.assigned) + "/" +
+                        baidu::common::NumToString(response.agents[i].cpu.used)
+                        );
+            vs.push_back(baidu::common::NumToString(response.agents[i].memory.total) + "/" +
+                         baidu::common::NumToString(response.agents[i].memory.assigned) + "/" +
+                        baidu::common::NumToString(response.agents[i].memory.used)
+                        );
+            std::string volums;
+            for (size_t j = 0; j < response.agents[i].volums.size(); ++j) {
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].medium) + ":";
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].volum.total) + ":";
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].volum.assigned) + ":";
+                volums += ::baidu::common::NumToString(response.agents[i].volums[j].volum.used) + ":"; 
+                volums += response.agents[i].volums[j].device_path;
+            }
+            vs.push_back(volums);
+            vs.push_back(baidu::common::NumToString(response.agents[i].total_containers));
+            tp.AddRow(vs);
+        }
+        printf("%s\n", tp.ToString().c_str());*/
 
     } else {
         printf("List agents failed for reason %d:%s\n", 
@@ -590,6 +735,313 @@ bool ResAction::Status() {
     return ret;
 
 }
+
+bool ResAction::CreateTag(const std::string& tag) {
+
+    if (tag.empty()) {
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::CreateTagRequest request;
+    ::baidu::galaxy::sdk::CreateTagResponse response;
+    request.user = user_;
+    request.tag = tag;
+
+    bool ret = resman_->CreateTag(request, &response);
+    if (ret) {
+        printf("Create tag successfully");
+    } else {
+        printf("Create tag failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
+bool ResAction::ListTags() {
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::ListTagsRequest request;
+    ::baidu::galaxy::sdk::ListTagsResponse response;
+    request.user = user_;
+
+    bool ret = resman_->ListTags(request, &response);
+    if (ret) {
+        ::baidu::common::TPrinter tags(2);
+        tags.AddRow(2, "", "tag");
+        for (uint32_t i = 0; i < response.tags.size(); ++i) {
+            tags.AddRow(2, ::baidu::common::NumToString(i).c_str(),
+                           response.tags[i].c_str()
+                       );
+        }
+        printf("%s\n", tags.ToString().c_str());
+
+    } else {
+        printf("List tags failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+}
+
+bool ResAction::GetPoolByAgent(const std::string& endpoint) {
+    if (endpoint.empty()) {
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::GetPoolByAgentRequest request;
+    ::baidu::galaxy::sdk::GetPoolByAgentResponse response;
+    request.user = user_;
+    request.endpoint = endpoint;
+
+    bool ret = resman_->GetPoolByAgent(request, &response);
+    if (ret) {
+        printf("Pool is %s\n", response.pool.c_str());
+    } else {
+        printf("Get Pool failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
+bool ResAction::AddUser(const std::string& user, const std::string& token) {
+    if (user.empty() || token.empty()) {
+        return false;
+    }
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::AddUserRequest request;
+    ::baidu::galaxy::sdk::AddUserResponse response;
+    request.admin = user_;
+    request.user.user  = user;
+    request.user.token = token;
+
+    bool ret = resman_->AddUser(request, &response);
+    if (ret) {
+        printf("Add User Success\n");
+    } else {
+        printf("Add User failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
+bool ResAction::RemoveUser(const std::string& user, const std::string& token) {
+    if (user.empty() || token.empty()) {
+        return false;
+    }
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::RemoveUserRequest request;
+    ::baidu::galaxy::sdk::RemoveUserResponse response;
+    request.admin = user_;
+    request.user.user  = user;
+    request.user.token = token;
+
+    bool ret = resman_->RemoveUser(request, &response);
+    if (ret) {
+        printf("Remove User Success\n");
+    } else {
+        printf("Remove User failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+}
+
+bool ResAction::ListUsers() {
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::ListUsersRequest request;
+    ::baidu::galaxy::sdk::ListUsersResponse response;
+    request.user = user_;
+
+    bool ret = resman_->ListUsers(request, &response);
+    
+    if (ret) {
+        ::baidu::common::TPrinter users(2);
+        users.AddRow(2, "", "user");
+        for (uint32_t i = 0; i < response.user.size(); ++i) {
+            users.AddRow(2, ::baidu::common::NumToString(i).c_str(),
+                            response.user[i].c_str()
+                        );
+        }
+        printf("%s\n", users.ToString().c_str());
+
+    } else {
+        printf("List users failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+}
+
+bool ResAction::ShowUser(const std::string& user, const std::string& token) {
+    if (user.empty() || token.empty()) {
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::ShowUserRequest request;
+    ::baidu::galaxy::sdk::ShowUserResponse response;
+    request.admin = user_;
+    request.user.user = user;
+    request.user.token = token;
+
+    bool ret = resman_->ShowUser(request, &response);
+    
+    if (ret) {
+        printf("pools infomation\n");
+        ::baidu::common::TPrinter pools(2);
+        pools.AddRow(2, "", "pool");
+        for (uint32_t i = 0; i < response.pools.size(); ++i) {
+            pools.AddRow(2, ::baidu::common::NumToString(i).c_str(),
+                            response.pools[i].c_str()
+                       );
+        }
+        printf("%s\n", pools.ToString().c_str());
+
+        printf("authority infomation\n");
+        ::baidu::common::TPrinter authority(2);
+        pools.AddRow(2, "", "authority");
+        for (uint32_t i = 0; i < response.authority.size(); ++i) {
+            pools.AddRow(2, ::baidu::common::NumToString(i).c_str(),
+                            response.authority[i]
+                       );
+        }
+        printf("%s\n", authority.ToString().c_str());
+
+        printf("quota infomation\n");
+        ::baidu::common::TPrinter quota(5);
+        quota.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
+        quota.AddRow(5, ::baidu::common::NumToString(response.quota.millicore).c_str(),
+                        ::baidu::common::NumToString(response.quota.memory).c_str(),
+                        ::baidu::common::NumToString(response.quota.disk).c_str(),
+                        ::baidu::common::NumToString(response.quota.ssd).c_str(),
+                        ::baidu::common::NumToString(response.quota.replica).c_str()
+                    );
+        printf("%s\n", quota.ToString().c_str());
+
+        printf("assignd infomation\n");
+        ::baidu::common::TPrinter assign(5);
+        assign.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
+        assign.AddRow(5, ::baidu::common::NumToString(response.assigned.millicore).c_str(),
+                        ::baidu::common::NumToString(response.assigned.memory).c_str(),
+                        ::baidu::common::NumToString(response.assigned.disk).c_str(),
+                        ::baidu::common::NumToString(response.assigned.ssd).c_str(),
+                        ::baidu::common::NumToString(response.assigned.replica).c_str()
+                    );
+        printf("%s\n", assign.ToString().c_str());
+
+    } else {
+        printf("List users failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+}
+
+bool ResAction::GrantUser(const std::string& user, 
+                          const std::string& token, 
+                          const std::string& pool, 
+                          const std::string& opration,
+                          const std::string& authority) {
+    
+    if (user.empty() || token.empty() || pool.empty()) {
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+        
+    ::baidu::galaxy::sdk::Grant grant;
+
+    if (opration.compare("add") == 0) {
+        grant.action = ::baidu::galaxy::sdk::kActionAdd; 
+    } else if (opration.compare("remove") == 0){
+        grant.action = ::baidu::galaxy::sdk::kActionRemove;
+    } else if (opration.compare("set") == 0) { 
+        grant.action = ::baidu::galaxy::sdk::kActionSet;
+    } else if (opration.compare("clear") == 0) {
+        grant.action = ::baidu::galaxy::sdk::kActionClear;
+    } else {
+        return false;
+    }
+
+    std::vector<std::string> authorities;
+    boost::split(authorities, authority, boost::is_any_of(","));
+    for (size_t i = 0; i < authorities.size(); ++i) {
+        ::baidu::galaxy::sdk::Authority kAuthority;
+        
+        if (authorities[i].compare("create_container") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityCreateContainer;
+        } else if (authorities[i].compare("remove_container") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityRemoveContainer;
+        } else if (authorities[i].compare("update_container") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityUpdateContainer;
+        } else if (authorities[i].compare("list_container") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityListContainer;
+        }else if (authorities[i].compare("submit_job") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthoritySubmitJob;
+        }else if (authorities[i].compare("remove_job") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityRemoveJob;
+        }else if (authorities[i].compare("update_job") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityUpdateJob;
+        }else if (authorities[i].compare("list_job") == 0) {
+            kAuthority = ::baidu::galaxy::sdk::kAuthorityListJobs;
+        }else {
+            return false;
+        } 
+        grant.authority.push_back(kAuthority);
+    }
+    grant.pool = pool;
+
+    ::baidu::galaxy::sdk::GrantUserRequest request;
+    ::baidu::galaxy::sdk::GrantUserResponse response;
+    request.admin = user_;
+    request.user.user  = user;
+    request.user.token = token;
+    request.grant = grant;
+
+    bool ret = resman_->GrantUser(request, &response);
+    if (ret) {
+        printf("Grant User Success\n");
+    } else {
+        printf("Grant User failed for reason %d:%s\n",
+                    response.error_code.status, response.error_code.reason.c_str());
+    }
+    return ret;
+}
+
+bool AssignQuota(const std::string& user,
+                 const std::string& token,
+                 uint32_t millicores,
+                 const std::string& memory,
+                 const std::string& disk,
+                 const std::string& ssd,
+                 int replica
+                 ) {
+    return false;
+} 
 
 } // end namespace client
 } // end namespace galaxy
