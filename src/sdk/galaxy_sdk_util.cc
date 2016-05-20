@@ -180,15 +180,15 @@ void FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::V
         volum->set_type(::baidu::galaxy::proto::kHostDir);
     }
 
-    ::baidu::galaxy::proto::VolumMedium medium;
+    //::baidu::galaxy::proto::VolumMedium medium;
     if (sdk_volum.medium == kSsd) {
         volum->set_medium(baidu::galaxy::proto::kSsd);
     } else if (sdk_volum.medium == kDisk) {
-        volum->set_medium(medium = ::baidu::galaxy::proto::kDisk);
+        volum->set_medium(::baidu::galaxy::proto::kDisk);
     } else if (sdk_volum.medium == kBfs) {
-        volum->set_medium(medium = ::baidu::galaxy::proto::kBfs);
+        volum->set_medium(baidu::galaxy::proto::kBfs);
     } else if (sdk_volum.medium == kTmpfs) {
-        volum->set_medium(medium = ::baidu::galaxy::proto::kTmpfs);
+        volum->set_medium(::baidu::galaxy::proto::kTmpfs);
     }
 
     volum->set_source_path(sdk_volum.source_path);
@@ -262,6 +262,50 @@ void FillContainerDescription(const ContainerDescription& sdk_container,
     for (size_t i = 0; i < sdk_container.cgroups.size(); ++i) {
         ::baidu::galaxy::proto::Cgroup* cgroup = container->add_cgroups();
         FillCgroup(sdk_container.cgroups[i], cgroup);
+    }
+}
+
+void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
+    
+    grant->set_pool(sdk_grant.pool);
+
+    if (sdk_grant.action == kActionAdd) {
+        grant->set_action(::baidu::galaxy::proto::kActionAdd);
+    } else if (sdk_grant.action == kActionRemove) {
+        grant->set_action(::baidu::galaxy::proto::kActionRemove);
+    } else if (sdk_grant.action == kActionSet) {
+        grant->set_action(::baidu::galaxy::proto::kActionSet);
+    } else if (sdk_grant.action == kActionClear) {
+        grant->set_action(::baidu::galaxy::proto::kActionClear);
+    }
+
+    for (size_t i = 0; i < sdk_grant.authority.size(); ++i) {
+        switch (sdk_grant.authority[i]) {
+        case kAuthorityCreateContainer:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityCreateContainer);
+            break;
+        case kAuthorityRemoveContainer:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityRemoveContainer);
+            break;
+        case kAuthorityUpdateContainer:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityUpdateContainer);
+            break;
+        case kAuthorityListContainer:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityListContainer);
+            break;
+        case kAuthoritySubmitJob:
+            grant->add_authority(::baidu::galaxy::proto::kAuthoritySubmitJob);
+            break;
+        case kAuthorityRemoveJob:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityRemoveJob);
+            break;
+        case kAuthorityUpdateJob:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityUpdateJob);
+            break;
+        case kAuthorityListJobs:
+            grant->add_authority(::baidu::galaxy::proto::kAuthorityListJobs);
+            break;
+        }
     }
 }
 

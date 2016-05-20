@@ -531,10 +531,6 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         response->agents.push_back(agent);
     }
 
-    /*for (int i = 0; i < pb_response.endpoint().size(); ++i) {
-        response->endpoint.push_back(pb_response.endpoint(i));
-    }*/
-
     return true;
 }
 
@@ -645,9 +641,6 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
         response->agents.push_back(agent);
     }
 
-    /*for (int i = 0; i < pb_response.endpoint().size(); ++i) {
-        response->endpoint.push_back(pb_response.endpoint(i));
-    }*/
     return true;
 }
 
@@ -770,6 +763,7 @@ bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserRespon
     ::baidu::galaxy::proto::GrantUserResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     FillUser(request.admin, pb_request.mutable_admin());
+    FillGrant(request.grant, pb_request.mutable_grant());
 
     rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GrantUser, &pb_request, &pb_response, 5, 1);
 
