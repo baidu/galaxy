@@ -20,7 +20,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client create_container -f <jobconfig>\n"
                                  "      galaxy_res_client update_container -f <jobconfig> -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
-                                 "      galaxy_res_client list_container\n"
+                                 "      galaxy_res_client list_containers\n"
                                  "      galaxy_res_client show_container -i id\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
                                  "      galaxy_res_client remove_agent -e endpoint\n"
@@ -38,8 +38,8 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client show_user -u user -t token\n"
                                  "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]" 
                                  "-a [create_container,remove_container,update_container,"
-                                 "list_container,submit_job,remove_job,update_job,list_job] \n"
-                                 "Optionss: \n"
+                                 "list_containers,submit_job,remove_job,update_job,list_jobs] \n"
+                                 "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -i specify container id.\n"
                                  "      -p specify agent pool.\n"
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
         }
         return resAction->RemoveContainerGroup(FLAGS_i);
 
-    } else if (strcmp(argv[1], "list_container") == 0) {
+    } else if (strcmp(argv[1], "list_containers") == 0) {
         return resAction->ListContainerGroups();
     } else if (strcmp(argv[1], "show_container") == 0) {
         if (FLAGS_i.empty()) {
