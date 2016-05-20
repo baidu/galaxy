@@ -93,7 +93,6 @@ message OfflineAgentResponse {
 
 message ListAgentsRequest {
     optional User user = 1;
-    optional string pool = 2;
 }
 
 message AgentStatistics {

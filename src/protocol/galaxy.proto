@@ -57,10 +57,9 @@ enum AuthorityAction {
 }
 
 message Grant {
-    optional User user = 1;
-    optional string pool = 2;
-    optional AuthorityAction action = 3;
-    repeated Authority authority = 4;
+    optional string pool = 1;
+    optional AuthorityAction action = 2;
+    repeated Authority authority = 3;
 }
 
 
