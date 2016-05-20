@@ -31,6 +31,8 @@ class ResManImpl : public baidu::galaxy::proto::ResMan {
 public:
     ResManImpl();
     ~ResManImpl();
+    bool Init();
+    bool RegisterOnNexus(const std::string& endpoint);
     void EnterSafeMode(::google::protobuf::RpcController* controller,
                        const ::baidu::galaxy::proto::EnterSafeModeRequest* request,
                        ::baidu::galaxy::proto::EnterSafeModeResponse* response,
@@ -87,6 +89,10 @@ public:
                          const ::baidu::galaxy::proto::ListAgentsRequest* request,
                          ::baidu::galaxy::proto::ListAgentsResponse* response,
                          ::google::protobuf::Closure* done);
+    void ShowAgent(::google::protobuf::RpcController* controller,
+                   const ::baidu::galaxy::proto::ShowAgentRequest* request,
+                   ::baidu::galaxy::proto::ShowAgentResponse* response,
+                   ::google::protobuf::Closure* done);
     void CreateTag(::google::protobuf::RpcController* controller,
                          const ::baidu::galaxy::proto::CreateTagRequest* request,
                          ::baidu::galaxy::proto::CreateTagResponse* response,
@@ -143,7 +149,7 @@ public:
                          const ::baidu::galaxy::proto::AssignQuotaRequest* request,
                          ::baidu::galaxy::proto::AssignQuotaResponse* response,
                          ::google::protobuf::Closure* done);
-   
+    
 private:
 
     void QueryAgent(const std::string& agent_endpoint, bool is_first_query);
@@ -152,7 +158,16 @@ private:
                             const proto::QueryRequest* request,
                             proto::QueryResponse* response,
                             bool fail , int err);
-
+    void CreateContainerCallback(std::string agent_endpoint,
+                                 const proto::CreateContainerRequest* request,
+                                 proto::CreateContainerResponse* response,
+                                 bool fail, int err);
+    void RemoveContainerCallback(std::string agent_endpoint,
+                                 const proto::RemoveContainerRequest* request,
+                                 proto::RemoveContainerResponse* response,
+                                 bool fail, int err);
+    void SendCommandsToAgent(const std::string& agent_endpoint,
+                             const std::vector<sched::AgentCommand>& commands);
     template <class ProtoClass> 
     bool SaveObject(const std::string& key,
                     const ProtoClass& obj);
@@ -161,14 +176,28 @@ private:
     bool LoadObjects(const std::string& prefix,
                      std::map<std::string, ProtoClass>& objs);
 
+    bool RemoveObject(const std::string& key);
+    static void OnRMLockChange(const ::galaxy::ins::sdk::WatchParam& param,
+                               ::galaxy::ins::sdk::SDKError err);
+    void OnLockChange(std::string lock_session_id);
+    
+    template <class RpcRequest, class RpcResponse, class DoneClosure>
+    bool CheckUserExist(const RpcRequest* request, 
+                        RpcResponse* response,
+                        DoneClosure* done);
+
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentMeta> agents_;
     std::map<std::string, AgentStat> agent_stats_;
+    std::map<std::string, std::set<std::string> > agent_tags_;
     std::map<std::string, proto::UserMeta> users_;
     std::map<std::string, proto::ContainerGroupMeta> container_groups_;
+    std::map<std::string, std::set<std::string> > tags_;
+    std::map<std::string, std::set<std::string> > pools_;
     Mutex mu_;
     bool safe_mode_;
+    bool force_safe_mode_;
     ThreadPool query_pool_;
     RpcClient rpc_client_;
 };

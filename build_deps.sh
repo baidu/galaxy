@@ -28,6 +28,15 @@ if [ ! -f "${FLAG_DIR}/boost_1_57_0" ] \
     touch "${FLAG_DIR}/boost_1_57_0"
 fi
 
+#rapidjson
+if [ ! -f "${FLAG_DIR}/rapidjson" ] \
+    || [ ! -d "${DEPS_PREFIX}/rapidjson" ]; then
+    git clone https://github.com/miloyip/rapidjson.git >/dev/null
+    rm -rf ${DEPS_PREFIX}/rapidjson
+    cp -rf rapidjson ${DEPS_PREFIX}
+    touch "${FLAG_DIR}/rapidjson"
+fi
+
 # protobuf
 if [ ! -f "${FLAG_DIR}/protobuf_2_6_1" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libprotobuf.a" ] \
@@ -66,7 +75,7 @@ fi
 if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libsofa-pbrpc.a" ] \
     || [ ! -d "${DEPS_PREFIX}/include/sofa/pbrpc" ]; then
-    wget --no-check-certificate -O sofa-pbrpc-1.0.0.tar.gz https://github.com/BaiduPS/sofa-pbrpc/archive/v1.0.0.tar.gz
+    wget --no-check-certificate -O sofa-pbrpc-1.0.0.tar.gz https://github.com/baidu/sofa-pbrpc/archive/v1.0.0.tar.gz
     tar zxf sofa-pbrpc-1.0.0.tar.gz
     cd sofa-pbrpc-1.0.0
     sed -i '/BOOST_HEADER_DIR=/ d' depends.mk

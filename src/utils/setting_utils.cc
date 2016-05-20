@@ -31,7 +31,5 @@ void SetupLog(const std::string& name) {
     google::SetLogSymlink(google::FATAL, "");
 }
 
-
 } //namespace galaxy
 } //namespace baidu
-

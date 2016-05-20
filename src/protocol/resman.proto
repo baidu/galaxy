@@ -4,7 +4,7 @@ package baidu.galaxy.proto;
 option cc_generic_services = true;
 
 message EnterSafeModeRequest {
-    optional string user = 1;
+    optional User user = 1;
 }
 
 message EnterSafeModeResponse {
@@ -12,7 +12,7 @@ message EnterSafeModeResponse {
 }
 
 message LeaveSafeModeRequest {
-    optional string user = 1;
+    optional User user = 1;
 }
 
 message LeaveSafeModeResponse {
@@ -37,12 +37,13 @@ message StatusResponse {
 
     optional Resource cpu = 5;
     optional Resource memory = 6;
-    optional VolumResource volum = 7;
+    repeated VolumResource volum = 7;
 
     optional uint32 total_groups = 8;
     optional uint32 total_containers = 9;
 
     repeated PoolStatus pools = 10;
+    optional bool in_safe_mode = 11;
 }
 
 message KeepAliveRequest {
@@ -92,7 +93,6 @@ message OfflineAgentResponse {
 
 message ListAgentsRequest {
     optional User user = 1;
-    optional string pool = 2;
 }
 
 message AgentStatistics {
@@ -102,7 +102,7 @@ message AgentStatistics {
     repeated string tags = 4;
     optional Resource cpu = 5;
     optional Resource memory = 6;
-    optional VolumResource volum = 7;
+    repeated VolumResource volums = 7;
     optional uint32 total_containers = 8;
     
 }
@@ -139,7 +139,7 @@ message ListAgentsByTagRequest {
 
 message ListAgentsByTagResponse {
     optional ErrorCode error_code = 1;
-    repeated string endpoint = 2;
+    repeated AgentStatistics agents = 2;
 }
 
 message GetTagsByAgentRequest {
@@ -178,7 +178,7 @@ message ListAgentsByPoolRequest {
 
 message ListAgentsByPoolResponse {
     optional ErrorCode error_code = 1;
-    repeated string endpoint = 2;
+    repeated AgentStatistics agents = 2;
 }
 
 message GetPoolByAgentRequest {
@@ -235,7 +235,8 @@ message ShowUserResponse {
 
 message GrantUserRequest {
     optional User admin = 1;
-    optional Grant grant = 2;
+    optional User user = 2;
+    optional Grant grant = 3;
 }
 
 message GrantUserResponse {
@@ -283,26 +284,11 @@ message UpdateContainerGroupRequest {
 
 message UpdateContainerGroupResponse {
     optional ErrorCode error_code = 1;
+    optional bool resource_change = 2 [default = false];
 }
-
 
 message ListContainerGroupsRequest {
     optional User user = 1; 
-}
-
-
-message ContainerGroupStatistics {
-    optional string id = 1;
-    optional uint32 replica = 2;
-    optional uint32 ready = 3;
-    optional uint32 pending = 4;
-    optional uint32 destroying = 5;
-    optional Resource cpu = 6;
-    optional Resource memroy = 7;
-    optional VolumResource volum = 8;
-
-    optional int64 submit_time = 9;
-    optional int64 update_time = 10;
 }
 
 message ListContainerGroupsResponse {
@@ -317,11 +303,18 @@ message ShowContainerGroupRequest {
 
 message ShowContainerGroupResponse {
     optional ErrorCode error_code = 1;
-    optional ContainerStatus status = 2;
-    optional string endpoint = 3;
-    optional Resource cpu = 4;
-    optional Resource memroy = 5;
-    optional VolumResource volum = 6;
+    optional ContainerDescription desc = 2;
+    repeated ContainerStatistics containers = 3;
+}
+
+message ShowAgentRequest {
+    optional User user = 1;
+    optional string endpoint = 2;
+}
+
+message ShowAgentResponse {
+    optional ErrorCode error_code = 1;
+    repeated ContainerStatistics containers = 2;
 }
 
 service ResMan {
@@ -355,6 +348,7 @@ service ResMan {
     rpc OnlineAgent(OnlineAgentRequest) returns (OnlineAgentResponse);
     rpc OfflineAgent(OfflineAgentRequest) returns (OfflineAgentResponse);
     rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+    rpc ShowAgent(ShowAgentRequest) returns (ShowAgentResponse);
 
     //tag man
     rpc CreateTag(CreateTagRequest) returns (CreateTagResponse);

@@ -6,21 +6,21 @@
 #include "subsystem.h"
 
 namespace baidu {
-    namespace galaxy {
-        namespace cgroup {
+namespace galaxy {
+namespace cgroup {
 
-            class BlkioSubsystem : public Subsystem {
-                public:
-                    BlkioSubsystem();
-                    ~BlkioSubsystem();
-                    std::string Name();
-                    int Construct();
-                    boost::shared_ptr<Subsystem> Clone();
-                    boost::shared_ptr<google::protobuf::Message> Status();
+class BlkioSubsystem : public Subsystem {
+public:
+    BlkioSubsystem();
+    ~BlkioSubsystem();
+    std::string Name();
+    int Construct();
+    boost::shared_ptr<Subsystem> Clone();
+    baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
 
-                private:
-                    int GetDeviceNum(const std::string& path, int& major, int& minor);
-            };
-        }
-    }
+private:
+    int GetDeviceNum(const std::string& path, int& major, int& minor);
+};
+}
+}
 }

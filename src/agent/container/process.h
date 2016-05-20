@@ -22,11 +22,11 @@
 /*
 #define __LOG_STDERROR__(format, ...) do { \
  fprintf(stderr, "%s:%d"##format, __FILE__, __LINE__,  ##args); \
-} while(0) 
+} while(0)
 
 #define __LOG_STDOUT__(format, args, ...) do { \
  fprintf(stdout, format, ##args); \
-} while(0) 
+} while(0)
 */
 
 namespace baidu {
@@ -37,12 +37,9 @@ class Process {
 public:
     Process();
     ~Process();
-    
+
     // return pid of call process
     static pid_t SelfPid();
-    void AddEnv(const std::string& key, const std::string& value);
-    void AddEnv(const std::map<std::string, std::string>& env);
-    int  SetRunUser(const std::string& user);
 
     int RedirectStderr(const std::string& path);
     int RedirectStdout(const std::string& path);
@@ -51,7 +48,6 @@ public:
     int Fork(boost::function<int (void*)> routine, void* param);
     int Wait(int& status);
     pid_t Pid();
-
 
 private:
     class Context {
@@ -62,6 +58,7 @@ private:
             routine(NULL),
             parameter(NULL) {
         }
+
     public:
         Process* self;
         int stdout_fd;
@@ -69,7 +66,6 @@ private:
         boost::function<int (void*)> routine;
         void* parameter;
         std::vector<int> fds;
-        std::map<std::string, std::string> envs;
     };
 
     static int CloneRoutine(void* self);
@@ -82,7 +78,6 @@ private:
     std::string _user_group;
     std::string stderr_path_;
     std::string stdout_path_;
-    std::map<std::string, std::string> env_;
 
 };
 

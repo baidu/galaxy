@@ -44,7 +44,9 @@ int CpuSubsystem::Construct() {
     cpu_cfs.append("cpu.cfs_quota_us");
 
     if (cgroup_->cpu().excess()) {
-        if (0 == baidu::galaxy::cgroup::Attach(cpu_share.c_str(), MilliCoreToShare(cgroup_->cpu().milli_core()))
+        if (0 == baidu::galaxy::cgroup::Attach(cpu_share.c_str(),
+                MilliCoreToShare(cgroup_->cpu().milli_core()),
+                false)
                 && 0 == baidu::galaxy::cgroup::Attach(cpu_cfs.c_str(), -1)) {
             ret = 0;
         }
@@ -52,7 +54,9 @@ int CpuSubsystem::Construct() {
         boost::filesystem::path cpu_cfs(cpu_path);
         cpu_cfs.append("cpu.cfs_quota_us");
 
-        if (0 == baidu::galaxy::cgroup::Attach(cpu_cfs.c_str(), MilliCoreToCfs(cgroup_->cpu().milli_core()))) {
+        if (0 == baidu::galaxy::cgroup::Attach(cpu_cfs.c_str(),
+                MilliCoreToCfs(cgroup_->cpu().milli_core()),
+                false)) {
             ret = 0;
         }
     }
@@ -60,9 +64,8 @@ int CpuSubsystem::Construct() {
     return ret;
 }
 
-boost::shared_ptr<google::protobuf::Message> CpuSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode CpuSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> CpuSubsystem::Clone() {
