@@ -464,7 +464,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag) {
 
     bool ret = resman_->ListAgentsByTag(request, &response);
     if (ret) {
-        /*::baidu::common::TPrinter tp(9);
+        ::baidu::common::TPrinter tp(9);
         tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::vector<std::string> vs;
@@ -499,7 +499,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag) {
             vs.push_back(baidu::common::NumToString(response.agents[i].total_containers));
             tp.AddRow(vs);
         }
-        printf("%s\n", tp.ToString().c_str());*/
+        printf("%s\n", tp.ToString().c_str());
 
     } else {
         printf("List agents failed for reason %d:%s\n", 
@@ -526,7 +526,7 @@ bool ResAction::ListAgentsByPool(const std::string& pool) {
 
     bool ret = resman_->ListAgentsByPool(request, &response);
     if (ret) {
-        /*::baidu::common::TPrinter tp(9);
+        ::baidu::common::TPrinter tp(9);
         tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::vector<std::string> vs;
@@ -561,7 +561,7 @@ bool ResAction::ListAgentsByPool(const std::string& pool) {
             vs.push_back(baidu::common::NumToString(response.agents[i].total_containers));
             tp.AddRow(vs);
         }
-        printf("%s\n", tp.ToString().c_str());*/
+        printf("%s\n", tp.ToString().c_str());
 
     } else {
         printf("List agents failed for reason %d:%s\n", 
