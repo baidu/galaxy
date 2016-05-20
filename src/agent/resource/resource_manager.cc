@@ -141,9 +141,11 @@ boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetMemoryReso
     uint64_t assigned = 0;
     memory_->Resource(total, assigned);
     boost::shared_ptr<baidu::galaxy::proto::Resource> ret(new baidu::galaxy::proto::Resource);
+    ret->set_total(total);
+    ret->set_assigned(assigned);
     return ret;
 }
-void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> > resource)
+void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> >& resource)
 {
     std::map<std::string, baidu::galaxy::resource::VolumResource::Volum> m;
     volum_->Resource(m);

@@ -36,7 +36,7 @@ public:
 
     boost::shared_ptr<baidu::galaxy::proto::Resource> GetCpuResource();
     boost::shared_ptr<baidu::galaxy::proto::Resource> GetMemoryResource();
-    void GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> > resource);
+    void GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> >& resource);
 
 private:
     int Allocate(std::vector<const baidu::galaxy::proto::VolumRequired*>& vv);
