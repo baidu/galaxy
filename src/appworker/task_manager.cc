@@ -28,13 +28,15 @@ TaskManager::~TaskManager() {
     killer_pool_.Stop(false);
 }
 
-int TaskManager::CreateTask(const std::string& task_id, const TaskDescription& task_desc) {
+int TaskManager::CreateTask(const TaskEnv& task_env,
+                            const TaskDescription& task_desc) {
     MutexLock lock(&mutex_task_manager_);
     Task* task = new Task();
-    task->task_id = task_id;
+    task->env = task_env;
+    task->task_id = task_env.task_id;
     task->desc.CopyFrom(task_desc);
     task->status = proto::kTaskPending;
-    tasks_.insert(std::make_pair(task_id, task));
+    tasks_.insert(std::make_pair(task_env.task_id, task));
     return 0;
 }
 
@@ -56,6 +58,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
     Task* task = it->second;
     task->packages_size = 0;
     if (task->desc.has_exe_package()) {
+        LOG(WARNING) << "hello";
         DownloadProcessContext context;
         context.process_id = task->task_id + "_deploy_0";
         context.src_path = task->desc.exe_package().package().src_path();
@@ -63,7 +66,16 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.version = task->desc.exe_package().package().version();
         context.work_dir = task->task_id;
         context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
-        if (0 != process_manager_.CreateProcess(&context)) {
+        ProcessEnv env;
+        env.envs.push_back("JOB_ID=job0");
+        env.envs.push_back("POD_ID=pod0");
+        env.envs.push_back("TASK_ID=0");
+        std::map<std::string, std::string>::iterator c_it =\
+            task->env.cgroup_paths.begin();
+        for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
+            env.cgroup_paths.push_back(c_it->second);
+        }
+        if (0 != process_manager_.CreateProcess(env, &context)) {
             LOG(WARNING) << "command execute fail, command: " << context.cmd;
             return -1;
         }
@@ -72,13 +84,15 @@ int TaskManager::DeployTask(const std::string& task_id) {
     if (task->desc.has_data_package()) {
         for (int i = 0; i< task->desc.data_package().packages_size(); i++) {
             DownloadProcessContext context;
-            context.process_id = task->task_id + "_deploy_" + boost::lexical_cast<std::string>(i + 1);
+            context.process_id = task->task_id + "_deploy_"\
+                + boost::lexical_cast<std::string>(i + 1);
             context.src_path = task->desc.data_package().packages(i).src_path();
             context.dst_path = task->desc.data_package().packages(i).dst_path();
             context.version = task->desc.data_package().packages(i).version();
             context.work_dir = task->task_id;
             context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
-            if (0 != process_manager_.CreateProcess(&context)) {
+            ProcessEnv env;
+            if (0 != process_manager_.CreateProcess(env, &context)) {
                 LOG(WARNING) << "command execute fail, command: " << context.cmd;
                 return -1;
             }
@@ -105,8 +119,17 @@ int TaskManager::StartTask(const std::string& task_id) {
         context.process_id = task->task_id + "_main";
         context.cmd = task->desc.exe_package().start_cmd();
         context.work_dir = task->task_id;
+        ProcessEnv env;
+        env.envs.push_back("JOB_ID=job0");
+        env.envs.push_back("POD_ID=pod0");
+        env.envs.push_back("TASK_ID=0");
+        std::map<std::string, std::string>::iterator c_it =\
+            task->env.cgroup_paths.begin();
+        for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
+            env.cgroup_paths.push_back(c_it->second);
+        }
         process_manager_.DeleteProcess(context.process_id);
-        if (0 != process_manager_.CreateProcess(&context)) {
+        if (0 != process_manager_.CreateProcess(env, &context)) {
             LOG(WARNING) << "command execute fail,command: " << context.cmd;
             return -1;
         }
@@ -140,6 +163,7 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
             if (process.status > proto::kProcessFinished) {
                 LOG(INFO) << "deploy process " << process_id <<" failed";
                 it->second->status = proto::kTaskFailed;
+                process_status = process.status;
                 break;
             }
             if (process.status < process_status) {

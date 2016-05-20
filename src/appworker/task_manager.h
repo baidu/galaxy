@@ -13,7 +13,6 @@
 #include <thread_pool.h>
 
 #include "protocol/galaxy.pb.h"
-#include "task_collector.h"
 #include "process_manager.h"
 
 namespace baidu {
@@ -24,19 +23,29 @@ typedef proto::TaskStatus TaskStatus;
 typedef proto::Package Package;
 typedef proto::ProcessStatus ProcessStatus;
 
+struct TaskEnv {
+    std::string job_id;
+    std::string pod_id;
+    std::string task_id;
+    std::vector<std::string> cgroup_subsystems;
+    std::map<std::string, std::string> cgroup_paths;
+};
+
 struct Task {
     std::string task_id;
     TaskDescription desc;
     TaskStatus status;
     int32_t packages_size;
     int32_t fail_retry_times;
+    TaskEnv env;
+
 };
 
 class TaskManager {
 public:
     TaskManager();
     ~TaskManager();
-    int CreateTask(const std::string& task_id, const TaskDescription& task_desc);
+    int CreateTask(const TaskEnv& task_env, const TaskDescription& task_desc);
     int DeleteTask(const std::string& task_id);
     int DeployTask(const std::string& task_id);
     int StartTask(const std::string& task_id);

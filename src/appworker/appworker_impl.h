@@ -30,7 +30,8 @@ typedef proto::ErrorCode ErrorCode;
 class AppWorkerImpl {
 public:
     AppWorkerImpl();
-    virtual ~AppWorkerImpl();
+    ~AppWorkerImpl();
+    void PrepareEnvs();
     void Start();
 
 private:
@@ -42,10 +43,12 @@ private:
 
 private:
     Mutex mutex_appworker_;
-    std::map<std::string, std::string> envs;
-    std::string job_id_;
-    std::string container_id_;
     std::string endpoint_;
+    std::string job_id_;
+    std::string pod_id_;
+    std::vector<std::string> task_ids_;
+    std::vector<std::string> cgroup_subsystems_;
+    std::vector<std::map<std::string, std::string> > task_cgroup_paths_;
     int64_t start_time_;
 
     RpcClient rpc_client_;

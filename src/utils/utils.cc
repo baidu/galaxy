@@ -195,7 +195,7 @@ void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir) {
     // pid_t my_pid = ::getpid();
     int ret = ::setpgid(pid, pid);
     if (ret != 0) {
-        assert(0); 
+        assert(0);
     }
 
     ret = ::chdir(work_dir);

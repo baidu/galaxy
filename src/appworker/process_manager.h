@@ -19,8 +19,14 @@ namespace galaxy {
 
 typedef proto::ProcessStatus ProcessStatus;
 
+struct ProcessEnv {
+    std::vector<std::string> cgroup_paths;
+    std::vector<std::string> envs;
+};
+
 struct Process {
     std::string process_id;
+    ProcessEnv env;
     int32_t pid;
     ProcessStatus status;
     int32_t exit_code;
@@ -30,7 +36,6 @@ struct ProcessContext {
     std::string process_id;
     std::string cmd;
     std::string work_dir;
-    std::vector<std::string> envs;
     bool is_deploy;
     virtual ~ProcessContext() {};
 };
@@ -45,7 +50,8 @@ class ProcessManager {
 public:
     ProcessManager();
     ~ProcessManager();
-    int CreateProcess(const ProcessContext* context);
+    int CreateProcess(const ProcessEnv& env,
+                      const ProcessContext* context);
     int DeleteProcess(const std::string& process_id);
     int QueryProcess(const std::string& process_id, Process& process);
     void LoopWaitProcesses();

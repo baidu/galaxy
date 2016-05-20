@@ -13,7 +13,6 @@
 
 #include "protocol/appmaster.pb.h"
 
-DECLARE_string(appworker_container_id);
 DECLARE_int32(pod_manager_check_pod_interval);
 DECLARE_int32(pod_manager_change_pod_status_interval);
 
@@ -42,20 +41,32 @@ PodManager::~PodManager() {
     background_pool_.Stop(false);
 }
 
-void PodManager::CreatePod(const PodDescription* pod_desc) {
+void PodManager::CreatePod(const PodEnv& pod_env,
+                           const PodDescription& pod_desc) {
     MutexLock lock(&mutex_pod_manager_);
     if (NULL != pod_) {
         return;
     }
+    int tasks_size = pod_desc.tasks().size();
+    if (tasks_size != (int)(pod_env.task_ids.size())) {
+        LOG(WARNING) << "container cgroup size mismatch with task size in PodDescription";
+        exit(-1);
+    }
     pod_ = new Pod();
-    pod_->pod_id = FLAGS_appworker_container_id;
-    pod_->desc.CopyFrom(*pod_desc);
+    pod_->desc.CopyFrom(pod_desc);
+    pod_->pod_id = pod_env.pod_id;
+    pod_->env = pod_env;
     pod_->status = proto::kPodReady;
-    int tasks_size = pod_->desc.tasks().size();
     LOG(INFO) << "create pod, total " << tasks_size << " tasks to be created";
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_->pod_id + "_" + boost::lexical_cast<std::string>(i);
-        int ret = task_manager_.CreateTask(task_id, pod_->desc.tasks(i));
+        TaskEnv env;
+        env.job_id = pod_env.job_id;
+        env.pod_id = pod_env.pod_id;
+        env.task_id = task_id;
+        env.cgroup_subsystems = pod_env.cgroup_subsystems;
+        env.cgroup_paths = pod_env.task_cgroup_paths[i];
+        int ret = task_manager_.CreateTask(env, pod_->desc.tasks(i));
         if (0 != ret) {
             LOG(WARNING) << "create task " << i << " fail";
             task_manager_.ClearTasks();

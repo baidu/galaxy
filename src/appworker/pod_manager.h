@@ -20,7 +20,16 @@ namespace galaxy {
 typedef proto::PodDescription PodDescription;
 typedef proto::PodStatus PodStatus;
 
+struct PodEnv {
+    std::string job_id;
+    std::string pod_id;
+    std::vector<std::string> task_ids;
+    std::vector<std::string> cgroup_subsystems;
+    std::vector<std::map<std::string, std::string> > task_cgroup_paths;
+};
+
 struct Pod {
+    PodEnv env;
     std::string pod_id;
     PodDescription desc;
     PodStatus status;
@@ -30,7 +39,8 @@ class PodManager {
 public:
     PodManager();
     ~PodManager();
-    void CreatePod(const PodDescription* pod_desc);
+    void CreatePod(const PodEnv& pod_env,
+                   const PodDescription& pod_desc);
     void DeletePod();
     void LoopCheckPod();
     void LoopChangePodStatus();

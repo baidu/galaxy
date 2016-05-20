@@ -38,11 +38,14 @@ ProcessManager::ProcessManager() :
 ProcessManager::~ProcessManager() {
 }
 
-int ProcessManager::CreateProcess(const ProcessContext* context) {
+int ProcessManager::CreateProcess(const ProcessEnv& env,
+                                  const ProcessContext* context) {
     {
         MutexLock scope_lock(&lock_);
-        std::map<std::string, Process*>::iterator it = processes_.find(context->process_id);
-        if (it != processes_.end() && proto::kProcessRunning == it->second->status) {
+        std::map<std::string, Process*>::iterator it =\
+            processes_.find(context->process_id);
+        if (it != processes_.end()
+            && proto::kProcessRunning == it->second->status) {
             LOG(INFO) << context->cmd << " is already running";
             return -1;
         }
@@ -85,33 +88,23 @@ int ProcessManager::CreateProcess(const ProcessContext* context) {
     int stdin_fd = -1;
     int stdout_fd = -1;
     int stderr_fd = -1;
-    if (!process::PrepareStdFds(context->work_dir, context->process_id, &stdout_fd, &stderr_fd)) {
+    if (!process::PrepareStdFds(context->work_dir, context->process_id,
+                                &stdout_fd, &stderr_fd)) {
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
         if (stderr_fd != -1) {
             ::close(stderr_fd);
         }
-        LOG(WARNING) << "prepare for " << context->process_id << " std file failed";
+        LOG(WARNING) << "prepare " << context->process_id << " std file failed";
         return -1;
     }
-
-//    int pty_fds = -1;
-//    if (request->has_pty_file()) {
-//        pty_fds = ::open(request->pty_file().c_str(), O_RDWR);
-//        stdout_fd = pty_fds;
-//        stderr_fd = pty_fds;
-//        stdin_fd = pty_fds;
-//    }
 
     // 3. Fork
     pid_t child_pid = ::fork();
     if (child_pid == -1) {
         LOG(WARNING) <<  "fork " << context->process_id << " failed, "\
             <<"err[" << errno << ":" << strerror(errno) << "]";
-//        if (pty_fds != -1) {
-//            ::close(pty_fds);
-//        }
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
@@ -122,15 +115,20 @@ int ProcessManager::CreateProcess(const ProcessContext* context) {
     } else if (child_pid == 0) {
         // setpgid  & chdir
         pid_t my_pid = ::getpid();
-        process::PrepareChildProcessEnvStep1(my_pid, context->work_dir.c_str());
-//        // attach cgroup
-//        for (int i = 0; i < request->cgroups_size(); i++) {
-//            bool ok = AttachCgroup(request->cgroups(i).cgroup_path(), my_pid);
+        process::PrepareChildProcessEnvStep1(my_pid,
+                                             context->work_dir.c_str());
+        // attach cgroup
+        for (unsigned i = 0; i < env.cgroup_paths.size(); i++) {
+            LOG(WARNING) << "process: " << my_pid\
+                << " attach cgroup: " << env.cgroup_paths[i];
+//            bool ok = cgroup::AttachCgroup(process_env.cgroup_paths[i], my_pid);
 //            if (!ok) {
 //                assert(0);
 //            }
-//        }
-        process::PrepareChildProcessEnvStep2(stdin_fd, stdout_fd, stderr_fd, fd_vector);
+        }
+
+        process::PrepareChildProcessEnvStep2(stdin_fd, stdout_fd,
+                                             stderr_fd, fd_vector);
 //        if (is_chroot) {
 //            if (::chroot(request->chroot_path().c_str()) != 0) {
 //                assert(0);
@@ -150,17 +148,18 @@ int ProcessManager::CreateProcess(const ProcessContext* context) {
             NULL};
 
         // prepare envs
-        char* env[context->envs.size() + 1];
-        for (unsigned i = 0; i < context->envs.size(); i++) {
-            env[i] = const_cast<char*>(context->envs[i].c_str());
+        char* envs[env.envs.size() + 1];
+        envs[env.envs.size()]= NULL;
+        for (unsigned i = 0; i < env.envs.size(); i++) {
+            envs[i] = const_cast<char*>(env.envs[i].c_str());
         }
-        env[context->envs.size()] = NULL;
 
         // different with deploy and main process
-        const DownloadProcessContext* download_context = dynamic_cast<const DownloadProcessContext*>(context);
+        const DownloadProcessContext* download_context =\
+             dynamic_cast<const DownloadProcessContext*>(context);
         if (NULL != download_context) {
-            // do deploy
-            fprintf(stdout, "#### execve deploy");
+            // do deploy, if file no change then exit
+            fprintf(stdout, "execve deploy process\n");
             std::string md5;
             if (file::IsExists(download_context->dst_path)
                 && file::GetFileMd5(download_context->dst_path, md5)
@@ -170,9 +169,9 @@ int ProcessManager::CreateProcess(const ProcessContext* context) {
                     exit(0);
             }
         }
-        // exec
-        ::execve("/bin/sh", argv, env);
-        fprintf(stdout, "execve %s err[%d: %s]",
+        // do exec
+        ::execve("/bin/sh", argv, envs);
+        fprintf(stdout, "execve %s err[%d: %s]\n",
                 context->cmd.c_str(), errno, strerror(errno));
         assert(0);
     }
@@ -206,7 +205,8 @@ int ProcessManager::DeleteProcess(const std::string& process_id) {
     return 0;
 }
 
-int ProcessManager::QueryProcess(const std::string& process_id, Process& process) {
+int ProcessManager::QueryProcess(const std::string& process_id,
+                                 Process& process) {
     MutexLock scope_lock(&lock_);
     std::map<std::string, Process*>::iterator it = processes_.find(process_id);
     if (it == processes_.end()) {
