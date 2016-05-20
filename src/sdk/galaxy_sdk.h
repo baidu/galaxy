@@ -363,8 +363,13 @@ struct ListAgentsByTagRequest {
 };
 struct ListAgentsByTagResponse {
     ErrorCode error_code;
+<<<<<<< HEAD
     //std::vector<AgentStatistics> agents;
     std::vector<std::string> endpoint;
+=======
+    std::vector<AgentStatistics> agents;
+    //std::vector<std::string> endpoint;
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
 };
 struct GetTagsByAgentRequest {
     User user;
@@ -395,8 +400,13 @@ struct ListAgentsByPoolRequest {
 };
 struct ListAgentsByPoolResponse {
     ErrorCode error_code;
+<<<<<<< HEAD
     std::vector<std::string> endpoint;
     //std::vector<AgentStatistics> agents;
+=======
+    //std::vector<std::string> endpoint;
+    std::vector<AgentStatistics> agents;
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
 };
 struct GetPoolByAgentRequest {
     User user;

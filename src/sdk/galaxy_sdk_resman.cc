@@ -497,7 +497,11 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         return false;
     }
 
+<<<<<<< HEAD
     /*for (int i = 0; i < pb_response.agents().size(); ++i) {
+=======
+    for (int i = 0; i < pb_response.agents().size(); ++i) {
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
         const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
@@ -529,11 +533,18 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
             agent.tags.push_back(pb_agent.tags(j));
         }
         response->agents.push_back(agent);
+<<<<<<< HEAD
     }*/
 
     for (int i = 0; i < pb_response.endpoint().size(); ++i) {
         response->endpoint.push_back(pb_response.endpoint(i));
+=======
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
     }
+
+    /*for (int i = 0; i < pb_response.endpoint().size(); ++i) {
+        response->endpoint.push_back(pb_response.endpoint(i));
+    }*/
 
     return true;
 }
@@ -611,14 +622,22 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
         return false;
     }
 
+<<<<<<< HEAD
     /*for (int i = 0; i < pb_response.agents().size(); ++i) {
+=======
+    for (int i = 0; i < pb_response.agents().size(); ++i) {
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
         const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
         if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
             return false;
         }
+<<<<<<< HEAD
        volumsagent.pool = pb_agent.pool();
+=======
+        agent.pool = pb_agent.pool();
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
         agent.cpu.total = pb_agent.cpu().total();
         agent.cpu.assigned = pb_agent.cpu().assigned();
         agent.cpu.used = pb_agent.cpu().used();
@@ -643,11 +662,18 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
             agent.tags.push_back(pb_agent.tags(j));
         }
         response->agents.push_back(agent);
+<<<<<<< HEAD
     }*/
 
     for (int i = 0; i < pb_response.endpoint().size(); ++i) {
         response->endpoint.push_back(pb_response.endpoint(i));
+=======
+>>>>>>> ac73f182d0814daf85e1a22c46fc44ba8e43be16
     }
+
+    /*for (int i = 0; i < pb_response.endpoint().size(); ++i) {
+        response->endpoint.push_back(pb_response.endpoint(i));
+    }*/
     return true;
 }
 
