@@ -159,6 +159,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     baidu::galaxy::proto::Resource* memory_resource = new baidu::galaxy::proto::Resource();
     memory_resource->CopyFrom(*(rm_->GetMemoryResource()));
     //memory_resource->set_used(0);
+    ai->set_allocated_memory_resource(memory_resource);
 
     std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> > vrs;
     rm_->GetVolumResource(vrs);
@@ -173,6 +174,8 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
         //r->set_used();
         vr->set_allocated_volum(r);
     }
+
+    //std::cerr << ai->DebugString() << std::endl;
 
     if (request->has_full_report() && request->full_report()) {
 
