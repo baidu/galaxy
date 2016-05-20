@@ -328,7 +328,6 @@ struct OfflineAgentResponse {
 };
 struct ListAgentsRequest {
     User user;
-    std::string pool;
 };
 struct AgentStatistics {
     std::string endpoint;
@@ -365,7 +364,8 @@ struct ListAgentsByTagRequest {
 };
 struct ListAgentsByTagResponse {
     ErrorCode error_code;
-    std::vector<std::string> endpoint;
+    std::vector<AgentStatistics> agents;
+    //std::vector<std::string> endpoint;
 };
 struct GetTagsByAgentRequest {
     User user;
@@ -396,7 +396,8 @@ struct ListAgentsByPoolRequest {
 };
 struct ListAgentsByPoolResponse {
     ErrorCode error_code;
-    std::vector<std::string> endpoint;
+    //std::vector<std::string> endpoint;
+    std::vector<AgentStatistics> agents;
 };
 struct GetPoolByAgentRequest {
     User user;

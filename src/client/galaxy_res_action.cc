@@ -378,7 +378,6 @@ bool ResAction::ListAgents(const std::string& pool) {
     ::baidu::galaxy::sdk::ListAgentsRequest request;
     ::baidu::galaxy::sdk::ListAgentsResponse response;
     request.user = user_;
-    request.pool = pool;
 
     bool ret = resman_->ListAgents(request, &response);
     if (ret) {
