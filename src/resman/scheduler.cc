@@ -876,6 +876,8 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
             container->last_res_err = res_err;
+            VLOG(10) << "try put fail: " << container->id 
+                     << ", err:" << proto::ResourceError_Name(res_err); 
             continue; //no feasiable
         }
         agent->Put(container);

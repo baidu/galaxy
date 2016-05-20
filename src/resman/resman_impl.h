@@ -197,6 +197,7 @@ private:
     std::map<std::string, std::set<std::string> > pools_;
     Mutex mu_;
     bool safe_mode_;
+    bool force_safe_mode_;
     ThreadPool query_pool_;
     RpcClient rpc_client_;
 };
