@@ -180,6 +180,11 @@ private:
     static void OnRMLockChange(const ::galaxy::ins::sdk::WatchParam& param,
                                ::galaxy::ins::sdk::SDKError err);
     void OnLockChange(std::string lock_session_id);
+    
+    template <class RpcRequest, class RpcResponse, class DoneClosure>
+    bool CheckUserExist(const RpcRequest* request, 
+                        RpcResponse* response,
+                        DoneClosure* done);
 
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
@@ -192,6 +197,7 @@ private:
     std::map<std::string, std::set<std::string> > pools_;
     Mutex mu_;
     bool safe_mode_;
+    bool force_safe_mode_;
     ThreadPool query_pool_;
     RpcClient rpc_client_;
 };
