@@ -67,9 +67,9 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.work_dir = task->task_id;
         context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
         ProcessEnv env;
-        env.envs.push_back("JOB_ID=job0");
-        env.envs.push_back("POD_ID=pod0");
-        env.envs.push_back("TASK_ID=0");
+        env.envs.push_back("JOB_ID=" + task->env.job_id);
+        env.envs.push_back("POD_ID=" + task->env.pod_id);
+        env.envs.push_back("TASK_ID=" + task->env.task_id);
         std::map<std::string, std::string>::iterator c_it =\
             task->env.cgroup_paths.begin();
         for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
@@ -92,6 +92,9 @@ int TaskManager::DeployTask(const std::string& task_id) {
             context.work_dir = task->task_id;
             context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
             ProcessEnv env;
+            env.envs.push_back("JOB_ID=" + task->env.job_id);
+            env.envs.push_back("POD_ID=" + task->env.pod_id);
+            env.envs.push_back("TASK_ID=" + task->env.task_id);
             if (0 != process_manager_.CreateProcess(env, &context)) {
                 LOG(WARNING) << "command execute fail, command: " << context.cmd;
                 return -1;
@@ -120,9 +123,9 @@ int TaskManager::StartTask(const std::string& task_id) {
         context.cmd = task->desc.exe_package().start_cmd();
         context.work_dir = task->task_id;
         ProcessEnv env;
-        env.envs.push_back("JOB_ID=job0");
-        env.envs.push_back("POD_ID=pod0");
-        env.envs.push_back("TASK_ID=0");
+        env.envs.push_back("JOB_ID=" + task->env.job_id);
+        env.envs.push_back("POD_ID=" + task->env.pod_id);
+        env.envs.push_back("TASK_ID=" + task->env.task_id);
         std::map<std::string, std::string>::iterator c_it =\
             task->env.cgroup_paths.begin();
         for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
