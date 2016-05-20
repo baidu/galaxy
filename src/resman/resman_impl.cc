@@ -40,7 +40,8 @@ namespace baidu {
 namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()),
-                           safe_mode_(true) {
+                           safe_mode_(true),
+                           force_safe_mode_(false) {
     nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
 
@@ -142,6 +143,7 @@ void ResManImpl::EnterSafeMode(::google::protobuf::RpcController* controller,
     MutexLock lock(&mu_);
     if (!safe_mode_) {
         safe_mode_ = true;
+        force_safe_mode_ = true;
         scheduler_->Stop();
         response->mutable_error_code()->set_status(proto::kOk);
     } else {
@@ -158,6 +160,7 @@ void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
     MutexLock lock(&mu_);
     if (safe_mode_) {
         safe_mode_ = false;
+        force_safe_mode_ = false;
         scheduler_->Start();
         response->mutable_error_code()->set_status(proto::kOk);
     } else {
@@ -299,7 +302,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
     if (response->code().status() != proto::kOk || rpc_fail) {
         LOG(WARNING) << "failed to query on: " << agent_endpoint
                      << " err: " << err << ", rpc_fail:" << rpc_fail;
-        query_pool_.DelayTask(FLAGS_agent_query_interval,
+        query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
             boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
         );
         return;
@@ -335,6 +338,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         LOG(INFO) << "TRACE BEGIN, first query result from:" << agent_endpoint
                   << "\n" << agent_info.DebugString()
                   << "\nTRACE END";
+        is_first_query = false;
     } else {
         VLOG(10) << "TRACE BEGIN, query result from: " << agent_endpoint
                  << "\n" << response->agent_info().DebugString()
@@ -352,7 +356,8 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
             return;
         }
         agent_stats_[agent_endpoint].info = response->agent_info();
-        if (safe_mode_ && 
+        if (!force_safe_mode_ && 
+            safe_mode_ && 
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
             LOG(INFO) << "leave safe mode";
             safe_mode_ = false;
@@ -363,7 +368,7 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         scheduler_->Start();
     }
     //query again later
-    query_pool_.DelayTask(FLAGS_agent_query_interval,
+    query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
         boost::bind(&ResManImpl::QueryAgent, this, agent_endpoint, is_first_query)
     );
 }
@@ -640,6 +645,17 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
         err->set_reason("agent must belongs to a Pool");
         done->Run();
         return;
+    }
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::AgentMeta>::const_iterator it;
+        it = agents_.find(request->endpoint());
+        if (it != agents_.end()) {
+            response->mutable_error_code()->set_status(proto::kAddAgentFail);
+            response->mutable_error_code()->set_reason("agent already exist");
+            done->Run();
+            return;
+        }
     }
     proto::AgentMeta agent_meta;
     agent_meta.set_endpoint(request->endpoint());
