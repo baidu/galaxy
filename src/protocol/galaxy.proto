@@ -144,10 +144,18 @@ enum JobStatus {
    kJobRunning = 2;
    kJobFinished = 3; 
    kJobDestroying = 4;
+   kJobUpdating = 5;
 }
 
-
-// Task or pod
+enum JobEvent {
+    kFetch = 1;
+    kUpdate = 2;
+    kRemove = 3;
+    kRemoveFinish = 4;
+    kUpdateFinish = 5;
+}
+// Task or 
+pod
 enum PodStatus {
     kPodPending = 1;
     kPodReady = 2;
@@ -228,7 +236,7 @@ message TaskDescription {
 message PodDescription {
     // workspace volum
     optional VolumRequired workspace_volum = 3;
-    // Resource, volum is owned by Pod
+    // Resource, volum is owned by Pod/
     repeated VolumRequired data_volums = 4;
     // tasks
     repeated TaskDescription tasks = 5;
@@ -243,6 +251,8 @@ message JobDescription {
     optional Deploy deploy = 4;
     optional PodDescription pod_desc = 5;
     optional string run_user = 6;
+    optional string tag = 7;
+    repeated string pool_names = 8;
 }
 
 
@@ -317,6 +327,11 @@ enum Status {
    kAddAgentFail = 4;
    kDeny = 5;
    kJobNotFound = 6;
+   kRebuild = 7;
+   kReload = 8;
+   kStatusConflict = 9;
+   kJobTerminateFail = 10;
+   kSafeMode = 11;
 }
 
 message ErrorCode {

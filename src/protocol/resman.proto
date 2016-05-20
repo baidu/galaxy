@@ -267,7 +267,6 @@ message CreateContainerGroupResponse {
 message RemoveContainerGroupRequest {
     optional User user = 1; 
     optional string id = 2;
-
 }
 
 message RemoveContainerGroupResponse {
