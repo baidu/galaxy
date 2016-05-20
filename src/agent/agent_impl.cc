@@ -179,6 +179,10 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     }
 
     baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
+    ec->set_status(baidu::galaxy::proto::kOk);
+    response->set_allocated_agent_info(ai);
+    response->set_allocated_code(ec);
+    done->Run();
 }
 
 
