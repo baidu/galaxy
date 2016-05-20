@@ -1086,14 +1086,95 @@ void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,
                            const ::baidu::galaxy::proto::GrantUserRequest* request,
                            ::baidu::galaxy::proto::GrantUserResponse* response,
                            ::google::protobuf::Closure* done) {
+    const std::string& user_name = request->user().user();
+    proto::UserMeta user_meta;
+    {
+        MutexLock lock(&mu_);
+        if (users_.find(user_name) == users_.end()) {
+            response->mutable_error_code()->set_status(proto::kGrantUserFail);
+            response->mutable_error_code()->set_reason("no such user");
+            done->Run();
+            return;
+        }
+        user_meta = users_[user_name];
+    }
+    const proto::Grant& grant = request->grant();
+    /// pool_name -> [auth1, auth2, auth3]
+    std::map<std::string, std::set<proto::Authority> > user_grants;
+    for (int i = 0; i < user_meta.grants_size(); i++) {
+        const std::string& pool_name = user_meta.grants(i).pool();
+        for (int j =0; j < user_meta.grants(i).authority_size(); j++) {
+            user_grants[pool_name].insert(user_meta.grants(i).authority(j));
+        }
+    }
+    if (grant.action() == proto::kActionSet) {
+        user_grants[grant.pool()].clear();
+        for (int i = 0; i < grant.authority_size(); i++) {
+            user_grants[grant.pool()].insert(grant.authority(i));
+        }
+    } else if (grant.action() == proto::kActionClear) {
+        user_grants[grant.pool()].clear();
+    } else if (grant.action() == proto::kActionAdd) {
+        for (int i = 0; i < grant.authority_size(); i++) {
+            user_grants[grant.pool()].insert(grant.authority(i));
+        }
+    } else if (grant.action() == proto::kActionRemove) {
+        for (int i = 0; i < grant.authority_size(); i++) {
+            user_grants[grant.pool()].erase(grant.authority(i));
+        }
+    }
+    user_meta.mutable_grants()->Clear();
+    std::map<std::string, std::set<proto::Authority> >::const_iterator it;
+    for (it = user_grants.begin(); it != user_grants.end(); it++) {
+        proto::Grant* the_grant = user_meta.add_grants();
+        const std::string& pool_name = it->first;
+        const std::set<proto::Authority>& auths = it->second;
+        the_grant->set_pool(pool_name);
+        std::set<proto::Authority>::const_iterator jt;
+        for (jt = auths.begin(); jt != auths.end(); jt++) {
+            the_grant->add_authority(*jt);
+        }
+    }
 
+    bool save_ret = SaveObject(sUserPrefix + "/" + user_name, user_meta);
+    if (!save_ret) {
+        response->mutable_error_code()->set_status(proto::kGrantUserFail);
+        response->mutable_error_code()->set_reason("fail to save meta to nexus");
+    } else {
+        MutexLock lock(&mu_);
+        users_[user_name] = user_meta;
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 void ResManImpl::AssignQuota(::google::protobuf::RpcController* controller,
                              const ::baidu::galaxy::proto::AssignQuotaRequest* request,
                              ::baidu::galaxy::proto::AssignQuotaResponse* response,
                              ::google::protobuf::Closure* done) {
-
+    const std::string& user_name = request->user().user();
+    proto::UserMeta user_meta;
+    {
+        MutexLock lock(&mu_);
+        if (users_.find(user_name) == users_.end()) {
+            response->mutable_error_code()->set_status(proto::kAssignQuotaFail);
+            response->mutable_error_code()->set_reason("no such user");
+            done->Run();
+            return;
+        }
+        user_meta = users_[user_name];
+    }
+    user_meta.mutable_quota()->CopyFrom(request->quota());
+    bool save_ret = SaveObject(sUserPrefix + "/" + user_name, user_meta);
+    if (!save_ret) {
+        response->mutable_error_code()->set_status(proto::kAssignQuotaFail);
+        response->mutable_error_code()->set_reason("fail to save meta to nexus");
+    } else {
+        MutexLock lock(&mu_);
+        users_[user_name] = user_meta;
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 bool ResManImpl::RemoveObject(const std::string& key) {
