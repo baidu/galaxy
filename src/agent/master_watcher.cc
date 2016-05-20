@@ -13,26 +13,31 @@ DECLARE_string(nexus_servers);
 namespace baidu {
 namespace galaxy {
 
-MasterWatcher::MasterWatcher() : nexus_(NULL) {
+MasterWatcher::MasterWatcher() : nexus_(NULL)
+{
     nexus_ =  new InsSDK(FLAGS_nexus_servers);
 }
 
-MasterWatcher::~MasterWatcher() {
+MasterWatcher::~MasterWatcher()
+{
     delete nexus_;
 }
 
-bool MasterWatcher::Init(boost::function<void(const std::string& new_master_endpoint)> handler) {
+bool MasterWatcher::Init(boost::function<void(const std::string& new_master_endpoint)> handler)
+{
     handler_ = handler;
     return IssueNewWatch();
 }
 
-std::string MasterWatcher::GetMasterEndpoint() {
+std::string MasterWatcher::GetMasterEndpoint()
+{
     MutexLock lock(&mutex_);
     return master_endpoint_;
 }
 
-void MasterWatcher::EventMasterChange(const ::galaxy::ins::sdk::WatchParam& param, 
-                             ::galaxy::ins::sdk::SDKError /*error*/) {
+void MasterWatcher::EventMasterChange(const ::galaxy::ins::sdk::WatchParam& param,
+        ::galaxy::ins::sdk::SDKError /*error*/)
+{
     MasterWatcher* watcher = static_cast<MasterWatcher*>(param.context);
     bool ok = watcher->IssueNewWatch();
     if (!ok) {
@@ -41,7 +46,8 @@ void MasterWatcher::EventMasterChange(const ::galaxy::ins::sdk::WatchParam& para
     }
 }
 
-bool MasterWatcher::IssueNewWatch() {
+bool MasterWatcher::IssueNewWatch()
+{
     std::string master_path_key = FLAGS_nexus_root_path + FLAGS_master_path;
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Watch(master_path_key, &EventMasterChange, this, &err);

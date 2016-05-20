@@ -250,6 +250,7 @@ struct ErrorCode {
     std::string reason;
 };
 enum AgentStatus {
+    kAgentUnkown=0,
     kAgentAlive=1,
     kAgentDead=2,
     kAgentOffline=3,
