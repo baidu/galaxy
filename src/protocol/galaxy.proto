@@ -58,7 +58,7 @@ enum AuthorityAction {
 
 message Grant {
     optional User user = 1;
-    repeated string pool = 2;
+    optional string pool = 2;
     optional AuthorityAction action = 3;
     repeated Authority authority = 4;
 }
@@ -340,6 +340,8 @@ enum Status {
    kAddAgentToPoolFail = 12;
    kAddUserFail = 13;
    kRemoveUserFail = 14;
+   kGrantUserFail = 15;
+   kAssignQuotaFail = 16;
 }
 
 message ErrorCode {
@@ -409,9 +411,8 @@ message AgentMeta {
 
 message UserMeta {
     optional User user = 1;
-    repeated string pools = 2;
-    repeated Authority authorites = 3;
-    optional Quota quota = 4;
+    repeated Grant grants = 2;
+    optional Quota quota = 3;
 }
 
 message ContainerGroupMeta {
