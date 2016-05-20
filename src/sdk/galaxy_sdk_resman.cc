@@ -392,7 +392,7 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
     ::baidu::galaxy::proto::ListAgentsResponse pb_response;
 
     FillUser(request.user, pb_request.mutable_user());
-    pb_request.set_pool(request.pool);
+    //pb_request.set_pool(request.pool);
     rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgents, &pb_request, &pb_response, 5, 1);
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
@@ -497,9 +497,43 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         return false;
     }
 
-    for (int i = 0; i < pb_response.endpoint().size(); ++i) {
-        response->endpoint.push_back(pb_response.endpoint(i));
+    for (int i = 0; i < pb_response.agents().size(); ++i) {
+        const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
+        AgentStatistics agent;
+        agent.endpoint = pb_agent.endpoint();
+        if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
+            return false;
+        }
+        agent.pool = pb_agent.pool();
+        agent.cpu.total = pb_agent.cpu().total();
+        agent.cpu.assigned = pb_agent.cpu().assigned();
+        agent.cpu.used = pb_agent.cpu().used();
+        agent.memory.total = pb_agent.memory().total();
+        agent.memory.assigned = pb_agent.memory().assigned();
+        agent.memory.used = pb_agent.memory().used();
+        for (int j = 0; j < pb_agent.volums().size(); ++j) {
+            const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
+            VolumResource volum;
+            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                return false;
+            }
+            volum.volum.total = pb_volum.volum().total();
+            volum.volum.assigned = pb_volum.volum().assigned();
+            volum.volum.used = pb_volum.volum().used();
+            volum.device_path = pb_volum.device_path();
+            agent.volums.push_back(volum);
+        }
+        agent.total_containers = pb_agent.total_containers();
+        
+        for (int j = 0; j < pb_agent.tags().size(); ++j) {
+            agent.tags.push_back(pb_agent.tags(j));
+        }
+        response->agents.push_back(agent);
     }
+
+    /*for (int i = 0; i < pb_response.endpoint().size(); ++i) {
+        response->endpoint.push_back(pb_response.endpoint(i));
+    }*/
 
     return true;
 }
@@ -576,9 +610,44 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
     if (response->error_code.status != kOk) {
         return false;
     }
-    for (int i = 0; i < pb_response.endpoint().size(); ++i) {
-        response->endpoint.push_back(pb_response.endpoint(i));
+
+    for (int i = 0; i < pb_response.agents().size(); ++i) {
+        const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
+        AgentStatistics agent;
+        agent.endpoint = pb_agent.endpoint();
+        if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
+            return false;
+        }
+        agent.pool = pb_agent.pool();
+        agent.cpu.total = pb_agent.cpu().total();
+        agent.cpu.assigned = pb_agent.cpu().assigned();
+        agent.cpu.used = pb_agent.cpu().used();
+        agent.memory.total = pb_agent.memory().total();
+        agent.memory.assigned = pb_agent.memory().assigned();
+        agent.memory.used = pb_agent.memory().used();
+        for (int j = 0; j < pb_agent.volums().size(); ++j) {
+            const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
+            VolumResource volum;
+            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                return false;
+            }
+            volum.volum.total = pb_volum.volum().total();
+            volum.volum.assigned = pb_volum.volum().assigned();
+            volum.volum.used = pb_volum.volum().used();
+            volum.device_path = pb_volum.device_path();
+            agent.volums.push_back(volum);
+        }
+        agent.total_containers = pb_agent.total_containers();
+        
+        for (int j = 0; j < pb_agent.tags().size(); ++j) {
+            agent.tags.push_back(pb_agent.tags(j));
+        }
+        response->agents.push_back(agent);
     }
+
+    /*for (int i = 0; i < pb_response.endpoint().size(); ++i) {
+        response->endpoint.push_back(pb_response.endpoint(i));
+    }*/
     return true;
 }
 
