@@ -6,44 +6,48 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <gflags/gflags.h>
 
+DECLARE_int64(cpu_resource);
 namespace baidu {
-    namespace galaxy {
-        namespace resource {
+namespace galaxy {
+namespace resource {
 
-            class CpuResource {
-            public:
-                CpuResource();
-                ~CpuResource();
+class CpuResource {
+public:
+    CpuResource();
+    ~CpuResource();
 
-                int Load() {
-                    total_ = 23000;
-                    return 0;
-                }
-
-                int Allocate(uint64_t milli_cores) {
-                    if (assigned_ + milli_cores > total_) {
-                        return -1;
-                    }
-                    assigned_ += milli_cores;
-                    return 0;
-                }
-
-                int Release(uint64_t milli_cores) {
-                    assigned_ -= milli_cores;
-                    assert(assigned_ > 0);
-                    return 0;
-                }
-
-                void Resource(uint64_t& total, uint64_t& assigned) {
-                    total = total_;
-                    assigned = assigned_;
-                }
-
-            private:
-                uint64_t total_;
-                uint64_t assigned_;
-            };
-        }
+    int Load() {
+        total_ = FLAGS_cpu_resource;
+        assert(FLAGS_cpu_resource > 0);
+        return 0;
     }
+
+    int Allocate(uint64_t milli_cores) {
+        if (assigned_ + milli_cores > total_) {
+            return -1;
+        }
+
+        assigned_ += milli_cores;
+        return 0;
+    }
+
+    int Release(uint64_t milli_cores) {
+        assigned_ -= milli_cores;
+        assert(assigned_ > 0);
+        return 0;
+    }
+
+    void Resource(uint64_t& total, uint64_t& assigned) {
+        total = total_;
+        assigned = assigned_;
+    }
+
+private:
+    uint64_t total_;
+    uint64_t assigned_;
+};
+}
+}
 }
