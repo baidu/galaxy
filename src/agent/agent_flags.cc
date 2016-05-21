@@ -9,4 +9,5 @@ DEFINE_string(nexus_servers, "", "servers of nexus cluster");
 
 DEFINE_string(agent_ip, "", "agent ip");
 DEFINE_string(agent_port, "1646", "agent listen port");
+DEFINE_string(agent_hostname, "hostname", "agent hostname");
 DEFINE_int32(keepalive_interval, 5000, "keep alive with RM");

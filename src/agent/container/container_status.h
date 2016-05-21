@@ -49,6 +49,7 @@ private:
     static std::set<baidu::galaxy::proto::ContainerStatus> kerror_pre_status_;
     static std::set<baidu::galaxy::proto::ContainerStatus> kdestroying_pre_status_;
     static std::set<baidu::galaxy::proto::ContainerStatus> kterminated_pre_status_;
+    static bool setup_ok_;
 
 };
 }
