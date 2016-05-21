@@ -144,7 +144,7 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
 int VolumGroup::MountRootfs()
 {
     std::vector<std::string> vm;
-    boost::algorithm::split(vm, FLAGS_mount_templat, boost::is_any_of(","));
+    boost::split(vm, FLAGS_mount_templat, boost::is_any_of(","));
 
     std::string container_path = baidu::galaxy::path::ContainerRootPath(container_id_);
 

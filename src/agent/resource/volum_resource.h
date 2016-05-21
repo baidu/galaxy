@@ -10,35 +10,38 @@
 #include <vector>
 
 namespace baidu {
-    namespace galaxy {
-        namespace resource {
-            
-            class VolumResource {
-            public:
-                class Volum {
-                public:
-                    Volum() :
-                        total_(0),
-                        assigned_(0) {}
-                        
-                    int64_t total_;
-                    int64_t assigned_;
-                    baidu::galaxy::proto::VolumMedium medium_;
-                };
+namespace galaxy {
+namespace resource {
 
-            public:
-                VolumResource();
-                ~VolumResource();
-                int Load();
-                
-                int Allocat(const baidu::galaxy::proto::VolumRequired& require);
-                int Release(const baidu::galaxy::proto::VolumRequired& require);
-                void Resource(std::map<std::string, Volum>& r);
+class VolumResource {
+public:
+    class Volum {
+    public:
+        Volum() :
+            total_(0),
+            assigned_(0) {}
 
-            private:
-                std::map<std::string, Volum> resource_;
-                
-            };
-        }
-    }
+        int64_t total_;
+        int64_t assigned_;
+        std::string filesystem_;
+        std::string mount_point_;
+        baidu::galaxy::proto::VolumMedium medium_;
+    };
+
+public:
+    VolumResource();
+    ~VolumResource();
+    int Load();
+
+    int Allocat(const baidu::galaxy::proto::VolumRequired& require);
+    int Release(const baidu::galaxy::proto::VolumRequired& require);
+    void Resource(std::map<std::string, Volum>& r);
+
+private:
+    int LoadVolum(const std::string& config, Volum& volum);
+    std::map<std::string, Volum> resource_;
+
+};
+}
+}
 }
