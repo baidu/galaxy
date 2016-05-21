@@ -138,6 +138,18 @@ boost::shared_ptr<google::protobuf::Message> Cgroup::Report()
 
 void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 {
+    std::vector<std::string> subsystems;
+    factory_->GetSubsystems(subsystems);
+    std::string value;
+    for (size_t i = 0; i < subsystems.size(); i++) {
+        if (!value.empty()) {
+            value += ",";
+        }
+        value += subsystems[i];
+    }
+    env["baidu_galaxy_cgroup_subsystems"] = value;
+
+
     for (size_t i = 0; i < subsystem_.size(); i++) {
         std::stringstream ss;
         ss << "baidu_galaxy_contianer_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
