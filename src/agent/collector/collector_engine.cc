@@ -5,6 +5,7 @@
 #include "collector_engine.h"
 #include "timer.h"
 #include "thread_pool.h"
+#include "thread.h"
 
 #include <glog/logging.h>
 #include <boost/bind.hpp>
@@ -17,13 +18,24 @@ namespace galaxy {
 namespace collector {
 
 CollectorEngine::CollectorEngine() :
-    running_(false) {
+    running_(false)
+{
 }
 
-CollectorEngine::~CollectorEngine() {
+CollectorEngine::~CollectorEngine()
+{
 }
 
-baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Collector> collector) {
+boost::shared_ptr<CollectorEngine> CollectorEngine::instance_(new CollectorEngine());
+
+boost::shared_ptr<CollectorEngine> CollectorEngine::GetInstance()
+{
+    assert(NULL != instance_.get());
+    return instance_;
+}
+
+baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Collector> collector)
+{
     assert(NULL != collector.get());
     boost::mutex::scoped_lock lock(mutex_);
 
@@ -38,7 +50,8 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
     return ERRORCODE_OK;
 }
 
-void CollectorEngine::Unregister(boost::shared_ptr<Collector> collector) {
+void CollectorEngine::Unregister(boost::shared_ptr<Collector> collector)
+{
     assert(NULL != collector.get());
     boost::mutex::scoped_lock lock(mutex_);
     std::vector<boost::shared_ptr<RuntimeCollector> >::iterator iter = collectors_.begin();
@@ -51,8 +64,25 @@ void CollectorEngine::Unregister(boost::shared_ptr<Collector> collector) {
     }
 }
 
-void CollectorEngine::Setup() {
+int CollectorEngine::Setup()
+{
     assert(!running_);
+
+    int ret = -1;
+    if (main_collect_thread_.Start(boost::bind(&CollectorEngine::CollectMainThreadRoutine, this))) {
+        ret = 0;
+    }
+    return ret;
+}
+
+void CollectorEngine::TearDown()
+{
+    running_ = false;
+    main_collect_thread_.Join();
+}
+
+void CollectorEngine::CollectMainThreadRoutine()
+{
     running_ = true;
     while (running_) {
         int64_t now = baidu::common::timer::get_micros();
@@ -83,11 +113,8 @@ void CollectorEngine::Setup() {
     }
 }
 
-void CollectorEngine::TearDown() {
-    running_ = false;
-}
-
-void CollectorEngine::CollectRoutine(boost::shared_ptr<CollectorEngine::RuntimeCollector> rc) {
+void CollectorEngine::CollectRoutine(boost::shared_ptr<CollectorEngine::RuntimeCollector> rc)
+{
     rc->GetCollector()->Collect();
     rc->SetRunning(false);
 }

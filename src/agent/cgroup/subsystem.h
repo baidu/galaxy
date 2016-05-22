@@ -84,6 +84,20 @@ private:
     Type type_;
 };
 
+class Metrix {
+public:
+    Metrix() :
+        cpu_usertime(0L),
+        cpu_systime(0L),
+        memory_used_in_byte(0L),
+        timestamp(0) {}
+
+    int64_t cpu_usertime;
+    int64_t cpu_systime;
+    int64_t memory_used_in_byte;
+    int64_t timestamp;
+};
+
 class Subsystem {
 public:
     Subsystem() {}
@@ -101,8 +115,6 @@ public:
         return this;
     }
 
-    virtual baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat) = 0;
-
     virtual boost::shared_ptr<Subsystem> Clone() = 0;
     virtual std::string Name() = 0;
     virtual int Construct() = 0;
@@ -111,6 +123,10 @@ public:
     virtual int Attach(pid_t pid);
     virtual int GetProcs(std::vector<int>& pids);
     virtual std::string Path();
+
+    virtual baidu::galaxy::util::ErrorCode Collect(Metrix& metrix) {
+        return ERRORCODE_OK;
+    }
     //virtual bool Empty();
 
 protected:

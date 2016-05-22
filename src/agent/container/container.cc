@@ -8,6 +8,7 @@
 
 #include "cgroup/subsystem_factory.h"
 #include "cgroup/cgroup.h"
+#include "cgroup/cgroup_collector.h"
 #include "protocol/galaxy.pb.h"
 #include "volum/volum_group.h"
 #include "util/user.h"
@@ -19,6 +20,8 @@
 #include "boost/algorithm/string/split.hpp"
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/predicate.hpp"
+#include "agent/collector/collector_engine.h"
+#include "agent/cgroup/cgroup_collector.h"
 
 #include <glog/logging.h>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
@@ -48,17 +51,21 @@ Container::Container(const ContainerId& id, const baidu::galaxy::proto::Containe
     volum_group_(new baidu::galaxy::volum::VolumGroup()),
     process_(new Process()),
     id_(id),
-    status_(id.SubId()) {
+    status_(id.SubId())
+{
 }
 
-Container::~Container() {
+Container::~Container()
+{
 }
 
-ContainerId Container::Id() const {
+ContainerId Container::Id() const
+{
     return id_;
 }
 
-int Container::Construct() {
+int Container::Construct()
+{
     baidu::galaxy::util::ErrorCode ec = status_.EnterAllocating();
 
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
@@ -82,16 +89,23 @@ int Container::Construct() {
         }
     } else {
         ec = status_.EnterReady();
-
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
+        }
+
+        // register collector
+        for (size_t i = 0; i < cgroup_.size(); i++) {
+            boost::shared_ptr<baidu::galaxy::collector::Collector> c(new baidu::galaxy::cgroup::CgroupCollector(cgroup_[i]));
+            baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(c);
+            collectors_.push_back(c);
         }
     }
 
     return ret;
 }
 
-int Container::Destroy() {
+int Container::Destroy()
+{
     baidu::galaxy::util::ErrorCode ec = status_.EnterDestroying();
 
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
@@ -123,7 +137,8 @@ int Container::Destroy() {
     return ret;
 }
 
-int Container::Construct_() {
+int Container::Construct_()
+{
     assert(!id_.Empty());
     // cgroup
     LOG(INFO) << "to create cgroup for container " << id_.CompactId()
@@ -195,7 +210,8 @@ int Container::Construct_() {
     return 0;
 }
 
-int Container::Destroy_() {
+int Container::Destroy_()
+{
     // kill appwork
 
     // destroy cgroup
@@ -214,7 +230,8 @@ int Container::Destroy_() {
     return 0;
 }
 
-int Container::RunRoutine(void*) {
+int Container::RunRoutine(void*)
+{
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
         std::cerr << "mount root fs failed" << std::endl;
@@ -250,7 +267,8 @@ int Container::RunRoutine(void*) {
     return -1;
 }
 
-void Container::ExportEnv() {
+void Container::ExportEnv()
+{
     std::map<std::string, std::string> env;
 
     for (size_t i = 0; i < cgroup_.size(); i++) {
@@ -272,7 +290,8 @@ void Container::ExportEnv() {
     }
 }
 
-void Container::ExportEnv(std::map<std::string, std::string>& env) {
+void Container::ExportEnv(std::map<std::string, std::string>& env)
+{
     env["baidu_galaxy_containergroup_id"] = id_.GroupId();
     env["baidu_galaxy_container_id"] = id_.SubId();
     env["baidu_galaxy_container_cgroup_size"] = boost::lexical_cast<std::string>(cgroup_.size());
@@ -294,27 +313,32 @@ void Container::ExportEnv(std::map<std::string, std::string>& env) {
 
 
 
-int Container::Tasks(std::vector<pid_t>& pids) {
+int Container::Tasks(std::vector<pid_t>& pids)
+{
     return -1;
 }
 
-int Container::Pids(std::vector<pid_t>& pids) {
+int Container::Pids(std::vector<pid_t>& pids)
+{
     return -1;
 }
 
-boost::shared_ptr<google::protobuf::Message> Container::Report() {
+boost::shared_ptr<google::protobuf::Message> Container::Report()
+{
     boost::shared_ptr<google::protobuf::Message> ret;
     return ret;
 }
 
-baidu::galaxy::proto::ContainerStatus Container::Status() {
+baidu::galaxy::proto::ContainerStatus Container::Status()
+{
     //if (status_.GetStatus() == baidu::galaxy::proto::kContainerAllocting) {
     //}
     assert(0 && "not realize");
     return baidu::galaxy::proto::kContainerAllocating;
 }
 
-bool Container::Alive() {
+bool Container::Alive()
+{
     int pid = (int)process_->Pid();
 
     if (pid <= 0) {
@@ -354,6 +378,24 @@ bool Container::Alive() {
     }
 
     return false;
+}
+
+boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(bool full_info)
+{
+    boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ret(new baidu::galaxy::proto::ContainerInfo());
+    ret->set_id(id_.SubId());
+    ret->set_group_id(id_.GroupId());
+    ret->set_created_time(0);
+    ret->set_status(status_.Status());
+    ret->set_cpu_used(0);
+    ret->set_memory_used(0);
+
+    if (full_info) {
+        baidu::galaxy::proto::ContainerDescription* cd = new baidu::galaxy::proto::ContainerDescription();
+        cd->CopyFrom(desc_);
+        ret->set_allocated_container_desc(cd);
+    }
+    return ret;
 }
 
 } //namespace container

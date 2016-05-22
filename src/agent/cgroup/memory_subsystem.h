@@ -15,10 +15,10 @@ public:
     MemorySubsystem();
     ~MemorySubsystem();
 
-    baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     boost::shared_ptr<Subsystem> Clone();
     std::string Name();
     int Construct();
+    baidu::galaxy::util::ErrorCode Collect(Metrix& metrix);
 };
 
 } //namespace cgroup
