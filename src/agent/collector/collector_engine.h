@@ -7,6 +7,7 @@
 #include "util/error_code.h"
 #include "boost/shared_ptr.hpp"
 #include "boost/thread/mutex.hpp"
+#include "thread.h"
 #include "timer.h"
 #include "thread_pool.h"
 
@@ -21,14 +22,17 @@ namespace collector {
 
 class CollectorEngine {
 public:
-    CollectorEngine();
     ~CollectorEngine();
-
+    static boost::shared_ptr<CollectorEngine> GetInstance();
     baidu::galaxy::util::ErrorCode Register(boost::shared_ptr<Collector> collector);
     void Unregister(boost::shared_ptr<Collector> collector);
-    void Setup();
+    int Setup();
     void TearDown();
+
 private:
+    CollectorEngine();
+    static boost::shared_ptr<CollectorEngine> instance_;
+
     class RuntimeCollector {
     public:
         RuntimeCollector(boost::shared_ptr<Collector> collector) :
@@ -79,11 +83,12 @@ private:
     };
 
     void CollectRoutine(boost::shared_ptr<RuntimeCollector> rc);
-
+    void CollectMainThreadRoutine();
     std::vector<boost::shared_ptr<RuntimeCollector> > collectors_;
     boost::mutex mutex_;
     bool running_;
     baidu::common::ThreadPool collector_pool_;
+    baidu::common::Thread main_collect_thread_;;
 
 };
 }

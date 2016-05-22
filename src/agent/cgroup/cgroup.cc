@@ -7,7 +7,7 @@
 #include "subsystem.h"
 #include "freezer_subsystem.h"
 #include "protocol/galaxy.pb.h"
-
+#include "subsystem.h"
 #include <glog/logging.h>
 
 #include <sys/types.h>
@@ -160,6 +160,16 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 std::string Cgroup::Id()
 {
     return cgroup_->id();
+}
+
+void Cgroup::Statistics(Metrix& matrix)
+{
+    for (size_t i = 0; i < subsystem_.size(); i++) {
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(matrix);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "collect metrix failed: " << ec.Message();
+        }
+    }
 }
 
 }

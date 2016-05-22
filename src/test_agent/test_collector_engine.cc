@@ -51,25 +51,34 @@ private:
     bool enable_;
 };
 
-TEST_F(TestCollectorEngine, Register_Unregister) {
-    baidu::galaxy::collector::CollectorEngine ce;
+TEST_F(TestCollectorEngine, Register_Unregister)
+{
+    boost::shared_ptr<baidu::galaxy::collector::CollectorEngine> ce
+        = baidu::galaxy::collector::CollectorEngine::GetInstance();
+
     boost::shared_ptr<CollectorForTest> collector(new CollectorForTest());
-    baidu::galaxy::util::ErrorCode ec = ce.Register(collector);
+    baidu::galaxy::util::ErrorCode ec = ce->Register(collector);
     EXPECT_EQ(0, ec.Code());
-    ec = ce.Register(collector);
+    ec = ce->Register(collector);
     EXPECT_EQ(-1, ec.Code()) << ec.Message();
-    ce.Unregister(collector);
-    ec = ce.Register(collector);
+    ce->Unregister(collector);
+    ec = ce->Register(collector);
     EXPECT_EQ(0, ec.Code());
+    ce->Unregister(collector);
 }
 
-TEST_F(TestCollectorEngine, Setup) {
-    baidu::galaxy::collector::CollectorEngine ce;
+TEST_F(TestCollectorEngine, Setup)
+{
+    boost::shared_ptr<baidu::galaxy::collector::CollectorEngine> ce
+        = baidu::galaxy::collector::CollectorEngine::GetInstance();
+
     boost::shared_ptr<CollectorForTest> collector(new CollectorForTest());
-    baidu::galaxy::util::ErrorCode ec = ce.Register(collector);
-    EXPECT_EQ(0, ec.Code());
     collector->Enable(true);
-    ce.Setup();
+    baidu::galaxy::util::ErrorCode ec = ce->Register(collector);
+    EXPECT_EQ(0, ec.Code());
+    ce->Setup();
+    sleep(10);
+    ce->TearDown();
 }
 
 #endif
