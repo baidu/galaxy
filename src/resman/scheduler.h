@@ -206,7 +206,8 @@ public:
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
                             const proto::ContainerDescription& container_desc,
-                            int replica, int priority);
+                            int replica, int priority,
+                            const std::string& user_name);
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
@@ -259,6 +260,7 @@ private:
                         const proto::ContainerDescription& container_desc);
     void SetVolumsAndPorts(const Container::Ptr& container, 
                            proto::ContainerDescription& container_desc);
+    std::string GetNewVersion();
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;
