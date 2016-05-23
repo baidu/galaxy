@@ -58,18 +58,24 @@ void VolumGroup::SetContainerId(const std::string& container_id)
     container_id_ = container_id;
 }
 
-int VolumGroup::Construct()
+baidu::galaxy::util::ErrorCode VolumGroup::Construct()
 {
     workspace_volum_ = Construct(this->ws_description_);
 
     if (NULL == workspace_volum_.get()) {
-        return -1;
+        return ERRORCODE(-1, "workspace volum is empty");
     }
 
+    baidu::galaxy::util::ErrorCode ec;
     for (size_t i = 0; i < dv_description_.size(); i++) {
         boost::shared_ptr<Volum> v = Construct(dv_description_[i]);
 
         if (v.get() == NULL) {
+            ec = ERRORCODE(-1,
+                    "construct volum(%s->%s) failed",
+                    dv_description_[i]->source_path().c_str(),
+                    dv_description_[i]->dest_path().c_str());
+
             break;
         }
 
@@ -81,27 +87,31 @@ int VolumGroup::Construct()
             data_volum_[i]->Destroy();
         }
 
-        return -1;
+        return ec;
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
-int VolumGroup::Destroy()
+baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
 {
     int ret = 0;
 
     for (size_t i = 0; i < data_volum_.size(); i++) {
         if (0 != data_volum_[i]->Destroy()) {
-            ret = -1;
+            return ERRORCODE(-1,
+                    "failed in destroying data volum(%s->%s)",
+                    data_volum_[i]->SourcePath().c_str(),
+                    data_volum_[i]->TargetPath().c_str());
         }
     }
 
-    if (0 == ret) {
-        ret = workspace_volum_->Destroy();
+    if (0 != workspace_volum_->Destroy()) {
+        return ERRORCODE(-1,
+                "failed in destroying workspace volum");
     }
 
-    return ret;
+    return ERRORCODE_OK;
 }
 
 int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)

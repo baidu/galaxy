@@ -108,6 +108,7 @@ public:
     int Pids(std::vector<pid_t>& pids);
     boost::shared_ptr<google::protobuf::Message> Report();
     baidu::galaxy::proto::ContainerStatus Status();
+    const baidu::galaxy::proto::ContainerDescription& Description();
 
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
 private:

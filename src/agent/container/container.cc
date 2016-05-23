@@ -189,8 +189,9 @@ int Container::Construct_()
         volum_group_->AddDataVolum(desc_.data_volums(i));
     }
 
-    if (0 != volum_group_->Construct()) {
-        LOG(WARNING) << "construct volum group failed";
+    baidu::galaxy::util::ErrorCode ec = volum_group_->Construct();
+    if (0 != ec.Code()) {
+        LOG(WARNING) << "construct volum group failed: " << ec.Message();
         return -1;
     }
 
@@ -232,7 +233,10 @@ int Container::Destroy_()
     }
 
     // destroy volum
-    if (0 != volum_group_->Destroy()) {
+    baidu::galaxy::util::ErrorCode ec = volum_group_->Destroy();
+    if (0 != ec.Code()) {
+        LOG(WARNING) << "failed in destroying volum group in container " << id_.CompactId()
+                     << " " << ec.Message();
         return -1;
     }
 
@@ -408,6 +412,11 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     }
     ret->set_allocated_container_desc(cd);
     return ret;
+}
+
+const baidu::galaxy::proto::ContainerDescription& Container::Description()
+{
+    return desc_;
 }
 
 } //namespace container

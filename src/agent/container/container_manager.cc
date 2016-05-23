@@ -24,12 +24,12 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
 {
     baidu::galaxy::util::ErrorCode ec = stage_.EnterCreatingStage(id.SubId());
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
-        LOG(WARNING) << ec.Message();
+        LOG(WARNING) << "container " << id.CompactId() << " has been in creating stage already: " << ec.Message();
         return 0;
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
-        LOG(WARNING) << ec.Message();
+        LOG(WARNING) << "container " << id.CompactId() << " enter create stage failed: " << ec.Message();
         return -1;
     }
 
@@ -40,7 +40,19 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
 
 int ContainerManager::ReleaseContainer(const ContainerId& id)
 {
-    return 0;
+    baidu::galaxy::util::ErrorCode ec = stage_.EnterDestroyingStage(id.SubId());
+    if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
+        LOG(WARNING) << ec.Message();
+        return 0;
+    }
+
+    if (ec.Code() != baidu::galaxy::util::kErrorOk) {
+        LOG(WARNING) << ec.Message();
+        return -1;
+    }
+    int ret = ReleaseContainer_(id);
+    stage_.LeaveDestroyingStage(id.SubId());
+    return ret;
 }
 
 int ContainerManager::CreateContainer_(const ContainerId& id,
@@ -69,6 +81,13 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
     container(new baidu::galaxy::container::Container(id, desc));
 
     if (0 != container->Construct()) {
+        baidu::galaxy::util::ErrorCode ec = res_man_->Release(desc);
+        if (ec.Code() != 0) {
+            LOG(FATAL) << "failed in releasing resource for container "
+                       << id.CompactId() << ", detail reason is: "
+                       << ec.Message();
+        }
+
         LOG(WARNING) << "fail in constructing container " << id.CompactId();
         return -1;
     }
@@ -97,8 +116,12 @@ int ContainerManager::ReleaseContainer_(const ContainerId& id)
     }
     // fix me run in threadpool
     int ret;
-
     if (0 == (ret = iter->second->Destroy())) {
+        baidu::galaxy::util::ErrorCode rc = res_man_->Release(iter->second->Description());
+        if (0 != rc.Code()) {
+            LOG(FATAL) << "failed in releasing resource for container " << id.CompactId()
+                       << " reason is: " << rc.Message();
+        }
         work_containers_.erase(iter);
         gc_containers_[id] = iter->second;
         LOG(INFO) << "container " << id.CompactId() << " is destroyed successfully and is moved to gc queue";

@@ -116,24 +116,29 @@ baidu::galaxy::util::ErrorCode VolumResource::Allocat(const baidu::galaxy::proto
     return ERRORCODE_OK;
 }
 
-int VolumResource::Release(const baidu::galaxy::proto::VolumRequired& require)
+baidu::galaxy::util::ErrorCode VolumResource::Release(const baidu::galaxy::proto::VolumRequired& require)
 {
     if (require.medium() == baidu::galaxy::proto::kTmpfs) {
-        return -1;
+        return ERRORCODE(-1, "volum must notbe KTmpfs");
     }
 
     std::map<std::string, VolumResource::Volum>::iterator iter = resource_.find(require.source_path());
-
     if (iter == resource_.end()) {
-        return -1;
+        return ERRORCODE(-1,
+                "required source path %s donot exist",
+                require.source_path().c_str());
     }
 
     if (iter->second.assigned_ + require.size() > iter->second.total_) {
-        return -1;
+        return ERRORCODE(-1,
+                "resource overflow: %lld + %lld > %lld",
+                (long long int)iter->second.assigned_,
+                (long long int)require.size(),
+                iter->second.total_);
     }
 
     iter->second.assigned_ -= require.size();
-    return 0;
+    return ERRORCODE_OK;
 }
 
 void VolumResource::Resource(std::map<std::string, VolumResource::Volum>& r)
