@@ -48,9 +48,6 @@ private:
     std::string endpoint_;
     std::string job_id_;
     std::string pod_id_;
-    std::vector<std::string> task_ids_;
-    std::vector<std::string> cgroup_subsystems_;
-    std::vector<std::map<std::string, std::string> > task_cgroup_paths_;
 
     RpcClient rpc_client_;
     InsSDK* nexus_;

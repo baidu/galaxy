@@ -87,7 +87,8 @@ void AppWorkerImpl::PrepareEnvs() {
         exit(-1);
     }
     std::string s_task_ids = std::string(c_task_ids);
-    boost::split(task_ids_,
+    std::vector<std::string> task_ids;
+    boost::split(task_ids,
                  s_task_ids,
                  boost::is_any_of(","),
                  boost::token_compress_on);
@@ -98,16 +99,18 @@ void AppWorkerImpl::PrepareEnvs() {
         exit(-1);
     }
     std::string s_cgroup_subsystems = std::string(c_cgroup_subsystems);
-    boost::split(cgroup_subsystems_,
+    std::vector<std::string> cgroup_subsystems;
+    boost::split(cgroup_subsystems,
                  s_cgroup_subsystems,
                  boost::is_any_of(","),
                  boost::token_compress_on);
     // 6.task cgroup paths
-    std::vector<std::string>::iterator t_it = task_ids_.begin();
-    for (; t_it != task_ids_.end(); t_it++) {
+    std::vector<std::map<std::string, std::string> > task_cgroup_paths;
+    std::vector<std::string>::iterator t_it = task_ids.begin();
+    for (; t_it != task_ids.end(); t_it++) {
         std::map<std::string, std::string> cgroup_paths;
-        std::vector<std::string>::iterator c_it = cgroup_subsystems_.begin();
-        for (; c_it != cgroup_subsystems_.end(); ++c_it) {
+        std::vector<std::string>::iterator c_it = cgroup_subsystems.begin();
+        for (; c_it != cgroup_subsystems.end(); ++c_it) {
             std::string key = "BAIDU_GALAXY_CONTAINER_" + *t_it + "_" + *c_it + "_PATH";
             transform(key.begin(), key.end(), key.begin(), toupper);
             char* c_value = getenv(key.c_str());
@@ -118,15 +121,16 @@ void AppWorkerImpl::PrepareEnvs() {
             std::string value = std::string(c_value);
             cgroup_paths.insert(std::make_pair(*c_it, value));
         }
-        task_cgroup_paths_.push_back(cgroup_paths);
+        task_cgroup_paths.push_back(cgroup_paths);
     }
 
     PodEnv env;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
-    env.task_ids = task_ids_;
-    env.cgroup_subsystems = cgroup_subsystems_;
-    env.task_cgroup_paths = task_cgroup_paths_;
+
+    env.task_ids = task_ids;
+    env.cgroup_subsystems = cgroup_subsystems;
+    env.task_cgroup_paths = task_cgroup_paths;
     pod_manager_.SetPodEnv(env);
     return;
 }
