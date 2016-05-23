@@ -141,6 +141,21 @@ void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
 {
 
     LOG(INFO) << "recv remove container request: " << request->DebugString();
+    baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
+    baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
+    int ret = cm_->ReleaseContainer(id);
+
+    if (0 != ret) {
+        ec->set_status(baidu::galaxy::proto::kError);
+        ec->set_reason("failed");
+    } else {
+        ec->set_status(baidu::galaxy::proto::kOk);
+        ec->set_reason("sucess");
+    }
+
+    response->set_allocated_code(ec);
+    done->Run();
+
 }
 
 void AgentImpl::ListContainers(::google::protobuf::RpcController* controller,
