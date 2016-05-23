@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <gflags/gflags.h>
+#include <iostream>
 
 DECLARE_int64(cpu_resource);
 namespace baidu {
@@ -20,7 +21,7 @@ public:
 
     int Load() {
         total_ = FLAGS_cpu_resource;
-        assert(FLAGS_cpu_resource > 0);
+        assert(FLAGS_cpu_resource >= 0);
         return 0;
     }
 
@@ -35,7 +36,7 @@ public:
 
     int Release(uint64_t milli_cores) {
         assigned_ -= milli_cores;
-        assert(assigned_ > 0);
+        assert(assigned_ >= 0);
         return 0;
     }
 

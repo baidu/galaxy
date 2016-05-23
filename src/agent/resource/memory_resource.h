@@ -23,7 +23,7 @@ public:
 
     int Load() {
         total_ = FLAGS_memory_resource;
-        assert(FLAGS_memory_resource > 0);
+        assert(FLAGS_memory_resource >= 0);
         return 0;
     }
 

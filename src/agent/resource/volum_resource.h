@@ -4,6 +4,7 @@
 
 #pragma once
 #include "protocol/galaxy.pb.h"
+#include "util/error_code.h"
 
 #include <map>
 #include <string>
@@ -33,12 +34,12 @@ public:
     ~VolumResource();
     int Load();
 
-    int Allocat(const baidu::galaxy::proto::VolumRequired& require);
+    baidu::galaxy::util::ErrorCode Allocat(const baidu::galaxy::proto::VolumRequired& require);
     int Release(const baidu::galaxy::proto::VolumRequired& require);
     void Resource(std::map<std::string, Volum>& r);
 
 private:
-    int LoadVolum(const std::string& config, Volum& volum);
+    baidu::galaxy::util::ErrorCode LoadVolum(const std::string& config, Volum& volum);
     std::map<std::string, Volum> resource_;
 
 };
