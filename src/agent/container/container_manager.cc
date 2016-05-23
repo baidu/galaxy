@@ -23,8 +23,7 @@ ContainerManager::~ContainerManager()
 int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
 {
     baidu::galaxy::util::ErrorCode ec = stage_.EnterCreatingStage(id.SubId());
-
-    if (ec.Code() != baidu::galaxy::util::kErrorRepeated) {
+    if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << ec.Message();
         return 0;
     }
@@ -58,21 +57,26 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
         }
     }
 
-    if (0 != res_man_->Allocate(desc)) {
-        LOG(WARNING) << "allocate resource for container " << id.CompactId() << " failed";
+    baidu::galaxy::util::ErrorCode ec = res_man_->Allocate(desc);
+    if (0 != ec.Code()) {
+        LOG(WARNING) << "fail in allocating resource for container "
+                     << id.CompactId() << ", detail reason is: "
+                     << ec.Message();
         return -1;
     }
+
     boost::shared_ptr<baidu::galaxy::container::Container>
     container(new baidu::galaxy::container::Container(id, desc));
 
     if (0 != container->Construct()) {
-        LOG(WARNING) << "create container " << id.CompactId() << " failed";
+        LOG(WARNING) << "fail in constructing container " << id.CompactId();
         return -1;
     }
 
     {
         boost::mutex::scoped_lock lock(mutex_);
         work_containers_[id] = container;
+        LOG(INFO) << "success in constructing container " << id.CompactId();
     }
 
     return 0;
@@ -105,15 +109,13 @@ int ContainerManager::ReleaseContainer_(const ContainerId& id)
     return ret;
 }
 
-void ContainerManager::ListContainer(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& containerInfo)
+void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo)
 {
     boost::mutex::scoped_lock lock(mutex_);
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter =  work_containers_.begin();
     while (iter != work_containers_.end()) {
-        boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ci(new baidu::galaxy::proto::ContainerInfo);
-        ci->set_id(iter->first.SubId());
-        ci->set_group_id(iter->first.GroupId());
-        ci->set_status(iter->second->Status());
+        boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ci = iter->second->ContainerInfo(fullinfo);
+        cis.push_back(ci);
         iter++;
     }
 }

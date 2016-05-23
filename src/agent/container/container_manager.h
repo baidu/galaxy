@@ -24,7 +24,7 @@ public:
 
     int CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
     int ReleaseContainer(const ContainerId& id);
-    void ListContainer(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& containerInfo);
+    void ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo);
 
 private:
     int CreateContainer_(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);

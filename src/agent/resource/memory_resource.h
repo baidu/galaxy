@@ -6,49 +6,53 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <gflags/gflags.h>
+
+DECLARE_int64(memory_resource);
 
 namespace baidu {
-    namespace galaxy {
-        namespace resource {
+namespace galaxy {
+namespace resource {
 
-            class MemoryResource {
-            public:
-                MemoryResource() :
-                    total_(0),
-                    assigned_(0) {
-                    
-                }
-                
-                int Load() {
-                    total_ = 60 * 1024 * 1024 * 1024L;
-                    return 0;
-                }
-                
-                int Allocate(uint64_t size) {
-                    if (assigned_ + size > total_) {
-                        return -1;
-                    }
-                    assigned_ += size;
-                    return 0;
-                }
-                
-                int Release(uint64_t size) {
-                    assigned_ -= size;
-                    assert(assigned_ >= 0);
-                    return 0;
-                }
-                
-                void Resource(uint64_t& total, uint64_t& assigned) {
-                    total = total_;
-                    assigned = assigned_;
-                }
-
-            private:
-                uint64_t total_;
-                uint64_t assigned_;
-            };
-            
-
-        }
+class MemoryResource {
+public:
+    MemoryResource() :
+        total_(0),
+        assigned_(0) {
     }
+
+    int Load() {
+        total_ = FLAGS_memory_resource;
+        assert(FLAGS_memory_resource >= 0);
+        return 0;
+    }
+
+    int Allocate(uint64_t size) {
+        if (assigned_ + size > total_) {
+            return -1;
+        }
+
+        assigned_ += size;
+        return 0;
+    }
+
+    int Release(uint64_t size) {
+        assigned_ -= size;
+        assert(assigned_ >= 0);
+        return 0;
+    }
+
+    void Resource(uint64_t& total, uint64_t& assigned) {
+        total = total_;
+        assigned = assigned_;
+    }
+
+private:
+    uint64_t total_;
+    uint64_t assigned_;
+};
+
+
+}
+}
 }
