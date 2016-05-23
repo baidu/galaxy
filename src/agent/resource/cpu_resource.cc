@@ -7,19 +7,19 @@
 #include <assert.h>
 
 namespace baidu {
-    namespace galaxy {
-        namespace resource {
-            CpuResource::CpuResource() :
-                total_(0),
-                assigned_(0) {
-                
-            }
-            
-            CpuResource::~CpuResource() {
-                
-            }
+namespace galaxy {
+namespace resource {
+CpuResource::CpuResource() :
+    total_(0),
+    assigned_(0)
+{
+}
 
-           
-        }
-    }
+CpuResource::~CpuResource()
+{
+}
+
+
+}
+}
 }
