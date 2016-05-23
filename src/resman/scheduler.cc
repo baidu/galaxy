@@ -350,6 +350,10 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             continue;
         }
         ContainerGroup::Ptr& container_group = container_groups_[container_info.group_id()];
+        if (container_group->terminated) {
+            LOG(WARNING) << "ignore killed container group:" << container_info.group_id();
+            continue;
+        }
         Container::Ptr container(new Container());
 
         if (container_group->containers.find(container_info.id())
@@ -576,11 +580,6 @@ bool Scheduler::Kill(const ContainerGroupId& container_group_id) {
         return false;
     }
     ContainerGroup::Ptr container_group = it->second;
-    if (container_group->terminated) {
-        LOG(WARNING) << "ignore the killing, "
-                     << container_group_id << " already killed";
-        return false;
-    }
     BOOST_FOREACH(ContainerMap::value_type& pair, container_group->containers) {
         Container::Ptr container = pair.second;
         if (container->status == kContainerPending) {
