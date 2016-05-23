@@ -20,8 +20,8 @@
 #include "boost/algorithm/string/split.hpp"
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/predicate.hpp"
-#include "agent/collector/collector_engine.h"
-#include "agent/cgroup/cgroup_collector.h"
+#include "collector/collector_engine.h"
+#include "cgroup/cgroup_collector.h"
 
 #include <glog/logging.h>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
