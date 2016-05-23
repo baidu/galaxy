@@ -117,6 +117,11 @@ bool JobAction::StopJob(const std::string& jobid) {
     baidu::galaxy::sdk::StopJobResponse response;
     request.jobid = jobid;
     request.user = user_;
+    
+    if (!GetHostname(&request.hostname)) {
+        return false;
+    }
+
     bool ret =  app_master_->StopJob(request, &response);
     if (ret) {
         printf("Stop job %s\n success", jobid.c_str());
@@ -174,40 +179,38 @@ bool JobAction::ListJobs() {
         baidu::common::TPrinter tp(12);
         tp.AddRow(12, "", "id", "name", "type","status", "stat(run/pending/deploy/death/fail)", "replica", 
                     "work_volum", "data_volum", "cpu", "memory", "create", "update");
-        std::vector< ::baidu::galaxy::sdk::JobOverview> ::iterator it = response.jobs.begin();
-        for (; it != response.jobs.end(); ++it) {
+        for (uint32_t i = 0; i < response.jobs.size(); ++i) {
             std::vector<std::string> vs;
-            vs.push_back(baidu::common::NumToString(it - response.jobs.begin()));
-            vs.push_back(it->desc.name);
-            vs.push_back(baidu::common::NumToString(it->desc.type));
-            vs.push_back(baidu::common::NumToString(it->status));
-            vs.push_back(baidu::common::NumToString(it->running_num) + "/" +
-                            baidu::common::NumToString(it->pending_num) + "/" +
-                            baidu::common::NumToString(it->deploying_num) + "/" +
-                            baidu::common::NumToString(it->death_num) + "/" +
-                            baidu::common::NumToString(it->fail_count)
+            vs.push_back(baidu::common::NumToString(i));
+            vs.push_back(response.jobs[i].jobid);
+            vs.push_back(response.jobs[i].desc.name);
+            vs.push_back(baidu::common::NumToString(response.jobs[i].desc.type));
+            vs.push_back(baidu::common::NumToString(response.jobs[i].status));
+            vs.push_back(baidu::common::NumToString(response.jobs[i].running_num) + "/" +
+                         baidu::common::NumToString(response.jobs[i].pending_num) + "/" +
+                         baidu::common::NumToString(response.jobs[i].deploying_num) + "/" +
+                         baidu::common::NumToString(response.jobs[i].death_num) + "/" +
+                         baidu::common::NumToString(response.jobs[i].fail_count)
                         );
-            vs.push_back(baidu::common::NumToString(it->desc.deploy.replica));
-            vs.push_back(baidu::common::NumToString(it->desc.pod.workspace_volum.size));
+            vs.push_back(baidu::common::NumToString(response.jobs[i].desc.deploy.replica));
+            vs.push_back(baidu::common::NumToString(response.jobs[i].desc.pod.workspace_volum.size));
             int64_t data_vol = 0;
-            std::vector< ::baidu::galaxy::sdk::VolumRequired> ::iterator vol_it = it->desc.pod.data_volums.begin();
-            for (; vol_it != it->desc.pod.data_volums.end(); ++vol_it) {
-                data_vol  += vol_it->size; 
+            for (uint32_t j = 0; j < response.jobs[i].desc.pod.data_volums.size(); ++j) {
+                data_vol  += response.jobs[i].desc.pod.data_volums[j].size; 
             }
 
             vs.push_back(baidu::common::NumToString(data_vol));
 
-            std::vector< ::baidu::galaxy::sdk::TaskDescription>::iterator task_it = it->desc.pod.tasks.begin();
             int64_t cpu = 0;
             int64_t mem = 0;
-            for (; task_it != it->desc.pod.tasks.end(); ++task_it) {
-                cpu += task_it->cpu.milli_core;
-                mem += task_it->memory.size;
+            for (uint32_t j = 0; j < response.jobs[i].desc.pod.tasks.size(); ++j) {
+                cpu += response.jobs[i].desc.pod.tasks[j].cpu.milli_core;
+                mem += response.jobs[i].desc.pod.tasks[j].memory.size;
             }
             vs.push_back(baidu::common::NumToString(cpu));
             vs.push_back(baidu::common::NumToString(mem));
-            vs.push_back(FormatDate(it->create_time));
-            vs.push_back(FormatDate(it->update_time));
+            vs.push_back(FormatDate(response.jobs[i].create_time));
+            vs.push_back(FormatDate(response.jobs[i].update_time));
             tp.AddRow(vs);
         }
         printf("%s\n", tp.ToString().c_str());
