@@ -12,6 +12,55 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
+bool PodStatusSwitch(const ::baidu::galaxy::proto::PodStatus& pb_status, ::baidu::galaxy::sdk::PodStatus* status) {
+    switch(pb_status) {
+    case ::baidu::galaxy::proto::kPodPending:
+        *status = kPodPending;
+        break;
+    case ::baidu::galaxy::proto::kPodReady:
+        *status = kPodReady;
+        break;
+    case ::baidu::galaxy::proto::kPodDeploying:
+        *status = kPodDeploying;
+        break;
+    case ::baidu::galaxy::proto::kPodStarting:
+        *status = kPodStarting;
+        break;
+    case ::baidu::galaxy::proto::kPodServing:
+        *status = kPodServing;
+        break;
+    case ::baidu::galaxy::proto::kPodFailed:
+        *status = kPodFailed;
+        break;
+    case ::baidu::galaxy::proto::kPodFinished:
+        *status = kPodFinished;
+        break;
+    default:
+        return false;
+    }
+    return true;
+
+}
+bool JobStatusSwitch(const ::baidu::galaxy::proto::JobStatus& pb_status, ::baidu::galaxy::sdk::JobStatus* status) {
+    switch(pb_status) {
+    case ::baidu::galaxy::proto::kJobPending:
+        *status = kJobPending;
+        break;
+    case ::baidu::galaxy::proto::kJobRunning:
+        *status = kJobRunning;
+        break;
+    case ::baidu::galaxy::proto::kJobFinished:
+        *status = kJobFinished;
+        break;
+    case ::baidu::galaxy::proto::kJobDestroying:
+        *status = kJobDestroying;
+        break;
+    default:
+        return false;
+    }
+    return true;
+}
+
 bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, Status* status) {
     switch(pb_status) {
     case ::baidu::galaxy::proto::kOk:
@@ -183,7 +232,6 @@ void FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::V
         volum->set_type(::baidu::galaxy::proto::kHostDir);
     }
 
-    //::baidu::galaxy::proto::VolumMedium medium;
     if (sdk_volum.medium == kSsd) {
         volum->set_medium(baidu::galaxy::proto::kSsd);
     } else if (sdk_volum.medium == kDisk) {
@@ -268,6 +316,81 @@ void FillContainerDescription(const ContainerDescription& sdk_container,
     }
 }
 
+void FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package* package) {
+    package->set_source_path(sdk_package.source_path);
+    package->set_dest_path(sdk_package.dest_path);
+    package->set_version(sdk_package.version);
+}
+
+void FillImagePackage(const ImagePackage& sdk_image, 
+                        ::baidu::galaxy::proto::ImagePackage* image) {
+    image->set_start_cmd(sdk_image.start_cmd);
+    image->set_stop_cmd(sdk_image.stop_cmd);
+    FillPackage(sdk_image.package, image->mutable_package());
+}
+
+void FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data) {
+    data->set_reload_cmd(sdk_data.reload_cmd);
+    for (size_t i = 0; i < sdk_data.packages.size(); ++i) {
+        ::baidu::galaxy::proto::Package* package = data->add_packages();
+        FillPackage(sdk_data.packages[i], package);
+    }
+}
+
+void FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* service) {
+    service->set_service_name(sdk_service.service_name);
+    service->set_port_name(sdk_service.port_name);
+    service->set_use_bns(sdk_service.use_bns);
+}
+
+void FillTaskDescription(const TaskDescription& sdk_task,
+        ::baidu::galaxy::proto::TaskDescription* task) {
+    task->set_id(sdk_task.id);
+    FillCpuRequired(sdk_task.cpu, task->mutable_cpu());
+    FillMemRequired(sdk_task.memory, task->mutable_memory());
+    for (size_t i = 0; i < sdk_task.ports.size(); ++i) {
+        ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
+        FillPortRequired(sdk_task.ports[i], port);
+    }
+    FillImagePackage(sdk_task.exe_package, task->mutable_exe_package());
+    FilldataPackage(sdk_task.data_package, task->mutable_data_package());
+    for (size_t i = 0; i < sdk_task.services.size(); ++i) {
+        ::baidu::galaxy::proto::Service* service = task->add_services();
+        FillService(sdk_task.services[i], service);
+    }
+}
+
+void FillPodDescription(const PodDescription& sdk_pod,
+                            ::baidu::galaxy::proto::PodDescription* pod) {
+    FillVolumRequired(sdk_pod.workspace_volum, pod->mutable_workspace_volum());
+    for (size_t i = 0; i < sdk_pod.data_volums.size(); ++i) {
+        ::baidu::galaxy::proto::VolumRequired* volum = pod->add_data_volums();
+        FillVolumRequired(sdk_pod.data_volums[i], volum);
+    }
+    for (size_t i = 0; i < sdk_pod.tasks.size(); ++i) {
+        ::baidu::galaxy::proto::TaskDescription* task = pod->add_tasks(); 
+        FillTaskDescription(sdk_pod.tasks[i], task);
+    }
+}
+
+void FillJobDescription(const JobDescription& sdk_job,
+                        ::baidu::galaxy::proto::JobDescription* job) {
+    job->set_name(sdk_job.name);
+    job->set_version(sdk_job.version);
+    if (sdk_job.type == kJobMonitor) {
+        job->set_priority(::baidu::galaxy::proto::kJobMonitor);
+    } else if (sdk_job.type == kJobService) {
+        job->set_priority(::baidu::galaxy::proto::kJobService);
+    } else if (sdk_job.type == kJobBatch) {
+        job->set_priority(::baidu::galaxy::proto::kJobBatch);
+    } else if (sdk_job.type == kJobBestEffort) {
+        job->set_priority(::baidu::galaxy::proto::kJobBestEffort);
+    }
+    job->set_run_user(sdk_job.run_user);
+    FillPodDescription(sdk_job.pod, job->mutable_pod());
+
+}
+
 void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
     
     grant->set_pool(sdk_grant.pool);
@@ -309,6 +432,92 @@ void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
             grant->add_authority(::baidu::galaxy::proto::kAuthorityListJobs);
             break;
         }
+    }
+}
+
+void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescription& pb_job, JobDescription* job) {
+    job->name = pb_job.name();
+    if (pb_job.priority() == ::baidu::galaxy::proto::kJobMonitor) {
+        job->type = kJobMonitor;
+    } else if (pb_job.priority() == ::baidu::galaxy::proto::kJobService) {
+        job->type = kJobService;
+    } else if (pb_job.priority() == ::baidu::galaxy::proto::kJobBatch) {
+        job->type = kJobBatch;
+    } else if (pb_job.priority() == ::baidu::galaxy::proto::kJobBestEffort) {
+        job->type = kJobBestEffort;
+    }
+    job->version = pb_job.version();
+    job->run_user = pb_job.run_user();
+    job->deploy.replica = pb_job.deploy().replica();
+    job->deploy.step = pb_job.deploy().step();
+    job->deploy.interval = pb_job.deploy().interval();
+    job->deploy.max_per_host = pb_job.deploy().max_per_host();
+    job->deploy.tag = pb_job.deploy().tag();
+    for (int i = 0; i < pb_job.deploy().pools().size(); ++i) {
+        job->deploy.pools.push_back(pb_job.deploy().pools(i));
+    }
+    job->pod.workspace_volum.size = pb_job.pod().workspace_volum().size();
+    //job->pod.workspace_volum.type = pb_job.pod().workspace_volum().type();
+    VolumTypeSwitch(pb_job.pod().workspace_volum().type(), &job->pod.workspace_volum.type);
+    //job->pod.workspace_volum.medium = pb_job.pod().workspace_volum().medium();
+    VolumMediumSwitch(pb_job.pod().workspace_volum().medium(), &job->pod.workspace_volum.medium);
+    job->pod.workspace_volum.source_path = pb_job.pod().workspace_volum().source_path();
+    job->pod.workspace_volum.dest_path = pb_job.pod().workspace_volum().dest_path();
+    job->pod.workspace_volum.readonly = pb_job.pod().workspace_volum().readonly();
+    job->pod.workspace_volum.exclusive = pb_job.pod().workspace_volum().exclusive();
+    job->pod.workspace_volum.use_symlink = pb_job.pod().workspace_volum().use_symlink();
+
+    for (int i = 0; i < pb_job.pod().data_volums().size(); ++i) {
+        VolumRequired volum;
+        volum.size = pb_job.pod().data_volums(i).size();
+        //volum.type = pb_job.pod().data_volums(i).type();
+        VolumTypeSwitch(pb_job.pod().data_volums(i).type(), &volum.type);
+        //volum.medium = pb_job.pod().data_volums(i).medium();
+        VolumMediumSwitch(pb_job.pod().data_volums(i).medium(), &volum.medium);
+        volum.source_path = pb_job.pod().data_volums(i).source_path();
+        volum.dest_path = pb_job.pod().data_volums(i).dest_path();
+        volum.readonly = pb_job.pod().data_volums(i).readonly();
+        volum.exclusive = pb_job.pod().data_volums(i).exclusive();
+        volum.use_symlink = pb_job.pod().data_volums(i).use_symlink();
+        job->pod.data_volums.push_back(volum);
+    }
+
+    for (int i = 0; i < pb_job.pod().tasks().size(); ++i) {
+        TaskDescription task;
+        task.id = pb_job.pod().tasks(i).id();
+        task.cpu.milli_core = pb_job.pod().tasks(i).cpu().milli_core();
+        task.cpu.excess = pb_job.pod().tasks(i).cpu().excess();
+        task.memory.size = pb_job.pod().tasks(i).memory().size();
+        task.memory.excess = pb_job.pod().tasks(i).memory().excess();
+        for (int j = 0; j < pb_job.pod().tasks(i).ports().size(); ++j) {
+            PortRequired port;
+            port.port_name = pb_job.pod().tasks(i).ports(j).port_name();
+            port.port = pb_job.pod().tasks(i).ports(j).port();
+            port.real_port = pb_job.pod().tasks(i).ports(j).real_port();
+            task.ports.push_back(port);
+        }
+        task.exe_package.start_cmd = pb_job.pod().tasks(i).exe_package().start_cmd();
+        task.exe_package.stop_cmd = pb_job.pod().tasks(i).exe_package().stop_cmd();
+        task.exe_package.package.source_path = pb_job.pod().tasks(i).exe_package().package().source_path();
+        task.exe_package.package.dest_path = pb_job.pod().tasks(i).exe_package().package().dest_path();
+        task.exe_package.package.version = pb_job.pod().tasks(i).exe_package().package().version();
+
+        task.data_package.reload_cmd = pb_job.pod().tasks(i).data_package().reload_cmd();
+        for (int j = 0; j < pb_job.pod().tasks(i).data_package().packages().size(); ++j) {
+            Package package;
+            package.source_path = pb_job.pod().tasks(i).data_package().packages(j).source_path();
+            package.dest_path = pb_job.pod().tasks(i).data_package().packages(j).dest_path();
+            package.version = pb_job.pod().tasks(i).data_package().packages(j).version();
+            task.data_package.packages.push_back(package);
+        }
+        for (int j = 0; j < pb_job.pod().tasks(i).services().size(); ++j) {
+            Service service;
+            service.service_name = pb_job.pod().tasks(i).services(j).service_name(); 
+            service.port_name = pb_job.pod().tasks(i).services(j).port_name(); 
+            service.use_bns = pb_job.pod().tasks(i).services(j).use_bns(); 
+            task.services.push_back(service);
+        }
+        job->pod.tasks.push_back(task);
     }
 }
 

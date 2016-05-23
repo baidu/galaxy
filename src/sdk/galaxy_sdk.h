@@ -490,7 +490,7 @@ struct ContainerGroupStatistics {
     uint32_t replica;
     uint32_t ready;
     uint32_t pending;
-    uint32_t destroying;
+    uint32_t allocating;
     Resource cpu;
     Resource memory;
     std::vector<VolumResource> volums;
@@ -602,6 +602,7 @@ struct ExecuteCmdResponse {
 
 struct StopJobRequest {
     User user;
+    std::string hostname;
     std::string jobid;
 };
 struct StopJobResponse {
