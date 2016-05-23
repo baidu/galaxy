@@ -7,7 +7,7 @@
 #include "subsystem.h"
 #include "freezer_subsystem.h"
 #include "protocol/galaxy.pb.h"
-
+#include "subsystem.h"
 #include <glog/logging.h>
 
 #include <sys/types.h>
@@ -138,6 +138,18 @@ boost::shared_ptr<google::protobuf::Message> Cgroup::Report()
 
 void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 {
+    std::vector<std::string> subsystems;
+    factory_->GetSubsystems(subsystems);
+    std::string value;
+    for (size_t i = 0; i < subsystems.size(); i++) {
+        if (!value.empty()) {
+            value += ",";
+        }
+        value += subsystems[i];
+    }
+    env["baidu_galaxy_cgroup_subsystems"] = value;
+
+
     for (size_t i = 0; i < subsystem_.size(); i++) {
         std::stringstream ss;
         ss << "baidu_galaxy_contianer_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
@@ -148,6 +160,16 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 std::string Cgroup::Id()
 {
     return cgroup_->id();
+}
+
+void Cgroup::Statistics(Metrix& matrix)
+{
+    for (size_t i = 0; i < subsystem_.size(); i++) {
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(matrix);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "collect metrix failed: " << ec.Message();
+        }
+    }
 }
 
 }
