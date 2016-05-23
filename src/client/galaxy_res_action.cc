@@ -329,20 +329,24 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                 vec_volums.push_back(svolums);
             }
 
-            containers.AddRow(6, ::baidu::common::NumToString(i).c_str(),
+            for (uint32_t k = 0; k < response.containers[i].volums.size(); ++k) {
+                if (k == 0) {
+                    containers.AddRow(6, ::baidu::common::NumToString(i).c_str(),
                                   response.containers[i].endpoint.c_str(),
                                   ::baidu::common::NumToString(response.containers[i].status).c_str(),
                                   scpu.c_str(),
                                   smem.c_str(),
-                                  vec_volums[0].c_str()
+                                  vec_volums[k].c_str()
                              );
-            for (uint32_t k = 1; k < response.containers[i].volums.size(); ++k) {
-                containers.AddRow(6, "",
-                                     "",
-                                     "",
-                                     "",
-                                     "",
-                                     vec_volums[k].c_str());
+
+                } else {
+                    containers.AddRow(6, "",
+                                         "",
+                                         "",
+                                         "",
+                                         "",
+                                         vec_volums[k].c_str());
+                }
             }
         }
         printf("%s\n", containers.ToString().c_str());
@@ -419,7 +423,7 @@ bool ResAction::ListAgents() {
         agents.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)", "containers");
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
-            for (size_t j = 0; j < response.agents[i].tags.size(); ++j) {
+            for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
                 tags += response.agents[i].tags[j] + ", ";
             }
 
@@ -442,27 +446,31 @@ bool ResAction::ListAgents() {
                             + response.agents[i].volums[j].device_path;
                 vec_volums.push_back(svolums);
             }
-            agents.AddRow(9, ::baidu::common::NumToString(i).c_str(),
+
+            for (uint32_t k = 0; k < response.agents[i].volums.size(); ++k) {
+                if (k == 0) {
+                    agents.AddRow(9, ::baidu::common::NumToString(i).c_str(),
                              response.agents[i].endpoint.c_str(),
                              ::baidu::common::NumToString(response.agents[i].status).c_str(),
                              response.agents[i].pool.c_str(),
                              tags.c_str(),
                              scpu.c_str(),
                              smem.c_str(),
-                             vec_volums[0].c_str(),
+                             vec_volums[k].c_str(),
                              ::baidu::common::NumToString(response.agents[i].total_containers).c_str()
                          );
-            for (uint32_t k = 1; k < response.agents[i].volums.size(); ++k) {
-                agents.AddRow(9, "",
-                                 "",
-                                 "",
-                                 "",
-                                 "",
-                                 "",
-                                 "",
-                                 vec_volums[k].c_str(),
-                                 ""
-                            );
+                } else {
+                    agents.AddRow(9, "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     vec_volums[k].c_str(),
+                                     ""
+                                 );
+                }
             }
 
         }
