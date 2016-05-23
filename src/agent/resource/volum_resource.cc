@@ -30,12 +30,12 @@ VolumResource::~VolumResource()
 }
 
 // cofig format: size_in_GB:mediu(DISK:SSD):mount_point
-int VolumResource::LoadVolum(const std::string& config, Volum& volum)
+baidu::galaxy::util::ErrorCode VolumResource::LoadVolum(const std::string& config, Volum& volum)
 {
     std::vector<std::string> v;
-    boost::split(v, config, boost::is_any_of(","));
-    if (v.size() == 4) {
-        return -1;
+    boost::split(v, config, boost::is_any_of(":"));
+    if (v.size() != 4) {
+        return ERRORCODE(-1, "spilt size is %d, expect 4", v.size());
     }
 
     boost::filesystem::path fs(v[0]);
@@ -44,23 +44,25 @@ int VolumResource::LoadVolum(const std::string& config, Volum& volum)
     boost::system::error_code ec;
     if (!boost::filesystem::exists(fs, ec)
             || !boost::filesystem::exists(mt, ec)) {
-        return -1;
+        return ERRORCODE(-1, "%s or %s donot exist",
+                fs.string().c_str(),
+                mt.string().c_str());
     }
     volum.filesystem_ = v[0];
     volum.mount_point_ = v[3];
 
-    //FIXME: check size_in_byte is num or not
 
+    //FIXME: check size_in_byte is num or not
     volum.total_ = boost::lexical_cast<int64_t>(v[1]);
 
-    if ("DISK" == v[3]) {
+    if ("DISK" == v[2]) {
         volum.medium_ = baidu::galaxy::proto::kDisk;
-    } else if ("SSD" == v[3]) {
+    } else if ("SSD" == v[2]) {
         volum.medium_ = baidu::galaxy::proto::kSsd;
     } else {
-        return -1;
+        return ERRORCODE(-1, "volum medium is %s, expect SSD or DISK", v[2].c_str());
     }
-    return 0;
+    return ERRORCODE_OK;
 }
 
 int VolumResource::Load()
@@ -70,8 +72,10 @@ int VolumResource::Load()
     boost::split(vs, FLAGS_volum_resource, boost::is_any_of(","));
     for (size_t i = 0; i < vs.size(); i++) {
         VolumResource::Volum volum;
-        if (0 != LoadVolum(vs[i], volum)) {
+        baidu::galaxy::util::ErrorCode ec = LoadVolum(vs[i], volum);
+        if (0 != ec.Code()) {
             //LOG
+            LOG(WARNING) << "load volum failed: " << vs[i] << ":" << ec.Message();
             return -1;
         } else {
             resource_[volum.mount_point_] = volum;
@@ -81,31 +85,35 @@ int VolumResource::Load()
     if (resource_.size() == 0) {
         return -1;
     }
+
     return 0;
 }
 
-int VolumResource::Allocat(const baidu::galaxy::proto::VolumRequired& require)
+baidu::galaxy::util::ErrorCode VolumResource::Allocat(const baidu::galaxy::proto::VolumRequired& require)
 {
     if (require.medium() == baidu::galaxy::proto::kTmpfs) {
-        return -1;
+        return ERRORCODE(-1, "medium is kTmpfs");
     }
 
     std::map<std::string, VolumResource::Volum>::iterator iter = resource_.find(require.source_path());
 
     if (iter == resource_.end()) {
-        return -1;
+        return ERRORCODE(-1, "source path %s donot exist");
     }
 
     if (require.medium() != iter->second.medium_) {
-        return -1;
+        return ERRORCODE(-1, "medium donot match");
     }
 
     if (iter->second.assigned_ + require.size() > iter->second.total_) {
-        return -1;
+        return ERRORCODE(-1, "assigned(%lld) + requie(%lld) > %lld",
+                (long long int)iter->second.assigned_,
+                (long long int)require.size(),
+                (long long int)iter->second.total_);
     }
 
     iter->second.assigned_ += require.size();
-    return 0;
+    return ERRORCODE_OK;
 }
 
 int VolumResource::Release(const baidu::galaxy::proto::VolumRequired& require)

@@ -101,6 +101,11 @@ int Container::Construct()
         }
     }
 
+    if (0 == ret) {
+        LOG(INFO) << "sucess in constructing container " << id_.CompactId();
+    } else {
+        LOG(INFO) << "failed to construct container " << id_.CompactId();
+    }
     return ret;
 }
 
@@ -153,17 +158,19 @@ int Container::Construct_()
         cg->SetDescrition(desc);
 
         if (0 != cg->Construct()) {
+            LOG(WARNING) << "fail in constructing cgroup, cgroup id is " << cg->Id()
+                         << ", container id is " << id_.CompactId();
             break;
         }
 
         cgroup_.push_back(cg);
-        LOG(INFO) << "succed in creating cgroup(" << desc_.cgroups(i).id()
+        LOG(INFO) << "succeed in constructing cgroup(" << desc_.cgroups(i).id()
                   << ") for cotnainer " << id_.CompactId();
     }
 
     if (cgroup_.size() != (unsigned int)desc_.cgroups_size()) {
-        LOG(WARNING) << "create cgroup for container " << id_.CompactId()
-                     << " failed, expect size is " << desc_.cgroups_size()
+        LOG(WARNING) << "fail in constructing cgroup for container " << id_.CompactId()
+                     << ", expect cgroup size is " << desc_.cgroups_size()
                      << " real size is " << cgroup_.size();
 
         for (size_t i = 0; i < cgroup_.size(); i++) {
@@ -173,7 +180,7 @@ int Container::Construct_()
         return -1;
     }
 
-    LOG(INFO) << "succed in creating cgroup for container " << id_.CompactId();
+    LOG(INFO) << "succeed in creating cgroup for container " << id_.CompactId();
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
     volum_group_->SetGcIndex((int)time(NULL));
@@ -195,18 +202,21 @@ int Container::Construct_()
     int now = (int)time(NULL);
     ss << "stderr." << now;
     process_->RedirectStderr(ss.str());
+    LOG(INFO) << "redirect stderr to " << ss.str() << " for container " << id_.CompactId();
+
     ss.str("");
     ss << "stdout." << now;
     process_->RedirectStdout(ss.str());
+    LOG(INFO) << "redirect stdout to " << ss.str() << " for container " << id_.CompactId();
     pid_t pid = process_->Clone(boost::bind(&Container::RunRoutine, this, _1), NULL, 0);
 
     if (pid <= 0) {
-        LOG(INFO) << "failed to clone appwork process for container " << id_.CompactId();
+        LOG(INFO) << "fail in clonning appwork process for container " << id_.CompactId();
         return -1;
     }
 
-    LOG(WARNING) << "sucessed in cloning appwork process (pid is " << process_->Pid()
-                 << " for container " << id_.CompactId();
+    LOG(INFO) << "succeed in cloning appwork process (pid is " << process_->Pid()
+              << " for container " << id_.CompactId();
     return 0;
 }
 
@@ -258,8 +268,8 @@ int Container::RunRoutine(void*)
     LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
     char* argv[] = {
         const_cast<char*>("sh"),
-        const_cast<char*>("-c"),
-        const_cast<char*>(desc_.cmd_line().c_str()),
+        const_cast<char*>("-c /bin/cat"),
+//const_cast<char*>(desc_.cmd_line().c_str()),
         NULL
     };
     ::execv("/bin/sh", argv);
@@ -390,11 +400,13 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     ret->set_cpu_used(0);
     ret->set_memory_used(0);
 
+    baidu::galaxy::proto::ContainerDescription* cd = new baidu::galaxy::proto::ContainerDescription();
     if (full_info) {
-        baidu::galaxy::proto::ContainerDescription* cd = new baidu::galaxy::proto::ContainerDescription();
         cd->CopyFrom(desc_);
-        ret->set_allocated_container_desc(cd);
+    } else {
+        cd->set_version(desc_.version());
     }
+    ret->set_allocated_container_desc(cd);
     return ret;
 }
 

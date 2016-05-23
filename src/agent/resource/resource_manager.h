@@ -7,6 +7,8 @@
 #include "memory_resource.h"
 #include "volum_resource.h"
 
+#include "util/error_code.h"
+
 #include <boost/thread/mutex.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -30,7 +32,7 @@ public:
     int Load();
     std::string ToString();
 
-    int Allocate(const baidu::galaxy::proto::ContainerDescription& desc);
+    baidu::galaxy::util::ErrorCode Allocate(const baidu::galaxy::proto::ContainerDescription& desc);
     int Release(const baidu::galaxy::proto::ContainerDescription& desc);
     int Resource(boost::shared_ptr<void> resource);
 
@@ -39,7 +41,7 @@ public:
     void GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> >& resource);
 
 private:
-    int Allocate(std::vector<const baidu::galaxy::proto::VolumRequired*>& vv);
+    baidu::galaxy::util::ErrorCode Allocate(std::vector<const baidu::galaxy::proto::VolumRequired*>& vv);
     void CalResource(const baidu::galaxy::proto::ContainerDescription& desc,
             int64_t& cpu_millicores,
             int64_t& memroy_require,
