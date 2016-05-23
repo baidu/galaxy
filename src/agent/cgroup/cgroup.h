@@ -15,10 +15,10 @@ namespace proto {
 class Cgroup;
 };
 namespace cgroup {
-
 class FreezerSubsystem;
 class Subsystem;
 class SubsystemFactory;
+class Metrix;
 
 class Cgroup {
 public:
@@ -32,10 +32,8 @@ public:
     boost::shared_ptr<google::protobuf::Message> Report();
     void ExportEnv(std::map<std::string, std::string>& evn);
     std::string Id();
-    int Freezen();
-    int Thaw();
-    int Kill();
-    bool Empty();
+
+    void Statistics(Metrix& matrix);
 
 private:
     std::vector<boost::shared_ptr<Subsystem> > subsystem_;

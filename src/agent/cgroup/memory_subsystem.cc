@@ -12,17 +12,36 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-MemorySubsystem::MemorySubsystem() {
+MemorySubsystem::MemorySubsystem()
+{
 }
 
-MemorySubsystem::~MemorySubsystem() {
+MemorySubsystem::~MemorySubsystem()
+{
 }
 
-std::string MemorySubsystem::Name() {
+std::string MemorySubsystem::Name()
+{
     return "memory";
 }
 
-int MemorySubsystem::Construct() {
+baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(Metrix& metrix)
+{
+    boost::filesystem::path path(Path());
+    path.append("memory.usage_in_bytes");
+    FILE* file = fopen(path.string().c_str(), "r");
+    if (NULL == file) {
+        return PERRORCODE(-1, errno, "open file %s failed", path.string().c_str());
+    }
+    char buf[64] = {0};
+    fread(buf, sizeof buf, 1, file);
+    fclose(file);
+    metrix.memory_used_in_byte = ::atol(buf);
+    return ERRORCODE_OK;
+}
+
+int MemorySubsystem::Construct()
+{
     assert(!this->container_id_.empty());
     assert(NULL != this->cgroup_.get());
     std::string path = this->Path();
@@ -62,11 +81,8 @@ int MemorySubsystem::Construct() {
     return 0;
 }
 
-baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(std::map<std::string, AutoValue>& stat) {
-    return ERRORCODE_OK;
-}
-
-boost::shared_ptr<Subsystem> MemorySubsystem::Clone() {
+boost::shared_ptr<Subsystem> MemorySubsystem::Clone()
+{
     boost::shared_ptr<Subsystem> ret(new MemorySubsystem());
     return ret;
 }

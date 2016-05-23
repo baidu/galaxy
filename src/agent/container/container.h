@@ -20,6 +20,10 @@ namespace cgroup {
 class Cgroup;
 }
 
+namespace collector {
+class Collector;
+}
+
 namespace volum {
 class VolumGroup;
 }
@@ -32,7 +36,7 @@ public:
     ContainerId() {}
     ContainerId(const std::string& group_id, const std::string& container_id) :
         group_id_(group_id),
-        container_id_(container_id_) {
+        container_id_(container_id) {
     }
 
     bool Empty() {
@@ -105,6 +109,7 @@ public:
     boost::shared_ptr<google::protobuf::Message> Report();
     baidu::galaxy::proto::ContainerStatus Status();
 
+    boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
 private:
     int Construct_();
     int Destroy_();
@@ -120,6 +125,7 @@ private:
     boost::shared_ptr<Process> process_;
     ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
+    std::vector<boost::shared_ptr<baidu::galaxy::collector::Collector> > collectors_;
 
 };
 

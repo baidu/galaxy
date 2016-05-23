@@ -6,6 +6,8 @@
 #include "rpc/rpc_client.h"
 #include "boost/thread/mutex.hpp"
 #include "protocol/resman.pb.h"
+#include "cgroup/subsystem_factory.h"
+#include "util/path_tree.h"
 
 #include <string>
 #include <sstream>
@@ -74,6 +76,11 @@ void AgentImpl::Setup()
         LOG(FATAL) << "resource manager loads resource failed";
         exit(1);
     }
+
+    baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
+    baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
+    baidu::galaxy::container::ContainerStatus::Setup();
+
     LOG(INFO) << "resource manager load resource successfully: " << rm_->ToString();
 
     if (!rm_watcher_->Init(boost::bind(&AgentImpl::HandleMasterChange, this, _1))) {
@@ -111,6 +118,7 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
         ::baidu::galaxy::proto::CreateContainerResponse* response,
         ::google::protobuf::Closure* done)
 {
+    LOG(INFO) << "recv create container request: " << request->DebugString();
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
 
@@ -131,6 +139,8 @@ void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
         ::baidu::galaxy::proto::RemoveContainerResponse* response,
         ::google::protobuf::Closure* done)
 {
+
+    LOG(INFO) << "recv remove container request: " << request->DebugString();
 }
 
 void AgentImpl::ListContainers(::google::protobuf::RpcController* controller,
@@ -145,6 +155,8 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
         ::baidu::galaxy::proto::QueryResponse* response,
         ::google::protobuf::Closure* done)
 {
+
+    std::cerr << "query " << std::endl;
 
     baidu::galaxy::proto::AgentInfo* ai = new baidu::galaxy::proto::AgentInfo();
     ai->set_unhealthy(!health_checker_->Healthy());
@@ -177,14 +189,25 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
     //std::cerr << ai->DebugString() << std::endl;
 
+    bool full_report = false;
     if (request->has_full_report() && request->full_report()) {
+        full_report = true;
+    }
 
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > cis;
+    cm_->ListContainers(cis, full_report);
+    std::cerr << "container size: " << cis.size();
+
+    for (size_t i = 0; i < cis.size(); i++) {
+        ai->add_container_info()->CopyFrom(*(cis[i]));
     }
 
     baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
     ec->set_status(baidu::galaxy::proto::kOk);
     response->set_allocated_agent_info(ai);
     response->set_allocated_code(ec);
+
+    LOG(INFO) << "query:" << response->DebugString();
     done->Run();
 }
 

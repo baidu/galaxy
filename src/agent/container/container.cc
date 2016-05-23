@@ -8,6 +8,7 @@
 
 #include "cgroup/subsystem_factory.h"
 #include "cgroup/cgroup.h"
+#include "cgroup/cgroup_collector.h"
 #include "protocol/galaxy.pb.h"
 #include "volum/volum_group.h"
 #include "util/user.h"
@@ -19,6 +20,8 @@
 #include "boost/algorithm/string/split.hpp"
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/predicate.hpp"
+#include "collector/collector_engine.h"
+#include "cgroup/cgroup_collector.h"
 
 #include <glog/logging.h>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
@@ -33,6 +36,11 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+
+DECLARE_string(agent_ip);
+DECLARE_string(agent_port);
+DECLARE_string(agent_hostname);
 
 namespace baidu {
 namespace galaxy {
@@ -81,12 +89,23 @@ int Container::Construct()
         }
     } else {
         ec = status_.EnterReady();
-
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
         }
+
+        // register collector
+        for (size_t i = 0; i < cgroup_.size(); i++) {
+            boost::shared_ptr<baidu::galaxy::collector::Collector> c(new baidu::galaxy::cgroup::CgroupCollector(cgroup_[i]));
+            baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(c);
+            collectors_.push_back(c);
+        }
     }
 
+    if (0 == ret) {
+        LOG(INFO) << "sucess in constructing container " << id_.CompactId();
+    } else {
+        LOG(INFO) << "failed to construct container " << id_.CompactId();
+    }
     return ret;
 }
 
@@ -139,17 +158,19 @@ int Container::Construct_()
         cg->SetDescrition(desc);
 
         if (0 != cg->Construct()) {
+            LOG(WARNING) << "fail in constructing cgroup, cgroup id is " << cg->Id()
+                         << ", container id is " << id_.CompactId();
             break;
         }
 
         cgroup_.push_back(cg);
-        LOG(INFO) << "succed in creating cgroup(" << desc_.cgroups(i).id()
+        LOG(INFO) << "succeed in constructing cgroup(" << desc_.cgroups(i).id()
                   << ") for cotnainer " << id_.CompactId();
     }
 
     if (cgroup_.size() != (unsigned int)desc_.cgroups_size()) {
-        LOG(WARNING) << "create cgroup for container " << id_.CompactId()
-                     << " failed, expect size is " << desc_.cgroups_size()
+        LOG(WARNING) << "fail in constructing cgroup for container " << id_.CompactId()
+                     << ", expect cgroup size is " << desc_.cgroups_size()
                      << " real size is " << cgroup_.size();
 
         for (size_t i = 0; i < cgroup_.size(); i++) {
@@ -159,8 +180,7 @@ int Container::Construct_()
         return -1;
     }
 
-    LOG(INFO) << "succed in creating cgroup for container " << id_.CompactId();
-
+    LOG(INFO) << "succeed in creating cgroup for container " << id_.CompactId();
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
     volum_group_->SetGcIndex((int)time(NULL));
@@ -175,8 +195,6 @@ int Container::Construct_()
     }
 
     LOG(INFO) << "succed in constructing volum group";
-
-
     // clone
     LOG(INFO) << "to clone appwork process for container " << id_.CompactId();
     std::string container_root_path = baidu::galaxy::path::ContainerRootPath(id_.SubId());
@@ -184,18 +202,21 @@ int Container::Construct_()
     int now = (int)time(NULL);
     ss << "stderr." << now;
     process_->RedirectStderr(ss.str());
+    LOG(INFO) << "redirect stderr to " << ss.str() << " for container " << id_.CompactId();
+
     ss.str("");
     ss << "stdout." << now;
     process_->RedirectStdout(ss.str());
-
+    LOG(INFO) << "redirect stdout to " << ss.str() << " for container " << id_.CompactId();
     pid_t pid = process_->Clone(boost::bind(&Container::RunRoutine, this, _1), NULL, 0);
+
     if (pid <= 0) {
-        LOG(INFO) << "failed to clone appwork process for container " << id_.CompactId();
+        LOG(INFO) << "fail in clonning appwork process for container " << id_.CompactId();
         return -1;
     }
 
-    LOG(WARNING) << "sucessed in cloning appwork process (pid is " << process_->Pid()
-                 << " for container " << id_.CompactId();
+    LOG(INFO) << "succeed in cloning appwork process (pid is " << process_->Pid()
+              << " for container " << id_.CompactId();
     return 0;
 }
 
@@ -214,8 +235,8 @@ int Container::Destroy_()
     if (0 != volum_group_->Destroy()) {
         return -1;
     }
-    // mv to gc queue
 
+    // mv to gc queue
     return 0;
 }
 
@@ -226,34 +247,29 @@ int Container::RunRoutine(void*)
         std::cerr << "mount root fs failed" << std::endl;
         return -1;
     }
+
     LOG(INFO) << "succed in mounting root fs";
-
     ::chdir(baidu::galaxy::path::ContainerRootPath(id_.SubId()).c_str());
-
     // change root
     //if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id()).c_str())) {
     //    LOG(WARNING) << "chroot failed: " << strerror(errno);
     //    return -1;
     //}
-
     //LOG(INFO) << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId());
     // change user or sh -l
     //baidu::galaxy::util::ErrorCode ec = baidu::galaxy::user::Su(desc_.run_user());
-
     //if (ec.Code() != 0) {
     //    LOG(WARNING) << "su user " << desc_.run_user() << " failed: " << ec.Message();
     //    return -1;
     //}
-
     LOG(INFO) << "su user " << desc_.run_user() << " sucessfully";
     // export env
     // start appworker
-
     LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
     char* argv[] = {
         const_cast<char*>("sh"),
-        const_cast<char*>("-c"),
-        const_cast<char*>(desc_.cmd_line().c_str()),
+        const_cast<char*>("-c /bin/cat"),
+//const_cast<char*>(desc_.cmd_line().c_str()),
         NULL
     };
     ::execv("/bin/sh", argv);
@@ -286,13 +302,23 @@ void Container::ExportEnv()
 
 void Container::ExportEnv(std::map<std::string, std::string>& env)
 {
+    env["baidu_galaxy_containergroup_id"] = id_.GroupId();
     env["baidu_galaxy_container_id"] = id_.SubId();
     env["baidu_galaxy_container_cgroup_size"] = boost::lexical_cast<std::string>(cgroup_.size());
+    std::string ids;
 
     for (size_t i = 0; i < cgroup_.size(); i++) {
-        std::string key = "baidu_galaxy_container_cgroup_id" + boost::lexical_cast<std::string>(i);
-        env[key] = cgroup_[i]->Id();
+        if (!ids.empty()) {
+            ids += ",";
+        }
+
+        ids += cgroup_[i]->Id();
     }
+
+    env["baidu_galaxy_container_cgroup_ids"] = ids;
+    env["baidu_galaxy_agent_hostname"] = FLAGS_agent_hostname;
+    env["baidu_galaxy_agent_ip"] = FLAGS_agent_ip;
+    env["baidu_galaxy_agent_port"] = FLAGS_agent_port;
 }
 
 
@@ -362,6 +388,26 @@ bool Container::Alive()
     }
 
     return false;
+}
+
+boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(bool full_info)
+{
+    boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ret(new baidu::galaxy::proto::ContainerInfo());
+    ret->set_id(id_.SubId());
+    ret->set_group_id(id_.GroupId());
+    ret->set_created_time(0);
+    ret->set_status(status_.Status());
+    ret->set_cpu_used(0);
+    ret->set_memory_used(0);
+
+    baidu::galaxy::proto::ContainerDescription* cd = new baidu::galaxy::proto::ContainerDescription();
+    if (full_info) {
+        cd->CopyFrom(desc_);
+    } else {
+        cd->set_version(desc_.version());
+    }
+    ret->set_allocated_container_desc(cd);
+    return ret;
 }
 
 } //namespace container
