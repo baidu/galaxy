@@ -111,8 +111,8 @@ message FetchTaskRequest {
     optional string podid = 2;
     optional string endpoint = 3;
     optional int64 start_time = 4;
-    optional PodStatus status = 5;
-    optional int64 update_time = 6;
+    optional int64 update_time = 5;
+    optional PodStatus status = 6;
 }
 
 message FetchTaskResponse {

@@ -28,37 +28,54 @@ struct PodEnv {
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
 };
 
+enum PodStage {
+    kPodStageCreating,
+    kPodStageRebuilding,
+    kPodStageReloading,
+    kPodStageTerminating
+};
+
 struct Pod {
-    PodEnv env;
     std::string pod_id;
-    PodDescription desc;
     PodStatus status;
+    PodStage stage;
+    PodEnv env;
+    PodDescription desc;
 };
 
 class PodManager {
 public:
     PodManager();
     ~PodManager();
-    void CreatePod(const PodEnv& pod_env,
-                   const PodDescription& pod_desc);
-    void DeletePod();
+    int CreatePod();
+    int ReloadPod();
+    int RebuildPod();
+    int TerminatePod();
+    int ClearPod();
+    int GetPod(Pod& pod);
+    int SetPodEnv(const PodEnv& pod_env);
+    int SetPodDescription(const PodDescription& pod_desc);
     void LoopCheckPod();
     void LoopChangePodStatus();
 
 private:
+    int DoCreatePod();
     int DoDeployPod();
     int DoStartPod();
     int DoStopPod();
-    int DoCleanPod();
+    int DoClearPod();
+    void PendingPodCheck();
     void ReadyPodCheck();
     void DeployingPodCheck();
     void StartingPodCheck();
+    void StoppingPodCheck();
     void RunningPodCheck();
     void FailedPodCheck();
+    void FinishedPodCheck();
 
 private:
-    Mutex mutex_pod_manager_;
-    Pod* pod_;
+    Mutex mutex_;
+    Pod pod_;
     TaskManager task_manager_;
     ThreadPool background_pool_;
 };

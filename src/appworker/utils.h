@@ -46,13 +46,13 @@ bool GetCwd(std::string* dir);
 
 } // ending namespace process
 
-//namespace user {
-//
-//bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
-//
-//bool Su(const std::string& user_name);
-//
-//}
+namespace user {
+
+bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
+
+bool Su(const std::string& user_name);
+
+}
 
 namespace file {
 

@@ -20,6 +20,7 @@ typedef proto::TaskDescription TaskDescription;
 typedef proto::ImagePackage ImagePackage;
 typedef proto::DataPackage DataPackage;
 typedef proto::Package Package;
+typedef proto::ErrorCode ErrorCode;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
@@ -64,8 +65,11 @@ void FetchTask(::google::protobuf::RpcController* controller,
                ::google::protobuf::Closure* done);
 
 private:
+    int32_t times_;
     std::string endpoint_;
     InsSDK* nexus_;
+    int64_t update_time1;
+    int64_t update_time2;
 };
 
 

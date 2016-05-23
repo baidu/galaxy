@@ -20,6 +20,7 @@ namespace galaxy {
 typedef proto::ProcessStatus ProcessStatus;
 
 struct ProcessEnv {
+    std::string user;
     std::vector<std::string> cgroup_paths;
     std::vector<std::string> envs;
 };
@@ -54,10 +55,12 @@ public:
                       const ProcessContext* context);
     int DeleteProcess(const std::string& process_id);
     int QueryProcess(const std::string& process_id, Process& process);
+    int KillProcess(const std::string& process_id);
+    int ClearProcesses();
     void LoopWaitProcesses();
 
 private:
-    Mutex lock_;
+    Mutex mutex_;
     ThreadPool background_pool_;
     std::map<std::string, Process*> processes_;
 };

@@ -4,7 +4,7 @@
 #include <gflags/gflags.h>
 
 // nexus
-DEFINE_string(nexus_servers, "127.0.0.1:8868", "server list of nexus, e.g abc.com:1234,def.com:5342");
+DEFINE_string(nexus_addr, "127.0.0.1:8868", "server list of nexus, e.g abc.com:1234,def.com:5342");
 DEFINE_string(nexus_root_path, "/baidu/galaxy", "root path of galaxy cluster on nexus, e.g /ps/galaxy");
 
 // appmaster
@@ -20,10 +20,7 @@ DEFINE_string(appworker_job_id_env, "BAIDU_GALAXY_CONTAINER_GROUP_ID", "job id e
 DEFINE_string(appworker_pod_id_env, "BAIDU_GALAXY_CONTAINER_ID", "pod id env name");
 DEFINE_string(appworker_task_ids_env, "BAIDU_GALAXY_CONTAINER_CGROUP_IDS", "task ids env name");
 DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CONTAINER_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
-// DEFINE_string(appworker_endpoint, "", "appworker endpoint");
-// DEFINE_string(appworker_job_id, "", "appworker job id");
-// DEFINE_string(appworker_pod_id, "", "appworker pod id");
-// DEFINE_string(appworker_task_ids, "", "appworker task ids");
+DEFINE_string(appworker_default_user, "galaxy", "appworker default user");
 
 // pod_manager
 DEFINE_int32(pod_manager_check_pod_interval, 5000, "pod manager check pod interval");
@@ -31,7 +28,7 @@ DEFINE_int32(pod_manager_change_pod_status_interval, 1000, "pod manager check po
 
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 10, "task manager background thread pool size");
-DEFINE_int32(task_manager_killer_thread_pool_size, 10, "task manager killer thread pool size");
+DEFINE_int32(task_manager_stop_command_timeout, 100, "task manager stop command run timeout");
 DEFINE_int32(task_manager_task_max_fail_retry_times, 0, "task fail retry times limit");
 
 // process_manager

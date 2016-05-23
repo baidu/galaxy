@@ -154,8 +154,10 @@ enum PodStatus {
     kPodDeploying = 3;
     kPodStarting = 4;
     kPodRunning = 5;
-    kPodFailed = 6;
-    kPodFinished = 7;
+    kPodStopping = 6;
+    kPodFailed = 7;
+    kPodFinished = 8;
+    kPodTerminated = 9;
 }
 
 enum ProcessStatus {
@@ -178,8 +180,10 @@ enum TaskStatus {
     kTaskDeploying = 2;
     kTaskStarting = 3;
     kTaskRunning = 4;
-    kTaskFailed = 5;
-    kTaskFinished = 6;
+    kTaskStopping = 5;
+    kTaskFailed = 6;
+    kTaskFinished = 7;
+    kTaskTerminated = 8;
 }
 
 message TaskInfo {
@@ -334,6 +338,8 @@ enum Status {
    kAddAgentFail = 4;
    kDeny = 5;
    kJobNotFound = 6;
+   kJobRebuild = 7;
+   kJobReload = 8;
 }
 
 message ErrorCode {

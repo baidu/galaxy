@@ -38,6 +38,7 @@ struct Task {
     int32_t packages_size;
     int32_t fail_retry_times;
     TaskEnv env;
+    int32_t timeout_point;
 
 };
 
@@ -46,18 +47,18 @@ public:
     TaskManager();
     ~TaskManager();
     int CreateTask(const TaskEnv& task_env, const TaskDescription& task_desc);
-    int DeleteTask(const std::string& task_id);
     int DeployTask(const std::string& task_id);
     int StartTask(const std::string& task_id);
+    int StopTask(const std::string& task_id);
     int CheckTask(const std::string& task_id, Task& task);
+    int CleanTask(const std::string& task_id);
     int ClearTasks();
 
 private:
-    Mutex mutex_task_manager_;
+    Mutex mutex_;
     std::map<std::string, Task*> tasks_;
     ProcessManager process_manager_;
     ThreadPool background_pool_;
-    ThreadPool killer_pool_;
 };
 
 }   // ending namespace galaxy

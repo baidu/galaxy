@@ -4,10 +4,10 @@
 
 #include "appworker_impl.h"
 
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
 #include <algorithm>
 #include <cctype>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <gflags/gflags.h>
@@ -15,42 +15,39 @@
 
 #include "protocol/appmaster.pb.h"
 
-DECLARE_string(nexus_servers);
+DECLARE_string(nexus_addr);
 DECLARE_string(nexus_root_path);
 DECLARE_string(appmaster_nexus_path);
-DECLARE_int32(appworker_fetch_task_timeout);
-DECLARE_int32(appworker_fetch_task_interval);
-DECLARE_int32(appworker_update_appmaster_stub_interval);
-DECLARE_int32(appworker_background_thread_pool_size);
 DECLARE_string(appworker_endpoint_env);
 DECLARE_string(appworker_job_id_env);
 DECLARE_string(appworker_pod_id_env);
 DECLARE_string(appworker_task_ids_env);
 DECLARE_string(appworker_cgroup_subsystems_env);
-// DECLARE_string(appworker_endpoint);
-// DECLARE_string(appworker_job_id);
-// DECLARE_string(appworker_pod_id);
-// DECLARE_string(appworker_task_ids);
+DECLARE_int32(appworker_fetch_task_timeout);
+DECLARE_int32(appworker_fetch_task_interval);
+DECLARE_int32(appworker_update_appmaster_stub_interval);
+DECLARE_int32(appworker_background_thread_pool_size);
 
 namespace baidu {
 namespace galaxy {
 
 AppWorkerImpl::AppWorkerImpl() :
-    mutex_appworker_(),
-    start_time_(),
+    mutex_(),
+    start_time_(0),
+    update_time_(0),
     nexus_(NULL),
     appmaster_stub_(NULL),
     backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
 
-    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_servers);
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
+    backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
     backgroud_pool_.DelayTask(
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
-    backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
 }
 
-AppWorkerImpl::~AppWorkerImpl () {
+AppWorkerImpl::~AppWorkerImpl() {
     if (NULL != nexus_) {
         delete nexus_;
     }
@@ -82,6 +79,7 @@ void AppWorkerImpl::PrepareEnvs() {
         exit(-1);
     }
     endpoint_ = std::string(c_endpoint);
+
     // 4.task_ids
     char* c_task_ids = getenv(FLAGS_appworker_task_ids_env.c_str());
     if (NULL == c_task_ids) {
@@ -93,7 +91,6 @@ void AppWorkerImpl::PrepareEnvs() {
                  s_task_ids,
                  boost::is_any_of(","),
                  boost::token_compress_on);
-
     // 5.cgroup subsystems
     char* c_cgroup_subsystems = getenv(FLAGS_appworker_cgroup_subsystems_env.c_str());
     if (NULL == c_cgroup_subsystems) {
@@ -123,34 +120,47 @@ void AppWorkerImpl::PrepareEnvs() {
         }
         task_cgroup_paths_.push_back(cgroup_paths);
     }
+
+    PodEnv env;
+    env.job_id = job_id_;
+    env.pod_id = pod_id_;
+    env.task_ids = task_ids_;
+    env.cgroup_subsystems = cgroup_subsystems_;
+    env.task_cgroup_paths = task_cgroup_paths_;
+    pod_manager_.SetPodEnv(env);
+    return;
 }
 
 void AppWorkerImpl::Start() {
     start_time_ = baidu::common::timer::get_micros();
-    LOG(INFO) << "appworker start, endpoint: " << endpoint_\
-        << ", job_id: " <<job_id_\
-        << ", pod_id: " << pod_id_;
+    LOG(INFO)\
+        << "appworker start, endpoint: " << endpoint_\
+        << ", job_id: " <<job_id_ << ", pod_id: " << pod_id_;
     PrepareEnvs();
 }
 
 void AppWorkerImpl::UpdateAppMasterStub() {
-    MutexLock lock(&mutex_appworker_);
+    MutexLock lock(&mutex_);
     SDKError err;
-    std::string new_endpoint = "";
+    std::string new_endpoint;
     std::string key = FLAGS_nexus_root_path + "/" + FLAGS_appmaster_nexus_path;
     bool ok = nexus_->Get(key, &new_endpoint, &err);
     do {
         if (!ok) {
-           LOG(WARNING) << "get appmaster endpoint from nexus failed: "\
-               << ::galaxy::ins::sdk::InsSDK::StatusToString(err);
+           LOG(WARNING)\
+               << "get appmaster endpoint from nexus failed: "\
+               << InsSDK::StatusToString(err);
            break;
         }
-        if (appmaster_endpoint_ == new_endpoint) {
+        if (appmaster_endpoint_ == new_endpoint
+            && NULL != appmaster_stub_) {
            break;
         }
         appmaster_endpoint_ = new_endpoint;
         if(rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
-            LOG(INFO) << "appmaster stub updated, endpoint: " << appmaster_endpoint_;
+            LOG(INFO)\
+                << "appmaster stub updated, endpoint: "\
+                << appmaster_endpoint_;
         }
     } while (0);
 
@@ -160,8 +170,8 @@ void AppWorkerImpl::UpdateAppMasterStub() {
     );
 }
 
-void AppWorkerImpl::FetchTask () {
-    MutexLock lock(&mutex_appworker_);
+void AppWorkerImpl::FetchTask() {
+    MutexLock lock(&mutex_);
     if (NULL == appmaster_stub_) {
         backgroud_pool_.DelayTask(
             FLAGS_appworker_fetch_task_interval,
@@ -174,9 +184,15 @@ void AppWorkerImpl::FetchTask () {
     FetchTaskResponse* response = new FetchTaskResponse;
     request->set_jobid(job_id_);
     request->set_endpoint(endpoint_);
+    request->set_start_time(start_time_);
+    request->set_update_time(update_time_);
+    Pod pod;
+    pod_manager_.GetPod(pod);
+    request->set_podid(pod.pod_id);
+    request->set_status(pod.status);
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
-    fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback, this,
-                                      _1, _2, _3, _4);
+    fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback,
+                                      this, _1, _2, _3, _4);
     rpc_client_.AsyncRequest(appmaster_stub_, &AppMaster_Stub::FetchTask,
                              request, response, fetch_task_callback,
                              FLAGS_appworker_fetch_task_timeout, 0);
@@ -185,27 +201,42 @@ void AppWorkerImpl::FetchTask () {
 void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       FetchTaskResponse* response,
                                       bool failed, int /*error*/) {
-    MutexLock lock(&mutex_appworker_);
+    MutexLock lock(&mutex_);
     ErrorCode* error_code = response->mutable_error_code();
-    switch (error_code->status()) {
-        case proto::kJobNotFound:
-            exit(-1);
-        case proto::kTerminate:
-            pod_manager_.DeletePod();
-            break;
-        case proto::kOk:
-        {
-            PodEnv env;
-            env.job_id = job_id_;
-            env.pod_id = pod_id_;
-            env.task_ids = task_ids_;
-            env.cgroup_subsystems = cgroup_subsystems_;
-            env.task_cgroup_paths = task_cgroup_paths_;
-            pod_manager_.CreatePod(env, response->pod());
-            break;
+    // if action has expired
+    if (response->has_update_time()
+        && response->update_time() > update_time_) {
+        update_time_ = response->update_time();
+        switch (error_code->status()) {
+            case proto::kOk:
+                if (response->has_pod()) {
+                    pod_manager_.SetPodDescription(response->pod());
+                }
+                break;
+            case proto::kJobReload:
+                if (response->has_pod()) {
+                    LOG(WARNING) << "fetch task: kJobReload";
+                    pod_manager_.SetPodDescription(response->pod());
+                    pod_manager_.ReloadPod();
+                }
+                break;
+            case proto::kJobRebuild:
+                if (response->has_pod()) {
+                    LOG(WARNING) << "fetch task: kJobRebuild";
+                    pod_manager_.SetPodDescription(response->pod());
+                    pod_manager_.RebuildPod();
+                }
+                break;
+            case proto::kTerminate:
+                LOG(WARNING) << "fetch task: kTerminate";
+                pod_manager_.TerminatePod();
+                break;
+            case proto::kJobNotFound:
+                LOG(WARNING) << "fetch task get kJobNotFound, appworker exit";
+                exit(-1);
+            default:
+                break;
         }
-        default:
-            break;
     }
 
     backgroud_pool_.DelayTask(

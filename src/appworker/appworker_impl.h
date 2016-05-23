@@ -10,11 +10,11 @@
 
 #include <mutex.h>
 #include <thread_pool.h>
+#include <ins_sdk.h>
 
 #include "protocol/appmaster.pb.h"
 #include "rpc/rpc_client.h"
 #include "pod_manager.h"
-#include "ins_sdk.h"
 
 namespace baidu {
 namespace galaxy {
@@ -42,14 +42,15 @@ private:
     void UpdateAppMasterStub();
 
 private:
-    Mutex mutex_appworker_;
+    Mutex mutex_;
+    int64_t start_time_;
+    int64_t update_time_;
     std::string endpoint_;
     std::string job_id_;
     std::string pod_id_;
     std::vector<std::string> task_ids_;
     std::vector<std::string> cgroup_subsystems_;
     std::vector<std::map<std::string, std::string> > task_cgroup_paths_;
-    int64_t start_time_;
 
     RpcClient rpc_client_;
     InsSDK* nexus_;

@@ -17,7 +17,7 @@
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
 
-#include "utils/utils.h"
+#include "utils.h"
 #include "protocol/galaxy.pb.h"
 
 DECLARE_int32(process_manager_loop_wait_interval);
@@ -26,7 +26,7 @@ namespace baidu {
 namespace galaxy {
 
 ProcessManager::ProcessManager() :
-    lock_(),
+    mutex_(),
     background_pool_(1) {
 
     background_pool_.DelayTask(
@@ -41,13 +41,13 @@ ProcessManager::~ProcessManager() {
 int ProcessManager::CreateProcess(const ProcessEnv& env,
                                   const ProcessContext* context) {
     {
-        MutexLock scope_lock(&lock_);
+        MutexLock scope_lock(&mutex_);
         std::map<std::string, Process*>::iterator it =\
             processes_.find(context->process_id);
-        if (it != processes_.end()
-            && proto::kProcessRunning == it->second->status) {
-            LOG(INFO) << context->cmd << " is already running";
-            return -1;
+        if (it != processes_.end()) {
+            processes_.erase(it);
+            // LOG(INFO) << context->cmd << " is already running";
+            //return -1;
         }
     }
     LOG(INFO) << "create process of command: " << context->cmd;
@@ -117,10 +117,9 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid,
                                              context->work_dir.c_str());
+        LOG(WARNING) << "prosess: " << context->process_id << ", pid: " << my_pid;
         // attach cgroup
         for (unsigned i = 0; i < env.cgroup_paths.size(); i++) {
-            LOG(WARNING) << "process: " << my_pid\
-                << " attach cgroup: " << env.cgroup_paths[i];
 //            bool ok = cgroup::AttachCgroup(process_env.cgroup_paths[i], my_pid);
 //            if (!ok) {
 //                assert(0);
@@ -129,16 +128,10 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
         process::PrepareChildProcessEnvStep2(stdin_fd, stdout_fd,
                                              stderr_fd, fd_vector);
-//        if (is_chroot) {
-//            if (::chroot(request->chroot_path().c_str()) != 0) {
-//                assert(0);
-//            }
-//        }
-//        // set user
-//        if (request->has_user()
-//                && !user::Su(request->user())) {
-//            assert(0);
-//        }
+        // set user
+        if (user::Su(env.user)) {
+            assert(0);
+        }
 
         // prepare argv
         char* argv[] = {
@@ -188,14 +181,14 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     process->pid = child_pid;
     process->status = proto::kProcessRunning;
     {
-        MutexLock scope_lock(&lock_);
+        MutexLock scope_lock(&mutex_);
         processes_.insert(std::make_pair(context->process_id, process));
     }
     return 0;
 }
 
 int ProcessManager::DeleteProcess(const std::string& process_id) {
-    MutexLock scope_lock(&lock_);
+    MutexLock scope_lock(&mutex_);
     std::map<std::string, Process*>::iterator it = processes_.find(process_id);
     if (it == processes_.end()) {
         LOG(INFO) << "process: " << process_id << " not exist";
@@ -205,9 +198,20 @@ int ProcessManager::DeleteProcess(const std::string& process_id) {
     return 0;
 }
 
+int ProcessManager::KillProcess(const std::string& process_id) {
+    MutexLock scope_lock(&mutex_);
+    std::map<std::string, Process*>::iterator it = processes_.find(process_id);
+    if (it == processes_.end()) {
+        LOG(INFO) << "process: " << process_id << " not exist";
+        return 0;
+    }
+    ::killpg(it->second->pid, SIGKILL);
+    return 0;
+}
+
 int ProcessManager::QueryProcess(const std::string& process_id,
                                  Process& process) {
-    MutexLock scope_lock(&lock_);
+    MutexLock scope_lock(&mutex_);
     std::map<std::string, Process*>::iterator it = processes_.find(process_id);
     if (it == processes_.end()) {
         LOG(WARNING) << "process: " << process_id << " not exist";
@@ -220,8 +224,17 @@ int ProcessManager::QueryProcess(const std::string& process_id,
     return 0;
 }
 
+int ProcessManager::ClearProcesses() {
+    MutexLock scope_lock(&mutex_);
+    std::map<std::string, Process*>::iterator it = processes_.begin();
+    for (; it != processes_.end(); ++it) {
+        processes_.erase(it);
+    }
+    return 0;
+}
+
 void ProcessManager::LoopWaitProcesses() {
-    MutexLock scope_lock(&lock_);
+    MutexLock scope_lock(&mutex_);
     int status = 0;
     pid_t pid = ::waitpid(-1, &status, WNOHANG);
     if (pid > 0) {
@@ -242,9 +255,10 @@ void ProcessManager::LoopWaitProcesses() {
                         it->second->status = proto::kProcessKilled;
                     }
                 }
-                LOG(WARNING) <<  "process: " << it->second->process_id\
-                     << ", pid: " << pid\
-                     << ", exit code: " << it->second->exit_code;
+                LOG(WARNING)\
+                    <<  "process: " << it->second->process_id\
+                    << ", pid: " << pid\
+                    << ", exit code: " << it->second->exit_code;
                 break;
             }
         }
