@@ -156,6 +156,8 @@ struct Deploy {
     uint32_t step;
     uint32_t interval;
     uint32_t max_per_host;
+    std::string tag;
+    std::vector<std::string> pools;
 };
 struct Service {
     std::string service_name;
@@ -488,7 +490,7 @@ struct ContainerGroupStatistics {
     uint32_t replica;
     uint32_t ready;
     uint32_t pending;
-    uint32_t destroying;
+    uint32_t allocating;
     Resource cpu;
     Resource memory;
     std::vector<VolumResource> volums;
@@ -600,6 +602,7 @@ struct ExecuteCmdResponse {
 
 struct StopJobRequest {
     User user;
+    std::string hostname;
     std::string jobid;
 };
 struct StopJobResponse {
