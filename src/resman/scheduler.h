@@ -69,6 +69,24 @@ struct Requirement {
         }
         return total;
     }
+    int64_t DiskNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kDisk) {
+                total += volums[i].size();
+            }
+        }
+        return total;
+    }
+    int64_t SsdNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kSsd) {
+                total += volums[i].size();
+            }
+        }
+        return total;
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
@@ -112,6 +130,7 @@ struct ContainerGroup {
     int last_update_time;
     int replica;
     std::string name;
+    std::string user_name;
     proto::ContainerDescription container_desc;
     ContainerGroup() : terminated(false),
                        update_interval(0),
@@ -187,7 +206,8 @@ public:
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
                             const proto::ContainerDescription& container_desc,
-                            int replica, int priority);
+                            int replica, int priority,
+                            const std::string& user_name);
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
@@ -214,6 +234,11 @@ public:
                    std::vector<proto::ContainerStatistics>& containers);
     void GetContainersStatistics(const ContainerMap& containers_map,
                                  std::vector<proto::ContainerStatistics>& containers);
+    void ShowUserAlloc(const std::string& user_name, proto::Quota& alloc);
+    bool ChangeStatus(const ContainerGroupId& container_group_id,
+                      const ContainerId& container_id,
+                      ContainerStatus new_status);
+
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
@@ -235,6 +260,7 @@ private:
                         const proto::ContainerDescription& container_desc);
     void SetVolumsAndPorts(const Container::Ptr& container, 
                            proto::ContainerDescription& container_desc);
+    std::string GetNewVersion();
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;
