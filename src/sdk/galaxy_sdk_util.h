@@ -28,6 +28,17 @@ void FillContainerDescription(const ContainerDescription& sdk_container,
 
 void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant);
 
+void FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* service);
+void FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package package);
+void FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data);
+void FillImagePackage(const ImagePackage& sdk_image, ::baidu::galaxy::proto::ImagePackage* image);
+void FillTaskDescription(const TaskDescription& sdk_task, ::baidu::galaxy::proto::TaskDescription* task);
+void FillPodDescription(const PodDescription& sdk_pod, ::baidu::galaxy::proto::PodDescription* pod);
+void FillJobDescription(const JobDescription& sdk_job,
+                        ::baidu::galaxy::proto::JobDescription* job);
+
+void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescription& pb_job, JobDescription* job);
+
 bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, ::baidu::galaxy::sdk::Status* status);
 bool VolumTypeSwitch(const baidu::galaxy::proto::VolumType& pb_type, ::baidu::galaxy::sdk::VolumType* type);
 bool ContainerStatusSwitch(const ::baidu::galaxy::proto::ContainerStatus& pb_status, 
@@ -35,6 +46,9 @@ bool ContainerStatusSwitch(const ::baidu::galaxy::proto::ContainerStatus& pb_sta
 bool AgentStatusSwitch(const ::baidu::galaxy::proto::AgentStatus& pb_status, ::baidu::galaxy::sdk::AgentStatus* status);
 bool VolumMediumSwitch(const ::baidu::galaxy::proto::VolumMedium& pb_medium, ::baidu::galaxy::sdk::VolumMedium* medium);
 bool AuthoritySwitch(const ::baidu::galaxy::proto::Authority& pb_authority, ::baidu::galaxy::sdk::Authority* authority);
+
+bool JobStatusSwitch(const ::baidu::galaxy::proto::JobStatus& pb_status, ::baidu::galaxy::sdk::JobStatus* status);
+bool PodStatusSwitch(const ::baidu::galaxy::proto::PodStatus& pb_status, ::baidu::galaxy::sdk::PodStatus* status);
 
 } // end namespace sdk
 } // end namespace galaxy

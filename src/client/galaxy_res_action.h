@@ -34,7 +34,7 @@ public:
     bool OfflineAgent(const std::string& endpoint);
     bool Status();
     //NO finish
-    bool CreateTag(const std::string& tag);
+    bool CreateTag(const std::string& tag, const std::string& file);
     bool ListTags();
     bool GetPoolByAgent(const std::string& endpoint);
     bool AddUser(const std::string& user, const std::string& token);

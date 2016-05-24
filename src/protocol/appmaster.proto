@@ -126,6 +126,7 @@ message FetchTaskResponse {
 message StopJobRequest {
     optional User user = 1;
     optional string jobid = 2;
+    optional string hostname = 3;
 }
 
 message StopJobResponse {
