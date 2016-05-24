@@ -19,17 +19,79 @@ DECLARE_string(nexus_root);
 DECLARE_string(nexus_addr);
 DECLARE_string(appworker_cmdline);
 
+const std::string sMASTERLock = "/appmaster_lock";
+const std::string sMASTERAddr = "/appmaster";
+const std::string sRESMANPath = "/resman";
+
 namespace baidu {
 namespace galaxy {
 
-AppMasterImpl::AppMasterImpl() : nexus_(NULL) {
+AppMasterImpl::AppMasterImpl() : running_(false) {
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
-    //resman_watcher_ = new ResourceManagerWatcher();
+    resman_watcher_ = new baidu::galaxy::Watcher();
 }
 
 AppMasterImpl::~AppMasterImpl() {
     //delete resman_watcher_;
     delete nexus_;
+}
+
+void AppMasterImpl::Init() {
+    if (!resman_watcher_->Init(boost::bind(&AppMasterImpl::HandleResmanChange, this, _1),
+                                        FLAGS_nexus_addr, FLAGS_nexus_root, sRESMANPath)) {
+        LOG(FATAL) << "init res manager watch failed, agent will exit ...";
+        exit(1);
+    }
+    LOG(INFO) << "init resource manager watcher successfully";
+    running_ = true;
+    return;
+}
+
+void AppMasterImpl::HandleResmanChange(const std::string& new_endpoint) {
+    if (new_endpoint.empty()) {
+        LOG(WARNING) << "endpoint of RM is deleted from nexus";
+    }
+    if (new_endpoint != resman_endpoint_) {
+        MutexLock lock(&resman_mutex_);
+        LOG(INFO) << "RM changes to " << new_endpoint.c_str();
+        resman_endpoint_ = new_endpoint;
+        job_manager_.SetResmanEndpoint(resman_endpoint_);
+    }
+    return;
+}
+
+void AppMasterImpl::OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param,
+                                ::galaxy::ins::sdk::SDKError err) {
+    AppMasterImpl* impl = static_cast<AppMasterImpl*>(param.context);
+    impl->OnLockChange(param.value);
+}
+
+void AppMasterImpl::OnLockChange(std::string lock_session_id) {
+    std::string self_session_id = nexus_->GetSessionID();
+    if (self_session_id != lock_session_id) {
+        LOG(FATAL) << "master lost lock , die.";
+        abort();
+    }
+}
+
+bool AppMasterImpl::RegisterOnNexus(const std::string endpoint) {
+    ::galaxy::ins::sdk::SDKError err;
+    bool ret = nexus_->Lock(FLAGS_nexus_root + sMASTERLock, &err);
+    if (!ret) {
+        LOG(WARNING) << "failed to acquire appmaster lock, " << err;
+        return false;
+    }
+    ret = nexus_->Put(FLAGS_nexus_root + sMASTERAddr, endpoint, &err);
+    if (!ret) {
+        LOG(WARNING) << "failed to write appmaster endpoint to nexus, " << err;
+        return false;
+    }
+    ret = nexus_->Watch(FLAGS_nexus_root + sMASTERLock, &OnMasterLockChange, this, &err);
+    if (!ret) {
+        LOG(WARNING) << "failed to watch appmaster lock, " << err;
+        return false;
+    }
+    return true;
 }
 
 void AppMasterImpl::CreateContainerGroupCallBack(JobDescription job_desc,
@@ -38,7 +100,6 @@ void AppMasterImpl::CreateContainerGroupCallBack(JobDescription job_desc,
                                          const proto::CreateContainerGroupRequest* request,
                                          proto::CreateContainerGroupResponse* response,
                                          bool failed, int err) {
-    MutexLock lock(&resman_mutex_);
     boost::scoped_ptr<const baidu::galaxy::proto::CreateContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<baidu::galaxy::proto::CreateContainerGroupResponse> response_ptr(response);
     if (failed || response_ptr->error_code().status() != proto::kOk) {
@@ -121,7 +182,6 @@ void AppMasterImpl::UpdateContainerGroupCallBack(JobDescription job_desc,
                                          const proto::UpdateContainerGroupRequest* request,
                                          proto::UpdateContainerGroupResponse* response,
                                          bool failed, int err) {
-    MutexLock lock(&resman_mutex_);
     boost::scoped_ptr<const proto::UpdateContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<proto::UpdateContainerGroupResponse> response_ptr(response);
     if (failed || response_ptr->error_code().status() != proto::kOk) {
@@ -178,7 +238,11 @@ void AppMasterImpl::RemoveJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::RemoveJobRequest* request,
                ::baidu::galaxy::proto::RemoveJobResponse* response,
                ::google::protobuf::Closure* done) {
-    
+    Status status = job_manager_.Terminate(request->jobid(), 
+                                            request->user(), request->hostname());
+    response->mutable_error_code()->set_status(status);
+    response->mutable_error_code()->set_reason("remove job ok");
+    done->Run();
     return;
 }
 

@@ -97,11 +97,12 @@ public:
     void Start();
     Status Add(const JobId& job_id, const JobDescription& job_desc);
     Status Update(const JobId& job_id, const JobDescription& job_desc);
-    Status Terminte(const JobId& jobid);
+    Status Terminate(const JobId& jobid, const User& user, const std::string hostname);
     Status HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* request,
                      ::baidu::galaxy::proto::FetchTaskResponse* response);
     void ReloadJobInfo(const JobInfo& job_info);
     void GetJobsOverview(JobOverviewList* jobs_overview);
+    void SetResmanEndpoint(std::string new_endpoint);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
 
     JobManager();

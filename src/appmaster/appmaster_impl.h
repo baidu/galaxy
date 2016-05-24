@@ -10,6 +10,7 @@
 #include "job_manager.h"
 #include "ins_sdk.h"
 #include "rpc/rpc_client.h"
+#include "watcher.h"
 
 namespace baidu {
 namespace galaxy {
@@ -62,6 +63,8 @@ public:
                   const ::baidu::galaxy::proto::FetchTaskRequest* request,
                   ::baidu::galaxy::proto::FetchTaskResponse* response,
                   ::google::protobuf::Closure* done);
+    bool RegisterOnNexus(const std::string endpoint);
+
 private:
     void BuildContainerDescription(const JobDescription& job_desc,
                                   ::baidu::galaxy::proto::ContainerDescription* container_desc);
@@ -77,14 +80,20 @@ private:
                                      const proto::UpdateContainerGroupRequest* request,
                                      proto::UpdateContainerGroupResponse* response,
                                      bool failed, int err);
+    void HandleResmanChange(const std::string& new_endpoint);
+    void OnLockChange(std::string lock_session_id);
+    static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param,
+                            ::galaxy::ins::sdk::SDKError err);
+
+
 private:
     JobManager job_manager_;
     RpcClient rpc_client_;
     InsSDK *nexus_;
     std::string resman_endpoint_;
-    //RMWatcher* resman_watcher_;
+    Watcher* resman_watcher_;
     Mutex resman_mutex_;
-    Mutex mutex_resman_endpoint_;
+    bool running_;
     //::baidu::galaxy::proto::ResourceManager_Stub* resman_;
 };
 
