@@ -402,6 +402,7 @@ message ContainerGroupStatistics {
     optional int64 submit_time = 11;
     optional int64 update_time = 12;
     optional string user_name = 13;
+    optional uint32 destroying = 14;
 }
 
 //proto that used to be saved in nexus
