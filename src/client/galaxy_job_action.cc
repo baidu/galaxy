@@ -176,8 +176,8 @@ bool JobAction::ListJobs() {
 
     bool ret = app_master_->ListJobs(request, &response);
     if (ret) {
-        baidu::common::TPrinter tp(12);
-        tp.AddRow(12, "", "id", "name", "type","status", "stat(run/pending/deploy/death/fail)", "replica", 
+        baidu::common::TPrinter tp(13);
+        tp.AddRow(13, "", "id", "name", "type","status", "stat(run/pending/deploy/death/fail)", "replica", 
                     "work_volum", "data_volum", "cpu", "memory", "create", "update");
         for (uint32_t i = 0; i < response.jobs.size(); ++i) {
             std::vector<std::string> vs;

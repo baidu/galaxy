@@ -34,6 +34,7 @@ void FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPa
 void FillImagePackage(const ImagePackage& sdk_image, ::baidu::galaxy::proto::ImagePackage* image);
 void FillTaskDescription(const TaskDescription& sdk_task, ::baidu::galaxy::proto::TaskDescription* task);
 void FillPodDescription(const PodDescription& sdk_pod, ::baidu::galaxy::proto::PodDescription* pod);
+void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy);
 void FillJobDescription(const JobDescription& sdk_job,
                         ::baidu::galaxy::proto::JobDescription* job);
 

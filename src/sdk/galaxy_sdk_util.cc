@@ -373,6 +373,18 @@ void FillPodDescription(const PodDescription& sdk_pod,
     }
 }
 
+void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
+    deploy->set_replica(sdk_deploy.replica);
+    deploy->set_step(sdk_deploy.step);
+    deploy->set_interval(sdk_deploy.interval);
+    deploy->set_max_per_host(sdk_deploy.max_per_host);
+    deploy->set_tag(sdk_deploy.tag);
+    for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
+        fprintf(stderr, "port is %s\n", sdk_deploy.pools[i].c_str());
+        deploy->add_pools(sdk_deploy.pools[i]);
+    }
+}
+
 void FillJobDescription(const JobDescription& sdk_job,
                         ::baidu::galaxy::proto::JobDescription* job) {
     job->set_name(sdk_job.name);
@@ -386,6 +398,7 @@ void FillJobDescription(const JobDescription& sdk_job,
     } else if (sdk_job.type == kJobBestEffort) {
         job->set_priority(::baidu::galaxy::proto::kJobBestEffort);
     }
+    FillDeploy(sdk_job.deploy, job->mutable_deploy());
     job->set_run_user(sdk_job.run_user);
     FillPodDescription(sdk_job.pod, job->mutable_pod());
 

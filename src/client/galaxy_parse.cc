@@ -43,7 +43,6 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
     deploy->tag = deploy_json["tag"].GetString();
     std::vector<std::string> pools;
     const std::string str_pools = deploy_json["pools"].GetString();
-    fprintf(stderr, "pools: %s\n", str_pools.c_str());
     boost::split(pools, str_pools, boost::is_any_of(","));
     deploy->pools.assign(pools.begin(), pools.end());
     return 0;
@@ -80,7 +79,9 @@ int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRe
 
     //medium
     if (!volum_json.HasMember("medium")) {
-        volum->medium = ::baidu::galaxy::sdk::kDisk;
+        //volum->medium = ::baidu::galaxy::sdk::kDisk;
+        fprintf(stderr, "medium is needed in volum");
+        return -1;
     } else {
         std::string medium = volum_json["medium"].GetString();
         if (medium.compare("kSsd") == 0) {
@@ -92,10 +93,16 @@ int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRe
         } else if (medium.compare("kTmpfs") == 0) {
             volum->medium = ::baidu::galaxy::sdk::kTmpfs;
         } else {
+            fprintf(stderr, "medium  must be [kSsd, kDisk, kBfs, kTmpfs] in volum\n");
+            return -1;
         } 
     }
 
     //source_path
+    if (!volum_json.HasMember("source_path")) {
+        fprintf(stderr, "source_path is needed in volum");
+        return -1;
+    }
     volum->source_path = volum_json["source_path"].GetString();
     
     //dest_path
@@ -289,6 +296,51 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
 
 }
 
+int ParseTcpthrot(const rapidjson::Value& tcp_json, ::baidu::galaxy::sdk::TcpthrotRequired* tcp) {
+    if (!tcp_json.HasMember("recv_bps_quota")) {
+        fprintf(stderr, "recv_bps_quota is needed in tcpthrot\n");
+        return -1;
+    }
+
+    int ok = UnitStringToByte(tcp_json["recv_bps_quota"].GetString(), &tcp->recv_bps_quota);
+    if (ok != 0) {
+        return -1;
+    }
+    
+    if (!tcp_json.HasMember("send_bps_quota")) {
+        fprintf(stderr, "send_bps_quota is needed in tcpthrot\n");
+        return -1;
+    }
+
+    ok = UnitStringToByte(tcp_json["send_bps_quota"].GetString(), &tcp->send_bps_quota);
+    if (ok != 0) {
+        return -1;
+    }
+
+    if (!tcp_json.HasMember("recv_bps_excess")) {
+        tcp->recv_bps_excess = false;
+    } else {
+        tcp->recv_bps_excess = tcp_json["recv_bps_excess"].GetBool();
+    }
+
+    if (!tcp_json.HasMember("send_bps_excess")) {
+        tcp->send_bps_excess = false;
+    } else {
+        tcp->send_bps_excess = tcp_json["send_bps_excess"].GetBool();
+    }
+
+    return 0;
+}
+
+int ParseBlkio(const rapidjson::Value& blkio_json, ::baidu::galaxy::sdk::BlkioRequired* blkio) {
+    if (!blkio_json.HasMember("weight")) {
+        fprintf(stderr, "weight is needed in blkio\n");
+        return -1;
+    }
+    blkio->weight = blkio_json["weight"].GetInt();
+    return 0;
+}
+
 int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescription* task) {
     int ok = 0;
 
@@ -318,23 +370,71 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
         fprintf(stderr, "mem is errror in task mem\n");
         return -1;
     }
+
+    if (!task_json.HasMember("tcp")) {
+        fprintf(stderr, "tcp is required in task tcp\n");
+        return -1;
+    }
+
+    ::baidu::galaxy::sdk::TcpthrotRequired& tcp = task->tcp_throt;
+    ok = ParseTcpthrot(task_json["tcp"], &tcp);
+    if (ok != 0) {
+        fprintf(stderr, "tcp is errror in task tcp\n");
+        return -1;
+    }
+
+    if (!task_json.HasMember("blkio")) {
+        fprintf(stderr, "blkio is required in task blkio\n");
+        return -1;
+    }
+
+    ::baidu::galaxy::sdk::BlkioRequired& blkio = task->blkio;
+    ok = ParseBlkio(task_json["blkio"], &blkio);
+    if (ok != 0) {
+        fprintf(stderr, "blkio is errror in task blkio\n");
+        return -1;
+    }
     
     std::vector< ::baidu::galaxy::sdk::PortRequired>& ports = task->ports;
     if (task_json.HasMember("ports")) {
         const rapidjson::Value& ports_json = task_json["ports"];
+        std::vector<std::string> vec_ports; //端口连续性校验
         for (rapidjson::SizeType i = 0; i < ports_json.Size(); ++i) {
             ::baidu::galaxy::sdk::PortRequired port;
             ok = ParsePort(ports_json[i], &port);
             if (ok != 0) {
                 break;
             }
+            vec_ports.push_back(port.port);
             ports.push_back(port);
         }
 
         if (ok != 0) {
-            //fprintf(stderr, "ports[%u] is error in task\n", i);
             return -1;
         }
+
+        for (size_t i = 1; i < vec_ports.size(); ++i) {
+            if ((vec_ports[i].compare("dynamic") != 0 && vec_ports[i].compare(vec_ports[i-1]) == 0)
+                    || (vec_ports[i-1].compare("dynamic") == 0 
+                        && vec_ports[i].compare("dynamic") != 0)) {
+                fprintf(stderr, "ports are not correct in task, ports must be serial\n");
+                return -1;
+            }
+
+           if (vec_ports[i-1].compare("dynamic") != 0 && vec_ports[i].compare("dynamic") != 0) {
+               int int_port = atoi(vec_ports[i-1].c_str());
+               if (int_port == 0) {
+                   fprintf(stderr, "port %s is error\n", vec_ports[i-1].c_str());
+                   return -1;
+               }
+               ++int_port;
+               if (vec_ports[i].compare(::baidu::common::NumToString(int_port)) != 0) {
+                   fprintf(stderr, "ports are not correct in task, ports must be serial\n");
+                   return -1;
+               }
+           }
+        }
+
     }
 
     if (!task_json.HasMember("exec_package")) {

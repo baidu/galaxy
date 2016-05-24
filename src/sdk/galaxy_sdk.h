@@ -168,6 +168,8 @@ struct TaskDescription {
     std::string id;
     CpuRequired cpu;
     MemoryRequired memory;
+    TcpthrotRequired tcp_throt;
+    BlkioRequired blkio;
     std::vector<PortRequired> ports;
     ImagePackage exe_package;
     DataPackage data_package;
@@ -210,7 +212,7 @@ enum ContainerStatus {
     kContainerPending=1,
     kContainerAllocating=2,
     kContainerReady=3,
-     kContainerFinish = 4,      // finish , when appworker exit with code 0
+    kContainerFinish = 4,      // finish , when appworker exit with code 0
     kContainerError=5,
     kContainerDestroying=6,
     kContainerTerminated=7,
@@ -511,6 +513,7 @@ struct ContainerStatistics {
     Resource cpu;
     Resource memory;
     std::vector<VolumResource> volums;
+    //ResourceError last_res_err;
 };
 struct ShowContainerGroupResponse {
     ErrorCode error_code;

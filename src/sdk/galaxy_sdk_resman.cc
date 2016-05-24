@@ -592,7 +592,6 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
     ::baidu::galaxy::proto::ListAgentsResponse pb_response;
 
     FillUser(request.user, pb_request.mutable_user());
-    //pb_request.set_pool(request.pool);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgents, 
                                         &pb_request, &pb_response, 5, 1);
@@ -662,7 +661,6 @@ bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagRespon
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_tag(request.tag);
     for(size_t i = 0; i < request.endpoint.size(); ++i) {
-        fprintf(stdout, "label1 %s\n", request.endpoint[i].c_str());
         pb_request.add_endpoint(request.endpoint[i]);
     }
     
