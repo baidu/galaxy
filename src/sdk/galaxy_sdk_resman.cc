@@ -1042,7 +1042,6 @@ bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersRespon
     if (!ok) {
         response->error_code.reason = "Rpc SendRequest failed";
         return false;
-    
     }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
@@ -1072,6 +1071,11 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowUser, 
                                         &pb_request, &pb_response, 5, 1);
+
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
         response->error_code.reason = "StatusSwitch from pb status:";
@@ -1123,6 +1127,10 @@ bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserRespon
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::GrantUser, 
                                         &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
         response->error_code.reason = "statusswitch from pb status:";
@@ -1154,6 +1162,11 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::AssignQuota, 
                                         &pb_request, &pb_response, 5, 1);
+
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
         response->error_code.reason = "statusswitch from pb status:";
