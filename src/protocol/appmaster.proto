@@ -73,8 +73,7 @@ message PodInfo {
     optional int64 start_time = 6;
     optional int64 update_time = 7;
     optional int32 fail_count = 8; 
-    optional UpdateAction act = 9;
-    optional int64 heartbeat_time = 10;
+    optional int64 heartbeat_time = 9;
 }
 
 message JobInfo {
@@ -104,7 +103,7 @@ message ExecuteCmdResponse {
 }
 
 
-message FecthTaskRequest {
+message FetchTaskRequest {
     optional string jobid = 1;
     optional string podid = 2;
     optional string endpoint = 3;
@@ -132,7 +131,7 @@ message StopJobResponse {
 
 service AppMaster {
     //for app-worker: report & task assignment
-    rpc FetchTask(FecthTaskRequest) returns (FetchTaskResponse);
+    rpc FetchTask(FetchTaskRequest) returns (FetchTaskResponse);
 
    // rpc Status(StatusRequest) returns (StatusResponse);
 

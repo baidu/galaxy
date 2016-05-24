@@ -7,10 +7,19 @@
 #include <map>
 #include <set>
 
-#include "src/protocol/appmaster.pb.h"
+#include "job_manager.h"
+#include "ins_sdk.h"
+#include "rpc/rpc_client.h"
 
 namespace baidu {
 namespace galaxy {
+
+using ::galaxy::ins::sdk::InsSDK;
+using ::baidu::galaxy::proto::ResMan_Stub;
+using ::baidu::galaxy::proto::Status;
+using ::baidu::galaxy::proto::ErrorCode;
+using ::baidu::galaxy::proto::Cgroup;
+using ::baidu::galaxy::proto::JobDescription;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
@@ -50,17 +59,33 @@ public:
                    ::google::protobuf::Closure* done);
 
     void FetchTask(::google::protobuf::RpcController* controller,
-                  const ::baidu::galaxy::proto::FecthTaskRequest* request,
+                  const ::baidu::galaxy::proto::FetchTaskRequest* request,
                   ::baidu::galaxy::proto::FetchTaskResponse* response,
                   ::google::protobuf::Closure* done);
 private:
+    void BuildContainerDescription(const JobDescription& job_desc,
+                                  ::baidu::galaxy::proto::ContainerDescription* container_desc);
+    void CreateContainerGroupCallBack(JobDescription job_desc,
+                                       proto::SubmitJobResponse* submit_response,
+                                       ::google::protobuf::Closure* done,
+                                       const proto::CreateContainerGroupRequest* request,
+                                       proto::CreateContainerGroupResponse* response,
+                                       bool failed, int err) ;
+    void UpdateContainerGroupCallBack(JobDescription job_desc, 
+                                     proto::UpdateJobResponse* update_response,
+                                     ::google::protobuf::Closure* done,
+                                     const proto::UpdateContainerGroupRequest* request,
+                                     proto::UpdateContainerGroupResponse* response,
+                                     bool failed, int err);
+private:
     JobManager job_manager_;
-    RpcClient* rpc_client;
+    RpcClient rpc_client_;
     InsSDK *nexus_;
-    std::string resman__endpoint_;
-    RMWatcher* resman_watcher_;
+    std::string resman_endpoint_;
+    //RMWatcher* resman_watcher_;
     Mutex resman_mutex_;
-    ResourceManager_Stub* resman_;
+    Mutex mutex_resman_endpoint_;
+    //::baidu::galaxy::proto::ResourceManager_Stub* resman_;
 };
 
 } //namespace galaxy
