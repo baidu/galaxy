@@ -61,7 +61,7 @@ env.Program('test_volum', test_volum_src);
 test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc') + Glob('src/agent/resource/*.cc') + Glob('src/agent/collector/*.cc')
 env.Program('test_container', test_container_src);
 
-test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_parse.cc']
+test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_util.cc','src/client/galaxy_parse.cc']
 env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])

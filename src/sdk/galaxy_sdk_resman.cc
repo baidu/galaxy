@@ -59,11 +59,23 @@ bool ResourceManager::EnterSafeMode(const EnterSafeModeRequest& request, EnterSa
     
     FillUser(request.user, pb_request.mutable_user());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::EnterSafeMode, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::EnterSafeMode, 
+                                        &pb_request, &pb_response, 5, 1);
     
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
+
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += "failed";
+
+        return false;
+    }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
         return false;
@@ -77,11 +89,23 @@ bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSa
     
     FillUser(request.user, pb_request.mutable_user());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::LeaveSafeMode, &pb_request, &pb_response, 5, 1);
-    
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::LeaveSafeMode, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
+    
+    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+
+        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed";
+        return false;
+    }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
         return false;
@@ -94,9 +118,18 @@ bool ResourceManager::Status(const StatusRequest& request, StatusResponse* respo
     ::baidu::galaxy::proto::StatusResponse pb_response;
 
     FillUser(request.user, pb_request.mutable_user());
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::Status, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::Status, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -122,6 +155,11 @@ bool ResourceManager::Status(const StatusRequest& request, StatusResponse* respo
         const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_response.volum(i);
         VolumResource volum;
         if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+            response->error_code.reason = "VolumMediumSwitch from pb status:";
+            response->error_code.reason += pb_response.error_code().status();
+            response->error_code.reason += " failed";
+
+            //response->error_code.reason = "VolumMediumSwitch from pb status:" + pb_volum.medium() + "failed";
             return false;
         }
         volum.volum.total = pb_volum.volum().total();
@@ -151,9 +189,21 @@ bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& re
     pb_request.set_replica(request.replica);
     pb_request.set_name(request.name);
     FillContainerDescription(request.desc, pb_request.mutable_desc());
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::CreateContainerGroup, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                            &::baidu::galaxy::proto::ResMan_Stub::CreateContainerGroup, 
+                                            &pb_request, &pb_response, 5, 1);
+
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
     
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+
+        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -171,8 +221,21 @@ bool ResourceManager::RemoveContainerGroup(const RemoveContainerGroupRequest& re
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_id(request.id);
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveContainerGroup, &pb_request, &pb_response, 5,1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::RemoveContainerGroup, 
+                                        &pb_request, &pb_response, 5,1);
+
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
+
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+
+        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed"; 
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -191,9 +254,20 @@ bool ResourceManager::UpdateContainerGroup(const UpdateContainerGroupRequest& re
     pb_request.set_id(request.id);
     pb_request.set_interval(request.interval);
     FillContainerDescription(request.desc, pb_request.mutable_desc());
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::UpdateContainerGroup, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::UpdateContainerGroup, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
     
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+
+        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -208,9 +282,18 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
     ::baidu::galaxy::proto::ListContainerGroupsResponse pb_response;
 
     FillUser(request.user, pb_request.mutable_user());
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListContainerGroups, &pb_request, &pb_response, 5, 1);
-    
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ListContainerGroups, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
+        
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -224,10 +307,11 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
         container.replica = pb_container.replica();
         container.ready = pb_container.ready();
         container.pending = pb_container.pending();
+        container.allocating = pb_container.allocating();
         container.cpu.total = pb_container.cpu().total();
         container.cpu.assigned = pb_container.cpu().assigned();
         container.cpu.used = pb_container.cpu().used();
-        container.memory.total = pb_container.memory().total();
+        //container.memory.total = pb_container.memory().total();
         container.memory.assigned = pb_container.memory().assigned();
         container.memory.used = pb_container.memory().used();
         
@@ -235,9 +319,12 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
             VolumResource volum;
             if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                response->error_code.reason = "VolumMediumSwitch from pb medium:";
+                response->error_code.reason += pb_response.error_code().status();
+                response->error_code.reason += " failed";
                 return false;
             }
-            volum.volum.total = pb_volum.volum().total();
+            //volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();
             volum.device_path = pb_volum.device_path();
@@ -258,9 +345,18 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
 
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_id(request.id);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ShowContainerGroup, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ShowContainerGroup, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -278,19 +374,80 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
     
     if (! VolumTypeSwitch(pb_response.desc().workspace_volum().type(), &response->desc.workspace_volum.type) 
             || ! VolumMediumSwitch(pb_response.desc().workspace_volum().medium(), &response->desc.workspace_volum.medium)) {
+        response->error_code.reason = "VolumTypeSwitch:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed or VolumMediumSwitch ";
+        response->error_code.reason += pb_response.desc().workspace_volum().medium();
+        response->error_code.reason += " failed";
+
         return false;
     }
+
     response->desc.workspace_volum.source_path = pb_response.desc().workspace_volum().source_path();
     response->desc.workspace_volum.dest_path = pb_response.desc().workspace_volum().dest_path();
     response->desc.workspace_volum.readonly = pb_response.desc().workspace_volum().readonly();
     response->desc.workspace_volum.exclusive = pb_response.desc().workspace_volum().exclusive();
     response->desc.workspace_volum.use_symlink = pb_response.desc().workspace_volum().use_symlink();
 
+    for (int i = 0; i < pb_response.desc().data_volums().size(); ++i) {
+        const ::baidu::galaxy::proto::VolumRequired& pb_volum = pb_response.desc().data_volums(i);
+        VolumRequired volum;
+        volum.size = pb_volum.size();
+        volum.source_path = pb_volum.source_path();
+        volum.dest_path = pb_volum.dest_path();
+        volum.readonly = pb_volum.readonly();
+        volum.exclusive = pb_volum.exclusive();
+        volum.use_symlink = pb_volum.use_symlink();
+        if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                response->error_code.reason = "VolumMediumSwitch:";
+                response->error_code.reason += pb_volum.medium();
+                response->error_code.reason += " failed";
+                return false;
+        }
+        
+        if ( ! VolumTypeSwitch(pb_volum.type(), &volum.type)) {
+                response->error_code.reason = "VolumTypeSwitch:";
+                response->error_code.reason += pb_volum.type();
+                response->error_code.reason += " failed";
+                return false;
+        }
+        response->desc.data_volums.push_back(volum);
+    }
+
+    for (int i = 0; i < pb_response.desc().cgroups().size(); ++i) {
+        const ::baidu::galaxy::proto::Cgroup& pb_cgroup = pb_response.desc().cgroups(i);
+        Cgroup cgroup;
+        cgroup.id = pb_cgroup.id();
+        cgroup.cpu.milli_core = pb_cgroup.cpu().milli_core();
+        cgroup.cpu.excess = pb_cgroup.cpu().excess();
+        cgroup.memory.size = pb_cgroup.memory().size();
+        cgroup.memory.excess = pb_cgroup.memory().excess();
+        cgroup.blkio.weight = pb_cgroup.blkio().weight();
+        cgroup.tcp_throt.recv_bps_quota = pb_cgroup.tcp_throt().recv_bps_quota();
+        cgroup.tcp_throt.recv_bps_excess = pb_cgroup.tcp_throt().recv_bps_excess();
+        cgroup.tcp_throt.send_bps_quota = pb_cgroup.tcp_throt().send_bps_quota();
+        cgroup.tcp_throt.send_bps_excess = pb_cgroup.tcp_throt().send_bps_excess();
+    
+        for (int j = 0; j < pb_cgroup.ports().size(); ++j) {
+            const ::baidu::galaxy::proto::PortRequired& pb_port = pb_cgroup.ports(j);
+            PortRequired port;
+            port.port_name = pb_port.port_name();
+            port.port = pb_port.port();
+            port.real_port = pb_port.real_port();
+            cgroup.ports.push_back(port);
+        }
+        response->desc.cgroups.push_back(cgroup);
+
+    }
+
     for (int i = 0; i < pb_response.containers().size(); ++i) {
         const ::baidu::galaxy::proto::ContainerStatistics& pb_container = pb_response.containers(i);
         ContainerStatistics container;
         container.endpoint = pb_container.endpoint();
         if (! ContainerStatusSwitch(pb_container.status(), &container.status)) {
+            response->error_code.reason = "StatusSwitch from pb status:";
+            response->error_code.reason += pb_response.error_code().status();
+            response->error_code.reason += " failed";
             return false;
         }
         container.cpu.total = pb_container.cpu().total();
@@ -304,6 +461,9 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
             VolumResource volum;
             if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                response->error_code.reason = "VolumMediumSwitch:";
+                response->error_code.reason += pb_volum.medium();
+                response->error_code.reason += " failed";
                 return false;
             }
             volum.volum.total = pb_volum.volum().total();
@@ -325,9 +485,19 @@ bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse*
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
     pb_request.set_pool(request.pool);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AddAgent, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::AddAgent, 
+                                        &pb_request, &pb_response, 5, 1);
+
+    if (!ok) { 
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -343,9 +513,18 @@ bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgent
 
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveAgent, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::RemoveAgent, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -360,8 +539,19 @@ bool ResourceManager::OnlineAgent(const OnlineAgentRequest& request, OnlineAgent
     ::baidu::galaxy::proto::OnlineAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::OnlineAgent, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::OnlineAgent, 
+                                        &pb_request, &pb_response, 5, 1);
+
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
+
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -376,8 +566,18 @@ bool ResourceManager::OfflineAgent(const OfflineAgentRequest& request, OfflineAg
     ::baidu::galaxy::proto::OfflineAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::OfflineAgent, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::OfflineAgent, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
+
     if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -393,9 +593,19 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
 
     FillUser(request.user, pb_request.mutable_user());
     //pb_request.set_pool(request.pool);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgents, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ListAgents, 
+                                        &pb_request, &pb_response, 5, 1);
+
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -408,6 +618,9 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
         if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
+            response->error_code.reason = "AgentStatusSwitch from pb status:";
+            response->error_code.reason += pb_agent.status();
+            response->error_code.reason += " failed";
             return false;
         }
         agent.pool = pb_agent.pool();
@@ -421,6 +634,9 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
             if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                response->error_code.reason = "VolumMediumSwitch from pb medium:";
+                response->error_code.reason += pb_volum.medium();
+                response->error_code.reason += " failed";
                 return false;
             }
             volum.volum.total = pb_volum.volum().total();
@@ -446,12 +662,22 @@ bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagRespon
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_tag(request.tag);
     for(size_t i = 0; i < request.endpoint.size(); ++i) {
+        fprintf(stdout, "label1 %s\n", request.endpoint[i].c_str());
         pb_request.add_endpoint(request.endpoint[i]);
     }
     
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::CreateTag, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::CreateTag, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -466,8 +692,17 @@ bool ResourceManager::ListTags(const ListTagsRequest& request, ListTagsResponse*
     ::baidu::galaxy::proto::ListTagsRequest  pb_request;
     ::baidu::galaxy::proto::ListTagsResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListTags, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ListTags, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -487,9 +722,18 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
     ::baidu::galaxy::proto::ListAgentsByTagResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_tag(request.tag);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByTag, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByTag, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
 
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -502,6 +746,9 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
         if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
+            response->error_code.reason = "AgentStatusSwitch from pb status:";
+            response->error_code.reason += pb_response.error_code().status();
+            response->error_code.reason += " failed";
             return false;
         }
         agent.pool = pb_agent.pool();
@@ -515,6 +762,9 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
             if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                response->error_code.reason = "VolumMediumSwitch from pb medium:";
+                response->error_code.reason += pb_response.error_code().status();
+                response->error_code.reason += " failed";
                 return false;
             }
             volum.volum.total = pb_volum.volum().total();
@@ -541,8 +791,18 @@ bool ResourceManager::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTa
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GetTagsByAgent, &pb_request, &pb_response, 5, 1);
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::GetTagsByAgent, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) { 
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -565,8 +825,17 @@ bool ResourceManager::AddAgentToPool(const AddAgentToPoolRequest& request, AddAg
     pb_request.set_endpoint(request.endpoint);
     pb_request.set_pool(request.pool);
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AddAgentToPool, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::AddAgentToPool, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -582,8 +851,18 @@ bool ResourceManager::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& requ
     ::baidu::galaxy::proto::RemoveAgentFromPoolResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveAgentFromPool, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::RemoveAgentFromPool, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    
+    }
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
     response->error_code.reason = pb_response.error_code().reason();
@@ -598,10 +877,22 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
     ::baidu::galaxy::proto::ListAgentsByPoolRequest pb_request;
     ::baidu::galaxy::proto::ListAgentsByPoolResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByPool, &pb_request, &pb_response, 5, 1);
+    pb_request.set_pool(request.pool);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByPool, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    
+    }
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -612,6 +903,9 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
         if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
+            response->error_code.reason = "AgentStatusSwitch from pb status:";
+            response->error_code.reason += pb_response.error_code().status();
+            response->error_code.reason += " failed";
             return false;
         }
         agent.pool = pb_agent.pool();
@@ -625,6 +919,9 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
             if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
+                response->error_code.reason = "VolumMediumSwitch from pb medium:";
+                response->error_code.reason += pb_response.error_code().status();
+                response->error_code.reason += " failed";
                 return false;
             }
             volum.volum.total = pb_volum.volum().total();
@@ -649,14 +946,26 @@ bool ResourceManager::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPo
     ::baidu::galaxy::proto::GetPoolByAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GetPoolByAgent, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::GetPoolByAgent, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    
+    }
     if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
+
     response->pool = pb_response.pool();
     return true;
 }
@@ -667,11 +976,22 @@ bool ResourceManager::AddUser(const AddUserRequest& request, AddUserResponse* re
     FillUser(request.user, pb_request.mutable_user());
     FillUser(request.admin, pb_request.mutable_admin());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AddUser, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::AddUser, 
+                                        &pb_request, &pb_response, 5, 1);
 
-    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    
+    }
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -685,11 +1005,23 @@ bool ResourceManager::RemoveUser(const RemoveUserRequest& request, RemoveUserRes
     FillUser(request.user, pb_request.mutable_user());
     FillUser(request.admin, pb_request.mutable_admin());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::RemoveUser, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::RemoveUser, 
+                                        &pb_request, &pb_response, 5, 1);
 
-    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    
+    }
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
         return false;
     }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -703,15 +1035,27 @@ bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersRespon
 
     FillUser(request.user, pb_request.mutable_user());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ListUsers, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ListUsers, 
+                                        &pb_request, &pb_response, 5, 1);
 
-    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+        return false;
+    }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
+
     for (int i = 0; i < pb_response.user().size(); ++i) {
         response->user.push_back(pb_response.user(i));
     }
@@ -724,21 +1068,36 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
     FillUser(request.user, pb_request.mutable_user());
     FillUser(request.admin, pb_request.mutable_admin());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::ShowUser, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ShowUser, 
+                                        &pb_request, &pb_response, 5, 1);
 
-    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "StatusSwitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+        return false;
+    }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
+
     for (int i = 0; i < pb_response.pools().size(); ++i) {
         response->pools.push_back(pb_response.pools(i));
     }
     for (int i = 0; i < pb_response.authority().size(); ++i) {
         Authority authority;
         if (! AuthoritySwitch(pb_response.authority(i), &authority)) {
+            response->error_code.reason = "AuthoritySwitch from pb authoiry:";
+            response->error_code.reason += pb_response.authority(i);
+            response->error_code.reason += " failed";
             return false;
         }
         response->authority.push_back(authority);
@@ -765,15 +1124,26 @@ bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserRespon
     FillUser(request.admin, pb_request.mutable_admin());
     FillGrant(request.grant, pb_request.mutable_grant());
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::GrantUser, &pb_request, &pb_response, 5, 1);
-
-    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::GrantUser, 
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "statusswitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+        return false;
+    }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
+
     return true;
 }
 
@@ -789,15 +1159,27 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
     quota->set_ssd(request.quota.ssd);
     quota->set_replica(request.quota.replica);
 
-    rpc_client_->SendRequest(res_stub_, &::baidu::galaxy::proto::ResMan_Stub::AssignQuota, &pb_request, &pb_response, 5, 1);
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::AssignQuota, 
+                                        &pb_request, &pb_response, 5, 1);
 
-    if (! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
+
+    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
+        response->error_code.reason = "statusswitch from pb status:";
+        response->error_code.reason += pb_response.error_code().status();
+        response->error_code.reason += " failed";
+        return false;
+    }
+
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
+
     return true;
 }
 
