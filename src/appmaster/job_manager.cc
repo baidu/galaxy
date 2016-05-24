@@ -190,19 +190,13 @@ Status JobManager::Add(const JobId& job_id, const JobDescription& job_desc) {
 
     job->create_time_ = ::baidu::common::timer::get_micros();
     job->update_time_ = ::baidu::common::timer::get_micros();
-    // TODO add nexus lock
-    //SaveToNexus(job);
-    
+    //SaveToNexus(job);   
     MutexLock lock(&mutex_); 
     jobs_[job_id] = job;
-    /*
-    LOG(INFO, "job %s[%s] submitted with deploy_step %d, replica %d , pod version %s",
-      job_id.c_str(), 
-      job_desc.name().c_str(),
-      job_desc.deploy().step(),
-      job_desc.deploy()replica(),
-      job->latest_version.c_str());
-      */
+    LOG(INFO) << "job[" << job_id << "] jobname[" << job_desc.name() 
+        <<"] step[" << job_desc.deploy().step() << "] replica[" 
+        << job_desc.deploy().replica() << "] version[" << job->curent_version_ << "] "
+        << "submitted" << __FUNCTION__;
     return kOk;
 }
 
@@ -211,7 +205,8 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
     std::map<JobId, Job*>::iterator it;
     it = jobs_.find(job_id);
     if (it == jobs_.end()) {
-        //LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
+        LOG(WARNING) << "update job " << job_id << "failed."
+        << "job not found" << __FUNCTION__;
         return kJobNotFound;
     }
     Job* job = it->second;
@@ -475,6 +470,9 @@ Status JobManager::HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* r
     if (job_it == jobs_.end()) {
         response->mutable_error_code()->set_status(kJobNotFound);
         response->mutable_error_code()->set_reason("Jobid not found");
+        LOG(WARNING) << "Fetch job[" << request->jobid() << "]" 
+        << "from worker[" << request->endpoint() << "][" 
+        << request->podid() << "]" << "failed." << __FUNCTION__;
         return kJobNotFound;
     }
     Job* job = job_it->second;
@@ -483,10 +481,14 @@ Status JobManager::HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* r
     if (fsm_it != fsm_.end()) {
         Status rlt = fsm_it->second->trans_func_(job, NULL);
         if (kOk != rlt) {
+            LOG(WARNING) << "FSM trans exec failed" << __FUNCTION__;
             return rlt;
         }
         job->status_ = fsm_it->second->next_status_;
+        //SaveToNexus(job);
     } else {
+        LOG(WARNING) << "fsm state:" << job->status_ << "event:" <<
+        JobEvent_Name(kFetch) << " unexceptable";
         return kStatusConflict;
     }
     std::map<std::string, DispatchFunc>::iterator dispatch_it = dispatch_.find(JobStatus_Name(job->status_));
