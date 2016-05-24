@@ -93,6 +93,10 @@ int Cgroup::Construct()
 // Fixme: freeze first, and than kill
 int Cgroup::Destroy()
 {
+    if (subsystem_.empty() || NULL == freezer_.get()) {
+        return 0;
+    }
+
     int ret = 0;
 
     if (0 != freezer_->Freeze()) {

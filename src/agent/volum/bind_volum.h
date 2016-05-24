@@ -15,8 +15,9 @@ public:
     BindVolum();
     ~BindVolum();
 
-    int Construct();
-    //int Destroy();
+    baidu::galaxy::util::ErrorCode Construct();
+    //baidu::galaxy::util::ErrorCode Destroy();
+    //baidu::galaxy::util::ErrorCode Gc();
     int64_t Used();
     std::string ToString();
 

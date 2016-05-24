@@ -254,13 +254,12 @@ int Container::RunRoutine(void*)
     }
 
     LOG(INFO) << "succed in mounting root fs";
-    ::chdir(baidu::galaxy::path::ContainerRootPath(id_.SubId()).c_str());
     // change root
-    //if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id()).c_str())) {
-    //    LOG(WARNING) << "chroot failed: " << strerror(errno);
-    //    return -1;
-    //}
-    //LOG(INFO) << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId());
+    if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str())) {
+        LOG(WARNING) << "chroot failed: " << strerror(errno);
+        return -1;
+    }
+    LOG(INFO) << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId());
     // change user or sh -l
     //baidu::galaxy::util::ErrorCode ec = baidu::galaxy::user::Su(desc_.run_user());
     //if (ec.Code() != 0) {
@@ -268,15 +267,19 @@ int Container::RunRoutine(void*)
     //    return -1;
     //}
     LOG(INFO) << "su user " << desc_.run_user() << " sucessfully";
+
+    ::chdir("/");
+
     // export env
     // start appworker
     LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
-    char* argv[] = {
+    char* argv[] = {"cat", NULL};
+    /*char* argv[] = {
         const_cast<char*>("sh"),
         const_cast<char*>("-c /bin/cat"),
-//const_cast<char*>(desc_.cmd_line().c_str()),
+    //const_cast<char*>(desc_.cmd_line().c_str()),
         NULL
-    };
+    };*/
     ::execv("/bin/sh", argv);
     LOG(WARNING) << "exec cmd " << desc_.cmd_line() << " failed: " << strerror(errno);
     return -1;
