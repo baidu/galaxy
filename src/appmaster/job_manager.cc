@@ -235,13 +235,16 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
     return kOk;
 }
 
-Status JobManager::Terminte(const JobId& jobid) {
+Status JobManager::Terminate(const JobId& jobid,
+                            const User& user,
+                            const std::string hostname) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator it = jobs_.find(jobid);
     if (it == jobs_.end()) {
         return kJobNotFound;
     }
     Job* job = it->second;
+    job->user_.CopyFrom(user);
     std::string fsm_key = BuildFsmKey(job->status_, kRemove);
     std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
     if (fsm_it != fsm_.end()) {
@@ -310,6 +313,7 @@ Status JobManager::RemoveJob(Job* job, void* arg) {
 
 Status JobManager::ClearJob(Job* job, void* arg) {
     mutex_.AssertHeld();
+    MutexLock lock(&resman_mutex_);
     proto::RemoveContainerGroupRequest* container_request = new proto::RemoveContainerGroupRequest();
     proto::RemoveContainerGroupResponse* container_response = new proto::RemoveContainerGroupResponse();
     container_request->mutable_user()->CopyFrom(*(User*)arg);
@@ -332,7 +336,6 @@ Status JobManager::ClearJob(Job* job, void* arg) {
 void JobManager::RemoveContainerGroupCallBack(const proto::RemoveContainerGroupRequest* request,
                                           proto::RemoveContainerGroupResponse* response,
                                           bool failed, int) {
-    MutexLock lock(&resman_mutex_);
     boost::scoped_ptr<const proto::RemoveContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<proto::RemoveContainerGroupResponse> response_ptr(response);
     if (failed || response_ptr->error_code().status() != kOk) {
@@ -618,6 +621,12 @@ bool JobManager::DeleteFromNexus(const JobId& job_id) {
           */
     }
     return delete_ok;
+}
+
+void JobManager::SetResmanEndpoint(std::string new_endpoint) {
+    MutexLock lock(&resman_mutex_);
+    resman_endpoint_ = new_endpoint;
+    return;
 }
 
 }
