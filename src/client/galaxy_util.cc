@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
-#include <string.h>
+#include <cstring>
 #include <stdio.h>
 #include <string>
 #include <map>
