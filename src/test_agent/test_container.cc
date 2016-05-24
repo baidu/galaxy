@@ -5,6 +5,7 @@
 #include "unit_test.h"
 #include "protocol/galaxy.pb.h"
 #include "agent/container/container.h"
+
 #include "agent/util/path_tree.h"
 #include "agent/cgroup/subsystem_factory.h"
 
@@ -13,6 +14,8 @@
 #ifdef TEST_CONTAINER_ON
 
 DECLARE_string(cgroup_root_path);
+DECLARE_string(mount_templat);
+
 namespace baidu {
 namespace galaxy {
 namespace test {
@@ -21,7 +24,9 @@ class TestContainer : public testing::Test {
 protected:
 
     static void SetUpTestCase() {
+        baidu::galaxy::container::ContainerStatus::Setup();
         FLAGS_cgroup_root_path = "/tmp/cgroup";
+        FLAGS_mount_templat = "/home,/bin,/boot,/cgroups,/dev,/etc,/lib,/lib64,/lost+found,/media,/misc,/mnt,/opt,/sbin,/selinux,/srv,/sys,/tmp,/usr,/var";
         baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
         baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     }
@@ -83,6 +88,7 @@ TEST_F(TestContainer, Construct1)
     baidu::galaxy::container::ContainerId id("container_group_id", "container_id");
     baidu::galaxy::container::Container container(id, desc);
     EXPECT_EQ(0, container.Construct());
+    sleep(100000);
     EXPECT_EQ(0, container.Destroy());
 }
 

@@ -25,7 +25,7 @@ TmpfsVolum::TmpfsVolum()
 
 TmpfsVolum::~TmpfsVolum() {}
 
-int TmpfsVolum::Construct()
+baidu::galaxy::util::ErrorCode TmpfsVolum::Construct()
 {
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     assert(baidu::galaxy::proto::kTmpfs == vr->medium());
@@ -37,39 +37,32 @@ int TmpfsVolum::Construct()
     std::map<std::string, boost::shared_ptr<Mounter> >::iterator iter = mounters.find(target_path.string());
 
     if (iter != mounters.end() && iter->second->source == "tmpfs") {
-        return 0;
+        return ERRORCODE_OK;
     }
 
     if (iter != mounters.end()) {
-        LOG(WARNING) << ContainerId() << " aleady mount another path on " << target_path.string() << " : " << iter->second->ToString();
-        return -1;
+        return ERRORCODE(-1, "mount another path");
     }
 
     if (!boost::filesystem::exists(target_path, ec) && !boost::filesystem::create_directories(target_path, ec)) {
-        LOG(WARNING) << ContainerId() << " target_path " << target_path << " donot exist and is created failed: "
-                     << ec.message();
-        return  -1;
+        return ERRORCODE(-1, "failed in creating dirs(%s): %s",
+                target_path.string().c_str(),
+                ec.message().c_str());
     }
 
     baidu::galaxy::util::ErrorCode errc = MountTmpfs(target_path.string(), vr->size(), vr->readonly());
 
     if (0 != errc.Code()) {
-        LOG(WARNING) << ContainerId() << " mount tmpfs failed: " << errc.Message();
-        return -1;
+        return ERRORCODE(-1, "mount failed: %s", errc.Message().c_str());
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
-int TmpfsVolum::Destroy()
+baidu::galaxy::util::ErrorCode TmpfsVolum::Destroy()
 {
     // do nothing
-
-    baidu::galaxy::util::ErrorCode ec = Umount(this->TargetPath());
-    if (ec.Code() != 0) {
-        LOG(WARNING) << "umount tmpfs falied:" << ec.Message();
-    }
-    return ec.Code();
+    return Umount(this->TargetPath());
 }
 
 int64_t TmpfsVolum::Used()
