@@ -95,8 +95,6 @@ baidu::galaxy::util::ErrorCode VolumGroup::Construct()
 
 baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
 {
-    int ret = 0;
-
     for (size_t i = 0; i < data_volum_.size(); i++) {
         if (0 != data_volum_[i]->Destroy()) {
             return ERRORCODE(-1,
