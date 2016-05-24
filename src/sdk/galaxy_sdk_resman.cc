@@ -444,6 +444,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         const ::baidu::galaxy::proto::ContainerStatistics& pb_container = pb_response.containers(i);
         ContainerStatistics container;
         container.endpoint = pb_container.endpoint();
+        container.last_res_err = (::baidu::galaxy::sdk::ResourceError)pb_container.last_res_err();
         if (! ContainerStatusSwitch(pb_container.status(), &container.status)) {
             response->error_code.reason = "StatusSwitch from pb status:";
             response->error_code.reason += pb_response.error_code().status();

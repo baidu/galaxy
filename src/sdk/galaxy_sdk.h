@@ -61,6 +61,21 @@ enum VolumMedium {
     kBfs=3,
     kTmpfs=4,
 };
+
+enum ResourceError {
+    kResOk = 0,
+    kNoCpu = 1,
+    kNoMemory = 2,
+    kNoMedium = 3,
+    kNoDevice = 4,
+    kNoPort = 5,
+    kPortConflict = 6,
+    kTagMismatch = 7,
+    kNoMemoryForTmpfs = 8,
+    kPoolMismatch = 9,
+    kTooManyPods = 10,
+};
+
 struct VolumResource {
     VolumMedium medium;
     Resource volum;
@@ -513,7 +528,7 @@ struct ContainerStatistics {
     Resource cpu;
     Resource memory;
     std::vector<VolumResource> volums;
-    //ResourceError last_res_err;
+    ResourceError last_res_err;
 };
 struct ShowContainerGroupResponse {
     ErrorCode error_code;
