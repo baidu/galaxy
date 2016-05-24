@@ -35,6 +35,7 @@ struct Task {
     std::string task_id;
     TaskDescription desc;
     TaskStatus status;
+    TaskStatus prev_status;
     int32_t packages_size;
     int32_t fail_retry_times;
     TaskEnv env;
@@ -53,6 +54,9 @@ public:
     int CheckTask(const std::string& task_id, Task& task);
     int CleanTask(const std::string& task_id);
     int ClearTasks();
+
+private:
+    int DoStartTask(const std::string& task_id);
 
 private:
     Mutex mutex_;

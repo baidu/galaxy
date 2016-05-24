@@ -4,6 +4,7 @@
 
 #include "appworker_impl.h"
 
+#include <fstream>
 #include <algorithm>
 #include <cctype>
 #include <boost/bind.hpp>
@@ -15,6 +16,10 @@
 
 #include "protocol/appmaster.pb.h"
 
+DECLARE_int32(appworker_fetch_task_timeout);
+DECLARE_int32(appworker_fetch_task_interval);
+DECLARE_int32(appworker_update_appmaster_stub_interval);
+DECLARE_int32(appworker_background_thread_pool_size);
 DECLARE_string(nexus_addr);
 DECLARE_string(nexus_root_path);
 DECLARE_string(appmaster_nexus_path);
@@ -23,13 +28,12 @@ DECLARE_string(appworker_job_id_env);
 DECLARE_string(appworker_pod_id_env);
 DECLARE_string(appworker_task_ids_env);
 DECLARE_string(appworker_cgroup_subsystems_env);
-DECLARE_int32(appworker_fetch_task_timeout);
-DECLARE_int32(appworker_fetch_task_interval);
-DECLARE_int32(appworker_update_appmaster_stub_interval);
-DECLARE_int32(appworker_background_thread_pool_size);
+DECLARE_string(appworker_exit_file);
 
 namespace baidu {
 namespace galaxy {
+
+int SaveExitFile(const std::string& path, int32_t err);
 
 AppWorkerImpl::AppWorkerImpl() :
     mutex_(),
@@ -168,30 +172,48 @@ void AppWorkerImpl::UpdateAppMasterStub() {
         }
     } while (0);
 
-    backgroud_pool_.DelayTask(
-        FLAGS_appworker_update_appmaster_stub_interval,
-        boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this)
-    );
+    return;
 }
 
 void AppWorkerImpl::FetchTask() {
     MutexLock lock(&mutex_);
+    // 1.validate pod status
+    Pod pod;
+    pod_manager_.QueryPod(pod);
+    // safe exit or error exit
+    switch (pod.status) {
+        case proto::kPodFinished: {
+            LOG(WARNING) << "pod finished";
+            int ret = SaveExitFile(FLAGS_appworker_exit_file, 0);
+            exit(ret);
+        }
+        case proto::kPodFailed: {
+            LOG(WARNING) << "pod failed";
+            int ret = SaveExitFile(FLAGS_appworker_exit_file, -1);
+            exit(ret);
+        }
+        case proto::kPodTerminated:{
+            LOG(WARNING) << "pod terminated";
+            int ret = SaveExitFile(FLAGS_appworker_exit_file, -2);
+            exit(ret);
+        }
+        default:
+            break;
+    }
+
+    // 2.validate stub
     if (NULL == appmaster_stub_) {
-        backgroud_pool_.DelayTask(
-            FLAGS_appworker_fetch_task_interval,
-            boost::bind(&AppWorkerImpl::FetchTask, this)
-        );
+        backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::FetchTask, this));
         return;
     }
 
+    // 3.send request
     FetchTaskRequest* request = new FetchTaskRequest;
     FetchTaskResponse* response = new FetchTaskResponse;
     request->set_jobid(job_id_);
     request->set_endpoint(endpoint_);
     request->set_start_time(start_time_);
     request->set_update_time(update_time_);
-    Pod pod;
-    pod_manager_.GetPod(pod);
     request->set_podid(pod.pod_id);
     request->set_status(pod.status);
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
@@ -206,11 +228,19 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       FetchTaskResponse* response,
                                       bool failed, int /*error*/) {
     MutexLock lock(&mutex_);
-    ErrorCode* error_code = response->mutable_error_code();
-    // if action has expired
-    if (response->has_update_time()
-        && response->update_time() > update_time_) {
+    do {
+        // rpc error
+        if (failed) {
+            backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::FetchTask, this));
+            break;
+        }
+        // ignore expired actions
+        if (!response->has_update_time()
+            || response->update_time() <= update_time_) {
+            break;
+        }
         update_time_ = response->update_time();
+        ErrorCode* error_code = response->mutable_error_code();
         switch (error_code->status()) {
             case proto::kOk:
                 if (response->has_pod()) {
@@ -241,12 +271,24 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             default:
                 break;
         }
-    }
+    } while (0);
 
     backgroud_pool_.DelayTask(
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
+    return;
+}
+
+int SaveExitFile(const std::string& path, int32_t err) {
+    std::ofstream f;
+    f.open(path.c_str(), std::ios::out | std::ios::trunc);
+    if (f.is_open()) {
+        f << err;
+        return 0;
+    }
+
+    return -1;
 }
 
 }   // ending namespace galaxy

@@ -187,17 +187,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     return 0;
 }
 
-int ProcessManager::DeleteProcess(const std::string& process_id) {
-    MutexLock scope_lock(&mutex_);
-    std::map<std::string, Process*>::iterator it = processes_.find(process_id);
-    if (it == processes_.end()) {
-        LOG(INFO) << "process: " << process_id << " not exist";
-        return 0;
-    }
-    processes_.erase(it);
-    return 0;
-}
-
 int ProcessManager::KillProcess(const std::string& process_id) {
     MutexLock scope_lock(&mutex_);
     std::map<std::string, Process*>::iterator it = processes_.find(process_id);

@@ -86,14 +86,14 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
                                ::google::protobuf::Closure* done) {
 
     times_++;
-    if (times_ < 5) {
+    if (times_ < 10) {
         response->set_update_time(update_time1);
 
         PodDescription* pod = response->mutable_pod();
         TaskDescription* task_desc = pod->add_tasks();
         ImagePackage* image_package = task_desc->mutable_exe_package();
         image_package->set_start_cmd("touch 1.txt && sleep 100");
-        image_package->set_stop_cmd("touch 1_stop.txt && sleep 5");
+        image_package->set_stop_cmd("touch 1_stop.txt && sleep 10");
         Package* e_package = image_package->mutable_package();
         e_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/sandbox/galaxy/galaxy.tgz");
         e_package->set_dst_path("galaxy.tar.gz");
@@ -111,7 +111,7 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         PodDescription* pod = response->mutable_pod();
         TaskDescription* task_desc = pod->add_tasks();
         ImagePackage* image_package = task_desc->mutable_exe_package();
-        image_package->set_start_cmd("echo 2.txt && sleep 10");
+        image_package->set_start_cmd("echo 2.txt && sleep 10 && exit 1");
         image_package->set_stop_cmd("touch 2_stop.txt && sleep 5");
         Package* e_package = image_package->mutable_package();
         e_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/sandbox/galaxy/galaxy.tgz");

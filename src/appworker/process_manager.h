@@ -53,7 +53,6 @@ public:
     ~ProcessManager();
     int CreateProcess(const ProcessEnv& env,
                       const ProcessContext* context);
-    int DeleteProcess(const std::string& process_id);
     int QueryProcess(const std::string& process_id, Process& process);
     int KillProcess(const std::string& process_id);
     int ClearProcesses();

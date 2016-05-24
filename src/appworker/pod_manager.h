@@ -28,6 +28,9 @@ struct PodEnv {
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
 };
 
+// when pod.stage == kPodTerminating,
+// and pod.status == kPodTerminated,
+// set pod.status = kPodPending
 enum PodStage {
     kPodStageCreating,
     kPodStageRebuilding,
@@ -47,16 +50,12 @@ class PodManager {
 public:
     PodManager();
     ~PodManager();
-    int CreatePod();
-    int ReloadPod();
-    int RebuildPod();
-    int TerminatePod();
-    int ClearPod();
-    int GetPod(Pod& pod);
     int SetPodEnv(const PodEnv& pod_env);
     int SetPodDescription(const PodDescription& pod_desc);
-    void LoopCheckPod();
-    void LoopChangePodStatus();
+    int TerminatePod();
+    int RebuildPod();
+    int ReloadPod();
+    int QueryPod(Pod& pod);
 
 private:
     int DoCreatePod();
@@ -64,14 +63,13 @@ private:
     int DoStartPod();
     int DoStopPod();
     int DoClearPod();
+    void LoopChangePodStatus();
     void PendingPodCheck();
     void ReadyPodCheck();
     void DeployingPodCheck();
     void StartingPodCheck();
     void StoppingPodCheck();
     void RunningPodCheck();
-    void FailedPodCheck();
-    void FinishedPodCheck();
 
 private:
     Mutex mutex_;

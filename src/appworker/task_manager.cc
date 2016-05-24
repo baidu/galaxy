@@ -60,7 +60,8 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.dst_path = "image.tar.gz";
         context.version = task->desc.exe_package().package().version();
         context.work_dir = task->task_id;
-        context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
+        context.cmd = "wget -O " + context.dst_path\
+            + " " + context.src_path + " && tar -xzf image.tar.gz";
         ProcessEnv env;
         env.user = FLAGS_appworker_default_user;
         env.envs.push_back("JOB_ID=" + task->env.job_id);
@@ -104,8 +105,9 @@ int TaskManager::DeployTask(const std::string& task_id) {
 }
 
 // create task main process
-int TaskManager::StartTask(const std::string& task_id) {
+int TaskManager::DoStartTask(const std::string& task_id) {
     LOG(INFO) << "start task: " << task_id;
+    mutex_.AssertHeld();
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
     if (it == tasks_.end()) {
         LOG(INFO) << "task: " << task_id << " not exist";
@@ -136,9 +138,16 @@ int TaskManager::StartTask(const std::string& task_id) {
     }
     task->status = proto::kTaskRunning;
     return 0;
+
+}
+
+int TaskManager::StartTask(const std::string& task_id) {
+    MutexLock loc(&mutex_);
+    return DoStartTask(task_id);
 }
 
 int TaskManager::StopTask(const std::string& task_id) {
+    MutexLock lock(&mutex_);
     LOG(INFO) << "stop task: " << task_id;
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
     if (it == tasks_.end()) {
@@ -148,6 +157,8 @@ int TaskManager::StopTask(const std::string& task_id) {
 
     LOG(INFO) << "start create stop process for task: " << task_id;
     Task* task = it->second;
+    // save current status, for cleaning
+    task->prev_status = task->status;
     if (!task->desc.has_exe_package()) {
         return -1;
     }
@@ -186,85 +197,87 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
     std::string process_id;
     Process process;
     switch (it->second->status) {
-    case proto::kTaskDeploying:
-    {
-        ProcessStatus process_status = proto::kProcessFinished;
-        for (int i = 0; i < it->second->packages_size; i++) {
-            process_id = task_id + "_deploy_" + boost::lexical_cast<std::string>(i);
+        case proto::kTaskDeploying: {
+            ProcessStatus process_status = proto::kProcessFinished;
+            for (int i = 0; i < it->second->packages_size; i++) {
+                process_id = task_id + "_deploy_" + boost::lexical_cast<std::string>(i);
+                if (0 != process_manager_.QueryProcess(process_id, process)) {
+                    LOG(WARNING) << "query deploy process: " << process_id << " fail";
+                    it->second->status = proto::kTaskFailed;
+                    return -1;
+                }
+                if (process.status > proto::kProcessFinished) {
+                    LOG(WARNING) << "deploy process " << process_id <<" failed";
+                    it->second->status = proto::kTaskFailed;
+                    process_status = process.status;
+                    break;
+                }
+                if (process.status < process_status) {
+                    process_status = process.status;
+                }
+            }
+            if (process_status == proto::kProcessFinished) {
+                LOG(WARNING) << "deploy all processes successed";
+                it->second->status = proto::kTaskStarting;
+            }
+            break;
+        }
+        case proto::kTaskRunning: {
+            process_id = task_id + "_main";
             if (0 != process_manager_.QueryProcess(process_id, process)) {
-                LOG(INFO) << "query deploy process: " << process_id << " fail";
-                it->second->status = proto::kTaskFailed;
+                LOG(WARNING) << "query main process: " << process_id << " fail";
                 return -1;
             }
-            if (process.status > proto::kProcessFinished) {
-                LOG(INFO) << "deploy process " << process_id <<" failed";
+            do {
+                if (process.status == proto::kProcessRunning) {
+                   break;
+                }
+                if (0 == process.exit_code) {
+                    it->second->status = proto::kTaskFinished;
+                    LOG(INFO) << "main process finished successful";
+                    break;
+                }
+                if (it->second->fail_retry_times\
+                    < FLAGS_task_manager_task_max_fail_retry_times) {
+                    LOG(INFO) << "task: " << task_id << " failed and retry";
+                    it->second->fail_retry_times++;
+                    DoStartTask(task_id);
+                    break;
+                }
+                LOG(INFO) << "task: " << task_id << " failed no retry";
                 it->second->status = proto::kTaskFailed;
-                process_status = process.status;
-                break;
+            } while (0);
+            break;
+        }
+        case proto::kTaskStopping: {
+            process_id = task_id + "_stop";
+            if (0 != process_manager_.QueryProcess(process_id, process)) {
+                LOG(INFO) << "query stop process: " << process_id << " fail";
+                return -1;
             }
-            if (process.status < process_status) {
-                process_status = process.status;
-            }
-        }
-        if (process_status == proto::kProcessFinished) {
-            LOG(INFO) << "deploy task ok, all deploy processes successed";
-            it->second->status = proto::kTaskStarting;
-        }
-        break;
-    }
-    case proto::kTaskRunning:
-    {
-        process_id = task_id + "_main";
-        if (0 != process_manager_.QueryProcess(process_id, process)) {
-            LOG(INFO) << "query main process: " << process_id << " fail";
-            return -1;
-        }
-        if (process.status != proto::kProcessRunning) {
-            if (0 == process.exit_code) {
-                it->second->status = proto::kTaskFinished;
-                LOG(INFO) << "main process finished successful";
+            if (process.status != proto::kProcessRunning) {
+                return -1;
             } else {
-                 if (it->second->fail_retry_times < FLAGS_task_manager_task_max_fail_retry_times) {
-                     LOG(INFO) << "task: " << task_id << " failed and retry";
-                     it->second->fail_retry_times++;
-                     StartTask(task_id);
-                 } else {
-                     LOG(INFO) << "task: " << task_id << " failed no retry";
-                     it->second->status = proto::kTaskFailed;
-                 }
+                int32_t now_time = common::timer::now_time();
+                if (it->second->timeout_point < now_time) {
+                    LOG(WARNING) << "stop process timeout";
+                    return -1;
+                }
             }
+            break;
         }
-        break;
-     }
-    case proto::kTaskStopping:
-    {
-        process_id = task_id + "_stop";
-        if (0 != process_manager_.QueryProcess(process_id, process)) {
-            LOG(INFO) << "query stop process: " << process_id << " fail";
-            return -1;
-        }
-        if (process.status != proto::kProcessRunning) {
-            return -1;
-        } else {
-            int32_t now_time = common::timer::now_time();
-            if (it->second->timeout_point < now_time) {
-                LOG(WARNING) << "stop process timeout";
-                return -1;
-            }
-        }
-        break;
+        default:
+            break;
     }
-    default:
-        break;
-    }
-
     task.task_id = it->second->task_id;
     task.desc.CopyFrom(it->second->desc);
     task.status = it->second->status;
+
     return 0;
 }
 
 int TaskManager::CleanTask(const std::string& task_id) {
+    MutexLock lock(&mutex_);
     LOG(WARNING) << "clean task: " << task_id;
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
     if (it == tasks_.end()) {
@@ -273,11 +286,12 @@ int TaskManager::CleanTask(const std::string& task_id) {
     }
 
     std::string process_id;
-    switch (it->second->status) {
+    switch (it->second->prev_status) {
         case proto::kTaskDeploying:
             LOG(WARNING) << "clean deploying task";
             for (int i = 0; i < it->second->packages_size; i++) {
-                process_id = task_id + "_deploy_" + boost::lexical_cast<std::string>(i);
+                process_id = task_id + "_deploy_"\
+                    + boost::lexical_cast<std::string>(i);
                 process_manager_.KillProcess(process_id);
             }
             break;
@@ -289,18 +303,20 @@ int TaskManager::CleanTask(const std::string& task_id) {
         default:
             break;
     }
-
     it->second->status = proto::kTaskTerminated;
+
     return 0;
 }
 
 int TaskManager::ClearTasks() {
+    MutexLock lock(&mutex_);
     LOG(WARNING) << "clear all tasks";
     std::map<std::string, Task*>::iterator it = tasks_.begin();
     for (; it != tasks_.end(); ++it) {
-       tasks_.erase(it);
+        tasks_.erase(it);
     }
     process_manager_.ClearProcesses();
+
     return 0;
 }
 

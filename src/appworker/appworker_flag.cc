@@ -21,6 +21,7 @@ DEFINE_string(appworker_pod_id_env, "BAIDU_GALAXY_CONTAINER_ID", "pod id env nam
 DEFINE_string(appworker_task_ids_env, "BAIDU_GALAXY_CONTAINER_CGROUP_IDS", "task ids env name");
 DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CONTAINER_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
 DEFINE_string(appworker_default_user, "galaxy", "appworker default user");
+DEFINE_string(appworker_exit_file, ".exit", "appworker exit file");
 
 // pod_manager
 DEFINE_int32(pod_manager_check_pod_interval, 5000, "pod manager check pod interval");
