@@ -167,8 +167,7 @@ enum JobEvent {
     kRemoveFinish = 4;
     kUpdateFinish = 5;
 }
-// Task or 
-pod
+// Task or pod
 enum PodStatus {
     kPodPending = 1;
     kPodReady = 2;
