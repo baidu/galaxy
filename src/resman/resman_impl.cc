@@ -472,6 +472,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     container_group_meta.set_user_name(request->user().user());
     container_group_meta.set_replica(request->replica());
     container_group_meta.set_status(proto::kContainerGroupNormal);
+    container_group_meta.set_submit_time(common::timer::get_micros());
     container_group_meta.mutable_desc()->CopyFrom(request->desc());
     std::string container_group_id = scheduler_->Submit(request->name(), 
                                                         request->desc(), 
@@ -565,6 +566,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
         new_meta = it->second;
         new_meta.set_update_interval(request->interval());
         new_meta.mutable_desc()->CopyFrom(request->desc());
+        new_meta.set_update_time(common::timer::get_micros());
         if (new_meta.replica() != request->replica()) {
             new_meta.set_replica(request->replica());
             replica_changed = true;

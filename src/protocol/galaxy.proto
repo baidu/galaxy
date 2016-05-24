@@ -425,6 +425,8 @@ message ContainerGroupMeta {
     optional uint32 update_interval = 5;
     optional ContainerDescription desc = 6;
     optional ContainerGroupStatus status = 7;
+    optional int64 submit_time = 8;
+    optional int64 update_time = 9;
 }
 
 message TagMeta {
