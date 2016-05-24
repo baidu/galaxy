@@ -28,7 +28,7 @@ public:
 
 private:
     int CreateContainer_(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
-    int ReleaseContainer_(const ContainerId& id);
+    int ReleaseContainer_(boost::shared_ptr<Container> container);
 
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > gc_containers_;

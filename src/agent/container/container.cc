@@ -191,11 +191,12 @@ int Container::Construct_()
 
     baidu::galaxy::util::ErrorCode ec = volum_group_->Construct();
     if (0 != ec.Code()) {
-        LOG(WARNING) << "construct volum group failed: " << ec.Message();
+        LOG(WARNING) << "failed in constructing volum group for container " << id_.CompactId()
+                     << ", reason is: " << ec.Message();
         return -1;
     }
 
-    LOG(INFO) << "succed in constructing volum group";
+    LOG(INFO) << "succeed in constructing volum group for container " << id_.CompactId();
     // clone
     LOG(INFO) << "to clone appwork process for container " << id_.CompactId();
     std::string container_root_path = baidu::galaxy::path::ContainerRootPath(id_.SubId());
@@ -404,13 +405,12 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     ret->set_cpu_used(0);
     ret->set_memory_used(0);
 
-    baidu::galaxy::proto::ContainerDescription* cd = new baidu::galaxy::proto::ContainerDescription();
+    baidu::galaxy::proto::ContainerDescription* cd = ret->mutable_container_desc();
     if (full_info) {
         cd->CopyFrom(desc_);
     } else {
         cd->set_version(desc_.version());
     }
-    ret->set_allocated_container_desc(cd);
     return ret;
 }
 

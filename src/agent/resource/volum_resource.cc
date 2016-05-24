@@ -129,12 +129,11 @@ baidu::galaxy::util::ErrorCode VolumResource::Release(const baidu::galaxy::proto
                 require.source_path().c_str());
     }
 
-    if (iter->second.assigned_ + require.size() > iter->second.total_) {
+    if (iter->second.assigned_ < require.size()) {
         return ERRORCODE(-1,
-                "resource overflow: %lld + %lld > %lld",
+                "resource overflow: %lld < %lld",
                 (long long int)iter->second.assigned_,
-                (long long int)require.size(),
-                iter->second.total_);
+                (long long int)require.size());
     }
 
     iter->second.assigned_ -= require.size();
