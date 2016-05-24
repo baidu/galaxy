@@ -9,7 +9,7 @@ env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], '
 
 env = Environment(
         CPPPATH = ['.', 'src', 'src/agent', 'thirdparty/boost_1_57_0/', './thirdparty/include', './thirdparty/rapidjson/include', 'src/utils'] ,
-        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem', 'gtest'],
+        LIBS = ['sofa-pbrpc', 'protobuf', 'snappy', 'glog', 'gflags', 'tcmalloc', 'unwind', 'ins_sdk', 'pthread', 'z', 'rt', 'boost_filesystem', 'gtest', 'common'],
         LIBPATH = ['./thirdparty/lib', './thirdparty/boost_1_57_0/stage/lib'],
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
@@ -27,6 +27,16 @@ env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src
             + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/resman.pb.cc'])
 
 env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
+
+env.Program('galaxy_res_client', Glob('src/client/galaxy_res_*.cc')
+            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_resman.cc',
+            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
+            'src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc'])
+
+env.Program('galaxy_client', Glob('src/client/galaxy_job_*.cc')
+            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_appmaster.cc',
+            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
+            'src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
 #unittest
 agent_unittest_src=Glob('src/test_agent/*.cc')+ Glob('src/agent/*/*.cc') + ['src/agent/agent_flags.cc', 'src/protocol/galaxy.pb.cc']
@@ -51,8 +61,7 @@ env.Program('test_volum', test_volum_src);
 test_container_src=['src/example/test_contianer.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc'] + Glob('src/agent/cgroup/*.cc') + Glob('src/agent/container/*.cc') + Glob('src/agent/volum/*.cc') + Glob('src/agent/util/*.cc') + Glob('src/agent/resource/*.cc') + Glob('src/agent/collector/*.cc')
 env.Program('test_container', test_container_src);
 
-test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_parse.cc']
+test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_util.cc','src/client/galaxy_parse.cc']
 env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
-

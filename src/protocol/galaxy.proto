@@ -57,10 +57,9 @@ enum AuthorityAction {
 }
 
 message Grant {
-    optional User user = 1;
-    repeated string pool = 2;
-    optional AuthorityAction action = 3;
-    repeated Authority authority = 4;
+    optional string pool = 1;
+    optional AuthorityAction action = 2;
+    repeated Authority authority = 3;
 }
 
 
@@ -212,6 +211,8 @@ message Deploy {
     optional uint32 step = 2;
     optional uint32 interval = 3;
     optional uint32 max_per_host = 4;
+    optional string tag = 5;
+    repeated string pools = 6;
 }
 
 message Service {
@@ -255,7 +256,7 @@ message JobDescription {
     optional uint32 priority = 2;
     optional string version = 3;
     optional Deploy deploy = 4;
-    optional PodDescription pod_desc = 5;
+    optional PodDescription pod = 5;
     optional string run_user = 6;
 }
 
@@ -338,6 +339,10 @@ enum Status {
    kRemoveAgentFail = 10;
    kCreateTagFail = 11;
    kAddAgentToPoolFail = 12;
+   kAddUserFail = 13;
+   kRemoveUserFail = 14;
+   kGrantUserFail = 15;
+   kAssignQuotaFail = 16;
 }
 
 message ErrorCode {
@@ -346,6 +351,7 @@ message ErrorCode {
 }
 
 enum AgentStatus {
+    kAgentUnkown = 0;
     kAgentAlive = 1;
     kAgentDead = 2;
     kAgentOffline = 3;
@@ -378,7 +384,7 @@ message ContainerStatistics {
     optional string endpoint = 3;
     optional Resource cpu = 4;
     optional Resource memory = 5;
-    repeated VolumResource volum = 6; //different kinds of medium
+    repeated VolumResource volums = 6; //different kinds of medium
     optional ResourceError last_res_err = 7;
 }
 
@@ -392,9 +398,10 @@ message ContainerGroupStatistics {
     optional uint32 allocating = 7;
     optional Resource cpu = 8;
     optional Resource memory = 9;
-    repeated VolumResource volum = 10; //different kinds of medium
+    repeated VolumResource volums = 10; //different kinds of medium
     optional int64 submit_time = 11;
     optional int64 update_time = 12;
+    optional string user_name = 13;
 }
 
 //proto that used to be saved in nexus
@@ -405,11 +412,9 @@ message AgentMeta {
 }
 
 message UserMeta {
-    optional string user_name = 1;
-    optional string password = 2;
-    repeated string pools = 3;
-    repeated Authority authorites = 4;
-    optional Quota quota = 5;
+    optional User user = 1;
+    repeated Grant grants = 2;
+    optional Quota quota = 3;
 }
 
 message ContainerGroupMeta {

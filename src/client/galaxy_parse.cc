@@ -3,53 +3,14 @@
 // found in the LICENSE file.
 
 #include <map>
-#include "galaxy_util.h"
+#include <boost/algorithm/string.hpp>
 #include "rapidjson/document.h"
 #include "rapidjson/filereadstream.h"
+#include "galaxy_util.h"
 
 namespace baidu {
 namespace galaxy {
 namespace client {
-
-//单位转换
-int UnitStringToByte(const std::string& input, int64_t* output) {
-    if (output == NULL) {
-        return -1;
-    }
-
-    std::map<char, int32_t> subfix_table;
-    subfix_table['K'] = 1;
-    subfix_table['M'] = 2;
-    subfix_table['G'] = 3;
-    subfix_table['T'] = 4;
-    subfix_table['B'] = 5;
-    subfix_table['Z'] = 6;
-
-    int64_t num = 0;
-    char subfix = 0;
-    int32_t shift = 0;
-    int32_t matched = sscanf(input.c_str(), "%ld%c", &num, &subfix);
-    if (matched <= 0) {
-        fprintf(stderr, "unit sscanf failed\n");
-        return -1;
-    }
-
-    if (matched == 2) {
-        std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
-        if (it == subfix_table.end()) {
-            fprintf(stderr, "unit is error, it must be in [K, M, G, T, B, Z]\n");
-            return -1;
-        }
-        shift = it->second;
-    }
-
-    while (shift > 0) {
-        num *= 1024;
-        shift--;
-    }
-    *output = num;
-    return 0;
-}
 
 int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deploy* deploy) {
     //deploy config:replica
@@ -79,6 +40,12 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
         return -1;
     }
     deploy->max_per_host = deploy_json["max_per_host"].GetInt();
+    deploy->tag = deploy_json["tag"].GetString();
+    std::vector<std::string> pools;
+    const std::string str_pools = deploy_json["pools"].GetString();
+    fprintf(stderr, "pools: %s\n", str_pools.c_str());
+    boost::split(pools, str_pools, boost::is_any_of(","));
+    deploy->pools.assign(pools.begin(), pools.end());
     return 0;
 
 }
@@ -325,8 +292,9 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
 int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescription* task) {
     int ok = 0;
 
-    //task->id = MasterUtil::UUID();
-    task->id = "1";
+    time_t timestamp;
+    time(&timestamp);
+    task->id = baidu::common::NumToString(timestamp);
 
     if (!task_json.HasMember("cpu")) {
         fprintf(stderr, "cpu is required in task\n");
@@ -541,7 +509,7 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     }
     const rapidjson::Value& pod_json = doc["pod"];
 
-    ::baidu::galaxy::sdk::PodDescription& pod = job->pod_desc;
+    ::baidu::galaxy::sdk::PodDescription& pod = job->pod;
     
     ok = ParsePod(pod_json, &pod);
     return ok;
