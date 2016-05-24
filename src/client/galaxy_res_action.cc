@@ -500,43 +500,64 @@ bool ResAction::ListAgentsByTag(const std::string& tag) {
     request.tag = tag;
 
     bool ret = resman_->ListAgentsByTag(request, &response);
+
     if (ret) {
-        ::baidu::common::TPrinter tp(9);
-        tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
+        ::baidu::common::TPrinter agents(9);
+        agents.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)", "containers");
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
-            std::vector<std::string> vs;
-            vs.push_back(baidu::common::NumToString(i + 1));
-            vs.push_back(response.agents[i].endpoint);
-            vs.push_back(baidu::common::NumToString(response.agents[i].status));
-            vs.push_back(response.agents[i].pool);
             std::string tags;
-            for (size_t j = 0; j < response.agents[i].tags.size(); ++j) {
+            for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
                 tags += response.agents[i].tags[j] + ", ";
             }
 
-            vs.push_back(tags);
+            std::string scpu = ::baidu::common::NumToString(response.agents[i].cpu.total / 1000) + "/" +
+                               ::baidu::common::NumToString(response.agents[i].cpu.assigned / 1000) + "/" +
+                               ::baidu::common::NumToString(response.agents[i].cpu.used / 1000);
 
-            vs.push_back(::baidu::common::NumToString(response.agents[i].cpu.total / 1000) + "/" +
-                         ::baidu::common::NumToString(response.agents[i].cpu.assigned / 1000) + "/" +
-                         ::baidu::common::NumToString(response.agents[i].cpu.used / 1000)
-                        );
-            vs.push_back(::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
-                         ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
-                         ::baidu::common::HumanReadableString(response.agents[i].memory.used)
-                        );
-            std::string volums;
-            for (size_t j = 0; j < response.agents[i].volums.size(); ++j) {
-                volums += ::baidu::common::NumToString(response.agents[i].volums[j].medium) + ":";
-                volums += ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + ":";
-                volums += ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + ":";
-                volums += ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + ":"; 
-                volums += response.agents[i].volums[j].device_path;
+            std::string smem = ::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
+                               ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
+                               ::baidu::common::HumanReadableString(response.agents[i].memory.used);
+            
+            std::vector<std::string> vec_volums;
+            for (uint32_t j = 0; j < response.agents[i].volums.size(); ++j) {
+                std::string svolums;
+                svolums +=  "vol_" + ::baidu::common::NumToString(j) + " "
+                            + ::baidu::common::NumToString(response.agents[i].volums[j].medium) + " "
+                            + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
+                            + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
+                            + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + " "
+                            + response.agents[i].volums[j].device_path;
+                vec_volums.push_back(svolums);
             }
-            vs.push_back(volums);
-            vs.push_back(baidu::common::NumToString(response.agents[i].total_containers));
-            tp.AddRow(vs);
+
+            for (uint32_t k = 0; k < response.agents[i].volums.size(); ++k) {
+                if (k == 0) {
+                    agents.AddRow(9, ::baidu::common::NumToString(i).c_str(),
+                             response.agents[i].endpoint.c_str(),
+                             ::baidu::common::NumToString(response.agents[i].status).c_str(),
+                             response.agents[i].pool.c_str(),
+                             tags.c_str(),
+                             scpu.c_str(),
+                             smem.c_str(),
+                             vec_volums[k].c_str(),
+                             ::baidu::common::NumToString(response.agents[i].total_containers).c_str()
+                         );
+                } else {
+                    agents.AddRow(9, "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     vec_volums[k].c_str(),
+                                     ""
+                                 );
+                }
+            }
+
         }
-        printf("%s\n", tp.ToString().c_str());
+        printf("%s\n", agents.ToString().c_str());
 
     } else {
         printf("List agents failed for reason %d:%s\n", 
@@ -560,45 +581,67 @@ bool ResAction::ListAgentsByPool(const std::string& pool) {
     ::baidu::galaxy::sdk::ListAgentsByPoolRequest request;
     ::baidu::galaxy::sdk::ListAgentsByPoolResponse response;
     request.user = user_;
+    request.pool = pool;
 
     bool ret = resman_->ListAgentsByPool(request, &response);
+
     if (ret) {
-        ::baidu::common::TPrinter tp(9);
-        tp.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)","total_containers");
+        ::baidu::common::TPrinter agents(9);
+        agents.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)", "containers");
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
-            std::vector<std::string> vs;
-            vs.push_back(baidu::common::NumToString(i + 1));
-            vs.push_back(response.agents[i].endpoint);
-            vs.push_back(baidu::common::NumToString(response.agents[i].status));
-            vs.push_back(response.agents[i].pool);
             std::string tags;
-            for (size_t j = 0; j < response.agents[i].tags.size(); ++j) {
+            for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
                 tags += response.agents[i].tags[j] + ", ";
             }
 
-            vs.push_back(tags);
+            std::string scpu = ::baidu::common::NumToString(response.agents[i].cpu.total / 1000) + "/" +
+                               ::baidu::common::NumToString(response.agents[i].cpu.assigned / 1000) + "/" +
+                               ::baidu::common::NumToString(response.agents[i].cpu.used / 1000);
 
-            vs.push_back(::baidu::common::NumToString(response.agents[i].cpu.total / 1000) + "/" +
-                         ::baidu::common::NumToString(response.agents[i].cpu.assigned / 1000) + "/" +
-                         ::baidu::common::NumToString(response.agents[i].cpu.used / 1000)
-                        );
-            vs.push_back(::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
-                         ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
-                         ::baidu::common::HumanReadableString(response.agents[i].memory.used)
-                        );
-            std::string volums;
-            for (size_t j = 0; j < response.agents[i].volums.size(); ++j) {
-                volums += ::baidu::common::NumToString(response.agents[i].volums[j].medium) + ":";
-                volums += ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + ":";
-                volums += ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + ":";
-                volums += ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + ":"; 
-                volums += response.agents[i].volums[j].device_path;
+            std::string smem = ::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
+                               ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
+                               ::baidu::common::HumanReadableString(response.agents[i].memory.used);
+            
+            std::vector<std::string> vec_volums;
+            for (uint32_t j = 0; j < response.agents[i].volums.size(); ++j) {
+                std::string svolums;
+                svolums +=  "vol_" + ::baidu::common::NumToString(j) + " "
+                            + ::baidu::common::NumToString(response.agents[i].volums[j].medium) + " "
+                            + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
+                            + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
+                            + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + " "
+                            + response.agents[i].volums[j].device_path;
+                vec_volums.push_back(svolums);
             }
-            vs.push_back(volums);
-            vs.push_back(baidu::common::NumToString(response.agents[i].total_containers));
-            tp.AddRow(vs);
+
+            for (uint32_t k = 0; k < response.agents[i].volums.size(); ++k) {
+                if (k == 0) {
+                    agents.AddRow(9, ::baidu::common::NumToString(i).c_str(),
+                             response.agents[i].endpoint.c_str(),
+                             ::baidu::common::NumToString(response.agents[i].status).c_str(),
+                             response.agents[i].pool.c_str(),
+                             tags.c_str(),
+                             scpu.c_str(),
+                             smem.c_str(),
+                             vec_volums[k].c_str(),
+                             ::baidu::common::NumToString(response.agents[i].total_containers).c_str()
+                         );
+                } else {
+                    agents.AddRow(9, "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     vec_volums[k].c_str(),
+                                     ""
+                                 );
+                }
+            }
+
         }
-        printf("%s\n", tp.ToString().c_str());
+        printf("%s\n", agents.ToString().c_str());
 
     } else {
         printf("List agents failed for reason %d:%s\n", 
@@ -788,6 +831,7 @@ bool ResAction::CreateTag(const std::string& tag, const std::string& file) {
     request.tag = tag;
 
     if (!LoadAgentEndpointsFromFile(file, &request.endpoint)) {
+        printf("load endpoint file failed\n");
         return false;
     }
 

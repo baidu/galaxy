@@ -90,31 +90,27 @@ bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::s
     
     bool ret = true;
     int i = 0;
-    while (fin.good()) {
+    while (!fin.eof() && fin.good()) {
         fin.getline(line_buf, LINE_BUF_SIZE);     
         if (fin.gcount() == LINE_BUF_SIZE) {
             fprintf(stderr, "line buffer size overflow\n");     
             ret = false;
             break;
-        } else if (fin.gcount() == 0) {
-            fprintf(stderr, "here:%d\n", i);
+        } else if (fin.gcount() == 0 || strlen(line_buf) == 0) {
             continue; 
         }
-        fprintf(stdout, "label %s\n", line_buf);
+        fprintf(stdout, "label %ld: %s\n", fin.gcount(), line_buf);
         // NOTE string size should == strlen
         std::string agent_endpoint(line_buf, strlen(line_buf));
         agents->push_back(agent_endpoint);
         ++i;
     }
+
     if (!ret) {
         fin.close();
         return false;
     }
 
-    if (fin.fail()) {
-        fin.close(); 
-        return false;
-    }
     fin.close(); 
     return true;
 }
