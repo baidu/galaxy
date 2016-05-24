@@ -212,15 +212,15 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     proto::UpdateContainerGroupRequest* container_request = new proto::UpdateContainerGroupRequest();
     container_request->mutable_user()->CopyFrom(request->user());
     container_request->set_id(request->jobid());
-    container_request->set_interval(request->job().deploy().interval());
-    BuildContainerDescription(request->job(), container_request->mutable_desc());
-    container_request->set_replica(request->job().deploy().replica());
+    container_request->set_interval(job_desc.deploy().interval());
+    BuildContainerDescription(job_desc, container_request->mutable_desc());
+    container_request->set_replica(job_desc.deploy().replica());
     proto::UpdateContainerGroupResponse* container_response = new proto::UpdateContainerGroupResponse();
     boost::function<void (const proto::UpdateContainerGroupRequest*,
                           proto::UpdateContainerGroupResponse*, 
                           bool, int)> call_back;
     call_back = boost::bind(&AppMasterImpl::UpdateContainerGroupCallBack, this,
-                            request->job(), response, done,
+                            job_desc, response, done,
                             _1, _2, _3, _4);
     ResMan_Stub* resman_;
     rpc_client_.GetStub(resman_endpoint_, &resman_);
@@ -276,6 +276,9 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
                               ::baidu::galaxy::proto::FetchTaskResponse* response,
                               ::google::protobuf::Closure* done) {
     Status status = job_manager_.HandleFetch(request, response);
+    if (status != kOk) {
+        LOG(WARNING) << "FetchTask failed, code:" << status << ", method:" << __FUNCTION__;
+    }
     done->Run();
     return;
 }
