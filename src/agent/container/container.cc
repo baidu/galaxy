@@ -20,6 +20,7 @@
 #include "boost/algorithm/string/split.hpp"
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/predicate.hpp"
+#include "boost/algorithm/string/replace.hpp"
 #include "collector/collector_engine.h"
 #include "cgroup/cgroup_collector.h"
 
@@ -45,6 +46,11 @@ DECLARE_string(agent_hostname);
 namespace baidu {
 namespace galaxy {
 namespace container {
+
+bool is_null(const std::string& x)
+{
+    return x.empty();
+}
 
 Container::Container(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc) :
     desc_(desc),
@@ -334,30 +340,23 @@ void Container::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_agent_port"] = FLAGS_agent_port;
 }
 
-
-
-int Container::Tasks(std::vector<pid_t>& pids)
-{
-    return -1;
-}
-
-int Container::Pids(std::vector<pid_t>& pids)
-{
-    return -1;
-}
-
-boost::shared_ptr<google::protobuf::Message> Container::Report()
-{
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
-}
-
 baidu::galaxy::proto::ContainerStatus Container::Status()
 {
-    //if (status_.GetStatus() == baidu::galaxy::proto::kContainerAllocting) {
-    //}
-    assert(0 && "not realize");
-    return baidu::galaxy::proto::kContainerAllocating;
+    return status_.Status();
+}
+
+void Container::KeepAlive()
+{
+    if (!Alive()) {
+        baidu::galaxy::util::ErrorCode ec = status_.EnterErrorFrom(baidu::galaxy::proto::kContainerReady);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "container " << id_.CompactId() << " failed in entering error status from kContainerReady:" << ec.Message();
+        } else {
+            LOG(INFO) << "container " << id_.CompactId() << " enter error status from kContainerReady";
+        }
+    } else {
+        LOG(INFO) << "alive";
+    }
 }
 
 bool Container::Alive()
@@ -370,22 +369,30 @@ bool Container::Alive()
 
     std::stringstream path;
     path << "/proc/" << (int)pid << "/environ";
-    std::ifstream inf(path.str().c_str(), std::ios::binary);
-
-    if (!inf.is_open()) {
+    FILE* file = fopen(path.str().c_str(), "rb");
+    if (NULL == file) {
+        LOG(WARNING) << "failed in openning file " << path.str() << ": " << strerror(errno);
         return false;
     }
+
 
     char buf[1024] = {0};
     std::string env_str;
 
-    while (!inf.eof()) {
-        int size = inf.readsome(buf, sizeof buf);
+    while (!feof(file)) {
+        int size = fread(buf, 1, sizeof buf, file);
         env_str.append(buf, size);
+    }
+    fclose(file);
+
+    for (size_t i = 0; i < env_str.size(); i++) {
+        if (env_str[i] == '\0') {
+            env_str[i] = '\n';
+        }
     }
 
     std::vector<std::string> envs;
-    boost::split(envs, env_str, boost::is_any_of("\0"));
+    boost::split(envs, env_str, boost::is_any_of("\n"));
 
     for (size_t i = 0; i < envs.size(); i++) {
         if (boost::starts_with(envs[i], "BAIDU_GALAXY_CONTAINER_ID=")) {

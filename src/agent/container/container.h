@@ -104,13 +104,10 @@ public:
     int Construct();
     int Destroy();
 
-    int Tasks(std::vector<pid_t>& pids);
-    int Pids(std::vector<pid_t>& pids);
-    boost::shared_ptr<google::protobuf::Message> Report();
     baidu::galaxy::proto::ContainerStatus Status();
     const baidu::galaxy::proto::ContainerDescription& Description();
-
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
+    void KeepAlive();
 private:
     int Construct_();
     int Destroy_();
