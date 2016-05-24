@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
 
     ::baidu::galaxy::client::JobAction* jobAction = new 
                 ::baidu::galaxy::client::JobAction();
-    if (strcmp(argv[1], "create") == 0) {
+    if (strcmp(argv[1], "submit") == 0) {
         if (FLAGS_f.empty()) {
             fprintf(stderr, "-f is needed\n");
             return -1;

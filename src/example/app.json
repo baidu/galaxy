@@ -53,6 +53,15 @@
                     "size": "13M",
                     "excess":false
                 },
+                "tcp": {
+                    "recv_bps_quota": "15M",
+                    "recv_bps_excess": true,
+                    "send_bps_quota": "15M",
+                    "send_bps_excess": true
+                },
+                "blkio": {
+                    "weight": 2
+                },
                 "ports": [
                     {
                         "name": "linkbase0",
