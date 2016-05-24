@@ -1,9 +1,9 @@
---nexus_servers=wanghaitao01-pc:8868,wanghaitao01-pc:8869,wanghaitao01-pc:8870,wanghaitao01-pc:8871,wanghaitao01-pc:8872
+--nexus_servers=
 --appworker_endpoint=127.0.0.1:8221
 --appworker_container_id=test-1
 --logbufsecs=0
---username=zhoumeiting
---token=1234
---nexus_addr=cq01-ps-dev377.cq01.baidu.com:8868
+--username=default
+--token=default
+--nexus_addr=
 --nexus_root=/galaxy3
 --resman_path=/resman
