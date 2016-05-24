@@ -27,6 +27,7 @@ std::string StringContainerStatus(const ::baidu::galaxy::sdk::ContainerStatus& s
 std::string StringContainerGroupStatus(const ::baidu::galaxy::sdk::ContainerGroupStatus& status);
 std::string StringStatus(const ::baidu::galaxy::sdk::Status& status);
 std::string StringAgentStatus(const ::baidu::galaxy::sdk::AgentStatus& status);
+std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error);
 
 //单位转换
 int UnitStringToByte(const std::string& input, int64_t* output);

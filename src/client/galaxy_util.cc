@@ -319,6 +319,49 @@ std::string StringAgentStatus(const ::baidu::galaxy::sdk::AgentStatus& status) {
     return result;
 }
 
+std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error) {
+    std::string result;
+    switch(error) {
+    case ::baidu::galaxy::sdk::kResOk:
+        result = "kResOk";
+        break;
+    case ::baidu::galaxy::sdk::kNoCpu:
+        result = "kNoCpu";
+        break;
+    case ::baidu::galaxy::sdk::kNoMemory:
+        result = "kNoMemory";
+        break;
+    case ::baidu::galaxy::sdk::kNoMedium:
+        result = "kNoMedium";
+        break;
+    case ::baidu::galaxy::sdk::kNoDevice:
+        result = "kNoDevice";
+        break;
+    case ::baidu::galaxy::sdk::kNoPort:
+        result = "kNoPort";
+        break;
+    case ::baidu::galaxy::sdk::kPortConflict:
+        result = "kPortConflict";
+        break;
+    case ::baidu::galaxy::sdk::kTagMismatch:
+        result = "kTagMismatch";
+        break;
+    case ::baidu::galaxy::sdk::kNoMemoryForTmpfs:
+        result = "kNoMemoryForTmpfs";
+        break;
+    case ::baidu::galaxy::sdk::kPoolMismatch:
+        result = "kPoolMismatch";
+        break;
+    case ::baidu::galaxy::sdk::kTooManyPods:
+        result = "kTooManyPods";
+        break;
+    defalt:
+        result = "";
+    }
+    return result;
+
+}
+
 std::string FormatDate(uint64_t datetime) {
     if (datetime < 100) {
         return "-";
