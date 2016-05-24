@@ -435,7 +435,6 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->require = require;
         cpu_assigned += require->CpuNeed();
         memory_assigned += require->MemoryNeed();
-
         for (int j = 0; j < container_desc.cgroups_size(); j++) {
             const proto::Cgroup& cgroup = container_desc.cgroups(j);
             for (int k = 0; k < cgroup.ports_size(); k++) {
@@ -464,11 +463,11 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         for (int j = 0; j < container_desc.data_volums_size(); j++) {
             VolumInfo data_volum;
             data_volum.medium = container_desc.data_volums(j).medium();
+            data_volum.size = container_desc.data_volums(j).size();
             if (data_volum.medium == proto::kTmpfs) {
                 memory_assigned += data_volum.size;
                 continue;
             }
-            data_volum.size = container_desc.data_volums(j).size();
             data_volum.exclusive = container_desc.data_volums(j).exclusive();
             std::string device_path = container_desc.data_volums(j).source_path();
             container->allocated_volums.push_back(
@@ -1234,8 +1233,7 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
     }
     for (int i = 0; i < container_desc.data_volums_size(); i++) {
         if (idx >= container->allocated_volums.size()) {
-            LOG(WARNING) << "fail to set allocated volums device path";
-            return;
+            break;
         }
         proto::VolumRequired* vol = container_desc.mutable_data_volums(i);
         if (vol->medium() != proto::kTmpfs) {
@@ -1276,6 +1274,7 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
         group_stat.set_ready(container_group->states[kContainerReady].size());
         group_stat.set_pending(container_group->states[kContainerPending].size());
         group_stat.set_allocating(container_group->states[kContainerAllocating].size());
+        group_stat.set_destroying(container_group->states[kContainerDestroying].size());
         group_stat.set_user_name(container_group->user_name);
         group_stat.set_submit_time(container_group->submit_time);
         group_stat.set_update_time(container_group->update_time);
