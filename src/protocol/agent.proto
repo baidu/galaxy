@@ -15,6 +15,7 @@ message CreateContainerResponse {
 
 message RemoveContainerRequest {
     optional string id = 1;
+    optional string container_group_id = 2;
 }
 
 message RemoveContainerResponse {

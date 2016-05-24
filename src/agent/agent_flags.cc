@@ -9,4 +9,11 @@ DEFINE_string(nexus_servers, "", "servers of nexus cluster");
 
 DEFINE_string(agent_ip, "", "agent ip");
 DEFINE_string(agent_port, "1646", "agent listen port");
+DEFINE_string(agent_hostname, "hostname", "agent hostname");
 DEFINE_int32(keepalive_interval, 5000, "keep alive with RM");
+
+DEFINE_string(volum_resource, "", "volum resource, \
+            format: filesystem:size_in_byte:mediu(DISK:SSD):mount_point, seperated by comma");
+DEFINE_int64(cpu_resource, 0L, "max millicores galaxy can use");
+DEFINE_int64(memory_resource, 0L, "max memory(unit:byte) galaxy can use");
+

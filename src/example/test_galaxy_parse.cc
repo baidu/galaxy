@@ -22,6 +22,12 @@ int main(int argc, char** argv) {
     std::cout << "      step: " << job.deploy.step << std::endl;
     std::cout << "      interval: " << job.deploy.interval << std::endl;
     std::cout << "      max_per_host: " << job.deploy.max_per_host << std::endl;
+    std::cout << "      tag: " << job.deploy.tag << std::endl;
+    std::string pools;
+    for (size_t i=0; i < job.deploy.pools.size(); ++i) {
+        pools += job.deploy.pools[i] + ",";
+    }
+    std::cout << "      pools: " << pools << std::endl;
 
 
     std::cout << "  pod: " << std::endl;

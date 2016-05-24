@@ -218,6 +218,8 @@ message Deploy {
     optional uint32 step = 2;
     optional uint32 interval = 3;
     optional uint32 max_per_host = 4;
+    optional string tag = 5;
+    repeated string pools = 6;
 }
 
 message Service {
