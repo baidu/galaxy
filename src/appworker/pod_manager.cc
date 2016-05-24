@@ -13,7 +13,6 @@
 
 #include "protocol/appmaster.pb.h"
 
-DECLARE_int32(pod_manager_check_pod_interval);
 DECLARE_int32(pod_manager_change_pod_status_interval);
 
 namespace baidu {

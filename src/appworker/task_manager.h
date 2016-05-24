@@ -41,7 +41,6 @@ struct Task {
     int32_t fail_retry_times;
     TaskEnv env;
     int32_t timeout_point;
-
 };
 
 class TaskManager {
@@ -59,7 +58,7 @@ public:
                   Task& task);
     int CleanTask(const std::string& task_id);
     int ClearTasks();
-
+    // reload
     int ReloadDeployTask(const std::string& task_id,
                          const TaskDescription& task_desc);
     int ReloadStartTask(const std::string& task_id,

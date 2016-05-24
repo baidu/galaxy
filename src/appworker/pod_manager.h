@@ -29,7 +29,7 @@ struct PodEnv {
 };
 
 /**
- * when pod.stage == kPodTerminating,
+ * when pod.stage == kPodRebuilding,
  * and pod.status == kPodTerminated,
  * lset pod.status = kPodPending
  */
@@ -66,7 +66,7 @@ private:
     int DoStartPod();
     int DoStopPod();
     int DoClearPod();
-
+    // reload
     int DoReloadDeployPod();
     int DoReloadStartPod();
 
@@ -78,7 +78,6 @@ private:
     void StartingPodCheck();
     void StoppingPodCheck();
     void RunningPodCheck();
-    void ReloadingPodCheck();
 
 private:
     Mutex mutex_;

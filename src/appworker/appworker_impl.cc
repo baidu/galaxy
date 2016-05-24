@@ -18,7 +18,6 @@
 
 DECLARE_int32(appworker_fetch_task_timeout);
 DECLARE_int32(appworker_fetch_task_interval);
-DECLARE_int32(appworker_update_appmaster_stub_interval);
 DECLARE_int32(appworker_background_thread_pool_size);
 DECLARE_string(nexus_addr);
 DECLARE_string(nexus_root_path);

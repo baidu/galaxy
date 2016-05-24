@@ -11,7 +11,7 @@
 #include <timer.h>
 
 DECLARE_int32(task_manager_background_thread_pool_size);
-DECLARE_int32(task_manager_stop_command_timeout);
+DECLARE_int32(task_manager_task_stop_command_timeout);
 DECLARE_int32(task_manager_loop_wait_interval);
 DECLARE_int32(task_manager_task_max_fail_retry_times);
 DECLARE_string(appworker_default_user);
@@ -162,7 +162,8 @@ int TaskManager::StopTask(const std::string& task_id) {
     if (!task->desc.has_exe_package()) {
         return -1;
     }
-    task->timeout_point = common::timer::now_time() + FLAGS_task_manager_stop_command_timeout;
+    task->timeout_point = common::timer::now_time()\
+        + FLAGS_task_manager_task_stop_command_timeout;
     ProcessContext context;
     context.process_id = task->task_id + "_stop";
     context.cmd = task->desc.exe_package().stop_cmd();
@@ -304,6 +305,18 @@ int TaskManager::CleanTask(const std::string& task_id) {
             break;
     }
     it->second->status = proto::kTaskTerminated;
+
+    return 0;
+}
+
+int TaskManager::ClearTasks() {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "clear all tasks";
+    std::map<std::string, Task*>::iterator it = tasks_.begin();
+    for (; it != tasks_.end(); ++it) {
+        tasks_.erase(it);
+    }
+    process_manager_.ClearProcesses();
 
     return 0;
 }
@@ -452,18 +465,6 @@ int TaskManager::ReloadCheckTask(const std::string& task_id,
             break;
     }
     task.reload_status = it->second->reload_status;
-
-    return 0;
-}
-
-int TaskManager::ClearTasks() {
-    MutexLock lock(&mutex_);
-    LOG(WARNING) << "clear all tasks";
-    std::map<std::string, Task*>::iterator it = tasks_.begin();
-    for (; it != tasks_.end(); ++it) {
-        tasks_.erase(it);
-    }
-    process_manager_.ClearProcesses();
 
     return 0;
 }
