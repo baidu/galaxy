@@ -308,6 +308,154 @@ int TaskManager::CleanTask(const std::string& task_id) {
     return 0;
 }
 
+int TaskManager::ReloadDeployTask(const std::string& task_id,
+                                  const TaskDescription& task_desc) {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "reload deploy task: " << task_id;
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+    if (it == tasks_.end()) {
+        LOG(INFO) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    // 1.replace desc
+    Task* task = it->second;
+    task->desc.CopyFrom(task_desc);
+    LOG(WARNING) << task_id << " desc replaced ok";
+
+    // 2.deploy data packages
+    LOG(INFO) << "reload deplay task start, task: " << task_id;
+    task->packages_size = 0;
+    if (task->desc.has_data_package()) {
+        for (int i = 0; i< task->desc.data_package().packages_size(); i++) {
+            DownloadProcessContext context;
+            context.process_id = task->task_id + "_reload_deploy_"\
+                + boost::lexical_cast<std::string>(i + 1);
+            context.src_path = task->desc.data_package().packages(i).src_path();
+            context.dst_path = task->desc.data_package().packages(i).dst_path();
+            context.version = task->desc.data_package().packages(i).version();
+            context.work_dir = task->task_id;
+            context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
+            ProcessEnv env;
+            env.user = FLAGS_appworker_default_user;
+            env.envs.push_back("JOB_ID=" + task->env.job_id);
+            env.envs.push_back("POD_ID=" + task->env.pod_id);
+            env.envs.push_back("TASK_ID=" + task->env.task_id);
+            if (0 != process_manager_.CreateProcess(env, &context)) {
+                LOG(WARNING) << "command execute fail, command: " << context.cmd;
+                return -1;
+            }
+        }
+    }
+    task->reload_status = proto::kTaskDeploying;
+
+    return 0;
+}
+
+int TaskManager::ReloadStartTask(const std::string& task_id,
+                                 const TaskDescription& task_desc) {
+    MutexLock lock(&mutex_);
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+    if (it == tasks_.end()) {
+        LOG(INFO) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    LOG(INFO) << "start create reload main process for task: " << task_id;
+    Task* task = it->second;
+    if (task->desc.has_data_package()) {
+        ProcessContext context;
+        context.process_id = task->task_id + "_reload_main";
+        context.cmd = task->desc.data_package().reload_cmd();
+        context.work_dir = task->task_id;
+        ProcessEnv env;
+        env.user = FLAGS_appworker_default_user;
+        env.envs.push_back("JOB_ID=" + task->env.job_id);
+        env.envs.push_back("POD_ID=" + task->env.pod_id);
+        env.envs.push_back("TASK_ID=" + task->env.task_id);
+        std::map<std::string, std::string>::iterator c_it =\
+            task->env.cgroup_paths.begin();
+        for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
+            env.cgroup_paths.push_back(c_it->second);
+        }
+        if (0 != process_manager_.CreateProcess(env, &context)) {
+            LOG(WARNING) << "command execute fail,command: " << context.cmd;
+            return -1;
+        }
+        task->reload_status = proto::kTaskRunning;
+    } else {
+        task->reload_status = proto::kTaskFinished;
+    }
+
+    return 0;
+}
+
+// check reload task status
+int TaskManager::ReloadCheckTask(const std::string& task_id,
+                                  Task& task) {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "reloading check task";
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+    if (it == tasks_.end()) {
+        LOG(INFO) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    std::string process_id;
+    Process process;
+    switch (it->second->reload_status) {
+        case proto::kTaskDeploying: {
+            ProcessStatus process_status = proto::kProcessFinished;
+            for (int i = 0; i < it->second->packages_size; i++) {
+                process_id = task_id + "_reload_deploy_" + boost::lexical_cast<std::string>(i);
+                if (0 != process_manager_.QueryProcess(process_id, process)) {
+                    LOG(WARNING) << "query deploy process: " << process_id << " fail";
+                    it->second->reload_status = proto::kTaskFailed;
+                    return -1;
+                }
+                if (process.status > proto::kProcessFinished) {
+                    LOG(WARNING) << "deploy process " << process_id <<" failed";
+                    it->second->reload_status = proto::kTaskFailed;
+                    process_status = process.status;
+                    break;
+                }
+                if (process.status < process_status) {
+                    process_status = process.status;
+                }
+            }
+            if (process_status == proto::kProcessFinished) {
+                LOG(WARNING) << "deploy all processes successed";
+                it->second->reload_status = proto::kTaskStarting;
+            }
+            break;
+        }
+        case proto::kTaskRunning: {
+            process_id = task_id + "_reload_main";
+            if (0 != process_manager_.QueryProcess(process_id, process)) {
+                LOG(WARNING) << "query reload main process: " << process_id << " fail";
+                return -1;
+            }
+            do {
+                if (process.status == proto::kProcessRunning) {
+                   break;
+                }
+                if (0 == process.exit_code) {
+                    it->second->reload_status = proto::kTaskFinished;
+                    LOG(INFO) << "main process finished successful";
+                    break;
+                }
+                it->second->reload_status = proto::kTaskFailed;
+            } while (0);
+            break;
+        }
+        default:
+            break;
+    }
+    task.reload_status = it->second->reload_status;
+
+    return 0;
+}
+
 int TaskManager::ClearTasks() {
     MutexLock lock(&mutex_);
     LOG(WARNING) << "clear all tasks";

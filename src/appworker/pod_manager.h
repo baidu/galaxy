@@ -28,9 +28,11 @@ struct PodEnv {
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
 };
 
-// when pod.stage == kPodTerminating,
-// and pod.status == kPodTerminated,
-// set pod.status = kPodPending
+/**
+ * when pod.stage == kPodTerminating,
+ * and pod.status == kPodTerminated,
+ * lset pod.status = kPodPending
+ */
 enum PodStage {
     kPodStageCreating,
     kPodStageRebuilding,
@@ -41,6 +43,7 @@ enum PodStage {
 struct Pod {
     std::string pod_id;
     PodStatus status;
+    PodStatus reload_status;
     PodStage stage;
     PodEnv env;
     PodDescription desc;
@@ -63,13 +66,19 @@ private:
     int DoStartPod();
     int DoStopPod();
     int DoClearPod();
+
+    int DoReloadDeployPod();
+    int DoReloadStartPod();
+
     void LoopChangePodStatus();
+    void LoopChangePodReloadStatus();
     void PendingPodCheck();
     void ReadyPodCheck();
     void DeployingPodCheck();
     void StartingPodCheck();
     void StoppingPodCheck();
     void RunningPodCheck();
+    void ReloadingPodCheck();
 
 private:
     Mutex mutex_;

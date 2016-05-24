@@ -29,7 +29,7 @@ DEFINE_int32(pod_manager_change_pod_status_interval, 1000, "pod manager check po
 
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 10, "task manager background thread pool size");
-DEFINE_int32(task_manager_stop_command_timeout, 100, "task manager stop command run timeout");
+DEFINE_int32(task_manager_stop_command_timeout, 100, "task manager stop command run timeout second");
 DEFINE_int32(task_manager_task_max_fail_retry_times, 0, "task fail retry times limit");
 
 // process_manager

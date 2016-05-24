@@ -97,11 +97,25 @@ int PodManager::ReloadPod() {
         LOG(WARNING)\
             << "container cgroup size: " << pod_.env.task_ids.size()\
             << ", mismatch with task size: " << tasks_size;
-        pod_.status = proto::kPodFailed;
+        pod_.reload_status = proto::kPodFailed;
         return -1;
     }
+
+    // 1.replace desc
     pod_.desc.CopyFrom(pod_.desc);
     pod_.stage = kPodStageReloading;
+    // 2.start reload process
+    if (0 != DoReloadDeployPod()) {
+        pod_.reload_status = proto::kPodFailed;
+        return -1;
+    }
+    pod_.reload_status = proto::kPodDeploying;
+    // 3.add pod reload status change loop
+    background_pool_.DelayTask(
+        500,
+        boost::bind(&PodManager::LoopChangePodReloadStatus, this)
+    );
+
     return 0;
 }
 
@@ -206,6 +220,38 @@ int PodManager::DoStopPod() {
         LOG(INFO) << "create stop process for task " << i << " ok";
     }
     return 0;
+}
+
+int PodManager::DoReloadDeployPod() {
+    mutex_.AssertHeld();
+    int tasks_size = pod_.desc.tasks().size();
+    LOG(INFO) << "reload deploy pod, " << tasks_size << " tasks need deploy";
+    for (int i = 0; i < tasks_size; i++) {
+        std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
+        if (0 != task_manager_.ReloadDeployTask(task_id, pod_.desc.tasks(i))) {
+            return -1;
+        }
+        LOG(INFO) << "create reload deploy process for task: " << task_id << " ok";
+    }
+
+    return 0;
+}
+
+int PodManager::DoReloadStartPod () {
+    mutex_.AssertHeld();
+    int tasks_size = pod_.desc.tasks().size();
+    LOG(INFO) << "reload start pod, total " << tasks_size << " tasks to be start";
+    for (int i = 0; i < tasks_size; i++) {
+       std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
+       int ret = task_manager_.ReloadStartTask(task_id, pod_.desc.tasks(i));
+       if (0 != ret) {
+           LOG(WARNING) << "create reload main process for task " << i << " fail";
+           return ret;
+       }
+       LOG(INFO) << "create reload main process for task " << i << " ok";
+   }
+
+   return 0;
 }
 
 void PodManager::LoopChangePodStatus() {
@@ -368,6 +414,101 @@ void PodManager::StoppingPodCheck() {
         DoClearPod();
         pod_.status = proto::kPodPending;
     }
+
+    return;
+}
+
+void PodManager::LoopChangePodReloadStatus() {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "loop change pod reload status";
+
+    switch (pod_.reload_status) {
+        case proto::kPodDeploying: {
+            LOG(WARNING) << "reload deploying check";
+            int tasks_size = pod_.desc.tasks().size();
+            TaskStatus task_status = proto::kTaskStarting;
+            for (int i = 0; i < tasks_size; i++) {
+                std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
+                Task task;
+                if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
+                    break;
+                }
+                LOG(INFO) << "task: " << task_id\
+                    << ", status: " << proto::TaskStatus_Name(task.reload_status);
+                if (task.reload_status == proto::kTaskFailed) {
+                    task_status = proto::kTaskFailed;
+                    break;
+                }
+                if (task.reload_status < task_status) {
+                    task_status = task.reload_status;
+                }
+            }
+            if (proto::kTaskStarting == task_status) {
+                LOG(INFO) << "pod reload status change to kPodStarting";
+                pod_.reload_status = proto::kPodStarting;
+            }
+            if (proto::kTaskFailed == task_status) {
+                LOG(INFO) << "pod reload status change to kPodFailed";
+                pod_.reload_status = proto::kPodFailed;
+            }
+            break;
+        }
+        case proto::kPodStarting: {
+            LOG(WARNING) << "reload starting check";
+            if (0 == DoReloadStartPod()) {
+                LOG(INFO) << "pod reload status change to kPodRunning";
+                pod_.reload_status = proto::kPodRunning;
+            } else {
+                LOG(INFO) << "pod status change to kPodFailed";
+                pod_.reload_status = proto::kPodFailed;
+            }
+            break;
+        }
+        case proto::kPodRunning: {
+            // queryreload  running process status
+            LOG(WARNING) << "reload running check";
+            int tasks_size = pod_.desc.tasks().size();
+            TaskStatus task_status = proto::kTaskFinished;
+            for (int i = 0; i < tasks_size; i++) {
+                std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
+                Task task;
+                if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
+                    return;
+                }
+                if (proto::kTaskFailed == task.reload_status) {
+                    task_status = proto::kTaskFailed;
+                    break;
+                }
+                if (task.reload_status < task_status) {
+                    task_status = task.reload_status;
+                }
+            }
+            if (proto::kTaskRunning != task_status) {
+                if (proto::kTaskFinished == task_status) {
+                    LOG(INFO) << "pod status change to kPodFinished";
+                    pod_.reload_status = proto::kPodFinished;
+                } else {
+                    LOG(INFO) << "pod status change to kPodFailed";
+                    pod_.reload_status = proto::kPodFailed;
+                }
+            }
+            break;
+        }
+        case proto::kPodFinished:
+            LOG(WARNING) << "### pod reload ok";
+            pod_.stage = kPodStageCreating;
+            return;
+        case proto::kPodFailed:
+            LOG(WARNING) << "$$$ pod reload failed";
+            return;
+        default:
+            return;
+    }
+
+    background_pool_.DelayTask(
+        500,
+        boost::bind(&PodManager::LoopChangePodReloadStatus, this)
+    );
 
     return;
 }

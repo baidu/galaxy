@@ -40,14 +40,15 @@ ProcessManager::~ProcessManager() {
 
 int ProcessManager::CreateProcess(const ProcessEnv& env,
                                   const ProcessContext* context) {
+    // if old process exit, then kill and erase
     {
         MutexLock scope_lock(&mutex_);
         std::map<std::string, Process*>::iterator it =\
             processes_.find(context->process_id);
         if (it != processes_.end()) {
+            int32_t pid = it->second->pid;
+            killpg(pid, SIGKILL);
             processes_.erase(it);
-            // LOG(INFO) << context->cmd << " is already running";
-            //return -1;
         }
     }
     LOG(INFO) << "create process of command: " << context->cmd;
@@ -96,15 +97,16 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         if (stderr_fd != -1) {
             ::close(stderr_fd);
         }
-        LOG(WARNING) << "prepare " << context->process_id << " std file failed";
+        LOG(WARNING) << context->process_id << " prepare std file failed";
         return -1;
     }
 
     // 3. Fork
     pid_t child_pid = ::fork();
     if (child_pid == -1) {
-        LOG(WARNING) <<  "fork " << context->process_id << " failed, "\
-            <<"err[" << errno << ":" << strerror(errno) << "]";
+        LOG(WARNING)\
+            << context->process_id << " fork failed"\
+            << ", errno: " << errno << ", err: "  << strerror(errno);
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
@@ -175,7 +177,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     if (stderr_fd != -1) {
         ::close(stderr_fd);
     }
-
     Process* process = new Process();
     process->process_id = context->process_id;
     process->pid = child_pid;
@@ -184,6 +185,7 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         MutexLock scope_lock(&mutex_);
         processes_.insert(std::make_pair(context->process_id, process));
     }
+
     return 0;
 }
 
@@ -195,6 +197,7 @@ int ProcessManager::KillProcess(const std::string& process_id) {
         return 0;
     }
     ::killpg(it->second->pid, SIGKILL);
+
     return 0;
 }
 
@@ -210,6 +213,7 @@ int ProcessManager::QueryProcess(const std::string& process_id,
     process.pid = it->second->pid;
     process.status = it->second->status;
     process.exit_code = it->second->exit_code;
+
     return 0;
 }
 
@@ -219,6 +223,7 @@ int ProcessManager::ClearProcesses() {
     for (; it != processes_.end(); ++it) {
         processes_.erase(it);
     }
+
     return 0;
 }
 
@@ -252,11 +257,11 @@ void ProcessManager::LoopWaitProcesses() {
             }
         }
     }
-
     background_pool_.DelayTask(
         FLAGS_process_manager_loop_wait_interval,
         boost::bind(&ProcessManager::LoopWaitProcesses, this)
     );
+
     return;
 }
 

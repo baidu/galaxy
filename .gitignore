@@ -47,6 +47,7 @@ GPATH
 *~
 *.swp
 tmp
+galaxy.flag
 
 # logs
 *.INFO*

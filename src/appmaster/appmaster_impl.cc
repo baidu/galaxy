@@ -92,7 +92,7 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         PodDescription* pod = response->mutable_pod();
         TaskDescription* task_desc = pod->add_tasks();
         ImagePackage* image_package = task_desc->mutable_exe_package();
-        image_package->set_start_cmd("touch 1.txt && sleep 100");
+        image_package->set_start_cmd("touch 1.txt && sleep 20");
         image_package->set_stop_cmd("touch 1_stop.txt && sleep 10");
         Package* e_package = image_package->mutable_package();
         e_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/sandbox/galaxy/galaxy.tgz");
@@ -107,7 +107,8 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         response->set_update_time(update_time2);
 
         ErrorCode* error_code = response->mutable_error_code();
-        error_code->set_status(proto::kJobRebuild);
+        // error_code->set_status(proto::kJobRebuild);
+        error_code->set_status(proto::kJobReload);
         PodDescription* pod = response->mutable_pod();
         TaskDescription* task_desc = pod->add_tasks();
         ImagePackage* image_package = task_desc->mutable_exe_package();
@@ -115,12 +116,13 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         image_package->set_stop_cmd("touch 2_stop.txt && sleep 5");
         Package* e_package = image_package->mutable_package();
         e_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/sandbox/galaxy/galaxy.tgz");
-        e_package->set_dst_path("galaxy.tar.gz");
+        e_package->set_dst_path("reload.tar.gz");
         e_package->set_version("123457");
         DataPackage* data_package = task_desc->mutable_data_package();
+        data_package->set_reload_cmd("touch reload.txt && sleep 3");
         Package* d_package = data_package->add_packages();
         d_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/rtg_galaxy_test/galaxy");
-        d_package->set_dst_path("galaxy");
+        d_package->set_dst_path("galaxy1");
         d_package->set_version("123456");
     }
     done->Run();

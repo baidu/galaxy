@@ -36,6 +36,7 @@ struct Task {
     TaskDescription desc;
     TaskStatus status;
     TaskStatus prev_status;
+    TaskStatus reload_status;
     int32_t packages_size;
     int32_t fail_retry_times;
     TaskEnv env;
@@ -47,13 +48,24 @@ class TaskManager {
 public:
     TaskManager();
     ~TaskManager();
-    int CreateTask(const TaskEnv& task_env, const TaskDescription& task_desc);
+    int CreateTask(const TaskEnv& task_env,
+                   const TaskDescription& task_desc);
     int DeployTask(const std::string& task_id);
     int StartTask(const std::string& task_id);
     int StopTask(const std::string& task_id);
-    int CheckTask(const std::string& task_id, Task& task);
+    int ReloadTask(const std::string& task_id,
+                   const TaskDescription& task_desc);
+    int CheckTask(const std::string& task_id,
+                  Task& task);
     int CleanTask(const std::string& task_id);
     int ClearTasks();
+
+    int ReloadDeployTask(const std::string& task_id,
+                         const TaskDescription& task_desc);
+    int ReloadStartTask(const std::string& task_id,
+                        const TaskDescription& task_desc);
+    int ReloadCheckTask(const std::string& task_id,
+                        Task& task);
 
 private:
     int DoStartTask(const std::string& task_id);
