@@ -172,10 +172,9 @@ void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::gala
         boost::shared_ptr<baidu::galaxy::proto::VolumResource> vr(new baidu::galaxy::proto::VolumResource());
         vr->set_medium(iter->second.medium_);
         vr->set_device_path(iter->first);
-        baidu::galaxy::proto::Resource* r = new baidu::galaxy::proto::Resource();
+        baidu::galaxy::proto::Resource* r = vr->mutable_volum();
         r->set_assigned(iter->second.assigned_);
         r->set_total(iter->second.total_);
-        vr->set_allocated_volum(r);
         resource.push_back(vr);
         iter++;
     }
@@ -206,6 +205,7 @@ void ResourceManager::CalResource(const baidu::galaxy::proto::ContainerDescripti
         vv.push_back(&desc.data_volums(i));
     }
 }
+
 }
 }
 }
