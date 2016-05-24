@@ -156,9 +156,32 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
         std::stringstream ss;
-        ss << "baidu_galaxy_contianer_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
+        ss << "baidu_galaxy_container_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
         env[ss.str()] = subsystem_[i]->Path();
     }
+
+    {
+        std::stringstream ss;
+        ss << "baidu_galaxy_container_" << cgroup_->id() << "_" << freezer_->Name() << "_path";
+        env[ss.str()] = freezer_->Path();
+    }
+
+    // export port
+    std::string port_names;
+    for (int i = 0; i < cgroup_->ports_size(); i++) {
+        std::stringstream ss;
+        const baidu::galaxy::proto::PortRequired& pr = cgroup_->ports(i);
+        if (!port_names.empty()) {
+            port_names += ",";
+        }
+        port_names += pr.port_name();
+        ss << "baidu_galaxy_container_" << cgroup_->id() << "_port_" << pr.port_name();
+        env[ss.str()] = pr.real_port();
+    }
+
+    std::stringstream ss;
+    ss << "baidu_galaxy_container_" << cgroup_->id() << "_portlist";
+    env[ss.str()] = port_names;
 }
 
 std::string Cgroup::Id()

@@ -273,15 +273,19 @@ int Container::RunRoutine(void*)
     // export env
     // start appworker
     LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
-    char* argv[] = {"cat", NULL};
-    /*char* argv[] = {
+    std::string cmd_line = "sh /tmp/appwork.sh";
+    //char* argv[] = {"cat", NULL};
+    char* argv[] = {
         const_cast<char*>("sh"),
-        const_cast<char*>("-c /bin/cat"),
-    //const_cast<char*>(desc_.cmd_line().c_str()),
+        const_cast<char*>("-c"),
+        //const_cast<char*>(desc_.cmd_line().c_str()),
+        const_cast<char*>(cmd_line.c_str()),
         NULL
-    };*/
+    };
+
+    ExportEnv();
     ::execv("/bin/sh", argv);
-    LOG(WARNING) << "exec cmd " << desc_.cmd_line() << " failed: " << strerror(errno);
+    LOG(WARNING) << "exec cmd " << cmd_line << " failed: " << strerror(errno);
     return -1;
 }
 
@@ -298,7 +302,8 @@ void Container::ExportEnv()
     std::map<std::string, std::string>::const_iterator iter = env.begin();
 
     while (iter != env.end()) {
-        int ret = ::setenv(boost::to_upper_copy(iter->first).c_str(), boost::to_upper_copy(iter->second).c_str(), 1);
+        int ret = ::setenv(boost::to_upper_copy(iter->first).c_str(), iter->second.c_str(), 1);
+        std::cerr << "env: " << iter->first << ":" << iter->second << std::endl;
 
         if (0 != ret) {
             LOG(FATAL) << "set env failed for container " << id_.CompactId();
