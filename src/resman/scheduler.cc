@@ -7,6 +7,8 @@
 #include <time.h>
 #include <algorithm>
 #include <sstream>
+#include <deque>
+#include <limits>
 #include <boost/foreach.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
@@ -20,8 +22,8 @@ namespace baidu {
 namespace galaxy {
 namespace sched {
 
-const uint32_t kMaxPort = 60000;
-const uint32_t kMinPort = 1000;
+const int sMaxPort = 60000;
+const int sMinPort = 1000;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -36,7 +38,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
     memory_total_ = memory;
     memory_assigned_ = 0;
     volum_total_ = volums;
-    port_total_ = kMaxPort - kMinPort + 1;
+    port_total_ = sMaxPort - sMinPort + 1;
     tags_ = tags;
     pool_name_ = pool_name;
 }
@@ -123,12 +125,10 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     }
 
     const std::vector<proto::PortRequired> ports = container->require->ports;
-    BOOST_FOREACH(const proto::PortRequired& port, ports) {
-        if (port.port() != kDynamicPort
-            && port_assigned_.find(port.port()) != port_assigned_.end()) {
-            err = proto::kPortConflict;
-            return false;
-        } 
+    std::vector<std::string> ports_free;
+    if (!SelectFreePorts(ports, ports_free)) {
+        err = proto::kPortConflict;
+        return false;
     }
     return true;
 }
@@ -172,33 +172,11 @@ void Agent::Put(Container::Ptr container) {
         }
     }
     //ports
-    BOOST_FOREACH(const proto::PortRequired& port, container->require->ports) {
-        std::string s_port;
-        if (port.port() != kDynamicPort) {
-            s_port = port.port();
-        } else {
-            uint32_t max_tries = (kMaxPort - kMinPort + 1);
-            double rand_scale = (double)rand() / (RAND_MAX + 1.0);
-            uint32_t start_port = kMinPort + (uint32_t)(max_tries * rand_scale);
-            for (uint32_t i = 0; i < max_tries; i++) {
-                std::stringstream ss;
-                ss << start_port;
-                const std::string& random_port = ss.str();
-                if (port_assigned_.find(random_port) == port_assigned_.end()) {
-                    s_port = random_port;
-                    break;
-                }
-                start_port ++;
-                if (start_port > kMaxPort) {
-                    start_port = kMinPort;
-                }
-            }
-        }
-        if (!s_port.empty()) {
-            port_assigned_.insert(s_port);
-            container->allocated_ports.push_back(s_port);
-        } else {
-            LOG(WARNING) << "no free port.";
+    std::vector<std::string> ports_free;
+    if (SelectFreePorts(container->require->ports, ports_free)) {
+        for (size_t i = 0; i < ports_free.size(); i++) {
+            container->allocated_ports.push_back(ports_free[i]);
+            port_assigned_.insert(ports_free[i]);
         }
     }
     //put on this agent succesfully
@@ -206,6 +184,84 @@ void Agent::Put(Container::Ptr container) {
     container->last_res_err = proto::kResOk;
     containers_[container->id] = container;
     container_counts_[container->container_group_id] += 1;
+}
+
+bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
+                            std::vector<std::string>& ports_free) {
+    bool has_determinate_port = false;
+    bool has_dynamic_port = false;
+    int max_port = 0;
+    int min_port = std::numeric_limits<int>::max();
+    int dynamic_port_count = 0;
+    int determinate_port_count = 0;
+    std::deque<std::string> free_random_ports;
+    BOOST_FOREACH(const proto::PortRequired& port, ports_need) {
+        if (port.port() != kDynamicPort) {
+            has_determinate_port = true;
+            std::stringstream ss;
+            int n_port;
+            ss << port.port();
+            ss >> n_port;
+            max_port = std::max(max_port, n_port);
+            min_port = std::min(min_port, n_port);
+            determinate_port_count++;
+            if (port_assigned_.find(port.port()) != port_assigned_.end()) {
+                return false;
+            }
+        } else {
+            has_dynamic_port = true;
+            dynamic_port_count++;
+        }
+    }
+    if (has_determinate_port && (max_port - min_port + 1 > determinate_port_count) ) {
+        LOG(WARNING) << "the port range is not continuous: " << min_port << max_port;
+        return false;
+    }
+    if (has_dynamic_port && has_determinate_port) {
+        int start_port = max_port + 1;
+        for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
+            std::stringstream ss;
+            ss << x;
+            std::string s_port = ss.str();
+            if (port_assigned_.find(s_port) != port_assigned_.end()) {
+                return false;
+            } else {
+                free_random_ports.push_back(s_port);
+            }
+        }
+    } else if (!has_determinate_port && has_dynamic_port) {
+        for (int start_port = sMinPort; start_port <= sMaxPort; start_port += dynamic_port_count) {
+            free_random_ports.clear();
+            for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
+                std::stringstream ss;
+                ss << x;
+                std::string s_port = ss.str();
+                if (port_assigned_.find(s_port) != port_assigned_.end()) {
+                    break;
+                } else {
+                    free_random_ports.push_back(s_port);
+                }
+            }
+            if ((int)free_random_ports.size() == dynamic_port_count) {
+                break;
+            }
+        }
+    }
+    
+    if (has_dynamic_port &&  ((int)free_random_ports.size() != dynamic_port_count) ) {
+        return false;
+    }
+
+    BOOST_FOREACH(const proto::PortRequired& port, ports_need) {
+        if (port.port() != kDynamicPort) {
+            ports_free.push_back(port.port());
+        } else {
+            const std::string& dyn_port = free_random_ports.front();
+            ports_free.push_back(dyn_port);
+            free_random_ports.pop_front();
+        }
+    }
+    return true;
 }
 
 void Agent::Evict(Container::Ptr container) {
@@ -379,7 +435,6 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->require = require;
         cpu_assigned += require->CpuNeed();
         memory_assigned += require->MemoryNeed();
-
         for (int j = 0; j < container_desc.cgroups_size(); j++) {
             const proto::Cgroup& cgroup = container_desc.cgroups(j);
             for (int k = 0; k < cgroup.ports_size(); k++) {
@@ -408,11 +463,11 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         for (int j = 0; j < container_desc.data_volums_size(); j++) {
             VolumInfo data_volum;
             data_volum.medium = container_desc.data_volums(j).medium();
+            data_volum.size = container_desc.data_volums(j).size();
             if (data_volum.medium == proto::kTmpfs) {
                 memory_assigned += data_volum.size;
                 continue;
             }
-            data_volum.size = container_desc.data_volums(j).size();
             data_volum.exclusive = container_desc.data_volums(j).exclusive();
             std::string device_path = container_desc.data_volums(j).source_path();
             container->allocated_volums.push_back(
@@ -534,6 +589,7 @@ ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
     container_group->replica = replica;
     container_group->name = container_group_name;
     container_group->user_name = user_name;
+    container_group->submit_time = common::timer::get_micros();
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
         container->container_group_id = container_group->id;
@@ -562,6 +618,8 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     container_group->container_desc = container_group_meta.desc();
     container_group->name = container_group_meta.name();
     container_group->user_name = container_group_meta.user_name();
+    container_group->submit_time = container_group_meta.submit_time();
+    container_group->update_time = container_group_meta.update_time();
     if (container_group_meta.status() == proto::kContainerGroupTerminated) {
         container_group->terminated = true;
     } else {
@@ -978,6 +1036,7 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
     container_group->require = require;
     container_group->container_desc = container_desc;
     container_group->container_desc.set_version(new_version);
+    container_group->update_time = common::timer::get_micros();
     BOOST_FOREACH(ContainerMap::value_type& pair, container_group->states[kContainerPending]) {
         Container::Ptr pending_container = pair.second;
         pending_container->require = container_group->require;
@@ -1174,8 +1233,7 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
     }
     for (int i = 0; i < container_desc.data_volums_size(); i++) {
         if (idx >= container->allocated_volums.size()) {
-            LOG(WARNING) << "fail to set allocated volums device path";
-            return;
+            break;
         }
         proto::VolumRequired* vol = container_desc.mutable_data_volums(i);
         if (vol->medium() != proto::kTmpfs) {
@@ -1216,7 +1274,10 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
         group_stat.set_ready(container_group->states[kContainerReady].size());
         group_stat.set_pending(container_group->states[kContainerPending].size());
         group_stat.set_allocating(container_group->states[kContainerAllocating].size());
+        group_stat.set_destroying(container_group->states[kContainerDestroying].size());
         group_stat.set_user_name(container_group->user_name);
+        group_stat.set_submit_time(container_group->submit_time);
+        group_stat.set_update_time(container_group->update_time);
         if (container_group->terminated) {
             group_stat.set_status(proto::kContainerGroupTerminated);
         } else {
