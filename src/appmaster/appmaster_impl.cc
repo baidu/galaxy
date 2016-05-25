@@ -44,6 +44,7 @@ void AppMasterImpl::Init() {
         exit(1);
     }
     LOG(INFO) << "init resource manager watcher successfully";
+    job_manager_.Start();
     running_ = true;
     return;
 }
@@ -104,13 +105,16 @@ void AppMasterImpl::CreateContainerGroupCallBack(JobDescription job_desc,
     boost::scoped_ptr<const baidu::galaxy::proto::CreateContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<baidu::galaxy::proto::CreateContainerGroupResponse> response_ptr(response);
     if (failed || response_ptr->error_code().status() != proto::kOk) {
-        //LOG(WARNING, "fail to create container group");
+        LOG(WARNING) << "fail to create container group with status " 
+        << Status_Name(response_ptr->error_code().status());
         submit_response->mutable_error_code()->CopyFrom(response_ptr->error_code());
         done->Run();
         return;
     }
     Status status = job_manager_.Add(response->id(), job_desc);
     if (status != proto::kOk) {
+        LOG(WARNING) << "fail to add job :" << response->id() 
+        << " with status " << Status_Name(status);
         submit_response->mutable_error_code()->set_status(status);
         submit_response->mutable_error_code()->set_reason("appmaster add job error");
         done->Run();
@@ -129,12 +133,10 @@ void AppMasterImpl::BuildContainerDescription(const ::baidu::galaxy::proto::JobD
     container_desc->set_run_user(job_desc.run_user());
     container_desc->set_version(job_desc.version());
     container_desc->set_max_per_host(job_desc.deploy().max_per_host());
-    container_desc->set_tag(job_desc.tag());
+    container_desc->set_tag(job_desc.deploy().tag());
     container_desc->set_cmd_line(FLAGS_appworker_cmdline);
-    VLOG(10) << "BuildContainerDescription" << job_desc.pool_names_size();
-    for (int i = 0; i < job_desc.pool_names_size(); i++) {
-        container_desc->add_pool_names(job_desc.pool_names(i));
-        VLOG(10) << "TRACE pool : " << job_desc.pool_names(i);
+    for (int i = 0; i < job_desc.deploy().pools_size(); i++) {
+        container_desc->add_pool_names(job_desc.deploy().pools(i));
     }
     container_desc->mutable_workspace_volum()->CopyFrom(job_desc.pod().workspace_volum());
     container_desc->mutable_data_volums()->CopyFrom(job_desc.pod().data_volums());
@@ -155,24 +157,25 @@ void AppMasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::SubmitJobRequest* request,
                ::baidu::galaxy::proto::SubmitJobResponse* response,
                ::google::protobuf::Closure* done) {
-    if (running_) {
+    VLOG(10) << "DEBUG SubmitJob: ";
+    VLOG(10) << request->DebugString();
+    VLOG(10) << "DEBUG END";
+    if (!running_) {
         response->mutable_error_code()->set_status(kError);
         response->mutable_error_code()->set_reason("AM not running");
         done->Run();
+        return;
     }
     const JobDescription& job_desc = request->job();
     MutexLock lock(&resman_mutex_);
-    VLOG(10) << "TRACE SubmitJob: " << job_desc.name();
-    VLOG(10) << job_desc.DebugString();
-    VLOG(10) << "TRACE END";
     proto::CreateContainerGroupRequest* container_request = new proto::CreateContainerGroupRequest();
     container_request->mutable_user()->CopyFrom(request->user());
     container_request->set_name(job_desc.name());
     BuildContainerDescription(job_desc, container_request->mutable_desc());
     container_request->set_replica(job_desc.deploy().replica());
-    VLOG(10) << "TRACE CreateContainer: ";
+    VLOG(10) << "DEBUG CreateContainer: ";
     VLOG(10) <<  container_request->DebugString();
-    VLOG(10) << "TRACE END";
+    VLOG(10) << "DEBUG END";
     proto::CreateContainerGroupResponse* container_response = new proto::CreateContainerGroupResponse();
     
     boost::function<void (const proto::CreateContainerGroupRequest*,
@@ -224,10 +227,14 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::UpdateJobRequest* request,
                ::baidu::galaxy::proto::UpdateJobResponse* response,
                ::google::protobuf::Closure* done) {
-    if (running_) {
+    VLOG(10) << "DEBUG UpdateJob: ";
+    VLOG(10) << request->DebugString();
+    VLOG(10) << "DEBUG END";
+    if (!running_) {
         response->mutable_error_code()->set_status(kError);
         response->mutable_error_code()->set_reason("AM not running");
         done->Run();
+        return;
     }
     const JobDescription& job_desc = request->job();
     MutexLock lock(&resman_mutex_);
@@ -237,6 +244,9 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     container_request->set_interval(job_desc.deploy().interval());
     BuildContainerDescription(job_desc, container_request->mutable_desc());
     container_request->set_replica(job_desc.deploy().replica());
+    VLOG(10) << "DEBUG UpdateContainer: ";
+    VLOG(10) <<  container_request->DebugString();
+    VLOG(10) << "DEBUG END";
     proto::UpdateContainerGroupResponse* container_response = new proto::UpdateContainerGroupResponse();
     boost::function<void (const proto::UpdateContainerGroupRequest*,
                           proto::UpdateContainerGroupResponse*, 
@@ -260,13 +270,18 @@ void AppMasterImpl::RemoveJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::RemoveJobRequest* request,
                ::baidu::galaxy::proto::RemoveJobResponse* response,
                ::google::protobuf::Closure* done) {
-    if (running_) {
+    VLOG(10) << "DEBUG RemoveJob: ";
+    VLOG(10) << request->DebugString();
+    VLOG(10) << "DEBUG END";
+    if (!running_) {
         response->mutable_error_code()->set_status(kError);
         response->mutable_error_code()->set_reason("AM not running");
         done->Run();
+        return;
     }
     Status status = job_manager_.Terminate(request->jobid(), 
                                             request->user(), request->hostname());
+    VLOG(10) << "remove job : " << request->DebugString();
     response->mutable_error_code()->set_status(status);
     response->mutable_error_code()->set_reason("remove job ok");
     done->Run();
@@ -277,10 +292,11 @@ void AppMasterImpl::ListJobs(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::proto::ListJobsRequest* request,
                             ::baidu::galaxy::proto::ListJobsResponse* response,
                             ::google::protobuf::Closure* done) {
-    if (running_) {
+    if (!running_) {
         response->mutable_error_code()->set_status(kError);
         response->mutable_error_code()->set_reason("AM not running");
         done->Run();
+        return;
     }
     job_manager_.GetJobsOverview(response->mutable_jobs());
     response->mutable_error_code()->set_status(kOk);
@@ -291,10 +307,11 @@ void AppMasterImpl::ShowJob(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::proto::ShowJobRequest* request,
                             ::baidu::galaxy::proto::ShowJobResponse* response,
                             ::google::protobuf::Closure* done) {
-    if (running_) {
+    if (!running_) {
         response->mutable_error_code()->set_status(kError);
         response->mutable_error_code()->set_reason("AM not running");
         done->Run();
+        return;
     }
     Status rlt = job_manager_.GetJobInfo(request->jobid(), response->mutable_job());
     response->mutable_error_code()->set_status(rlt);
@@ -311,15 +328,22 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
                               const ::baidu::galaxy::proto::FetchTaskRequest* request,
                               ::baidu::galaxy::proto::FetchTaskResponse* response,
                               ::google::protobuf::Closure* done) {
-    if (running_) {
+    VLOG(10) << "DEBUG: FetchTask"
+    << request->DebugString() 
+    <<"DEBUG END";
+    if (!running_) {
         response->mutable_error_code()->set_status(kError);
         response->mutable_error_code()->set_reason("AM not running");
         done->Run();
+        return;
     }
     Status status = job_manager_.HandleFetch(request, response);
     if (status != kOk) {
         LOG(WARNING) << "FetchTask failed, code:" << status << ", method:" << __FUNCTION__;
     }
+    VLOG(10) << "DEBUG: Fetch response" 
+    << response->DebugString() 
+    <<"DEBUG END";
     done->Run();
     return;
 }
