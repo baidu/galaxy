@@ -121,10 +121,12 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
                                              context->work_dir.c_str());
         // attach cgroup
         for (unsigned i = 0; i < env.cgroup_paths.size(); i++) {
-//            bool ok = cgroup::AttachCgroup(process_env.cgroup_paths[i], my_pid);
-//            if (!ok) {
-//                assert(0);
-//            }
+            std::string path = env.cgroup_paths[i] + "/tasks";
+            std::string content = boost::lexical_cast<std::string>(my_pid) + "\n";
+            bool ok = file::Append(path, content);
+            if (!ok) {
+                assert(0);
+            }
         }
 
         process::PrepareChildProcessEnvStep2(stdin_fd, stdout_fd,
