@@ -57,7 +57,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
     if (task->desc.has_exe_package()) {
         DownloadProcessContext context;
         context.process_id = task->task_id + "_deploy_0";
-        context.src_path = task->desc.exe_package().package().src_path();
+        context.src_path = task->desc.exe_package().package().source_path();
         context.dst_path = "image.tar.gz";
         context.version = task->desc.exe_package().package().version();
         context.work_dir = task->task_id;
@@ -79,8 +79,8 @@ int TaskManager::DeployTask(const std::string& task_id) {
             DownloadProcessContext context;
             context.process_id = task->task_id + "_deploy_"\
                 + boost::lexical_cast<std::string>(i + 1);
-            context.src_path = task->desc.data_package().packages(i).src_path();
-            context.dst_path = task->desc.data_package().packages(i).dst_path();
+            context.src_path = task->desc.data_package().packages(i).source_path();
+            context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
             context.work_dir = task->task_id;
             context.cmd = "wget -t3 --timeout=300 -O " + context.dst_path + " " + context.src_path;
@@ -327,8 +327,8 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
             DownloadProcessContext context;
             context.process_id = task->task_id + "_reload_deploy_"\
                 + boost::lexical_cast<std::string>(i + 1);
-            context.src_path = task->desc.data_package().packages(i).src_path();
-            context.dst_path = task->desc.data_package().packages(i).dst_path();
+            context.src_path = task->desc.data_package().packages(i).source_path();
+            context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
             context.work_dir = task->task_id;
             context.cmd = "wget -t3 --timeout=300 -O " + context.dst_path + " " + context.src_path;

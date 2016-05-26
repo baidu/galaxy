@@ -173,11 +173,12 @@ enum PodStatus {
     kPodReady = 2;
     kPodDeploying = 3;
     kPodStarting = 4;
-    kPodRunning = 5;
-    kPodStopping = 6;
-    kPodFailed = 7;
-    kPodFinished = 8;
-    kPodTerminated = 9;
+    kPodServing = 5;
+    kPodFailed = 6;
+    kPodFinished = 7;
+    kPodRunning = 8;
+    kPodStopping = 9;
+    kPodTerminated = 10;
 }
 
 enum ProcessStatus {
@@ -211,16 +212,14 @@ message TaskInfo {
     optional string podid = 2;
     optional string jobid = 3;
     optional string workspace = 4;
+    optional string chroot_path = 5;
     optional TaskDescription desc = 6;
     optional TaskStatus status = 7;
-    optional ProcessInfo deploy_process = 8;
-    optional ProcessInfo main_process = 9;
-    optional ProcessInfo stop_process = 10;
 }
 
 message Package {
-    optional string src_path = 1; // support nfs/hdfs/ftp
-    optional string dst_path = 2; // local path
+    optional string source_path = 1; // support nfs/hdfs/ftp
+    optional string dest_path = 2; // local path
     optional string version = 3;
 }
 message ImagePackage {
