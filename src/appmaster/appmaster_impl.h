@@ -81,6 +81,7 @@ private:
                                      bool failed, int err);
     void HandleResmanChange(const std::string& new_endpoint);
     void OnLockChange(std::string lock_session_id);
+    void ReloadAppInfo();
     static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param,
                             ::galaxy::ins::sdk::SDKError err);
 
