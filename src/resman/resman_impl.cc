@@ -240,6 +240,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         vrs->mutable_volum()->set_total(size_total);
         vrs->mutable_volum()->set_assigned(volum_assigned[medium]);
         vrs->mutable_volum()->set_used(volum_used[medium]);
+        vrs->set_medium(medium);
     }
     response->set_total_containers(total_containers);
     response->set_total_groups(total_container_groups);
@@ -252,6 +253,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         pool_status->set_alive_agents(pool_alive[pool_name]);
     }
     response->set_in_safe_mode(safe_mode_);
+    VLOG(10) << "cluster status:" << response->DebugString();
     done->Run();
 }
 
@@ -781,7 +783,7 @@ void ResManImpl::ShowAgent(::google::protobuf::RpcController* controller,
                            ::google::protobuf::Closure* done) {
     const std::string& endpoint = request->endpoint();
     std::vector<proto::ContainerStatistics> containers;
-    bool ret = scheduler_->ShowContainerGroup(endpoint, containers);
+    bool ret = scheduler_->ShowAgent(endpoint, containers);
     if (!ret) {
         response->mutable_error_code()->set_status(proto::kError);
         response->mutable_error_code()->set_reason("no such agent");
