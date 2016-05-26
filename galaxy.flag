@@ -1,0 +1,9 @@
+--nexus_servers=
+--appworker_endpoint=127.0.0.1:8221
+--appworker_container_id=test-1
+--logbufsecs=0
+--username=default
+--token=default
+--nexus_addr=
+--nexus_root=/galaxy3
+--resman_path=/resman

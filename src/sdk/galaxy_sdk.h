@@ -61,6 +61,21 @@ enum VolumMedium {
     kBfs=3,
     kTmpfs=4,
 };
+
+enum ResourceError {
+    kResOk = 0,
+    kNoCpu = 1,
+    kNoMemory = 2,
+    kNoMedium = 3,
+    kNoDevice = 4,
+    kNoPort = 5,
+    kPortConflict = 6,
+    kTagMismatch = 7,
+    kNoMemoryForTmpfs = 8,
+    kPoolMismatch = 9,
+    kTooManyPods = 10,
+};
+
 struct VolumResource {
     VolumMedium medium;
     Resource volum;
@@ -168,6 +183,8 @@ struct TaskDescription {
     std::string id;
     CpuRequired cpu;
     MemoryRequired memory;
+    TcpthrotRequired tcp_throt;
+    BlkioRequired blkio;
     std::vector<PortRequired> ports;
     ImagePackage exe_package;
     DataPackage data_package;
@@ -210,7 +227,7 @@ enum ContainerStatus {
     kContainerPending=1,
     kContainerAllocating=2,
     kContainerReady=3,
-     kContainerFinish = 4,      // finish , when appworker exit with code 0
+    kContainerFinish = 4,      // finish , when appworker exit with code 0
     kContainerError=5,
     kContainerDestroying=6,
     kContainerTerminated=7,
@@ -328,6 +345,7 @@ struct OfflineAgentRequest {
 struct OfflineAgentResponse {
     ErrorCode error_code;
 };
+
 struct ListAgentsRequest {
     User user;
 };
@@ -506,17 +524,30 @@ struct ShowContainerGroupRequest {
     std::string id;
 };
 struct ContainerStatistics {
+    std::string id;
     ContainerStatus status;
     std::string endpoint;
     Resource cpu;
     Resource memory;
     std::vector<VolumResource> volums;
+    ResourceError last_res_err;
 };
 struct ShowContainerGroupResponse {
     ErrorCode error_code;
     ContainerDescription desc;
     std::vector<ContainerStatistics> containers;
 };
+
+struct ShowAgentRequest {
+    User user;
+    std::string endpoint;
+};
+
+struct ShowAgentResponse {
+    ErrorCode error_code;
+    std::vector<ContainerStatistics> containers;
+};
+
 struct SubmitJobRequest {
     User user;
     JobDescription job;
