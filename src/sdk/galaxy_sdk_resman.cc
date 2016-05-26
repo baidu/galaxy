@@ -932,12 +932,6 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
         return false;
     }
 
-    for (int i = 0; i < pb_response.pools().size(); ++i) {
-        response->pools.push_back(pb_response.pools(i));
-    }
-    for (int i = 0; i < pb_response.authority().size(); ++i) {
-        response->authority.push_back((Authority)pb_response.authority(i));
-    }
     response->quota.millicore = pb_response.quota().millicore();
     response->quota.memory = pb_response.quota().memory();
     response->quota.disk = pb_response.quota().disk();
