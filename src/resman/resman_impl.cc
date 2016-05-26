@@ -248,6 +248,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         const std::string& pool_name = p_it->first;
         proto::PoolStatus* pool_status = response->add_pools();
         pool_status->set_total_agents(p_it->second);
+        pool_status->set_name(pool_name);
         pool_status->set_alive_agents(pool_alive[pool_name]);
     }
     response->set_in_safe_mode(safe_mode_);
@@ -392,23 +393,27 @@ void ResManImpl::SendCommandsToAgent(const std::string& agent_endpoint,
                                   bool, int)> callback;
             callback = boost::bind(&ResManImpl::CreateContainerCallback, this,
                                    agent_endpoint, _1, _2, _3, _4);
-            rpc_client_.AsyncRequest(stub, &proto::Agent_Stub::CreateContainer,
-                                     request, response, callback, 5, 1);
             LOG(INFO) << "send create command, container: "
                       << cmd.container_id << ", agent:"
                       << agent_endpoint;
-            VLOG(10) << "TRACE BEGIN container: " << cmd.container_id;
-            VLOG(10) <<  cmd.desc.DebugString();
+            VLOG(10) << "TRACE BEGIN create container: " << cmd.container_id;
+            VLOG(10) <<  request->DebugString();
             VLOG(10) << "TRACE END";
+            rpc_client_.AsyncRequest(stub, &proto::Agent_Stub::CreateContainer,
+                                     request, response, callback, 5, 1);
         } else if (cmd.action == sched::kDestroyContainer) {
             proto::RemoveContainerRequest* request = new proto::RemoveContainerRequest();
             proto::RemoveContainerResponse* response = new proto::RemoveContainerResponse();
             request->set_id(cmd.container_id);
+            request->set_container_group_id(cmd.container_group_id);
             boost::function<void (const proto::RemoveContainerRequest*,
                                   proto::RemoveContainerResponse*,
                                   bool, int)> callback;
             callback = boost::bind(&ResManImpl::RemoveContainerCallback, this,
                                    agent_endpoint, _1, _2, _3, _4);
+            VLOG(10) << "TRACE BEGIN remove container: " << cmd.container_id;
+            VLOG(10) <<  request->DebugString();
+            VLOG(10) << "TRACE END";
             rpc_client_.AsyncRequest(stub, &proto::Agent_Stub::RemoveContainer,
                                      request, response, callback, 5, 1);
             LOG(INFO) << "send remove command, container: "
@@ -467,11 +472,13 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     container_group_meta.set_user_name(request->user().user());
     container_group_meta.set_replica(request->replica());
     container_group_meta.set_status(proto::kContainerGroupNormal);
+    container_group_meta.set_submit_time(common::timer::get_micros());
     container_group_meta.mutable_desc()->CopyFrom(request->desc());
     std::string container_group_id = scheduler_->Submit(request->name(), 
                                                         request->desc(), 
                                                         request->replica(), 
-                                                        request->desc().priority());
+                                                        request->desc().priority(),
+                                                        request->user().user());
     if (container_group_id == "") {
         proto::ErrorCode* err = response->mutable_error_code();
         err->set_status(proto::kCreateContainerGroupFail);
@@ -559,6 +566,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
         new_meta = it->second;
         new_meta.set_update_interval(request->interval());
         new_meta.mutable_desc()->CopyFrom(request->desc());
+        new_meta.set_update_time(common::timer::get_micros());
         if (new_meta.replica() != request->replica()) {
             new_meta.set_replica(request->replica());
             replica_changed = true;
@@ -570,6 +578,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
                                               new_meta.update_interval(),
                                               new_version);
     if (version_changed) {
+        LOG(INFO) << "container version changed: " << new_version;
         new_meta.mutable_desc()->set_version(new_version);
     }
     if (replica_changed) {
@@ -836,6 +845,7 @@ void ResManImpl::CreateTag(::google::protobuf::RpcController* controller,
         }
         tag_old = tag_new;
     }
+    response->mutable_error_code()->set_status(proto::kOk);
     done->Run();
 }
 
@@ -966,7 +976,7 @@ void ResManImpl::ListAgentsByPool(::google::protobuf::RpcController* controller,
     it = pools_.find(request->pool());
     if (it == pools_.end()) {
         response->mutable_error_code()->set_status(proto::kError);
-        response->mutable_error_code()->set_reason("fail to list agents, no such pool");
+        response->mutable_error_code()->set_reason("fail to list agents, no such pool:" + request->pool());
         done->Run();
         return;
     }
@@ -1162,6 +1172,7 @@ void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,
         MutexLock lock(&mu_);
         users_[user_name] = user_meta;
         response->mutable_error_code()->set_status(proto::kOk);
+        VLOG(10) <<  "grant user:" << user_meta.DebugString();
     }
     done->Run();
 }

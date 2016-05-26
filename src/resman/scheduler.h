@@ -132,10 +132,14 @@ struct ContainerGroup {
     std::string name;
     std::string user_name;
     proto::ContainerDescription container_desc;
+    int64_t submit_time;
+    int64_t update_time;
     ContainerGroup() : terminated(false),
                        update_interval(0),
                        last_update_time(0),
-                       replica(0) {};
+                       replica(0),
+                       submit_time(0),
+                       update_time(0) {};
     int Replica() const {
         return states[kContainerPending].size() 
                + states[kContainerAllocating].size() 
@@ -168,6 +172,8 @@ private:
     bool RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
                             std::map<DevicePath, VolumInfo>& volum_free,
                             std::vector<DevicePath>& devices);
+    bool SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
+                         std::vector<std::string>& ports_free);
     AgentEndpoint endpoint_;
     std::set<std::string> tags_;
     std::string pool_name_;
@@ -206,7 +212,8 @@ public:
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
                             const proto::ContainerDescription& container_desc,
-                            int replica, int priority);
+                            int replica, int priority,
+                            const std::string& user_name);
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
@@ -259,6 +266,7 @@ private:
                         const proto::ContainerDescription& container_desc);
     void SetVolumsAndPorts(const Container::Ptr& container, 
                            proto::ContainerDescription& container_desc);
+    std::string GetNewVersion();
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;
