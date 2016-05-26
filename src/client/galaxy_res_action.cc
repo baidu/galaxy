@@ -751,9 +751,7 @@ bool ResAction::ListAgentsByPool(const std::string& pool) {
     if (ret) {
         ::baidu::common::TPrinter agents(9);
         agents.AddRow(9, "", "endpoint", "status", "pool", "tags", "cpu(t/a/u)", "mem(t/a/u)", "vol(med/t/a/u/path)", "containers");
-        fprintf(stderr, "size is %u\n", response.agents.size());
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
-            fprintf(stderr, "i is %u\n", i);
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
                 tags += response.agents[i].tags[j] + ", ";
