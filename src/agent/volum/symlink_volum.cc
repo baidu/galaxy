@@ -109,22 +109,13 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Destroy()
     }
 
     boost::filesystem::remove_all(target_path, ec);
-
     if (ec.value() != 0) {
         return ERRORCODE(-1, "failed in removing file(%s): %s",
                 target_path.c_str(),
                 ec.message().c_str());
     }
 
-    if (!boost::filesystem::exists(gc_target_path.parent_path(), ec)
-            && !boost::filesystem::create_directories(gc_target_path.parent_path(), ec)) {
-        return ERRORCODE(-1, "failed in creating gc dir(%s): %s",
-                gc_target_path.parent_path().string().c_str(),
-                ec.message().c_str());
-    }
-
-    boost::filesystem::create_symlink(gc_source_path, gc_target_path, ec);
-
+    boost::filesystem::create_symlink(gc_source_path, target_path, ec);
     if (ec.value() != 0) {
         return ERRORCODE(-1, "create_symlink(%s->%s) failed: %s",
                 gc_target_path.string().c_str(),

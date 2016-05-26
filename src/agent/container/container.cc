@@ -238,7 +238,8 @@ int Container::Destroy_()
     if (pid > 0) {
         baidu::galaxy::util::ErrorCode ec = Process::Kill(pid);
         if (ec.Code() != 0) {
-            LOG(WARNING) << "failed in killing appwork for container " << id_.CompactId() << ": " << ec.Message();
+            LOG(WARNING) << "failed in killing appwork for container "
+                         << id_.CompactId() << ": " << ec.Message();
             return -1;
         }
     }
@@ -257,10 +258,6 @@ int Container::Destroy_()
                      << " " << ec.Message();
         return -1;
     }
-
-
-    // move container root path to  gc_dir
-
 
     // mv to gc queue
     return 0;

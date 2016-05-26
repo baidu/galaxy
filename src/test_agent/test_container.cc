@@ -89,7 +89,7 @@ TEST_F(TestContainer, Construct1)
     baidu::galaxy::container::Container container(id, desc);
     EXPECT_EQ(0, container.Construct());
     sleep(1);
-    int n = 100;
+    int n = 30;
     while (n--) {
         container.KeepAlive();
         sleep(1);
