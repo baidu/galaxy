@@ -370,7 +370,8 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         }
         base.AddRow(7,  response.desc.run_user.c_str(),
                         response.desc.version.c_str(),
-                        ::baidu::common::NumToString(response.desc.priority).c_str(),
+                        //::baidu::common::NumToString(response.desc.priority).c_str(),
+                        StringJobType((::baidu::galaxy::sdk::JobType)response.desc.priority).c_str(),
                         response.desc.cmd_line.c_str(),
                         ::baidu::common::NumToString(response.desc.max_per_host).c_str(),
                         response.desc.tag.c_str(),
@@ -380,12 +381,11 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         printf("%s\n", base.ToString().c_str());
 
         printf("workspace volum infomation\n");
-        ::baidu::common::TPrinter workspace_volum(8);
-        workspace_volum.AddRow(8, "size", "type", "medium", "source_path", "dest_path", "readonly", "exclusive", "use_symlink");
-        workspace_volum.AddRow(8, ::baidu::common::HumanReadableString(response.desc.workspace_volum.size).c_str(),
+        ::baidu::common::TPrinter workspace_volum(7);
+        workspace_volum.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
+        workspace_volum.AddRow(7, ::baidu::common::HumanReadableString(response.desc.workspace_volum.size).c_str(),
                                   StringVolumType(response.desc.workspace_volum.type).c_str(),
                                   StringVolumMedium(response.desc.workspace_volum.medium).c_str(),
-                                  response.desc.workspace_volum.source_path.c_str(),
                                   response.desc.workspace_volum.dest_path.c_str(),
                                   StringBool(response.desc.workspace_volum.readonly).c_str(),
                                   StringBool(response.desc.workspace_volum.exclusive).c_str(),

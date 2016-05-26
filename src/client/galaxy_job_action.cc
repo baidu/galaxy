@@ -179,11 +179,23 @@ bool JobAction::ListJobs() {
         return false;
     }
 
+    struct timeval t_start;
+    struct timeval t_finish;
+    double duration;
+
     ::baidu::galaxy::sdk::ListContainerGroupsRequest resman_request;
     ::baidu::galaxy::sdk::ListContainerGroupsResponse resman_response;
     resman_request.user = user_;
     std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics> containers;
+
+    gettimeofday(&t_start, NULL);
+
     bool ret = resman_->ListContainerGroups(resman_request, &resman_response);
+
+    gettimeofday(&t_finish, NULL);
+    duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
+    fprintf(stderr, "list container time is %d\n", duration);
+
     if (ret) {
         for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
             containers[resman_response.containers[i].id] = resman_response.containers[i];
@@ -198,9 +210,15 @@ bool JobAction::ListJobs() {
     ::baidu::galaxy::sdk::ListJobsRequest request;
     ::baidu::galaxy::sdk::ListJobsResponse response;
     request.user = user_;
-
+    
+    gettimeofday(&t_start, NULL);
     ret = app_master_->ListJobs(request, &response);
+    gettimeofday(&t_finish, NULL);
+    duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
+    fprintf(stderr, "list job time is %d\n", duration);
     if (ret) {
+        struct timeval tt_start;
+        gettimeofday(&tt_start, NULL);
         baidu::common::TPrinter jobs(12);
         jobs.AddRow(12, "", "id", "name", "type","status", "stat(r/p/dep/dea/f)", "replica", 
                     "cpu(a/u)", "memory(a/u)", "volums(med/a/u)", "create", "update");
@@ -213,8 +231,12 @@ bool JobAction::ListJobs() {
             std::string scpu;
             std::string smem;
             std::string svolums;
+            gettimeofday(&t_start, NULL);
             std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>::iterator it 
                                         = containers.find(response.jobs[i].jobid);
+            gettimeofday(&t_finish, NULL);
+            duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
+            fprintf(stderr, "find time is %d\n", duration);
             if (it != containers.end()) {
                 scpu = ::baidu::common::NumToString(it->second.cpu.assigned / 1000.0) + "/"
                        + ::baidu::common::NumToString(it->second.cpu.used / 1000.0);
@@ -222,9 +244,13 @@ bool JobAction::ListJobs() {
                        + ::baidu::common::HumanReadableString(it->second.memory.used);
                 for (size_t j = 0; j < it->second.volums.size(); ++j) {
                     std::string svolums;
+                    gettimeofday(&t_start, NULL);
                     svolums = StringVolumMedium(it->second.volums[j].medium) + "/"
                               + ::baidu::common::HumanReadableString(it->second.volums[j].volum.assigned) + "/"
                               + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
+                    gettimeofday(&t_finish, NULL);
+                    duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
+                    fprintf(stderr, "volum [%u] time is %d\n", j, duration);
                     if (j == 0) {
                         jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
                                          response.jobs[i].jobid.c_str(),
@@ -290,7 +316,13 @@ bool JobAction::ListJobs() {
 
             }
         }
+        gettimeofday(&t_start, NULL);
         printf("%s\n", jobs.ToString().c_str());
+        gettimeofday(&t_finish, NULL);
+        duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
+        fprintf(stderr, "print time is %d\n", duration);
+        duration = (t_finish.tv_sec - tt_start.tv_sec)*1000000.0 + (t_finish.tv_usec - tt_start.tv_usec);
+        fprintf(stderr, "all time is %d\n", duration);
     } else {
         printf("List job failed for reason %s:%s\n", 
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
