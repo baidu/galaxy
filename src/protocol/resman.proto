@@ -227,10 +227,9 @@ message ShowUserRequest {
 
 message ShowUserResponse {
     optional ErrorCode error_code = 1;
-    repeated string pools = 2;
-    repeated Authority authority = 3;
-    optional Quota quota = 4;
-    optional Quota assigned = 5;
+    repeated Grant grants = 2;
+    optional Quota quota = 3;
+    optional Quota assigned = 4;
 }
 
 message GrantUserRequest {

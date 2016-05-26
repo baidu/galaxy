@@ -185,7 +185,11 @@ private:
     bool CheckUserExist(const RpcRequest* request, 
                         RpcResponse* response,
                         DoneClosure* done);
-
+    void ReloadUsersAuth();
+    bool CheckUserAuth(const proto::ContainerDescription& desc,
+                       const std::string& user_name,
+                       const std::map<std::string, std::set<std::string> > & users_auth,
+                       std::string& invalid_pool);
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentMeta> agents_;
@@ -195,6 +199,10 @@ private:
     std::map<std::string, proto::ContainerGroupMeta> container_groups_;
     std::map<std::string, std::set<std::string> > tags_;
     std::map<std::string, std::set<std::string> > pools_;
+    std::map<std::string, std::set<std::string> > users_can_create_;
+    std::map<std::string, std::set<std::string> >  users_can_update_;
+    std::map<std::string, std::set<std::string> > users_can_remove_;
+    std::map<std::string, std::set<std::string> >  users_can_list_;
     Mutex mu_;
     bool safe_mode_;
     bool force_safe_mode_;
