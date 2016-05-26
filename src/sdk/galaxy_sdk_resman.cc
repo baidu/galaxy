@@ -301,7 +301,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         return false;
     }
 
-    response->desc.priority = pb_response.desc().priority();
+    response->desc.priority = (JobType)pb_response.desc().priority();
     response->desc.run_user = pb_response.desc().run_user();
     response->desc.version = pb_response.desc().version();
     response->desc.cmd_line = pb_response.desc().cmd_line();
