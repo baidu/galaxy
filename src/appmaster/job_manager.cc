@@ -148,7 +148,17 @@ void JobManager::CheckDestroying(Job* job) {
 
 void JobManager::CheckClear(Job* job) {
     mutex_.AssertHeld();
-    ClearJob(job, (void*)&job->user_);
+    MutexLock lock(&mutex_);
+    JobId id = job->id_;
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(id);
+    if (job_it != jobs_.end()) {
+        Job* job = job_it->second;
+        jobs_.erase(id);
+        delete job;
+    }
+    //if (DeleteFromNexus(id)) {
+        //LOG
+    //}
     return;
 }
 
@@ -357,21 +367,9 @@ void JobManager::RemoveContainerGroupCallBack(const proto::RemoveContainerGroupR
     boost::scoped_ptr<const proto::RemoveContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<proto::RemoveContainerGroupResponse> response_ptr(response);
     if (failed || response_ptr->error_code().status() != kOk) {
-        //LOG(WARNING, "fail to remove container group");
+        LOG(WARNING) << "fail to remove container group";
         return;
     }
-    MutexLock lock(&mutex_);
-    JobId id = request->id();
-    std::map<JobId, Job*>::iterator job_it = jobs_.find(id);
-    /*
-    if (job_it != jobs_.end()) {
-        Job* job = job_it->second;
-        jobs_.erase(id);
-        delete job;
-    }*/
-    //if (DeleteFromNexus(id)) {
-        //LOG
-    //}
     return;
 }
 
