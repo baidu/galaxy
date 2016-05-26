@@ -1,6 +1,0 @@
---logbufsecs = 0
-               --username = zhoumeiting
-                            --token = default
-                                          --nexus_addr = cq01 - ps - dev377.cq01.baidu.com: 8868
-                                                  --nexus_root = / galaxy3
-                                                          --resman_path = / resman
