@@ -46,6 +46,7 @@ GPATH
 
 *~
 *.swp
+*.swo
 tmp
 
 *.orig

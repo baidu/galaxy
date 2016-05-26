@@ -15,6 +15,7 @@
 
 DECLARE_string(cgroup_root_path);
 DECLARE_string(mount_templat);
+DECLARE_string(cmd_line);
 
 namespace baidu {
 namespace galaxy {
@@ -28,6 +29,7 @@ protected:
         FLAGS_cgroup_root_path = "/tmp/cgroup";
         FLAGS_mount_templat = "/home,/bin,/boot,/cgroups,/dev,/etc,/lib,/lib64,/lost+found,/media,/misc,/mnt,/opt,/sbin,/selinux,/srv,/sys,/tmp,/usr,/var";
         baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
+        FLAGS_cmd_line="/tmp/appworker --nexus_addr=cq01-ps-dev377.cq01.baidu.com:8868 --nexus_root_path=/galaxy3";
         baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     }
 
@@ -88,8 +90,7 @@ TEST_F(TestContainer, Construct1)
     baidu::galaxy::container::ContainerId id("container_group_id", "container_id");
     baidu::galaxy::container::Container container(id, desc);
     EXPECT_EQ(0, container.Construct());
-    sleep(1);
-    int n = 30;
+    int n = 10;
     while (n--) {
         container.KeepAlive();
         sleep(1);
