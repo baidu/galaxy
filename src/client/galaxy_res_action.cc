@@ -1148,8 +1148,8 @@ bool ResAction::ListUsers() {
     return ret;
 }
 
-bool ResAction::ShowUser(const std::string& user, const std::string& token) {
-    if (user.empty() || token.empty()) {
+bool ResAction::ShowUser(const std::string& user) {
+    if (user.empty()) {
         return false;
     }
 
@@ -1161,35 +1161,44 @@ bool ResAction::ShowUser(const std::string& user, const std::string& token) {
     ::baidu::galaxy::sdk::ShowUserResponse response;
     request.admin = user_;
     request.user.user = user;
-    request.user.token = token;
+    //request.user.token = token;
 
     bool ret = resman_->ShowUser(request, &response);
     
     if (ret) {
-        printf("pools infomation\n");
-        ::baidu::common::TPrinter pools(2);
-        pools.AddRow(2, "", "pool");
-        for (uint32_t i = 0; i < response.pools.size(); ++i) {
-            pools.AddRow(2, ::baidu::common::NumToString(i).c_str(),
-                            response.pools[i].c_str()
-                       );
+        printf("grants infomation\n");
+        ::baidu::common::TPrinter grants(4);
+        grants.AddRow(4, "", "pool", "action", "authority");
+        for (uint32_t i = 0; i < response.grants.size(); ++i) {
+            for (uint32_t j = 0; j < response.grants[i].authority.size(); ++j) {
+                if (j == 0) {
+                    grants.AddRow(4, ::baidu::common::NumToString(i).c_str(),
+                                    response.grants[i].pool.c_str(),
+                                    StringAuthorityAction(response.grants[i].action).c_str(),
+                                    StringAuthority(response.grants[i].authority[j]).c_str()
+                                );
+                } else {
+                    grants.AddRow(4, "",
+                                    "",
+                                    "",
+                                    StringAuthority(response.grants[i].authority[j]).c_str()
+                                );
+                }
+            }
+            if (response.grants[i].authority.size() == 0) {
+                grants.AddRow(4, ::baidu::common::NumToString(i).c_str(),
+                                response.grants[i].pool.c_str(),
+                                StringAuthorityAction(response.grants[i].action).c_str(),
+                                ""
+                            );
+            }
         }
-        printf("%s\n", pools.ToString().c_str());
-
-        printf("authority infomation\n");
-        ::baidu::common::TPrinter authority(2);
-        pools.AddRow(2, "", "authority");
-        for (uint32_t i = 0; i < response.authority.size(); ++i) {
-            pools.AddRow(2, ::baidu::common::NumToString(i).c_str(),
-                            response.authority[i]
-                       );
-        }
-        printf("%s\n", authority.ToString().c_str());
+        printf("%s\n", grants.ToString().c_str());
 
         printf("quota infomation\n");
         ::baidu::common::TPrinter quota(5);
         quota.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
-        quota.AddRow(5, ::baidu::common::NumToString(response.quota.millicore).c_str(),
+        quota.AddRow(5, ::baidu::common::NumToString(response.quota.millicore / 1000.0).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.memory).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.disk).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.ssd).c_str(),
@@ -1200,7 +1209,7 @@ bool ResAction::ShowUser(const std::string& user, const std::string& token) {
         printf("assignd infomation\n");
         ::baidu::common::TPrinter assign(5);
         assign.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
-        assign.AddRow(5, ::baidu::common::NumToString(response.assigned.millicore).c_str(),
+        assign.AddRow(5, ::baidu::common::NumToString(response.assigned.millicore / 1000.0).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.memory).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.disk).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.ssd).c_str(),

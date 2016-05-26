@@ -452,8 +452,7 @@ struct ShowUserRequest {
 };
 struct ShowUserResponse {
     ErrorCode error_code;
-    std::vector<std::string> pools;
-    std::vector<Authority> authority;
+    std::vector<Grant> grants;
     Quota quota;
     Quota assigned;
 };

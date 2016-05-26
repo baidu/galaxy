@@ -42,7 +42,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client add_user -u user -t token\n"
                                  "      galaxy_res_client remove_user -u user -t token\n"
                                  "      galaxy_res_client list_users\n"
-                                 "      galaxy_res_client show_user -u user -t token\n"
+                                 "      galaxy_res_client show_user -u user\n"
                                  "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]\n" 
                                  "                                   -a [create_container,remove_container,update_container,\n"
                                  "                                   list_containers,submit_job,remove_job,update_job,list_jobs] \n"
@@ -180,11 +180,11 @@ int main(int argc, char** argv) {
     } else if (strcmp(argv[1], "list_users") == 0) {
         return resAction->ListUsers();
     } else if (strcmp(argv[1], "show_user") == 0) {
-        if (FLAGS_u.empty() || FLAGS_t.empty()) {
-            fprintf(stderr, "-u and -t are needed\n");
+        if (FLAGS_u.empty()) {
+            fprintf(stderr, "-u\n");
             return -1;
         }
-        return resAction->ShowUser(FLAGS_u, FLAGS_t);
+        return resAction->ShowUser(FLAGS_u);
     } else if (strcmp(argv[1], "grant_user") == 0) {
         if (FLAGS_u.empty() || FLAGS_t.empty() || FLAGS_p.empty()) {
             fprintf(stderr, "-u, -t and -p are needed\n");
