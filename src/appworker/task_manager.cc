@@ -1,4 +1,3 @@
-// Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +17,8 @@ DECLARE_string(appworker_default_user);
 
 namespace baidu {
 namespace galaxy {
+
+int MakeProcessEnv(Task* task, ProcessEnv& env);
 
 TaskManager::TaskManager() :
     mutex_(),
@@ -60,18 +61,13 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.dst_path = "image.tar.gz";
         context.version = task->desc.exe_package().package().version();
         context.work_dir = task->task_id;
-        context.cmd = "wget -O " + context.dst_path\
+        context.cmd = "wget -t3 --timeout=300 -O " + context.dst_path\
             + " " + context.src_path + " && tar -xzf image.tar.gz";
+
+        // process env
         ProcessEnv env;
-        env.user = FLAGS_appworker_default_user;
-        env.envs.push_back("JOB_ID=" + task->env.job_id);
-        env.envs.push_back("POD_ID=" + task->env.pod_id);
-        env.envs.push_back("TASK_ID=" + task->env.task_id);
-        std::map<std::string, std::string>::iterator c_it =\
-            task->env.cgroup_paths.begin();
-        for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
-            env.cgroup_paths.push_back(c_it->second);
-        }
+        MakeProcessEnv(task, env);
+
         if (0 != process_manager_.CreateProcess(env, &context)) {
             LOG(WARNING) << "command execute fail, command: " << context.cmd;
             return -1;
@@ -87,12 +83,11 @@ int TaskManager::DeployTask(const std::string& task_id) {
             context.dst_path = task->desc.data_package().packages(i).dst_path();
             context.version = task->desc.data_package().packages(i).version();
             context.work_dir = task->task_id;
-            context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
+            context.cmd = "wget -t3 --timeout=300 -O " + context.dst_path + " " + context.src_path;
+
             ProcessEnv env;
-            env.user = FLAGS_appworker_default_user;
-            env.envs.push_back("JOB_ID=" + task->env.job_id);
-            env.envs.push_back("POD_ID=" + task->env.pod_id);
-            env.envs.push_back("TASK_ID=" + task->env.task_id);
+            MakeProcessEnv(task, env);
+
             if (0 != process_manager_.CreateProcess(env, &context)) {
                 LOG(WARNING) << "command execute fail, command: " << context.cmd;
                 return -1;
@@ -121,16 +116,10 @@ int TaskManager::DoStartTask(const std::string& task_id) {
         context.process_id = task->task_id + "_main";
         context.cmd = task->desc.exe_package().start_cmd();
         context.work_dir = task->task_id;
+
         ProcessEnv env;
-        env.user = FLAGS_appworker_default_user;
-        env.envs.push_back("JOB_ID=" + task->env.job_id);
-        env.envs.push_back("POD_ID=" + task->env.pod_id);
-        env.envs.push_back("TASK_ID=" + task->env.task_id);
-        std::map<std::string, std::string>::iterator c_it =\
-            task->env.cgroup_paths.begin();
-        for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
-            env.cgroup_paths.push_back(c_it->second);
-        }
+        MakeProcessEnv(task, env);
+
         if (0 != process_manager_.CreateProcess(env, &context)) {
             LOG(WARNING) << "command execute fail,command: " << context.cmd;
             return -1;
@@ -168,16 +157,10 @@ int TaskManager::StopTask(const std::string& task_id) {
     context.process_id = task->task_id + "_stop";
     context.cmd = task->desc.exe_package().stop_cmd();
     context.work_dir = task->task_id;
+
     ProcessEnv env;
-    env.user = FLAGS_appworker_default_user;
-    env.envs.push_back("JOB_ID=" + task->env.job_id);
-    env.envs.push_back("POD_ID=" + task->env.pod_id);
-    env.envs.push_back("TASK_ID=" + task->env.task_id);
-    std::map<std::string, std::string>::iterator c_it =\
-        task->env.cgroup_paths.begin();
-    for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
-        env.cgroup_paths.push_back(c_it->second);
-    }
+    MakeProcessEnv(task, env);
+
     if (0 != process_manager_.CreateProcess(env, &context)) {
         LOG(WARNING) << "command execute fail, command: " << context.cmd;
         return -1;
@@ -348,12 +331,11 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
             context.dst_path = task->desc.data_package().packages(i).dst_path();
             context.version = task->desc.data_package().packages(i).version();
             context.work_dir = task->task_id;
-            context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
+            context.cmd = "wget -t3 --timeout=300 -O " + context.dst_path + " " + context.src_path;
+
             ProcessEnv env;
-            env.user = FLAGS_appworker_default_user;
-            env.envs.push_back("JOB_ID=" + task->env.job_id);
-            env.envs.push_back("POD_ID=" + task->env.pod_id);
-            env.envs.push_back("TASK_ID=" + task->env.task_id);
+            MakeProcessEnv(task, env);
+
             if (0 != process_manager_.CreateProcess(env, &context)) {
                 LOG(WARNING) << "command execute fail, command: " << context.cmd;
                 return -1;
@@ -381,16 +363,10 @@ int TaskManager::ReloadStartTask(const std::string& task_id,
         context.process_id = task->task_id + "_reload_main";
         context.cmd = task->desc.data_package().reload_cmd();
         context.work_dir = task->task_id;
+
         ProcessEnv env;
-        env.user = FLAGS_appworker_default_user;
-        env.envs.push_back("JOB_ID=" + task->env.job_id);
-        env.envs.push_back("POD_ID=" + task->env.pod_id);
-        env.envs.push_back("TASK_ID=" + task->env.task_id);
-        std::map<std::string, std::string>::iterator c_it =\
-            task->env.cgroup_paths.begin();
-        for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
-            env.cgroup_paths.push_back(c_it->second);
-        }
+        MakeProcessEnv(task, env);
+
         if (0 != process_manager_.CreateProcess(env, &context)) {
             LOG(WARNING) << "command execute fail,command: " << context.cmd;
             return -1;
@@ -465,6 +441,25 @@ int TaskManager::ReloadCheckTask(const std::string& task_id,
             break;
     }
     task.reload_status = it->second->reload_status;
+
+    return 0;
+}
+
+int MakeProcessEnv(Task* task, ProcessEnv& env) {
+    env.user = FLAGS_appworker_default_user;
+    env.envs.push_back("GLAXY_JOB_ID=" + task->env.job_id);
+    env.envs.push_back("GALAXY_POD_ID=" + task->env.pod_id);
+    env.envs.push_back("GALAXY_TASK_ID=" + task->env.task_id);
+    std::map<std::string, std::string>::iterator p_it = task->env.ports.begin();
+    for (; p_it != task->env.ports.end(); ++p_it) {
+        LOG(INFO) << "GALAXY_PORT_" + p_it->first + "=" + p_it->second;
+        env.envs.push_back("GALAXY_PORT_" + p_it->first + "=" + p_it->second);
+    }
+    std::map<std::string, std::string>::iterator c_it =\
+        task->env.cgroup_paths.begin();
+    for (; c_it != task->env.cgroup_paths.end(); ++c_it) {
+        env.cgroup_paths.push_back(c_it->second);
+    }
 
     return 0;
 }

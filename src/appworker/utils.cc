@@ -134,21 +134,19 @@ bool GetCwd(std::string* dir) {
 }
 
 bool PrepareStdFds(const std::string& pwd,
-                   const::std::string& process_id,
+                   const std::string& process_id,
                    int* stdout_fd,
                    int* stderr_fd) {
     if (stdout_fd == NULL || stderr_fd == NULL) {
-//        LOG(WARNING, "prepare stdout_fd or stderr_fd NULL");
+        LOG(WARNING) << "prepare stdout_fd or stderr_fd NULL";
         return false;
     }
+
     baidu::galaxy::file::Mkdir(pwd);
     std::string now_str_time;
     GetStrFTime(&now_str_time);
-//    pid_t pid = ::getpid();
-//    std::string str_pid = boost::lexical_cast<std::string>(pid);
-    std::string str_pid = process_id;
-    std::string stdout_file = pwd + "/stdout_" + str_pid + "_" + now_str_time;
-    std::string stderr_file = pwd + "/stderr_" + str_pid + "_" + now_str_time;
+    std::string stdout_file = pwd + "/" + process_id + "_stdout_" + now_str_time;
+    std::string stderr_file = pwd + "/" + process_id + "_stderr_" + now_str_time;
 
     const int STD_FILE_OPEN_FLAG = O_CREAT | O_APPEND | O_WRONLY;
     const int STD_FILE_OPEN_MODE = S_IRWXU | S_IRWXG | S_IROTH;
@@ -157,20 +155,20 @@ bool PrepareStdFds(const std::string& pwd,
     *stderr_fd = ::open(stderr_file.c_str(),
             STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
     if (*stdout_fd == -1 || *stderr_fd == -1) {
-//        LOG(WARNING, "open file %s failed err[%d: %s]",
-//            stdout_file.c_str(), errno, strerror(errno));
+        LOG(WARNING)\
+            << "fail to open file: " << stdout_file.c_str()\
+            << ", err: " << errno << ", " << strerror(errno);
         return false;
     }
     return true;
 }
 
-void GetProcessOpenFds(const pid_t pid, 
+void GetProcessOpenFds(const pid_t pid,
                        std::vector<int>* fd_vector) {
     if (fd_vector == NULL) {
-        return; 
+        return;
     }
 
-    // pid_t current_pid = ::getpid();
     std::string pid_path = "/proc/";
     pid_path.append(boost::lexical_cast<std::string>(pid));
     pid_path.append("/fd/");
@@ -363,7 +361,7 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
             }
             ::closedir(dir_desc);
             if (!ret) {
-//                LOG(WARNING, "opt %s failed err", path.c_str());
+                LOG(WARNING) << "opt " << path << " failed err";
                 return ret;
             }
         }
@@ -459,10 +457,9 @@ bool IsDir(const std::string& path, bool& is_dir) {
     struct stat stat_buf;
     int ret = ::lstat(path.c_str(), &stat_buf);
     if (ret == -1) {
-//        LOG(WARNING, "stat path %s failed err[%d: %s]",
-//                path.c_str(),
-//                errno,
-//                strerror(errno));
+        LOG(WARNING)\
+            << "stat path " << path << " failed, "
+            << "err: " << errno << ", " << strerror(errno);
         return false;
     }
 

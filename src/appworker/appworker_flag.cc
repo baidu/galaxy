@@ -14,11 +14,13 @@ DEFINE_string(appmaster_nexus_path, "appmaster", "appmaster path on nexus");
 DEFINE_int32(appworker_fetch_task_timeout, 10000, "appworker fetch task timeout");
 DEFINE_int32(appworker_fetch_task_interval, 1000, "appworker fetch task interval");
 DEFINE_int32(appworker_background_thread_pool_size, 5, "appworker background trehad pool size");
-DEFINE_string(appworker_endpoint_env, "BAIDU_GALAXY_CONTAINER_ENDPOINT", "endpoint env name");
-DEFINE_string(appworker_job_id_env, "BAIDU_GALAXY_CONTAINER_GROUP_ID", "job id env name");
+DEFINE_string(appworker_agent_hostname_env, "BAIDU_GALAXY_AGENT_HOSTNAME", "agent hostname env name");
+DEFINE_string(appworker_agent_ip_env, "BAIDU_GALAXY_AGENT_IP", "agent ip env name");
+DEFINE_string(appworker_agent_port_env, "BAIDU_GALAXY_AGENT_PORT", "agent port env name");
+DEFINE_string(appworker_job_id_env, "BAIDU_GALAXY_CONTAINERGROUP_ID", "job id env name");
 DEFINE_string(appworker_pod_id_env, "BAIDU_GALAXY_CONTAINER_ID", "pod id env name");
 DEFINE_string(appworker_task_ids_env, "BAIDU_GALAXY_CONTAINER_CGROUP_IDS", "task ids env name");
-DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CONTAINER_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
+DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
 DEFINE_string(appworker_default_user, "galaxy", "appworker default user");
 DEFINE_string(appworker_exit_file, ".exit", "appworker exit file");
 

@@ -26,6 +26,7 @@ struct PodEnv {
     std::vector<std::string> task_ids;
     std::vector<std::string> cgroup_subsystems;
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
+    std::vector<std::map<std::string, std::string> > task_ports;
 };
 
 /**

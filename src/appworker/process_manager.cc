@@ -119,7 +119,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid,
                                              context->work_dir.c_str());
-        LOG(WARNING) << "prosess: " << context->process_id << ", pid: " << my_pid;
         // attach cgroup
         for (unsigned i = 0; i < env.cgroup_paths.size(); i++) {
 //            bool ok = cgroup::AttachCgroup(process_env.cgroup_paths[i], my_pid);
@@ -130,11 +129,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
         process::PrepareChildProcessEnvStep2(stdin_fd, stdout_fd,
                                              stderr_fd, fd_vector);
-        // set user
-        if (user::Su(env.user)) {
-            assert(0);
-        }
-
         // prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),

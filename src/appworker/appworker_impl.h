@@ -45,6 +45,7 @@ private:
     Mutex mutex_;
     int64_t start_time_;
     int64_t update_time_;
+    std::string hostname_;
     std::string endpoint_;
     std::string job_id_;
     std::string pod_id_;

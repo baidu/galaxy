@@ -35,14 +35,12 @@ PodManager::~PodManager() {
 
 int PodManager::SetPodEnv(const PodEnv& pod_env) {
     MutexLock lock(&mutex_);
-    LOG(INFO) << "update pod env";
     pod_.env = pod_env;
     return 0;
 }
 
 int PodManager::SetPodDescription(const PodDescription& pod_desc) {
     MutexLock lock(&mutex_);
-    LOG(INFO) << "update pod description";
     pod_.desc.CopyFrom(pod_desc);
     return 0;
 }
@@ -60,7 +58,7 @@ int PodManager::TerminatePod() {
     }
 
    pod_.stage = kPodStageTerminating;
-    LOG(WARNING)\
+    LOG(INFO)\
         << "terminate pod"
         << ", current pod status: " << PodStatus_Name(pod_.status);
     if (0 == DoStopPod()) {
@@ -79,8 +77,6 @@ int PodManager::RebuildPod() {
         pod_.status = proto::kPodFailed;
         return -1;
     }
-    TaskDescription task = pod_.desc.tasks(0);
-    LOG(WARNING) << task.exe_package().start_cmd();
 
     pod_.stage = kPodStageRebuilding;
     if (0 == DoStopPod()) {
@@ -91,6 +87,10 @@ int PodManager::RebuildPod() {
 
 int PodManager::ReloadPod() {
     MutexLock lock(&mutex_);
+    if (pod_.stage == kPodStageReloading) {
+        LOG(WARNING) << "pod in reloading, ignore reload action";
+        return -1;
+    }
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
         LOG(WARNING)\
@@ -100,10 +100,7 @@ int PodManager::ReloadPod() {
         return -1;
     }
 
-    // 1.replace desc
-    pod_.desc.CopyFrom(pod_.desc);
     pod_.stage = kPodStageReloading;
-    // 2.start reload process
     if (0 != DoReloadDeployPod()) {
         pod_.reload_status = proto::kPodFailed;
         return -1;
@@ -111,7 +108,7 @@ int PodManager::ReloadPod() {
     pod_.reload_status = proto::kPodDeploying;
     // 3.add pod reload status change loop
     background_pool_.DelayTask(
-        500,
+        FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodReloadStatus, this)
     );
 
@@ -152,13 +149,14 @@ int PodManager::DoCreatePod() {
         env.task_id = task_id;
         env.cgroup_subsystems = pod_.env.cgroup_subsystems;
         env.cgroup_paths = pod_.env.task_cgroup_paths[i];
+        env.ports = pod_.env.task_ports[i];
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
         if (0 != ret) {
             LOG(WARNING) << "create task " << i << " fail";
             DoClearPod();
             return ret;
         }
-        LOG(WARNING) << "create task " << i << " ok";
+        LOG(INFO) << "create task " << i << " ok";
     }
     LOG(INFO) << "create pod ok";
     return 0;
@@ -411,6 +409,7 @@ void PodManager::StoppingPodCheck() {
         }
         LOG(WARNING) << "rebuilding stage, pod status change to kPodPending";
         DoClearPod();
+        pod_.stage = kPodStageCreating;
         pod_.status = proto::kPodPending;
     }
 
@@ -419,8 +418,6 @@ void PodManager::StoppingPodCheck() {
 
 void PodManager::LoopChangePodReloadStatus() {
     MutexLock lock(&mutex_);
-    LOG(WARNING) << "loop change pod reload status";
-
     switch (pod_.reload_status) {
         case proto::kPodDeploying: {
             LOG(WARNING) << "reload deploying check";
@@ -465,7 +462,6 @@ void PodManager::LoopChangePodReloadStatus() {
         }
         case proto::kPodRunning: {
             // queryreload  running process status
-            LOG(WARNING) << "reload running check";
             int tasks_size = pod_.desc.tasks().size();
             TaskStatus task_status = proto::kTaskFinished;
             for (int i = 0; i < tasks_size; i++) {
@@ -505,7 +501,7 @@ void PodManager::LoopChangePodReloadStatus() {
     }
 
     background_pool_.DelayTask(
-        500,
+        FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodReloadStatus, this)
     );
 

@@ -92,7 +92,7 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         PodDescription* pod = response->mutable_pod();
         TaskDescription* task_desc = pod->add_tasks();
         ImagePackage* image_package = task_desc->mutable_exe_package();
-        image_package->set_start_cmd("touch 1.txt && sleep 20");
+        image_package->set_start_cmd("echo $GALAXY_PORT_PP0 > 1.txt && sleep 20");
         image_package->set_stop_cmd("touch 1_stop.txt && sleep 10");
         Package* e_package = image_package->mutable_package();
         e_package->set_src_path("ftp://yq01-ps-rtg0000.yq01:/home/galaxy/sandbox/galaxy/galaxy.tgz");
@@ -107,8 +107,8 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
         response->set_update_time(update_time2);
 
         ErrorCode* error_code = response->mutable_error_code();
-        // error_code->set_status(proto::kJobRebuild);
-        error_code->set_status(proto::kJobReload);
+        error_code->set_status(proto::kJobRebuild);
+        // error_code->set_status(proto::kJobReload);
         PodDescription* pod = response->mutable_pod();
         TaskDescription* task_desc = pod->add_tasks();
         ImagePackage* image_package = task_desc->mutable_exe_package();
