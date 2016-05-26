@@ -104,12 +104,12 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     context->routine = routine;
     context->parameter = param;
 
-    const static int CLONE_FLAG = CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS;
+    const static int CLONE_FLAG = CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | SIGCHLD;
     const static int CLONE_STACK_SIZE = 1024 * 1024;
     static char CLONE_STACK[CLONE_STACK_SIZE];
     pid = ::clone(&Process::CloneRoutine,
             CLONE_STACK + CLONE_STACK_SIZE,
-            CLONE_FLAG | SIGCHLD,
+            CLONE_FLAG,
             context);
 
     int en = errno;
