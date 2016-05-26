@@ -43,7 +43,7 @@ std::string StringAuthority(const ::baidu::galaxy::sdk::Authority& authority) {
     case ::baidu::galaxy::sdk::kAuthorityListJobs:
         result = "kAuthorityListJobs";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -64,7 +64,7 @@ std::string StringAuthorityAction(const ::baidu::galaxy::sdk::AuthorityAction& a
     case ::baidu::galaxy::sdk::kActionClear:
         result = "kActionClear";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -85,7 +85,7 @@ std::string StringVolumMedium(const ::baidu::galaxy::sdk::VolumMedium& medium) {
     case ::baidu::galaxy::sdk::kTmpfs:
         result = "kTmpfs";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -100,7 +100,7 @@ std::string StringVolumType(const ::baidu::galaxy::sdk::VolumType& type) {
     case ::baidu::galaxy::sdk::kHostDir:
         result = "kHostDir";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -122,7 +122,7 @@ std::string StringJobType(const ::baidu::galaxy::sdk::JobType& type) {
     case ::baidu::galaxy::sdk::kJobBestEffort:
         result = "kJobBestEffort";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -144,7 +144,7 @@ std::string StringJobStatus(const ::baidu::galaxy::sdk::JobStatus& status) {
     case ::baidu::galaxy::sdk::kJobDestroying:
         result = "Destroying";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -174,7 +174,7 @@ std::string StringPodStatus(const ::baidu::galaxy::sdk::PodStatus& status) {
     case ::baidu::galaxy::sdk::kPodFinished:
         result = "Finished";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -202,7 +202,7 @@ std::string StringTaskStatus(const ::baidu::galaxy::sdk::TaskStatus& status) {
     case ::baidu::galaxy::sdk::kTaskFinished:
         result = "kTaskFinished";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -232,7 +232,7 @@ std::string StringContainerStatus(const ::baidu::galaxy::sdk::ContainerStatus& s
     case ::baidu::galaxy::sdk::kContainerTerminated:
         result = "Terminated";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -247,7 +247,7 @@ std::string StringContainerGroupStatus(const ::baidu::galaxy::sdk::ContainerGrou
     case ::baidu::galaxy::sdk::kContainerGroupTerminated:
         result = "Terminated";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -292,7 +292,7 @@ std::string StringStatus(const ::baidu::galaxy::sdk::Status& status) {
     case ::baidu::galaxy::sdk::kAddAgentToPoolFail:
         result = "kAddAgentToPoolFail";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -313,7 +313,7 @@ std::string StringAgentStatus(const ::baidu::galaxy::sdk::AgentStatus& status) {
     case ::baidu::galaxy::sdk::kAgentOffline:
         result = "Offline";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
@@ -355,7 +355,7 @@ std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error
     case ::baidu::galaxy::sdk::kTooManyPods:
         result = "kTooManyPods";
         break;
-    defalt:
+    default:
         result = "";
     }
     return result;
