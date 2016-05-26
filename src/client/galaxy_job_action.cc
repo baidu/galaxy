@@ -175,26 +175,32 @@ bool JobAction::RemoveJob(const std::string& jobid) {
 
 bool JobAction::ListJobs() {
     
+    /*struct timeval t_start;
+    struct timeval t_finish;
+    double duration;
+
+    struct timeval tt_start;
+    gettimeofday(&tt_start, NULL);
+    */
     if(!this->Init()) {
         return false;
     }
 
-    struct timeval t_start;
-    struct timeval t_finish;
-    double duration;
-
+    
     ::baidu::galaxy::sdk::ListContainerGroupsRequest resman_request;
     ::baidu::galaxy::sdk::ListContainerGroupsResponse resman_response;
     resman_request.user = user_;
     std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics> containers;
 
-    gettimeofday(&t_start, NULL);
+    //gettimeofday(&t_start, NULL);
 
     bool ret = resman_->ListContainerGroups(resman_request, &resman_response);
 
-    gettimeofday(&t_finish, NULL);
+    /*gettimeofday(&t_finish, NULL);
     duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-    fprintf(stderr, "list container time is %d\n", duration);
+    fprintf(stderr, "list container start time is %lf\n", t_start.tv_sec*1000000.0 + t_start.tv_usec);
+    fprintf(stderr, "list container finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
+    fprintf(stderr, "list container duration is %lf\n", duration);*/
 
     if (ret) {
         for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
@@ -211,14 +217,14 @@ bool JobAction::ListJobs() {
     ::baidu::galaxy::sdk::ListJobsResponse response;
     request.user = user_;
     
-    gettimeofday(&t_start, NULL);
+    //gettimeofday(&t_start, NULL);
     ret = app_master_->ListJobs(request, &response);
-    gettimeofday(&t_finish, NULL);
+    /*gettimeofday(&t_finish, NULL);
     duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-    fprintf(stderr, "list job time is %d\n", duration);
+    fprintf(stderr, "list job start time is %lf\n", t_start.tv_sec*1000000.0 + t_start.tv_usec);
+    fprintf(stderr, "list job finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
+    fprintf(stderr, "list duration is %lf\n", duration);*/
     if (ret) {
-        struct timeval tt_start;
-        gettimeofday(&tt_start, NULL);
         baidu::common::TPrinter jobs(12);
         jobs.AddRow(12, "", "id", "name", "type","status", "stat(r/p/dep/dea/f)", "replica", 
                     "cpu(a/u)", "memory(a/u)", "volums(med/a/u)", "create", "update");
@@ -231,12 +237,9 @@ bool JobAction::ListJobs() {
             std::string scpu;
             std::string smem;
             std::string svolums;
-            gettimeofday(&t_start, NULL);
+
             std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>::iterator it 
                                         = containers.find(response.jobs[i].jobid);
-            gettimeofday(&t_finish, NULL);
-            duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-            fprintf(stderr, "find time is %d\n", duration);
             if (it != containers.end()) {
                 scpu = ::baidu::common::NumToString(it->second.cpu.assigned / 1000.0) + "/"
                        + ::baidu::common::NumToString(it->second.cpu.used / 1000.0);
@@ -244,13 +247,9 @@ bool JobAction::ListJobs() {
                        + ::baidu::common::HumanReadableString(it->second.memory.used);
                 for (size_t j = 0; j < it->second.volums.size(); ++j) {
                     std::string svolums;
-                    gettimeofday(&t_start, NULL);
                     svolums = StringVolumMedium(it->second.volums[j].medium) + "/"
                               + ::baidu::common::HumanReadableString(it->second.volums[j].volum.assigned) + "/"
                               + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
-                    gettimeofday(&t_finish, NULL);
-                    duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-                    fprintf(stderr, "volum [%u] time is %d\n", j, duration);
                     if (j == 0) {
                         jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
                                          response.jobs[i].jobid.c_str(),
@@ -316,17 +315,23 @@ bool JobAction::ListJobs() {
 
             }
         }
-        gettimeofday(&t_start, NULL);
+        //gettimeofday(&t_start, NULL);
         printf("%s\n", jobs.ToString().c_str());
-        gettimeofday(&t_finish, NULL);
+        /*gettimeofday(&t_finish, NULL);
         duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-        fprintf(stderr, "print time is %d\n", duration);
-        duration = (t_finish.tv_sec - tt_start.tv_sec)*1000000.0 + (t_finish.tv_usec - tt_start.tv_usec);
-        fprintf(stderr, "all time is %d\n", duration);
+        fprintf(stderr, "print start time is %lf\n", t_start.tv_sec*1000000.0 + t_start.tv_usec);
+        fprintf(stderr, "print finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
+        fprintf(stderr, "print time is %lf\n", duration);*/
     } else {
         printf("List job failed for reason %s:%s\n", 
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
+
+    /*gettimeofday(&t_finish, NULL);
+    duration = (t_finish.tv_sec - tt_start.tv_sec)*1000000.0 + (t_finish.tv_usec - tt_start.tv_usec);
+    fprintf(stderr, "all start time is %lf\n", tt_start.tv_sec*1000000.0 + tt_start.tv_usec);
+    fprintf(stderr, "all finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
+    fprintf(stderr, "all time is %lf\n", duration);*/
     return ret;
 }
 
@@ -414,10 +419,11 @@ bool JobAction::ShowJob(const std::string& jobid) {
         printf("%s\n", desc_data_volums.ToString().c_str());
 
         printf("job description pod task infomation\n");
-        ::baidu::common::TPrinter desc_tasks(7);
-        //desc_tasks.AddRow(10, "", "id", "cpu(cores/excess)", "memory(cores)", "tcp_throt", "blkio", "ports(name/port)", "exe_package", "data_package", "services");
-        desc_tasks.AddRow(7, "", "id", "cpu(cores/excess)", "memory(size/excess)", "tcp_throt(r/re/s/se)", "blkio", "ports(name/port)");
         for (uint32_t i = 0; i < response.job.desc.pod.tasks.size(); ++i) {
+            printf("=========================================================\n");
+            printf("job description pod task [%u] base infomation\n", i);
+            ::baidu::common::TPrinter desc_task(7);
+            desc_task.AddRow(7, "", "id", "cpu(cores/excess)", "memory(size/excess)", "tcp_throt(r/re/s/se)", "blkio", "ports(name/port)");
             std::string scpu = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].cpu.milli_core / 1000.0) + "/"
                                + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
             std::string smem = ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].memory.size) + "/"
@@ -436,7 +442,7 @@ bool JobAction::ShowJob(const std::string& jobid) {
                                     + response.job.desc.pod.tasks[i].ports[j].port;
                                     //+ response.job.desc.pod.tasks[i].ports[j].real_port;
                 if (j == 0) {
-                    desc_tasks.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                    desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
                                           response.job.desc.pod.tasks[i].id.c_str(),
                                           scpu.c_str(),
                                           smem.c_str(),
@@ -445,7 +451,7 @@ bool JobAction::ShowJob(const std::string& jobid) {
                                           sports.c_str()
                                      );
                 } else {
-                    desc_tasks.AddRow(7, "",
+                    desc_task.AddRow(7, "",
                                          "",
                                          "",
                                          "",
@@ -454,9 +460,11 @@ bool JobAction::ShowJob(const std::string& jobid) {
                                          sports.c_str()
                                      );
                 }
+
             }
+            
             if (response.job.desc.pod.tasks[i].ports.size() == 0) {
-                desc_tasks.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
                                      response.job.desc.pod.tasks[i].id.c_str(), 
                                      scpu.c_str(),
                                      smem.c_str(),
@@ -465,26 +473,59 @@ bool JobAction::ShowJob(const std::string& jobid) {
                                      ""
                                  );
             }
-            printf("%s\n", desc_tasks.ToString().c_str());
+            printf("%s\n", desc_task.ToString().c_str());
 
-            printf("podinfo infomation\n");
-            ::baidu::common::TPrinter pods(7);
-            pods.AddRow(7, "", "podid", "endpoint", "status", "version", "start_time", "fail_count");
-            for (uint32_t i = 0; i < response.job.pods.size(); ++i) {
-                size_t pos = response.job.pods[i].podid.rfind("."); 
-                std::string podid(response.job.pods[i].podid, pos + 1, response.job.pods[i].podid.size()- (pos + 1));
-                pods.AddRow(7, ::baidu::common::NumToString(i).c_str(),
-                               response.job.pods[i].podid.c_str(),
-                               response.job.pods[i].endpoint.c_str(),
-                               StringPodStatus(response.job.pods[i].status).c_str(),
-                               response.job.pods[i].version.c_str(),
-                               FormatDate(response.job.pods[i].start_time).c_str(),
-                               ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str()
+            printf("job description pod task [%u] exe_package infomation\n", i);
+            printf("-----------------------------------------------\n");
+            printf("start_cmd: %s\n", response.job.desc.pod.tasks[i].exe_package.start_cmd.c_str());
+            printf("stop_cmd: %s\n", response.job.desc.pod.tasks[i].exe_package.stop_cmd.c_str());
+            printf("dest_path: %s\n", response.job.desc.pod.tasks[i].exe_package.package.dest_path.c_str());
+            printf("version: %s\n", response.job.desc.pod.tasks[i].exe_package.package.version.c_str());
+
+            printf("\njob description pod task [%u] data_package infomation\n", i);
+            printf("-----------------------------------------------\n");
+            printf("reload_cmd: %s\n", response.job.desc.pod.tasks[i].data_package.reload_cmd.c_str());
+            ::baidu::common::TPrinter packages(3);
+            packages.AddRow(3, "", "version", "dest_path");
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].data_package.packages.size(); ++j) {
+                 packages.AddRow(3, ::baidu::common::NumToString(j).c_str(),
+                                    response.job.desc.pod.tasks[i].data_package.packages[j].version.c_str(),
+                                    response.job.desc.pod.tasks[i].data_package.packages[j].dest_path.c_str()
+                                );
+            }
+            printf("%s\n", packages.ToString().c_str());
+
+            printf("job description pod task [%u] services infomation\n", i);
+            ::baidu::common::TPrinter services(4);
+            services.AddRow(4, "", "name", "port_name", "use_bns");
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].services.size(); ++j) {
+                services.AddRow(4, ::baidu::common::NumToString(j).c_str(),
+                                   response.job.desc.pod.tasks[i].services[j].service_name.c_str(),
+                                   response.job.desc.pod.tasks[i].services[j].port_name.c_str(),
+                                   StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str()
+                               );
+            }
+            printf("%s\n", services.ToString().c_str());
+
+        }
+
+        printf("podinfo infomation\n");
+        ::baidu::common::TPrinter pods(7);
+        pods.AddRow(7, "", "podid", "endpoint", "status", "version", "start_time", "fail_count");
+        for (uint32_t i = 0; i < response.job.pods.size(); ++i) {
+            size_t pos = response.job.pods[i].podid.rfind("."); 
+            std::string podid(response.job.pods[i].podid, pos + 1, response.job.pods[i].podid.size()- (pos + 1));
+            pods.AddRow(7, ::baidu::common::NumToString(i).c_str(),
+                            response.job.pods[i].podid.c_str(),
+                            response.job.pods[i].endpoint.c_str(),
+                            StringPodStatus(response.job.pods[i].status).c_str(),
+                            response.job.pods[i].version.c_str(),
+                            FormatDate(response.job.pods[i].start_time).c_str(),
+                            ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str()
                           );
-                fprintf(stderr, "status is %d\n", response.job.pods[i].status);
             }
             printf("%s\n", pods.ToString().c_str());
-        }
+
 
     } else {
         printf("Show job failed for reason %s:%s\n", StringStatus(response.error_code.status).c_str(), 

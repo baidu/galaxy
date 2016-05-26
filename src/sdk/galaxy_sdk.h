@@ -143,6 +143,9 @@ enum PodStatus {
     kPodServing=5,
     kPodFailed=6,
     kPodFinished=7,
+    kPodRunning = 8,
+    kPodStopping = 9,
+    kPodTerminated = 10,
 };
 enum TaskStatus {
     kTaskPending=1,

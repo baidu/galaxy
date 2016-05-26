@@ -174,7 +174,6 @@ void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     deploy->set_max_per_host(sdk_deploy.max_per_host);
     deploy->set_tag(sdk_deploy.tag);
     for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
-        fprintf(stderr, "port is %s\n", sdk_deploy.pools[i].c_str());
         deploy->add_pools(sdk_deploy.pools[i]);
     }
 }
