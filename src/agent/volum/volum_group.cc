@@ -58,18 +58,22 @@ void VolumGroup::SetContainerId(const std::string& container_id)
     container_id_ = container_id;
 }
 
-int VolumGroup::Construct()
+baidu::galaxy::util::ErrorCode VolumGroup::Construct()
 {
     workspace_volum_ = Construct(this->ws_description_);
 
     if (NULL == workspace_volum_.get()) {
-        return -1;
+        return ERRORCODE(-1, "workspace volum is empty");
     }
 
+    baidu::galaxy::util::ErrorCode ec;
     for (size_t i = 0; i < dv_description_.size(); i++) {
         boost::shared_ptr<Volum> v = Construct(dv_description_[i]);
-
         if (v.get() == NULL) {
+            ec = ERRORCODE(-1,
+                    "construct volum(%s->%s) failed: ",
+                    dv_description_[i]->source_path().c_str(),
+                    dv_description_[i]->dest_path().c_str());
             break;
         }
 
@@ -78,30 +82,39 @@ int VolumGroup::Construct()
 
     if (data_volum_.size() != dv_description_.size()) {
         for (size_t i = 0; i < data_volum_.size(); i++) {
-            data_volum_[i]->Destroy();
+            baidu::galaxy::util::ErrorCode err = data_volum_[i]->Destroy();
+            if (0 != err.Code()) {
+                LOG(WARNING) << "faild in destroying volum for container "
+                             << container_id_ << ": " << err.Message();
+            }
         }
-
-        return -1;
+        return ec;
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
-int VolumGroup::Destroy()
+baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
 {
-    int ret = 0;
-
+    baidu::galaxy::util::ErrorCode ec;
     for (size_t i = 0; i < data_volum_.size(); i++) {
-        if (0 != data_volum_[i]->Destroy()) {
-            ret = -1;
+
+        ec = data_volum_[i]->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                    "failed in destroying data volum: %s",
+                    ec.Message().c_str());
         }
     }
 
-    if (0 == ret) {
-        ret = workspace_volum_->Destroy();
+    ec = workspace_volum_->Destroy();
+    if (0 != ec.Code()) {
+        return ERRORCODE(-1,
+                "failed in destroying workspace volum: %s",
+                ec.Message().c_str());
     }
 
-    return ret;
+    return ERRORCODE_OK;
 }
 
 int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
@@ -109,7 +122,6 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_container_workspace_path"] = workspace_volum_->Description()->dest_path();
     env["baidu_galaxy_container_workspace_abstargetpath"] = workspace_volum_->TargetPath();
     env["baidu_galaxy_container_workspace_abssourcepath"] = workspace_volum_->SourcePath();
-    env["baidu_galaxy_container_workspace_datavolum_size"] = boost::lexical_cast<std::string>(data_volum_.size());
     return 0;
 }
 
@@ -133,7 +145,10 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
     volum->SetContainerId(this->container_id_);
     volum->SetGcIndex(gc_index_);
 
-    if (0 != volum->Construct()) {
+    baidu::galaxy::util::ErrorCode ec = volum->Construct();
+    if (0 != ec.Code()) {
+        LOG(WARNING) << "failed in constructing volum for container "
+                     << container_id_ << ": " << ec.Message();
         volum.reset();
     }
 

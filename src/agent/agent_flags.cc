@@ -1,7 +1,8 @@
 #include <gflags/gflags.h>
 
 DEFINE_string(mount_templat, "/proc,/etc,/home,/usr,/var,/dev,/boot,/bin", "mount templat");
-DEFINE_string(cgroup_root_path, "/cgroup", "cgroup root path");
+DEFINE_string(cgroup_root_path, "/cgroups", "cgroup root path");
+DEFINE_string(galaxy_root_path, "", "galaxy work path");
 
 DEFINE_string(nexus_root_path, "", "root path on nexus");
 DEFINE_string(master_path, "", "master path");
@@ -17,3 +18,5 @@ DEFINE_string(volum_resource, "", "volum resource, \
 DEFINE_int64(cpu_resource, 0L, "max millicores galaxy can use");
 DEFINE_int64(memory_resource, 0L, "max memory(unit:byte) galaxy can use");
 
+
+DEFINE_string(cmd_line, "", "just for debu");

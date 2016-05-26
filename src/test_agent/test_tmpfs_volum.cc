@@ -20,7 +20,8 @@ protected:
     }
 };
 
-TEST_F(TestTmpfsVolum, Construct) {
+TEST_F(TestTmpfsVolum, Construct)
+{
     baidu::galaxy::volum::TmpfsVolum volum;
     volum.SetContainerId("container_id");
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr(new baidu::galaxy::proto::VolumRequired);
@@ -31,7 +32,7 @@ TEST_F(TestTmpfsVolum, Construct) {
     vr->set_size(1024 * 1024 * 1024);
     vr->set_type(baidu::galaxy::proto::kEmptyDir);
     volum.SetDescription(vr);
-    EXPECT_EQ(0, volum.Construct());
+    EXPECT_EQ(0, volum.Construct().Code());
 }
 
 #endif

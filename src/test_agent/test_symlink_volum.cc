@@ -24,7 +24,8 @@ protected:
     }
 };
 
-TEST_F(TestSymlinkVolum, SourcePath_TargetPath) {
+TEST_F(TestSymlinkVolum, SourcePath_TargetPath)
+{
     baidu::galaxy::volum::SymlinkVolum volum;
     volum.SetContainerId("container_id");
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr(new baidu::galaxy::proto::VolumRequired);
@@ -42,7 +43,8 @@ TEST_F(TestSymlinkVolum, SourcePath_TargetPath) {
     EXPECT_STREQ(volum.TargetGcPath().c_str(), "/home/galaxy/gc_dir/container_id.1/home/disk10");
 }
 
-TEST_F(TestSymlinkVolum, Construct) {
+TEST_F(TestSymlinkVolum, Construct)
+{
     {
         baidu::galaxy::volum::SymlinkVolum volum;
         volum.SetContainerId("container_id");
@@ -54,7 +56,7 @@ TEST_F(TestSymlinkVolum, Construct) {
         vr->set_use_symlink(true);
         vr->set_type(baidu::galaxy::proto::kEmptyDir);
         volum.SetDescription(vr);
-        EXPECT_EQ(0, volum.Construct());
+        EXPECT_EQ(0, volum.Construct().Code());
     }
     {
         baidu::galaxy::volum::SymlinkVolum volum;
@@ -67,7 +69,7 @@ TEST_F(TestSymlinkVolum, Construct) {
         vr->set_use_symlink(true);
         vr->set_type(baidu::galaxy::proto::kEmptyDir);
         volum.SetDescription(vr);
-        EXPECT_EQ(-1, volum.Construct());
+        EXPECT_EQ(-1, volum.Construct().Code());
     }
     //    EXPECT_EQ(0, volum.Construct());
     //    EXPECT_EQ(0, volum.Destroy());

@@ -107,6 +107,18 @@ baidu::galaxy::util::ErrorCode ContainerStatus::EnterTerminated()
     boost::mutex::scoped_lock lock(mutex_);
     return Enter(kterminated_pre_status_, baidu::galaxy::proto::kContainerTerminated);
 }
+baidu::galaxy::util::ErrorCode  ContainerStatus::EnterErrorFrom(baidu::galaxy::proto::ContainerStatus prestatus)
+{
+    assert(ContainerStatus::setup_ok_);
+    boost::mutex::scoped_lock lock(mutex_);
+    if (status_ != prestatus) {
+        return ERRORCODE(-1, "current status is %s, expect %s",
+                baidu::galaxy::proto::ContainerStatus_Name(status_).c_str(),
+                baidu::galaxy::proto::ContainerStatus_Name(prestatus).c_str()
+                                                );
+    }
+    return Enter(kerror_pre_status_, baidu::galaxy::proto::kContainerError);
+}
 
 baidu::galaxy::util::ErrorCode ContainerStatus::Enter(const std::set<baidu::galaxy::proto::ContainerStatus>& allow_set,
         baidu::galaxy::proto::ContainerStatus target_status)

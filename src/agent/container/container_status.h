@@ -34,6 +34,9 @@ public:
     bool CmpRetOld(const baidu::galaxy::proto::ContainerStatus status,
             baidu::galaxy::proto::ContainerStatus* old);
 
+    // 当前模式为prestatus时才能进入status
+    baidu::galaxy::util::ErrorCode  EnterErrorFrom(baidu::galaxy::proto::ContainerStatus prestatus);
+
 private:
     baidu::galaxy::util::ErrorCode Enter(const std::set<baidu::galaxy::proto::ContainerStatus>& allow,
             baidu::galaxy::proto::ContainerStatus target_status);
