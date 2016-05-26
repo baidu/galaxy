@@ -14,7 +14,6 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "Usage:\n"
                                  "      galaxy submit -f <jobconfig>\n"
                                  "      galaxy update -f <jobconfig> -i id\n"
-                                 "      galaxy remove -i id\n"
                                  "      galaxy stop -i id\n"
                                  "      galaxy remove -i id\n"
                                  "      galaxy list\n"
@@ -37,7 +36,7 @@ int main(int argc, char** argv) {
 
     ::baidu::galaxy::client::JobAction* jobAction = new 
                 ::baidu::galaxy::client::JobAction();
-    if (strcmp(argv[1], "create") == 0) {
+    if (strcmp(argv[1], "submit") == 0) {
         if (FLAGS_f.empty()) {
             fprintf(stderr, "-f is needed\n");
             return -1;
@@ -64,6 +63,13 @@ int main(int argc, char** argv) {
 
     } else if (strcmp(argv[1], "list") == 0) {
         return jobAction->ListJobs();
+    } else if (strcmp(argv[1], "stop") == 0) { 
+        if (FLAGS_i.empty()) {
+            fprintf(stderr, "-i is needed\n");
+            return -1;
+        }
+
+        return jobAction->StopJob(FLAGS_i);
     } else if (strcmp(argv[1], "show") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");

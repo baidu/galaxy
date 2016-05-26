@@ -17,33 +17,41 @@ DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "Usage:\n"
+                                 "  container usage:\n"
                                  "      galaxy_res_client create_container -f <jobconfig>\n"
                                  "      galaxy_res_client update_container -f <jobconfig> -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
                                  "      galaxy_res_client list_containers\n"
-                                 "      galaxy_res_client show_container -i id\n"
+                                 "      galaxy_res_client show_container -i id\n\n"
+                                 "  agent usage:\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
+                                 "      galaxy_res_client show_agent -e endpoint\n"
                                  "      galaxy_res_client remove_agent -e endpoint\n"
                                  "      galaxy_res_client list_agents [-p pool -t tag]\n"
-                                 "      galaxy_res_client enter_safemode\n"
-                                 "      galaxy_res_client leave_safemode\n"
                                  "      galaxy_res_client online_agent -e endpoint\n"
-                                 "      galaxy_res_client offline_agent -e endpoint\n"
-                                 "      galaxy_res_client status\n"
+                                 "      galaxy_res_client offline_agent -e endpoint\n\n"
+                                 "  safemode usage:\n"
+                                 "      galaxy_res_client enter_safemode\n"
+                                 "      galaxy_res_client leave_safemode\n\n"
+                                 "  status usage:\n"
+                                 "      galaxy_res_client status\n\n"
+                                 "  tag usage:\n"
                                  "      galaxy_res_client create_tag -t tag -f endpoint_file\n"
-                                 "      galaxy_res_client list_tags\n"
+                                 "      galaxy_res_client list_tags\n\n"
+                                 "  user usage:\n"
                                  "      galaxy_res_client add_user -u user -t token\n"
                                  "      galaxy_res_client remove_user -u user -t token\n"
                                  "      galaxy_res_client list_users\n"
                                  "      galaxy_res_client show_user -u user -t token\n"
-                                 "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]" 
-                                 "-a [create_container,remove_container,update_container,"
-                                 "list_containers,submit_job,remove_job,update_job,list_jobs] \n"
+                                 "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]\n" 
+                                 "                                   -a [create_container,remove_container,update_container,\n"
+                                 "                                   list_containers,submit_job,remove_job,update_job,list_jobs] \n"
                                  "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -i specify container id.\n"
                                  "      -p specify agent pool.\n"
                                  "      -e specify endpoint.\n"
+                                 "      -u specity user.\n"
                                  "      -t specify agent tag or token.\n"
                                  "      -o specify opration.\n"
                                  "      -a specify authority split by ,\n";
@@ -55,7 +63,6 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     if (argc < 2) {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
-        fprintf(stderr, "%d", argc);
         return -1;
     }
 
@@ -105,6 +112,12 @@ int main(int argc, char** argv) {
             return -1;
         }
         return resAction->AddAgent(FLAGS_p, FLAGS_e);
+    } else if (strcmp(argv[1], "show_agent") == 0) { 
+        if (FLAGS_e.empty()) {
+            fprintf(stderr, "-e is needed\n");
+            return -1;
+        }
+        return resAction->ShowAgent(FLAGS_e);
     } else if (strcmp(argv[1], "remove_agent") == 0) {
         if (FLAGS_e.empty()) {
             fprintf(stderr, "-e is needed\n");

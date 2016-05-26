@@ -68,14 +68,7 @@ bool ResourceManager::EnterSafeMode(const EnterSafeModeRequest& request, EnterSa
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
         return false;
@@ -97,15 +90,7 @@ bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSa
         return false;
     }
     
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-
-        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed";
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
         return false;
@@ -126,12 +111,7 @@ bool ResourceManager::Status(const StatusRequest& request, StatusResponse* respo
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
         return false;
@@ -154,14 +134,7 @@ bool ResourceManager::Status(const StatusRequest& request, StatusResponse* respo
     for (int i = 0; i < pb_response.volum().size(); ++i) {
         const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_response.volum(i);
         VolumResource volum;
-        if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-            response->error_code.reason = "VolumMediumSwitch from pb status:";
-            response->error_code.reason += pb_response.error_code().status();
-            response->error_code.reason += " failed";
-
-            //response->error_code.reason = "VolumMediumSwitch from pb status:" + pb_volum.medium() + "failed";
-            return false;
-        }
+        volum.medium = (::baidu::galaxy::sdk::VolumMedium)pb_volum.medium();
         volum.volum.total = pb_volum.volum().total();
         volum.volum.assigned = pb_volum.volum().assigned();
         volum.volum.used = pb_volum.volum().used();
@@ -198,14 +171,7 @@ bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& re
         return false;
     }
     
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-
-        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (pb_response.error_code().status() != ::baidu::galaxy::proto::kOk) {
         return false;
@@ -230,14 +196,7 @@ bool ResourceManager::RemoveContainerGroup(const RemoveContainerGroupRequest& re
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-
-        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed"; 
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -262,14 +221,7 @@ bool ResourceManager::UpdateContainerGroup(const UpdateContainerGroupRequest& re
         return false;
     }
     
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-
-        //response->error_code.reason = "StatusSwitch from pb status:" + pb_response.error_code().status() + "failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -290,12 +242,7 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
         return false;
     }
         
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -318,12 +265,7 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
         for (int j = 0; j < pb_container.volums().size(); ++j) {
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
             VolumResource volum;
-            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-                response->error_code.reason = "VolumMediumSwitch from pb medium:";
-                response->error_code.reason += pb_response.error_code().status();
-                response->error_code.reason += " failed";
-                return false;
-            }
+            volum.medium = (VolumMedium)pb_volum.medium();
             //volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();
@@ -353,12 +295,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -371,18 +308,8 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
     response->desc.max_per_host = pb_response.desc().max_per_host();
     response->desc.tag = pb_response.desc().tag();
     response->desc.workspace_volum.size = pb_response.desc().workspace_volum().size();
-    
-    if (! VolumTypeSwitch(pb_response.desc().workspace_volum().type(), &response->desc.workspace_volum.type) 
-            || ! VolumMediumSwitch(pb_response.desc().workspace_volum().medium(), &response->desc.workspace_volum.medium)) {
-        response->error_code.reason = "VolumTypeSwitch:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed or VolumMediumSwitch ";
-        response->error_code.reason += pb_response.desc().workspace_volum().medium();
-        response->error_code.reason += " failed";
-
-        return false;
-    }
-
+    response->desc.workspace_volum.type = (VolumType)pb_response.desc().workspace_volum().type();
+    response->desc.workspace_volum.medium = (VolumMedium)pb_response.desc().workspace_volum().medium();
     response->desc.workspace_volum.source_path = pb_response.desc().workspace_volum().source_path();
     response->desc.workspace_volum.dest_path = pb_response.desc().workspace_volum().dest_path();
     response->desc.workspace_volum.readonly = pb_response.desc().workspace_volum().readonly();
@@ -398,19 +325,8 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         volum.readonly = pb_volum.readonly();
         volum.exclusive = pb_volum.exclusive();
         volum.use_symlink = pb_volum.use_symlink();
-        if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-                response->error_code.reason = "VolumMediumSwitch:";
-                response->error_code.reason += pb_volum.medium();
-                response->error_code.reason += " failed";
-                return false;
-        }
-        
-        if ( ! VolumTypeSwitch(pb_volum.type(), &volum.type)) {
-                response->error_code.reason = "VolumTypeSwitch:";
-                response->error_code.reason += pb_volum.type();
-                response->error_code.reason += " failed";
-                return false;
-        }
+        volum.medium = (VolumMedium)pb_volum.medium();
+        volum.type = (VolumType)pb_volum.type();
         response->desc.data_volums.push_back(volum);
     }
 
@@ -443,13 +359,10 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
     for (int i = 0; i < pb_response.containers().size(); ++i) {
         const ::baidu::galaxy::proto::ContainerStatistics& pb_container = pb_response.containers(i);
         ContainerStatistics container;
+        container.id = pb_container.id();
         container.endpoint = pb_container.endpoint();
-        if (! ContainerStatusSwitch(pb_container.status(), &container.status)) {
-            response->error_code.reason = "StatusSwitch from pb status:";
-            response->error_code.reason += pb_response.error_code().status();
-            response->error_code.reason += " failed";
-            return false;
-        }
+        container.last_res_err = (::baidu::galaxy::sdk::ResourceError)pb_container.last_res_err();
+        container.status = (ContainerStatus)pb_container.status();
         container.cpu.total = pb_container.cpu().total();
         container.cpu.assigned = pb_container.cpu().assigned();
         container.cpu.used = pb_container.cpu().used();
@@ -460,12 +373,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         for (int j = 0; j < pb_container.volums().size(); ++j) {
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
             VolumResource volum;
-            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-                response->error_code.reason = "VolumMediumSwitch:";
-                response->error_code.reason += pb_volum.medium();
-                response->error_code.reason += " failed";
-                return false;
-            }
+            volum.medium = (VolumMedium)pb_volum.medium();
             volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();
@@ -494,17 +402,64 @@ bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse*
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
     return true;
+}
+
+bool ResourceManager::ShowAgent(const ShowAgentRequest& request, ShowAgentResponse* response) {
+    ::baidu::galaxy::proto::ShowAgentRequest pb_request;
+    ::baidu::galaxy::proto::ShowAgentResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_endpoint(request.endpoint);
+    fprintf(stderr, "endpoint:%s\n", request.endpoint.c_str());
+    bool ok = rpc_client_->SendRequest(res_stub_, 
+                                        &::baidu::galaxy::proto::ResMan_Stub::ShowAgent,
+                                        &pb_request, &pb_response, 5, 1);
+ 
+    if (!ok) {
+        response->error_code.reason = "Rpc SendRequest failed";
+        return false;
+    }
+
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+    
+    for (int i = 0; i < pb_response.containers().size(); ++i) {
+        const ::baidu::galaxy::proto::ContainerStatistics& pb_container = pb_response.containers(i);
+        ContainerStatistics container;
+        container.id = pb_container.id();
+        container.endpoint = pb_container.endpoint();
+        container.last_res_err = (::baidu::galaxy::sdk::ResourceError)pb_container.last_res_err();
+        container.status = (ContainerStatus)pb_container.status();
+        container.cpu.total = pb_container.cpu().total();
+        container.cpu.assigned = pb_container.cpu().assigned();
+        container.cpu.used = pb_container.cpu().used();
+        container.memory.total = pb_container.memory().total();
+        container.memory.assigned = pb_container.memory().assigned();
+        container.memory.used = pb_container.memory().used();
+        
+        for (int j = 0; j < pb_container.volums().size(); ++j) {
+            const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_container.volums(j);
+            VolumResource volum;
+            volum.medium = (VolumMedium)pb_volum.medium();
+            volum.volum.total = pb_volum.volum().total();
+            volum.volum.assigned = pb_volum.volum().assigned();
+            volum.volum.used = pb_volum.volum().used();
+            volum.device_path = pb_volum.device_path();
+            container.volums.push_back(volum);
+        }
+        response->containers.push_back(container);
+    }
+
+    return true;
+
 }
 
 bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgentResponse* response) {
@@ -521,12 +476,7 @@ bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgent
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -548,12 +498,7 @@ bool ResourceManager::OnlineAgent(const OnlineAgentRequest& request, OnlineAgent
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -574,12 +519,7 @@ bool ResourceManager::OfflineAgent(const OfflineAgentRequest& request, OfflineAg
         return false;
     }
 
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -592,7 +532,6 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
     ::baidu::galaxy::proto::ListAgentsResponse pb_response;
 
     FillUser(request.user, pb_request.mutable_user());
-    //pb_request.set_pool(request.pool);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgents, 
                                         &pb_request, &pb_response, 5, 1);
@@ -602,12 +541,7 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -617,12 +551,7 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
         const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
-        if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
-            response->error_code.reason = "AgentStatusSwitch from pb status:";
-            response->error_code.reason += pb_agent.status();
-            response->error_code.reason += " failed";
-            return false;
-        }
+        agent.status = (AgentStatus)pb_agent.status();
         agent.pool = pb_agent.pool();
         agent.cpu.total = pb_agent.cpu().total();
         agent.cpu.assigned = pb_agent.cpu().assigned();
@@ -633,12 +562,7 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
         for (int j = 0; j < pb_agent.volums().size(); ++j) {
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
-            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-                response->error_code.reason = "VolumMediumSwitch from pb medium:";
-                response->error_code.reason += pb_volum.medium();
-                response->error_code.reason += " failed";
-                return false;
-            }
+            volum.medium = (VolumMedium)pb_volum.medium();
             volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();
@@ -662,7 +586,6 @@ bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagRespon
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_tag(request.tag);
     for(size_t i = 0; i < request.endpoint.size(); ++i) {
-        fprintf(stdout, "label1 %s\n", request.endpoint[i].c_str());
         pb_request.add_endpoint(request.endpoint[i]);
     }
     
@@ -674,12 +597,7 @@ bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagRespon
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -699,12 +617,8 @@ bool ResourceManager::ListTags(const ListTagsRequest& request, ListTagsResponse*
         response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -730,12 +644,7 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -745,12 +654,7 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
-        if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
-            response->error_code.reason = "AgentStatusSwitch from pb status:";
-            response->error_code.reason += pb_response.error_code().status();
-            response->error_code.reason += " failed";
-            return false;
-        }
+        agent.status = (AgentStatus)pb_agent.status();
         agent.pool = pb_agent.pool();
         agent.cpu.total = pb_agent.cpu().total();
         agent.cpu.assigned = pb_agent.cpu().assigned();
@@ -761,12 +665,7 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
         for (int j = 0; j < pb_agent.volums().size(); ++j) {
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
-            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-                response->error_code.reason = "VolumMediumSwitch from pb medium:";
-                response->error_code.reason += pb_response.error_code().status();
-                response->error_code.reason += " failed";
-                return false;
-            }
+            volum.medium = (VolumMedium)pb_volum.medium();
             volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();
@@ -799,12 +698,7 @@ bool ResourceManager::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTa
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) { 
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -832,12 +726,8 @@ bool ResourceManager::AddAgentToPool(const AddAgentToPoolRequest& request, AddAg
         response->error_code.reason = "Rpc SendRequest failed";
         return false;
     }
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -859,12 +749,8 @@ bool ResourceManager::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& requ
         return false;
     
     }
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
+
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -886,13 +772,8 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
         return false;
     
     }
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
 
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -902,12 +783,7 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
         const ::baidu::galaxy::proto::AgentStatistics& pb_agent = pb_response.agents(i);
         AgentStatistics agent;
         agent.endpoint = pb_agent.endpoint();
-        if (!AgentStatusSwitch(pb_agent.status(), &agent.status)) {
-            response->error_code.reason = "AgentStatusSwitch from pb status:";
-            response->error_code.reason += pb_response.error_code().status();
-            response->error_code.reason += " failed";
-            return false;
-        }
+        agent.status = (AgentStatus)pb_agent.status();
         agent.pool = pb_agent.pool();
         agent.cpu.total = pb_agent.cpu().total();
         agent.cpu.assigned = pb_agent.cpu().assigned();
@@ -918,12 +794,7 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
         for (int j = 0; j < pb_agent.volums().size(); ++j) {
             const ::baidu::galaxy::proto::VolumResource& pb_volum = pb_agent.volums(j);
             VolumResource volum;
-            if ( ! VolumMediumSwitch(pb_volum.medium(), &volum.medium)) {
-                response->error_code.reason = "VolumMediumSwitch from pb medium:";
-                response->error_code.reason += pb_response.error_code().status();
-                response->error_code.reason += " failed";
-                return false;
-            }
+            volum.medium = (VolumMedium)pb_volum.medium();
             volum.volum.total = pb_volum.volum().total();
             volum.volum.assigned = pb_volum.volum().assigned();
             volum.volum.used = pb_volum.volum().used();
@@ -954,13 +825,8 @@ bool ResourceManager::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPo
         return false;
     
     }
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
 
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -985,13 +851,8 @@ bool ResourceManager::AddUser(const AddUserRequest& request, AddUserResponse* re
         return false;
     
     }
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
 
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -1015,13 +876,7 @@ bool ResourceManager::RemoveUser(const RemoveUserRequest& request, RemoveUserRes
     
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -1044,13 +899,7 @@ bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersRespon
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -1077,31 +926,12 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
     }
 
-    /*for (int i = 0; i < pb_response.pools().size(); ++i) {
-        response->pools.push_back(pb_response.pools(i));
-    }
-    for (int i = 0; i < pb_response.authority().size(); ++i) {
-        Authority authority;
-        if (! AuthoritySwitch(pb_response.authority(i), &authority)) {
-            response->error_code.reason = "AuthoritySwitch from pb authoiry:";
-            response->error_code.reason += pb_response.authority(i);
-            response->error_code.reason += " failed";
-            return false;
-        }
-        response->authority.push_back(authority);
-    }*/
     response->quota.millicore = pb_response.quota().millicore();
     response->quota.memory = pb_response.quota().memory();
     response->quota.disk = pb_response.quota().disk();
@@ -1132,13 +962,7 @@ bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserRespon
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "statusswitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -1168,13 +992,7 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
         return false;
     }
 
-    if ( ! StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "statusswitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += " failed";
-        return false;
-    }
-
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
