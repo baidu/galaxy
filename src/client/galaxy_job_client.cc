@@ -19,12 +19,14 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      galaxy list\n"
                                  "      galaxy show -i id\n"
                                  "      galaxy exec -i id -c cmd\n"
+                                 "      galaxy json"
                                  "Optionss: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
                                  "      -i specify job id.\n";
 
 int main(int argc, char** argv) {
+    bool ok = true;
     FLAGS_flagfile = "./galaxy.flag";
     ::google::SetUsageMessage(kGalaxyUsage);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
@@ -41,7 +43,7 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-f is needed\n");
             return -1;
         }
-        return jobAction->SubmitJob(FLAGS_f);
+        ok = jobAction->SubmitJob(FLAGS_f);
     } else if (strcmp(argv[1], "update") == 0) {
         if (FLAGS_f.empty()) {
             fprintf(stderr, "-f is needed\n");
@@ -53,29 +55,29 @@ int main(int argc, char** argv) {
             return -1;
         }
 
-        return jobAction->UpdateJob(FLAGS_f, FLAGS_i);
+        ok = jobAction->UpdateJob(FLAGS_f, FLAGS_i);
     } else if (strcmp(argv[1], "remove") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");
             return -1;
         }
-        return jobAction->RemoveJob(FLAGS_i);
+        ok = jobAction->RemoveJob(FLAGS_i);
 
     } else if (strcmp(argv[1], "list") == 0) {
-        return jobAction->ListJobs();
+        ok = jobAction->ListJobs();
     } else if (strcmp(argv[1], "stop") == 0) { 
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");
             return -1;
         }
 
-        return jobAction->StopJob(FLAGS_i);
+        ok = jobAction->StopJob(FLAGS_i);
     } else if (strcmp(argv[1], "show") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");
             return -1;
         }
-        return jobAction->ShowJob(FLAGS_i);
+        ok = jobAction->ShowJob(FLAGS_i);
 
     } else if (strcmp(argv[1], "exec") == 0) {
         if (FLAGS_i.empty()) {
@@ -87,12 +89,18 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-c is needed\n");
             return -1;
         }
-        return jobAction->ExecuteCmd(FLAGS_i, FLAGS_c);
-    } else {
+        ok = jobAction->ExecuteCmd(FLAGS_i, FLAGS_c);
+    } else if (strcmp(argv[1], "json") == 0) { 
+        ok = ::baidu::galaxy::client::GenerateJson(2, 2, 2, 2, 2); 
+    }else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;
     }
-    return 0;
+    if (ok) {
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 /* vim: set ts=4 sw=4 sts=4 tw=100 */

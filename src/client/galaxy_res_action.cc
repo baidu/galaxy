@@ -1166,29 +1166,26 @@ bool ResAction::ShowUser(const std::string& user) {
     bool ret = resman_->ShowUser(request, &response);
     
     if (ret) {
-        printf("grants infomation\n");
-        ::baidu::common::TPrinter grants(4);
-        grants.AddRow(4, "", "pool", "action", "authority");
+        printf("authority infomation\n");
+        ::baidu::common::TPrinter grants(3);
+        grants.AddRow(3, "", "pool", "authority");
         for (uint32_t i = 0; i < response.grants.size(); ++i) {
             for (uint32_t j = 0; j < response.grants[i].authority.size(); ++j) {
                 if (j == 0) {
-                    grants.AddRow(4, ::baidu::common::NumToString(i).c_str(),
+                    grants.AddRow(3, ::baidu::common::NumToString(i).c_str(),
                                     response.grants[i].pool.c_str(),
-                                    StringAuthorityAction(response.grants[i].action).c_str(),
                                     StringAuthority(response.grants[i].authority[j]).c_str()
                                 );
                 } else {
-                    grants.AddRow(4, "",
-                                    "",
+                    grants.AddRow(3, "",
                                     "",
                                     StringAuthority(response.grants[i].authority[j]).c_str()
                                 );
                 }
             }
             if (response.grants[i].authority.size() == 0) {
-                grants.AddRow(4, ::baidu::common::NumToString(i).c_str(),
+                grants.AddRow(3, ::baidu::common::NumToString(i).c_str(),
                                 response.grants[i].pool.c_str(),
-                                StringAuthorityAction(response.grants[i].action).c_str(),
                                 ""
                             );
             }
