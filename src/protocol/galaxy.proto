@@ -157,9 +157,16 @@ enum JobStatus {
    kJobRunning = 2;
    kJobFinished = 3; 
    kJobDestroying = 4;
+   kJobUpdating = 5;
 }
 
-
+enum JobEvent {
+    kFetch = 1;
+    kUpdate = 2;
+    kRemove = 3;
+    kRemoveFinish = 4;
+    kUpdateFinish = 5;
+}
 // Task or pod
 enum PodStatus {
     kPodPending = 1;
@@ -243,7 +250,7 @@ message TaskDescription {
 message PodDescription {
     // workspace volum
     optional VolumRequired workspace_volum = 3;
-    // Resource, volum is owned by Pod
+    // Resource, volum is owned by Pod/
     repeated VolumRequired data_volums = 4;
     // tasks
     repeated TaskDescription tasks = 5;
@@ -258,6 +265,8 @@ message JobDescription {
     optional Deploy deploy = 4;
     optional PodDescription pod = 5;
     optional string run_user = 6;
+    optional string tag = 7;
+    repeated string pool_names = 8;
 }
 
 
@@ -343,6 +352,10 @@ enum Status {
    kRemoveUserFail = 14;
    kGrantUserFail = 15;
    kAssignQuotaFail = 16;
+   kRebuild = 17;
+   kReload = 18;
+   kStatusConflict = 19;
+   kJobTerminateFail = 20;
 }
 
 message ErrorCode {
@@ -402,6 +415,7 @@ message ContainerGroupStatistics {
     optional int64 submit_time = 11;
     optional int64 update_time = 12;
     optional string user_name = 13;
+    optional uint32 destroying = 14;
 }
 
 //proto that used to be saved in nexus
@@ -425,6 +439,8 @@ message ContainerGroupMeta {
     optional uint32 update_interval = 5;
     optional ContainerDescription desc = 6;
     optional ContainerGroupStatus status = 7;
+    optional int64 submit_time = 8;
+    optional int64 update_time = 9;
 }
 
 message TagMeta {

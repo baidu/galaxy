@@ -12,6 +12,7 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include "setting_utils.h"
+#include "util.h"
 #include "appmaster_impl.h"
 
 DECLARE_string(appmaster_port);
@@ -26,6 +27,13 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("appmaster");
     baidu::galaxy::AppMasterImpl * appmaster = new baidu::galaxy::AppMasterImpl();
+    appmaster->Init();
+    std::string appmaster_endpoint = ::baidu::common::util::GetLocalHostName() + ":" +FLAGS_appmaster_port;
+    bool nexus_ok = appmaster->RegisterOnNexus(appmaster_endpoint);
+    if (!nexus_ok) {
+        LOG(WARNING) << "fail to register AppMaster on nexus";
+        exit(-1);
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     if (!rpc_server.RegisterService(static_cast<baidu::galaxy::proto::AppMaster*>(appmaster))) {
