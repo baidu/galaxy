@@ -28,7 +28,6 @@ public:
     AppMasterImpl();
     virtual ~AppMasterImpl();
     void Init();
-    void Start();
     void SubmitJob(::google::protobuf::RpcController* controller,
                   const ::baidu::galaxy::proto::SubmitJobRequest* request,
                   ::baidu::galaxy::proto::SubmitJobResponse* response,

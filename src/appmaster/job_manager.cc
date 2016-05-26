@@ -63,6 +63,9 @@ void JobManager::BuildFsm() {
         BuildFsmValue(kJobRunning, boost::bind(&JobManager::RemoveJob, this, _1, _2))));
     fsm_.insert(std::make_pair(BuildFsmKey(kJobDestroying, kRemoveFinish),
         BuildFsmValue(kJobFinished, boost::bind(&JobManager::ClearJob, this, _1, _2))));
+    for (FSM::iterator it = fsm_.begin(); it != fsm_.end(); it++) {
+        LOG(INFO) << "key:" << it->first << " value: " << JobStatus_Name(it->second->next_status_);
+    }
     return;
 }
 
@@ -110,6 +113,8 @@ void JobManager::CheckUpdating(Job* job) {
             return;
         }
         job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
         //SaveToNexus(job);
     } else {
         return;
@@ -130,6 +135,8 @@ void JobManager::CheckDestroying(Job* job) {
             return;
         }
         job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
         //SaveToNexus(job);
     } else {
         return;
@@ -190,19 +197,14 @@ Status JobManager::Add(const JobId& job_id, const JobDescription& job_desc) {
 
     job->create_time_ = ::baidu::common::timer::get_micros();
     job->update_time_ = ::baidu::common::timer::get_micros();
-    // TODO add nexus lock
-    //SaveToNexus(job);
-    
+    //SaveToNexus(job);   
     MutexLock lock(&mutex_); 
     jobs_[job_id] = job;
-    /*
-    LOG(INFO, "job %s[%s] submitted with deploy_step %d, replica %d , pod version %s",
-      job_id.c_str(), 
-      job_desc.name().c_str(),
-      job_desc.deploy().step(),
-      job_desc.deploy()replica(),
-      job->latest_version.c_str());
-      */
+    job_checker_.DelayTask(FLAGS_master_job_check_interval * 1000, boost::bind(&JobManager::CheckJobStatus, this, job));
+    LOG(INFO) << "job[" << job_id << "] jobname[" << job_desc.name() 
+        <<"] step[" << job_desc.deploy().step() << "] replica[" 
+        << job_desc.deploy().replica() << "] version[" << job->curent_version_ << "] "
+        << "submitted" << __FUNCTION__;
     return kOk;
 }
 
@@ -211,7 +213,8 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
     std::map<JobId, Job*>::iterator it;
     it = jobs_.find(job_id);
     if (it == jobs_.end()) {
-        //LOG(WARNING, "update job failed, job not found: %s", job_id.c_str());
+        LOG(WARNING) << "update job " << job_id << "failed."
+        << "job not found" << __FUNCTION__;
         return kJobNotFound;
     }
     Job* job = it->second;
@@ -223,6 +226,8 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
             return rlt;
         }
         job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
         /*
         bool save_ok = SaveToNexus(job);
         if (!save_ok) {
@@ -230,6 +235,8 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
         }
         */
     } else {
+        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+            << "] reject event [" << JobEvent_Name(kRemove) << "]" << __FUNCTION__;
         return kStatusConflict;
     }
     return kOk;
@@ -253,7 +260,11 @@ Status JobManager::Terminate(const JobId& jobid,
             return rlt;
         }
         job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
     } else {
+        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+            << "] reject event [" << JobEvent_Name(kRemove) << "]" << __FUNCTION__;
         return kStatusConflict;
     }
     return kOk;
@@ -321,15 +332,15 @@ Status JobManager::ClearJob(Job* job, void* arg) {
     boost::function<void (const proto::RemoveContainerGroupRequest*, proto::RemoveContainerGroupResponse*, 
             bool, int)> call_back;
     call_back = boost::bind(&JobManager::RemoveContainerGroupCallBack, this, _1, _2, _3, _4);
-    ResMan_Stub* resman_;
-    rpc_client_.GetStub(resman_endpoint_, &resman_);
-    rpc_client_.AsyncRequest(resman_,
+    ResMan_Stub* resman;
+    rpc_client_.GetStub(resman_endpoint_, &resman);
+    rpc_client_.AsyncRequest(resman,
                             &ResMan_Stub::RemoveContainerGroup,
                             container_request,
                             container_response,
                             call_back,
                             5, 0);
-    delete resman_;
+    delete resman;
     return kOk;
 }
 
@@ -475,6 +486,9 @@ Status JobManager::HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* r
     if (job_it == jobs_.end()) {
         response->mutable_error_code()->set_status(kJobNotFound);
         response->mutable_error_code()->set_reason("Jobid not found");
+        LOG(WARNING) << "Fetch job[" << request->jobid() << "]" 
+        << "from worker[" << request->endpoint() << "][" 
+        << request->podid() << "]" << "failed." << __FUNCTION__;
         return kJobNotFound;
     }
     Job* job = job_it->second;
@@ -483,19 +497,27 @@ Status JobManager::HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* r
     if (fsm_it != fsm_.end()) {
         Status rlt = fsm_it->second->trans_func_(job, NULL);
         if (kOk != rlt) {
+            LOG(WARNING) << "FSM trans exec failed" << __FUNCTION__;
             return rlt;
         }
         job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
+        //SaveToNexus(job);
     } else {
+        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+            << "] reject event [" << JobEvent_Name(kRemove) << "]" << __FUNCTION__;
         return kStatusConflict;
     }
     std::map<std::string, DispatchFunc>::iterator dispatch_it = dispatch_.find(JobStatus_Name(job->status_));
     if (dispatch_it == dispatch_.end()) {
+        LOG(WARNING) << "dispatch_func null." << __FUNCTION__;
         return kError;
     }
     Status rlt = dispatch_it->second(job, (void*)request);
     response->mutable_error_code()->set_status(rlt);
     if (kError == rlt) {
+        LOG(WARNING) << "dispatch_func exec failed." << __FUNCTION__;
         return rlt;
     }
     response->set_update_time(job->update_time_);
