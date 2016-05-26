@@ -88,10 +88,12 @@ void JobManager::BuildAging() {
 }
 
 void JobManager::CheckPending(Job* job) {
+    mutex_.AssertHeld();
     return;
 }
 
 void JobManager::CheckRunning(Job* job) {
+    mutex_.AssertHeld();
     return;
 }
 
@@ -155,8 +157,12 @@ void JobManager::CheckJobStatus(Job* job) {
     if (job == NULL) {
         return;
     }
-    job_checker_.DelayTask(FLAGS_master_job_check_interval * 1000, boost::bind(&JobManager::CheckJobStatus, this, job));
+    VLOG(10) << "DEBUG: CheckJobStatus "
+    << "jobid[" << job->id_ << "] status[" << JobStatus_Name(job->status_) << "]";
     std::map<std::string, AgingFunc>::iterator it = aging_.find(JobStatus_Name(job->status_));
+    if (job->status_ != kJobFinished) {
+        job_checker_.DelayTask(FLAGS_master_job_check_interval * 1000, boost::bind(&JobManager::CheckJobStatus, this, job));
+    }
     if (it != aging_.end()) {
         it->second(job);
     }
@@ -173,6 +179,7 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
         std::map<std::string, PodInfo*>::iterator it = job->pods_.find(pod->podid());
         if (it != job->pods_.end()) {
             job->pods_.erase(pod->podid());
+            LOG(INFO) << "pod[" << pod->podid() <<"] dead & remove. " << __FUNCTION__;
             delete pod;
         }
         return;
@@ -236,7 +243,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
         */
     } else {
         LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
-            << "] reject event [" << JobEvent_Name(kRemove) << "]" << __FUNCTION__;
+            << "] reject event [" << JobEvent_Name(kUpdate) << "]" << __FUNCTION__;
         return kStatusConflict;
     }
     return kOk;
@@ -353,16 +360,18 @@ void JobManager::RemoveContainerGroupCallBack(const proto::RemoveContainerGroupR
         //LOG(WARNING, "fail to remove container group");
         return;
     }
+    MutexLock lock(&mutex_);
     JobId id = request->id();
     std::map<JobId, Job*>::iterator job_it = jobs_.find(id);
+    /*
     if (job_it != jobs_.end()) {
         Job* job = job_it->second;
         jobs_.erase(id);
         delete job;
-    }
-    if (DeleteFromNexus(id)) {
+    }*/
+    //if (DeleteFromNexus(id)) {
         //LOG
-    }
+    //}
     return;
 }
 
@@ -377,10 +386,13 @@ void JobManager::CreatePod(Job* job,
     podinfo->set_version(job->curent_version_);
     podinfo->set_start_time(::baidu::common::timer::get_micros());
     podinfo->set_update_time(::baidu::common::timer::get_micros());
+    podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
     job->pods_[podid] = podinfo;
     job->deploying_pods_.insert(podid);
-    pod_checker_.DelayTask(FLAGS_master_pod_check_interval,
+    pod_checker_.DelayTask(FLAGS_master_pod_check_interval*1000,
         boost::bind(&JobManager::CheckPodAlive, this, podinfo, job));
+    LOG(INFO) << "DEBUG: CreatePod " << podinfo->DebugString()
+    << "END DEBUG";
     return;
 }
 
@@ -395,6 +407,9 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
         if (podinfo->endpoint() != request->endpoint()) {  
             //abandon worker request
             if ((request->update_time()) < podinfo->update_time()) {
+                LOG(WARNING) << "DEBUG: PodHeartBeat "
+                << "abandon worker : " << request->endpoint()
+                << "END DEBUG";
                 return kTerminate;
             }
             //new worker request
@@ -403,10 +418,12 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
             podinfo->set_version(job->curent_version_);
             podinfo->set_start_time(job->create_time_);
             podinfo->set_update_time(::baidu::common::timer::get_micros());
+            podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
             return kOk;
         }
         //refresh
         podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
+        podinfo->set_status(request->status());
         if (request->status() != kPodDeploying &&
             job->deploying_pods_.find(request->podid()) != 
             job->deploying_pods_.end()) {
@@ -416,9 +433,15 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
     }
     //new pod
     if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
+        LOG(WARNING) << "DEBUG: fetch task deny "
+        << " deploying: " << job->deploying_pods_.size()
+        << " step: " << job->desc_.deploy().step();
         return kDeny;
     }
     if (job->pods_.size() >= job->desc_.deploy().replica()) {
+        LOG(WARNING) << "DEBUG: fetch task deny "
+        << " pod cnt: " << job->pods_.size() 
+        << " replica: " << job->desc_.deploy().replica();
         return kDeny;
     }
     CreatePod(job, request->podid(), request->endpoint());
@@ -505,9 +528,9 @@ Status JobManager::HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* r
         JobStatus_Name(job->status_);
         //SaveToNexus(job);
     } else {
-        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
-            << "] reject event [" << JobEvent_Name(kRemove) << "]" << __FUNCTION__;
-        return kStatusConflict;
+        //LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+        //    << "] reject event [" << JobEvent_Name(kFetch) << "]" << __FUNCTION__;
+        //return kStatusConflict;
     }
     std::map<std::string, DispatchFunc>::iterator dispatch_it = dispatch_.find(JobStatus_Name(job->status_));
     if (dispatch_it == dispatch_.end()) {
@@ -562,12 +585,16 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
             const PodInfo* pod = it->second;
             state_stat[pod->status()]++;
         }
+
         overview->set_running_num(state_stat[kPodServing]);
-        overview->set_pending_num(state_stat[kPodPending]);
         overview->set_deploying_num(state_stat[kPodPending] + state_stat[kPodStarting]);
         overview->set_death_num(state_stat[kPodFinished] + state_stat[kPodFailed]);
+        overview->set_pending_num(job->desc_.deploy().replica() - 
+            overview->deploying_num() - overview->death_num() - overview->running_num());
         overview->set_create_time(job->create_time_);
         overview->set_update_time(job->update_time_);
+        VLOG(10) << "DEBUG GetJobsOverview: " << overview->DebugString()
+        << "DEBUG END";
     }
     return;
 }
