@@ -5,12 +5,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/wait.h>
 #include <assert.h>
 #include <algorithm>
 #include <vector>
 #include <sofa/pbrpc/pbrpc.h>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+
 #include "agent_impl.h"
 #include "setting_utils.h"
 
@@ -20,6 +22,17 @@ static volatile bool s_quit = false;
 static void SignalIntHandler(int /*sig*/)
 {
     s_quit = true;
+}
+
+void SigChldHandler(int /*sig*/)
+{
+    int status = 0;
+    while (true) {
+        pid_t pid = ::waitpid(-1, &status, WNOHANG);
+        if (pid == -1 || pid == 0) {
+            return;
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -47,6 +60,7 @@ int main(int argc, char* argv[])
 
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
+    signal(SIGCHLD, SigChldHandler);
     LOG(INFO) << "agent started.";
 
     while (!s_quit) {

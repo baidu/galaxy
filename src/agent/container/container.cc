@@ -42,6 +42,7 @@
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 DECLARE_string(agent_hostname);
+DECLARE_string(cmd_line);
 
 namespace baidu {
 namespace galaxy {
@@ -95,6 +96,7 @@ int Container::Construct()
         }
     } else {
         ec = status_.EnterReady();
+        created_time_ = baidu::common::timer::get_micros();
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
         }
@@ -206,14 +208,15 @@ int Container::Construct_()
     // clone
     LOG(INFO) << "to clone appwork process for container " << id_.CompactId();
     std::string container_root_path = baidu::galaxy::path::ContainerRootPath(id_.SubId());
-    std::stringstream ss;
+
     int now = (int)time(NULL);
-    ss << "stderr." << now;
+    std::stringstream ss;
+    ss << container_root_path << "/stderr." << now;
     process_->RedirectStderr(ss.str());
     LOG(INFO) << "redirect stderr to " << ss.str() << " for container " << id_.CompactId();
 
     ss.str("");
-    ss << "stdout." << now;
+    ss << container_root_path << "/stdout." << now;
     process_->RedirectStdout(ss.str());
     LOG(INFO) << "redirect stdout to " << ss.str() << " for container " << id_.CompactId();
     pid_t pid = process_->Clone(boost::bind(&Container::RunRoutine, this, _1), NULL, 0);
@@ -231,6 +234,14 @@ int Container::Construct_()
 int Container::Destroy_()
 {
     // kill appwork
+    pid_t pid = process_->Pid();
+    if (pid > 0) {
+        baidu::galaxy::util::ErrorCode ec = Process::Kill(pid);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "failed in killing appwork for container " << id_.CompactId() << ": " << ec.Message();
+            return -1;
+        }
+    }
 
     // destroy cgroup
     for (size_t i = 0; i < cgroup_.size(); i++) {
@@ -247,6 +258,10 @@ int Container::Destroy_()
         return -1;
     }
 
+
+    // move container root path to  gc_dir
+
+
     // mv to gc queue
     return 0;
 }
@@ -258,6 +273,8 @@ int Container::RunRoutine(void*)
         std::cerr << "mount root fs failed" << std::endl;
         return -1;
     }
+
+    ::chdir(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str());
 
     LOG(INFO) << "succed in mounting root fs";
     // change root
@@ -274,12 +291,11 @@ int Container::RunRoutine(void*)
     //}
     LOG(INFO) << "su user " << desc_.run_user() << " sucessfully";
 
-    ::chdir("/");
 
     // export env
     // start appworker
     LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
-    std::string cmd_line = "sh /tmp/appwork.sh";
+    std::string cmd_line = FLAGS_cmd_line;
     //char* argv[] = {"cat", NULL};
     char* argv[] = {
         const_cast<char*>("sh"),
@@ -309,7 +325,6 @@ void Container::ExportEnv()
 
     while (iter != env.end()) {
         int ret = ::setenv(boost::to_upper_copy(iter->first).c_str(), iter->second.c_str(), 1);
-        std::cerr << "env: " << iter->first << ":" << iter->second << std::endl;
 
         if (0 != ret) {
             LOG(FATAL) << "set env failed for container " << id_.CompactId();
@@ -323,7 +338,6 @@ void Container::ExportEnv(std::map<std::string, std::string>& env)
 {
     env["baidu_galaxy_containergroup_id"] = id_.GroupId();
     env["baidu_galaxy_container_id"] = id_.SubId();
-    env["baidu_galaxy_container_cgroup_size"] = boost::lexical_cast<std::string>(cgroup_.size());
     std::string ids;
 
     for (size_t i = 0; i < cgroup_.size(); i++) {
@@ -347,6 +361,15 @@ baidu::galaxy::proto::ContainerStatus Container::Status()
 
 void Container::KeepAlive()
 {
+    int64_t now = baidu::common::timer::get_micros();
+    if (now - created_time_ < 2000000L) {
+        return;
+    }
+
+    if (status_.Status() != baidu::galaxy::proto::kContainerReady) {
+        return;
+    }
+
     if (!Alive()) {
         baidu::galaxy::util::ErrorCode ec = status_.EnterErrorFrom(baidu::galaxy::proto::kContainerReady);
         if (ec.Code() != 0) {
@@ -362,7 +385,6 @@ void Container::KeepAlive()
 bool Container::Alive()
 {
     int pid = (int)process_->Pid();
-
     if (pid <= 0) {
         return false;
     }

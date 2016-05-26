@@ -4,6 +4,7 @@
 #pragma once
 #include "protocol/galaxy.pb.h"
 #include "container_status.h"
+#include "timer.h"
 
 #include <sys/types.h>
 
@@ -124,6 +125,7 @@ private:
     ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
     std::vector<boost::shared_ptr<baidu::galaxy::collector::Collector> > collectors_;
+    int64_t created_time_;
 
 };
 

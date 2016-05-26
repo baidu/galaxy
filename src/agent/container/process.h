@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #pragma once
+#include "util/error_code.h"
 #include <stdint.h>
 
 #include <boost/function.hpp>
@@ -40,6 +41,7 @@ public:
 
     // return pid of call process
     static pid_t SelfPid();
+    static baidu::galaxy::util::ErrorCode Kill(pid_t pid);
 
     int RedirectStderr(const std::string& path);
     int RedirectStdout(const std::string& path);
