@@ -22,6 +22,7 @@
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 DECLARE_int32(keepalive_interval);
+DECLARE_string(galaxy_root_path);
 
 namespace baidu {
 namespace galaxy {
@@ -77,7 +78,7 @@ void AgentImpl::Setup()
         exit(1);
     }
 
-    baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
+    baidu::galaxy::path::SetRootPath(FLAGS_galaxy_root_path);
     baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     baidu::galaxy::container::ContainerStatus::Setup();
 
@@ -120,7 +121,7 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
 {
     LOG(INFO) << "recv create container request: " << request->DebugString();
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
-    baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
+    baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
 
     if (0 != cm_->CreateContainer(id, request->container())) {
         ec->set_status(baidu::galaxy::proto::kError);
@@ -130,7 +131,6 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
         ec->set_reason("sucess");
     }
 
-    response->set_allocated_code(ec);
     done->Run();
 }
 
@@ -141,6 +141,18 @@ void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
 {
 
     LOG(INFO) << "recv remove container request: " << request->DebugString();
+    baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
+    baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
+    int ret = cm_->ReleaseContainer(id);
+
+    if (0 != ret) {
+        ec->set_status(baidu::galaxy::proto::kError);
+        ec->set_reason("failed");
+    } else {
+        ec->set_status(baidu::galaxy::proto::kOk);
+        ec->set_reason("sucess");
+    }
+    done->Run();
 }
 
 void AgentImpl::ListContainers(::google::protobuf::RpcController* controller,
@@ -158,20 +170,18 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
     std::cerr << "query " << std::endl;
 
-    baidu::galaxy::proto::AgentInfo* ai = new baidu::galaxy::proto::AgentInfo();
+    baidu::galaxy::proto::AgentInfo* ai = response->mutable_agent_info();
     ai->set_unhealthy(!health_checker_->Healthy());
     ai->set_start_time(start_time_);
     ai->set_version(version_);
 
-    baidu::galaxy::proto::Resource* cpu_resource = new baidu::galaxy::proto::Resource();
+    baidu::galaxy::proto::Resource* cpu_resource = ai->mutable_cpu_resource();
     cpu_resource->CopyFrom(*(rm_->GetCpuResource()));
     //cpu_resource->set_used(0);
-    ai->set_allocated_cpu_resource(cpu_resource);
 
-    baidu::galaxy::proto::Resource* memory_resource = new baidu::galaxy::proto::Resource();
+    baidu::galaxy::proto::Resource* memory_resource = ai->mutable_memory_resource();
     memory_resource->CopyFrom(*(rm_->GetMemoryResource()));
     //memory_resource->set_used(0);
-    ai->set_allocated_memory_resource(memory_resource);
 
     std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> > vrs;
     rm_->GetVolumResource(vrs);
@@ -180,11 +190,10 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
         baidu::galaxy::proto::VolumResource* vr = ai->add_volum_resources();
         vr->set_device_path(vrs[i]->device_path());
         vr->set_medium(vrs[i]->medium());
-        baidu::galaxy::proto::Resource* r = new baidu::galaxy::proto::Resource();
+        baidu::galaxy::proto::Resource* r = vr->mutable_volum();
         r->set_total(vrs[i]->volum().total());
         r->set_assigned(vrs[i]->volum().assigned());
         //r->set_used();
-        vr->set_allocated_volum(r);
     }
 
     //std::cerr << ai->DebugString() << std::endl;
@@ -202,10 +211,8 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
         ai->add_container_info()->CopyFrom(*(cis[i]));
     }
 
-    baidu::galaxy::proto::ErrorCode* ec = new baidu::galaxy::proto::ErrorCode();
+    baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
     ec->set_status(baidu::galaxy::proto::kOk);
-    response->set_allocated_agent_info(ai);
-    response->set_allocated_code(ec);
 
     LOG(INFO) << "query:" << response->DebugString();
     done->Run();

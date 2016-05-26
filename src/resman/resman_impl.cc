@@ -240,6 +240,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         vrs->mutable_volum()->set_total(size_total);
         vrs->mutable_volum()->set_assigned(volum_assigned[medium]);
         vrs->mutable_volum()->set_used(volum_used[medium]);
+        vrs->set_medium(medium);
     }
     response->set_total_containers(total_containers);
     response->set_total_groups(total_container_groups);
@@ -252,6 +253,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         pool_status->set_alive_agents(pool_alive[pool_name]);
     }
     response->set_in_safe_mode(safe_mode_);
+    VLOG(10) << "cluster status:" << response->DebugString();
     done->Run();
 }
 
@@ -472,6 +474,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     container_group_meta.set_user_name(request->user().user());
     container_group_meta.set_replica(request->replica());
     container_group_meta.set_status(proto::kContainerGroupNormal);
+    container_group_meta.set_submit_time(common::timer::get_micros());
     container_group_meta.mutable_desc()->CopyFrom(request->desc());
     std::string container_group_id = scheduler_->Submit(request->name(), 
                                                         request->desc(), 
@@ -565,6 +568,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
         new_meta = it->second;
         new_meta.set_update_interval(request->interval());
         new_meta.mutable_desc()->CopyFrom(request->desc());
+        new_meta.set_update_time(common::timer::get_micros());
         if (new_meta.replica() != request->replica()) {
             new_meta.set_replica(request->replica());
             replica_changed = true;
@@ -779,7 +783,7 @@ void ResManImpl::ShowAgent(::google::protobuf::RpcController* controller,
                            ::google::protobuf::Closure* done) {
     const std::string& endpoint = request->endpoint();
     std::vector<proto::ContainerStatistics> containers;
-    bool ret = scheduler_->ShowContainerGroup(endpoint, containers);
+    bool ret = scheduler_->ShowAgent(endpoint, containers);
     if (!ret) {
         response->mutable_error_code()->set_status(proto::kError);
         response->mutable_error_code()->set_reason("no such agent");

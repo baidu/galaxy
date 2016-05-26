@@ -47,6 +47,7 @@ GPATH
 *~
 *.swp
 tmp
+galaxy.flag
 
 *.orig
 
@@ -54,3 +55,4 @@ tmp
 *.INFO*
 *.WARNING*
 *.ERROR*
+galaxy.flag

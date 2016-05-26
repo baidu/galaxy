@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #pragma once
+#include "util/error_code.h"
 #include <google/protobuf/message.h>
 #include <boost/shared_ptr.hpp>
 
@@ -33,8 +34,8 @@ public:
         return container_id_;
     }
 
-    int Construct();
-    int Destroy();
+    baidu::galaxy::util::ErrorCode Construct();
+    baidu::galaxy::util::ErrorCode  Destroy();
     int ExportEnv(std::map<std::string, std::string>& env);
     boost::shared_ptr<google::protobuf::Message> Report();
 
