@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     std::cout << "          size: " << job.pod.workspace_volum.size << std::endl;
     std::cout << "          type: " << job.pod.workspace_volum.type << std::endl;
     std::cout << "          medium: " << job.pod.workspace_volum.medium << std::endl;
-    std::cout << "          source_path: " << job.pod.workspace_volum.source_path << std::endl;
+    //std::cout << "          source_path: " << job.pod.workspace_volum.source_path << std::endl;
     std::cout << "          dest_path: " << job.pod.workspace_volum.dest_path << std::endl;
     std::cout << "          readonly: " << job.pod.workspace_volum.readonly << std::endl;
     std::cout << "          exclusive: " << job.pod.workspace_volum.exclusive << std::endl;
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         std::cout << "              size: " << job.pod.data_volums[i].size << std::endl;
         std::cout << "              type: " << job.pod.data_volums[i].type << std::endl;
         std::cout << "              medium: " << job.pod.data_volums[i].medium << std::endl;
-        std::cout << "              source_path: " << job.pod.data_volums[i].source_path << std::endl;
+        //std::cout << "              source_path: " << job.pod.data_volums[i].source_path << std::endl;
         std::cout << "              dest_path: " << job.pod.data_volums[i].dest_path << std::endl;
         std::cout << "              readonly: " << job.pod.data_volums[i].readonly << std::endl;
         std::cout << "              exclusive: " << job.pod.data_volums[i].exclusive << std::endl;
@@ -65,9 +65,19 @@ int main(int argc, char** argv) {
         std::cout << "                  size: " << job.pod.tasks[i].memory.size << std::endl;
         std::cout << "                  excess: " << job.pod.tasks[i].memory.excess << std::endl;
 
+        std::cout << "              tcp: " << std::endl;
+        std::cout << "                  recv_bps_quota: " << job.pod.tasks[i].tcp_throt.recv_bps_quota << std::endl;
+        std::cout << "                  recv_bps_excess: " << job.pod.tasks[i].tcp_throt.recv_bps_excess << std::endl;
+        std::cout << "                  send_bps_quota: " << job.pod.tasks[i].tcp_throt.send_bps_quota << std::endl;
+        std::cout << "                  send_bps_excess: " << job.pod.tasks[i].tcp_throt.send_bps_excess << std::endl;
+
+
+        std::cout << "              blkio: " << std::endl;
+        std::cout << "                  weight: " << job.pod.tasks[i].blkio.weight << std::endl;
+
         std::cout << "              ports: " << job.pod.tasks[i].ports.size()<< std::endl;
         for (size_t j = 0; j < job.pod.tasks[i].ports.size(); ++j) {
-            std::cout << "              port No." << i << std::endl;
+            std::cout << "              port No." << j << std::endl;
             std::cout << "                  port_name: " << job.pod.tasks[i].ports[j].port_name << std::endl;
             std::cout << "                  port: " << job.pod.tasks[i].ports[j].port << std::endl;
         }
