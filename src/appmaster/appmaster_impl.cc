@@ -142,10 +142,14 @@ void AppMasterImpl::BuildContainerDescription(const ::baidu::galaxy::proto::JobD
     container_desc->mutable_data_volums()->CopyFrom(job_desc.pod().data_volums());
     for (int i = 0; i < job_desc.pod().tasks_size(); i++) {
         Cgroup* cgroup = container_desc->add_cgroups();
+        cgroup->set_id(job_desc.pod().tasks(i).id());
         cgroup->mutable_cpu()->CopyFrom(job_desc.pod().tasks(i).cpu());
         cgroup->mutable_memory()->CopyFrom(job_desc.pod().tasks(i).memory());
         cgroup->mutable_tcp_throt()->CopyFrom(job_desc.pod().tasks(i).tcp_throt());
         cgroup->mutable_blkio()->CopyFrom(job_desc.pod().tasks(i).blkio());
+        for (int j = 0; j < job_desc.pod().tasks(i).ports_size(); j++) {
+            cgroup->add_ports()->CopyFrom(job_desc.pod().tasks(i).ports(j));
+        }
     }
     VLOG(10) << "TRACE BuildContainerDescription: " << job_desc.name();
     VLOG(10) <<  container_desc->DebugString();
@@ -339,9 +343,9 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
     }
     Status status = job_manager_.HandleFetch(request, response);
     if (status != kOk) {
-        LOG(WARNING) << "FetchTask failed, code:" << status << ", method:" << __FUNCTION__;
+        LOG(WARNING) << "FetchTask failed, code:" << Status_Name(status) << ", method:" << __FUNCTION__;
     }
-    VLOG(10) << "DEBUG: Fetch response" 
+    VLOG(10) << "DEBUG: Fetch response " 
     << response->DebugString() 
     <<"DEBUG END";
     done->Run();
