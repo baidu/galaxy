@@ -33,6 +33,7 @@ public:
     bool ShowContainerGroup(const ShowContainerGroupRequest& request, ShowContainerGroupResponse* response);
     bool AddAgent(const AddAgentRequest& request, AddAgentResponse* response);
     bool RemoveAgent(const RemoveAgentRequest& request, RemoveAgentResponse* response);
+    bool ShowAgent(const ShowAgentRequest& request, ShowAgentResponse* response);
     bool OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response);
     bool OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response);
     bool ListAgents(const ListAgentsRequest& request, ListAgentsResponse* response);

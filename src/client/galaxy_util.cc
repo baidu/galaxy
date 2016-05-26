@@ -133,16 +133,16 @@ std::string StringJobStatus(const ::baidu::galaxy::sdk::JobStatus& status) {
     std::string result;
     switch(status) {
     case ::baidu::galaxy::sdk::kJobPending:
-        result = "kJobPending";
+        result = "Pending";
         break;
     case ::baidu::galaxy::sdk::kJobRunning:
-        result = "kJobRunning";
+        result = "Running";
         break;
     case ::baidu::galaxy::sdk::kJobFinished:
-        result = "kJobFinished";
+        result = "Finished";
         break;
     case ::baidu::galaxy::sdk::kJobDestroying:
-        result = "kJobDestroying";
+        result = "Destroying";
         break;
     defalt:
         result = "";
@@ -154,25 +154,25 @@ std::string StringPodStatus(const ::baidu::galaxy::sdk::PodStatus& status) {
     std::string result;
     switch(status) {
     case ::baidu::galaxy::sdk::kPodPending:
-        result = "kPodPending";
+        result = "Pending";
         break;
     case ::baidu::galaxy::sdk::kPodReady:
-        result = "kPodReady";
+        result = "Ready";
         break;
     case ::baidu::galaxy::sdk::kPodDeploying:
-        result = "kPodDeploying";
+        result = "Deploying";
         break;
     case ::baidu::galaxy::sdk::kPodStarting:
-        result = "kPodStarting";
+        result = "Starting";
         break;
     case ::baidu::galaxy::sdk::kPodServing:
-        result = "kPodServing";
+        result = "Serving";
         break;
     case ::baidu::galaxy::sdk::kPodFailed:
-        result = "kPodFailed";
+        result = "Failed";
         break;
     case ::baidu::galaxy::sdk::kPodFinished:
-        result = "kPodFinished";
+        result = "Finished";
         break;
     defalt:
         result = "";
@@ -212,25 +212,25 @@ std::string StringContainerStatus(const ::baidu::galaxy::sdk::ContainerStatus& s
     std::string result;
     switch(status) {
     case ::baidu::galaxy::sdk::kContainerPending:
-        result = "kContainerPending";
+        result = "Pending";
         break;
     case ::baidu::galaxy::sdk::kContainerAllocating:
-        result = "kContainerAllocating";
+        result = "Allocating";
         break;
     case ::baidu::galaxy::sdk::kContainerReady:
-        result = "kContainerReady";
+        result = "Ready";
         break;
     case ::baidu::galaxy::sdk::kContainerFinish:
-        result = "kContainerFinish";
+        result = "Finish";
         break;
     case ::baidu::galaxy::sdk::kContainerError:
-        result = "kContainerError";
+        result = "Error";
         break;
     case ::baidu::galaxy::sdk::kContainerDestroying:
-        result = "kContainerDestroying";
+        result = "Destroying";
         break;
     case ::baidu::galaxy::sdk::kContainerTerminated:
-        result = "kContainerTerminated";
+        result = "Terminated";
         break;
     defalt:
         result = "";
@@ -242,10 +242,10 @@ std::string StringContainerGroupStatus(const ::baidu::galaxy::sdk::ContainerGrou
     std::string result;
     switch(status) {
     case ::baidu::galaxy::sdk::kContainerGroupNormal:
-        result = "kContainerGroupNormal";
+        result = "Normal";
         break;
     case ::baidu::galaxy::sdk::kContainerGroupTerminated:
-        result = "kContainerGroupTerminated";
+        result = "Terminated";
         break;
     defalt:
         result = "";
@@ -302,16 +302,16 @@ std::string StringAgentStatus(const ::baidu::galaxy::sdk::AgentStatus& status) {
     std::string result;
     switch(status) {
     case ::baidu::galaxy::sdk::kAgentUnkown:
-        result = "kAgentUnkown";
+        result = "Unkown";
         break;
     case ::baidu::galaxy::sdk::kAgentAlive:
-        result = "kAgentAlive";
+        result = "Alive";
         break;
     case ::baidu::galaxy::sdk::kAgentDead:
-        result = "kAgentDead";
+        result = "Dead";
         break;
     case ::baidu::galaxy::sdk::kAgentOffline:
-        result = "kAgentOffline";
+        result = "Offline";
         break;
     defalt:
         result = "";
@@ -360,6 +360,16 @@ std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error
     }
     return result;
 
+}
+
+std::string StringBool(bool flag) {
+    std::string sflag;
+    if (flag) {
+        sflag = "true";
+    } else {
+        sflag = "false";
+    }
+    return sflag;
 }
 
 std::string FormatDate(uint64_t datetime) {

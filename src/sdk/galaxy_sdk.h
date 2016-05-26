@@ -345,6 +345,7 @@ struct OfflineAgentRequest {
 struct OfflineAgentResponse {
     ErrorCode error_code;
 };
+
 struct ListAgentsRequest {
     User user;
 };
@@ -523,6 +524,7 @@ struct ShowContainerGroupRequest {
     std::string id;
 };
 struct ContainerStatistics {
+    std::string id;
     ContainerStatus status;
     std::string endpoint;
     Resource cpu;
@@ -535,6 +537,17 @@ struct ShowContainerGroupResponse {
     ContainerDescription desc;
     std::vector<ContainerStatistics> containers;
 };
+
+struct ShowAgentRequest {
+    User user;
+    std::string endpoint;
+};
+
+struct ShowAgentResponse {
+    ErrorCode error_code;
+    std::vector<ContainerStatistics> containers;
+};
+
 struct SubmitJobRequest {
     User user;
     JobDescription job;

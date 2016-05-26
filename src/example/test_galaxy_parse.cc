@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     std::cout << "          size: " << job.pod.workspace_volum.size << std::endl;
     std::cout << "          type: " << job.pod.workspace_volum.type << std::endl;
     std::cout << "          medium: " << job.pod.workspace_volum.medium << std::endl;
-    std::cout << "          source_path: " << job.pod.workspace_volum.source_path << std::endl;
+    //std::cout << "          source_path: " << job.pod.workspace_volum.source_path << std::endl;
     std::cout << "          dest_path: " << job.pod.workspace_volum.dest_path << std::endl;
     std::cout << "          readonly: " << job.pod.workspace_volum.readonly << std::endl;
     std::cout << "          exclusive: " << job.pod.workspace_volum.exclusive << std::endl;
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
         std::cout << "              size: " << job.pod.data_volums[i].size << std::endl;
         std::cout << "              type: " << job.pod.data_volums[i].type << std::endl;
         std::cout << "              medium: " << job.pod.data_volums[i].medium << std::endl;
-        std::cout << "              source_path: " << job.pod.data_volums[i].source_path << std::endl;
+        //std::cout << "              source_path: " << job.pod.data_volums[i].source_path << std::endl;
         std::cout << "              dest_path: " << job.pod.data_volums[i].dest_path << std::endl;
         std::cout << "              readonly: " << job.pod.data_volums[i].readonly << std::endl;
         std::cout << "              exclusive: " << job.pod.data_volums[i].exclusive << std::endl;
