@@ -475,13 +475,13 @@ bool JobAction::ShowJob(const std::string& jobid) {
                 std::string podid(response.job.pods[i].podid, pos + 1, response.job.pods[i].podid.size()- (pos + 1));
                 pods.AddRow(7, ::baidu::common::NumToString(i).c_str(),
                                response.job.pods[i].podid.c_str(),
-                               //response.job.pods[i].jobid.c_str(),
                                response.job.pods[i].endpoint.c_str(),
                                StringPodStatus(response.job.pods[i].status).c_str(),
                                response.job.pods[i].version.c_str(),
                                FormatDate(response.job.pods[i].start_time).c_str(),
                                ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str()
                           );
+                fprintf(stderr, "status is %d\n", response.job.pods[i].status);
             }
             printf("%s\n", pods.ToString().c_str());
         }

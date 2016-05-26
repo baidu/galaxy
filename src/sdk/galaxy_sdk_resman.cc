@@ -944,6 +944,16 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
     response->assigned.ssd = pb_response.assigned().ssd();
     response->assigned.replica = pb_response.assigned().replica();
 
+    for (int i = 0; i < pb_response.grants().size(); ++i) {
+        Grant grant;
+        grant.pool = pb_response.grants(i).pool();
+        grant.action = (AuthorityAction)pb_response.grants(i).action();
+        for (int j = 0; j < pb_response.grants(i).authority().size(); ++j) {
+            grant.authority.push_back((Authority)pb_response.grants(i).authority(j));
+        }
+        response->grants.push_back(grant);
+    }
+
     return true;
 }
 
