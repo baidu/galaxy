@@ -20,18 +20,87 @@ namespace cgroup {
 class Cgroup;
 }
 
+namespace collector {
+class Collector;
+}
+
 namespace volum {
 class VolumGroup;
 }
 
 namespace container {
 class Process;
+
+class ContainerId {
+public:
+    ContainerId() {}
+    ContainerId(const std::string& group_id, const std::string& container_id) :
+        group_id_(group_id),
+        container_id_(container_id) {
+    }
+
+    bool Empty() {
+        return (group_id_.empty() || container_id_.empty());
+    }
+
+    ContainerId& SetGroupId(const std::string& id) {
+        group_id_ = id;
+        return *this;
+    }
+
+    ContainerId& SetSubId(const std::string& id) {
+        container_id_ = id;
+        return *this;
+    }
+
+    const std::string& GroupId() const {
+        return group_id_;
+    }
+
+    const std::string& SubId() const {
+        return container_id_;
+    }
+
+    const std::string CompactId() const {
+        return group_id_ + "_" + container_id_;
+    }
+
+    const std::string ToString() const {
+        std::string ret;
+        ret += "group_id: ";
+        ret += group_id_;
+        ret += " ";
+        ret += "container_id: ";
+        ret += container_id_;
+        return ret;
+    }
+
+    friend bool operator < (const ContainerId& l, const ContainerId& r) {
+        if (l.group_id_ == r.GroupId()) {
+            return (l.container_id_ < r.container_id_);
+        } else {
+            return l.group_id_ < r.group_id_;
+        }
+    }
+
+    friend bool operator == (const ContainerId& l, const ContainerId& r) {
+        return (l.group_id_ == r.group_id_ && l.container_id_ == r.container_id_);
+    }
+private:
+    std::string group_id_;
+    std::string container_id_;
+
+};
+
 class Container {
 public:
-    Container(const std::string& id, const baidu::galaxy::proto::ContainerDescription& desc);
+    Container(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
     ~Container();
 
-    std::string Id() const;
+    void AddEnv(const std::string& key, const std::string& value);
+    void AddEnv(const std::map<std::string, std::string>& env);
+
+    ContainerId Id() const;
     int Construct();
     int Destroy();
 
@@ -40,6 +109,7 @@ public:
     boost::shared_ptr<google::protobuf::Message> Report();
     baidu::galaxy::proto::ContainerStatus Status();
 
+    boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
 private:
     int Construct_();
     int Destroy_();
@@ -53,8 +123,9 @@ private:
     std::vector<boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> > cgroup_;
     boost::shared_ptr<baidu::galaxy::volum::VolumGroup> volum_group_;
     boost::shared_ptr<Process> process_;
-    std::string id_;
+    ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
+    std::vector<boost::shared_ptr<baidu::galaxy::collector::Collector> > collectors_;
 
 };
 

@@ -15,10 +15,10 @@ public:
     MemorySubsystem();
     ~MemorySubsystem();
 
-    boost::shared_ptr<google::protobuf::Message> Status();
     boost::shared_ptr<Subsystem> Clone();
     std::string Name();
     int Construct();
+    baidu::galaxy::util::ErrorCode Collect(Metrix& metrix);
 };
 
 } //namespace cgroup

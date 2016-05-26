@@ -26,25 +26,12 @@ using proto::kContainerError;
 using proto::kContainerDestroying;
 using proto::kContainerTerminated;
 using proto::kContainerFinish;
+using proto::ResourceError;
 
 typedef std::string AgentEndpoint;
 typedef std::string ContainerGroupId;
 typedef std::string ContainerId;
 typedef std::string DevicePath;
-
-enum ResourceError {
-    kOk = 0,
-    kNoCpu = 1,
-    kNoMemory = 2,
-    kNoMedium = 3,
-    kNoDevice = 4,
-    kNoPort = 5,
-    kPortConflict = 6,
-    kTagMismatch = 7,
-    kNoMemoryForTmpfs = 8,
-    kPoolMismatch = 9,
-    kTooManyPods = 10
-};
 
 enum AgentCommandAction {
     kCreateContainer = 0,
@@ -54,6 +41,7 @@ enum AgentCommandAction {
 struct AgentCommand {
     AgentCommandAction action;
     ContainerId container_id;
+    ContainerGroupId container_group_id;
     proto::ContainerDescription desc;
 };
 
@@ -81,6 +69,24 @@ struct Requirement {
         }
         return total;
     }
+    int64_t DiskNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kDisk) {
+                total += volums[i].size();
+            }
+        }
+        return total;
+    }
+    int64_t SsdNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kSsd) {
+                total += volums[i].size();
+            }
+        }
+        return total;
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
@@ -101,6 +107,7 @@ struct Container {
     std::vector<std::string> allocated_ports;
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
+    proto::ContainerInfo remote_info;
     typedef boost::shared_ptr<Container> Ptr;
 };
 
@@ -121,8 +128,18 @@ struct ContainerGroup {
     std::map<ContainerId, Container::Ptr> states[8];
     int update_interval;
     int last_update_time;
+    int replica;
+    std::string name;
+    std::string user_name;
     proto::ContainerDescription container_desc;
-    ContainerGroup() : terminated(false) {};
+    int64_t submit_time;
+    int64_t update_time;
+    ContainerGroup() : terminated(false),
+                       update_interval(0),
+                       last_update_time(0),
+                       replica(0),
+                       submit_time(0),
+                       update_time(0) {};
     int Replica() const {
         return states[kContainerPending].size() 
                + states[kContainerAllocating].size() 
@@ -155,6 +172,8 @@ private:
     bool RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
                             std::map<DevicePath, VolumInfo>& volum_free,
                             std::vector<DevicePath>& devices);
+    bool SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
+                         std::vector<std::string>& ports_free);
     AgentEndpoint endpoint_;
     std::set<std::string> tags_;
     std::string pool_name_;
@@ -187,12 +206,14 @@ public:
     explicit Scheduler();
     //start the main schueduling loop
     void Start();
+    void Stop();
 
     void AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info);
     void RemoveAgent(const AgentEndpoint& endpoint);
     ContainerGroupId Submit(const std::string& container_group_name,
                             const proto::ContainerDescription& container_desc,
-                            int replica, int priority);
+                            int replica, int priority,
+                            const std::string& user_name);
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
@@ -212,6 +233,17 @@ public:
     void MakeCommand(const std::string& agent_endpoint,
                      const proto::AgentInfo& agent_info, 
                      std::vector<AgentCommand>& commands);
+    bool ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups);
+    bool ShowContainerGroup(const ContainerGroupId& container_group_id,
+                            std::vector<proto::ContainerStatistics>& containers);
+    bool ShowAgent(const AgentEndpoint& endpoint,
+                   std::vector<proto::ContainerStatistics>& containers);
+    void GetContainersStatistics(const ContainerMap& containers_map,
+                                 std::vector<proto::ContainerStatistics>& containers);
+    void ShowUserAlloc(const std::string& user_name, proto::Quota& alloc);
+    bool ChangeStatus(const ContainerGroupId& container_group_id,
+                      const ContainerId& container_id,
+                      ContainerStatus new_status);
 
 private:
     void ChangeStatus(Container::Ptr container,
@@ -234,12 +266,14 @@ private:
                         const proto::ContainerDescription& container_desc);
     void SetVolumsAndPorts(const Container::Ptr& container, 
                            proto::ContainerDescription& container_desc);
+    std::string GetNewVersion();
     std::map<AgentEndpoint, Agent::Ptr> agents_;
     std::map<ContainerGroupId, ContainerGroup::Ptr> container_groups_;
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess> container_group_queue_;
     Mutex mu_;
     ThreadPool sched_pool_;
     ThreadPool gc_pool_;
+    bool stop_;
 };
 
 } //namespace sched

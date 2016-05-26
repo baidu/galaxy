@@ -17,6 +17,7 @@ public:
 
     int Construct();
     int Destroy();
+    int Gc();
     int64_t Used();
     std::string ToString();
 

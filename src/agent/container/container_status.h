@@ -19,12 +19,18 @@ public:
     ~ContainerStatus();
     static void Setup();
 
+    // for test
+    void SetStatus(baidu::galaxy::proto::ContainerStatus cs) {
+        boost::mutex::scoped_lock lock(mutex_);
+        status_ = cs;
+    }
+
     baidu::galaxy::util::ErrorCode EnterAllocating();
     baidu::galaxy::util::ErrorCode EnterReady();
     baidu::galaxy::util::ErrorCode EnterError();
     baidu::galaxy::util::ErrorCode EnterDestroying();
     baidu::galaxy::util::ErrorCode EnterTerminated();
-    baidu::galaxy::proto::ContainerStatus Status() const;
+    baidu::galaxy::proto::ContainerStatus Status();
     bool CmpRetOld(const baidu::galaxy::proto::ContainerStatus status,
             baidu::galaxy::proto::ContainerStatus* old);
 
@@ -43,6 +49,7 @@ private:
     static std::set<baidu::galaxy::proto::ContainerStatus> kerror_pre_status_;
     static std::set<baidu::galaxy::proto::ContainerStatus> kdestroying_pre_status_;
     static std::set<baidu::galaxy::proto::ContainerStatus> kterminated_pre_status_;
+    static bool setup_ok_;
 
 };
 }

@@ -33,7 +33,5 @@ void SetupLog(const std::string& name) {
     google::InstallFailureSignalHandler();
 }
 
-
 } //namespace galaxy
 } //namespace baidu
-

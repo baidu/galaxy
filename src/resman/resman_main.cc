@@ -13,6 +13,7 @@
 #include <gflags/gflags.h>
 #include "resman_impl.h"
 #include "setting_utils.h"
+#include "util.h"
 
 DECLARE_string(resman_port);
 
@@ -26,6 +27,17 @@ int main(int argc, char* argv[]) {
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("resman");
     baidu::galaxy::ResManImpl * resman = new baidu::galaxy::ResManImpl();
+    bool init_ok = resman->Init();
+    if (!init_ok) {
+        LOG(WARNING) << "fail to load meta from nexus";
+        exit(-1);
+    }
+    std::string rm_endpoint = ::baidu::common::util::GetLocalHostName() + ":" +FLAGS_resman_port;
+    bool nexus_ok = resman->RegisterOnNexus(rm_endpoint);
+    if (!nexus_ok) {
+        LOG(WARNING) << "fail to register RM on nexus";
+        exit(-1);
+    }
     sofa::pbrpc::RpcServerOptions options;
     sofa::pbrpc::RpcServer rpc_server(options);
     if (!rpc_server.RegisterService(static_cast<baidu::galaxy::proto::ResMan*>(resman))) {

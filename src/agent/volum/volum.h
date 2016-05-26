@@ -22,21 +22,30 @@ public:
     std::string SourcePath();
     std::string TargetPath();
 
+    std::string SourceGcPath();
+    std::string TargetGcPath();
+
+    void SetGcIndex(int32_t index);  // timestamp is ok
     void SetContainerId(const std::string& container_id);
-    const std::string ContainerId() const;
     void SetDescription(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
+
+    const std::string ContainerId() const;
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Description() const;
 
     static boost::shared_ptr<Volum> CreateVolum(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
 
     virtual int Destroy();
     virtual int Construct() = 0;
+    virtual int Gc() {
+        return 0;
+    }
     virtual int64_t Used() = 0;
     virtual std::string ToString() = 0;
 
 private:
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr_;
     std::string container_id_;
+    int32_t gc_index_;
 
 };
 
