@@ -12,212 +12,6 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
-bool PodStatusSwitch(const ::baidu::galaxy::proto::PodStatus& pb_status, ::baidu::galaxy::sdk::PodStatus* status) {
-    switch(pb_status) {
-    case ::baidu::galaxy::proto::kPodPending:
-        *status = kPodPending;
-        break;
-    case ::baidu::galaxy::proto::kPodReady:
-        *status = kPodReady;
-        break;
-    case ::baidu::galaxy::proto::kPodDeploying:
-        *status = kPodDeploying;
-        break;
-    case ::baidu::galaxy::proto::kPodStarting:
-        *status = kPodStarting;
-        break;
-    case ::baidu::galaxy::proto::kPodServing:
-        *status = kPodServing;
-        break;
-    case ::baidu::galaxy::proto::kPodFailed:
-        *status = kPodFailed;
-        break;
-    case ::baidu::galaxy::proto::kPodFinished:
-        *status = kPodFinished;
-        break;
-    default:
-        return false;
-    }
-    return true;
-
-}
-bool JobStatusSwitch(const ::baidu::galaxy::proto::JobStatus& pb_status, ::baidu::galaxy::sdk::JobStatus* status) {
-    switch(pb_status) {
-    case ::baidu::galaxy::proto::kJobPending:
-        *status = kJobPending;
-        break;
-    case ::baidu::galaxy::proto::kJobRunning:
-        *status = kJobRunning;
-        break;
-    case ::baidu::galaxy::proto::kJobFinished:
-        *status = kJobFinished;
-        break;
-    case ::baidu::galaxy::proto::kJobDestroying:
-        *status = kJobDestroying;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, Status* status) {
-    switch(pb_status) {
-    case ::baidu::galaxy::proto::kOk:
-        *status = kOk;
-        break;
-    case ::baidu::galaxy::proto::kError:
-        *status = kError;
-        break;
-    case ::baidu::galaxy::proto::kTerminate:
-        *status = kTerminate;
-        break;
-    case ::baidu::galaxy::proto::kAddAgentFail:
-        *status = kAddAgentFail;
-        break;
-    case ::baidu::galaxy::proto::kDeny:
-        *status = kDeny;
-        break;
-    case ::baidu::galaxy::proto::kJobNotFound:
-        *status = kOk;
-        break;
-    case ::baidu::galaxy::proto::kCreateContainerGroupFail:
-        *status = kCreateContainerGroupFail;
-        break;
-    case ::baidu::galaxy::proto::kRemoveContainerGroupFail:
-        *status = kRemoveContainerGroupFail;
-        break;
-    case ::baidu::galaxy::proto::kUpdateContainerGroupFail:
-        *status = kUpdateContainerGroupFail;
-        break;
-    case ::baidu::galaxy::proto::kRemoveAgentFail:
-        *status = kRemoveAgentFail;
-        break;
-    case ::baidu::galaxy::proto::kCreateTagFail:
-        *status = kCreateTagFail;
-        break;
-    case ::baidu::galaxy::proto::kAddAgentToPoolFail:
-        *status = kAddAgentToPoolFail;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-bool AgentStatusSwitch(const ::baidu::galaxy::proto::AgentStatus& pb_status, baidu::galaxy::sdk::AgentStatus* status) {
-    switch(pb_status) {
-    case ::baidu::galaxy::proto::kAgentUnkown:
-        *status = kAgentUnkown;
-        break;
-    case ::baidu::galaxy::proto::kAgentAlive:
-        *status = kAgentAlive;
-        break;
-    case ::baidu::galaxy::proto::kAgentDead:
-        *status = kAgentDead;
-        break;
-    case ::baidu::galaxy::proto::kAgentOffline:
-        *status = kAgentOffline;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-bool VolumTypeSwitch(const ::baidu::galaxy::proto::VolumType& pb_type, baidu::galaxy::sdk::VolumType* type) {
-    switch(pb_type) {
-    case ::baidu::galaxy::proto::kEmptyDir:
-        *type = kEmptyDir;
-        break;
-    case ::baidu::galaxy::proto::kHostDir:
-        *type = kHostDir;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-bool VolumMediumSwitch(const ::baidu::galaxy::proto::VolumMedium& pb_medium, baidu::galaxy::sdk::VolumMedium* medium) {
-    switch(pb_medium) {
-    case ::baidu::galaxy::proto::kSsd:
-        *medium = kSsd;
-        break;
-    case ::baidu::galaxy::proto::kDisk:
-        *medium = kDisk;
-        break;
-    case ::baidu::galaxy::proto::kBfs:
-        *medium = kBfs;
-        break;
-    case ::baidu::galaxy::proto::kTmpfs:
-        *medium = kTmpfs;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-bool ContainerStatusSwitch(const ::baidu::galaxy::proto::ContainerStatus& pb_status, 
-                                baidu::galaxy::sdk::ContainerStatus* status) {
-    switch(pb_status) {
-    case ::baidu::galaxy::proto::kContainerPending:
-        *status = kContainerPending;
-        break;
-    case ::baidu::galaxy::proto::kContainerAllocating:
-        *status = kContainerAllocating;
-        break;
-    case ::baidu::galaxy::proto::kContainerReady:
-        *status = kContainerReady;
-        break;
-    case ::baidu::galaxy::proto::kContainerFinish:
-        *status = kContainerFinish;
-        break;
-    case ::baidu::galaxy::proto::kContainerError:
-        *status = kContainerError;
-        break;
-    case ::baidu::galaxy::proto::kContainerDestroying:
-       *status = kContainerDestroying;
-        break;
-    case ::baidu::galaxy::proto::kContainerTerminated:
-        *status = kContainerTerminated;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-bool AuthoritySwitch(const ::baidu::galaxy::proto::Authority& pb_authority, ::baidu::galaxy::sdk::Authority* authority) {
-    switch(pb_authority) {
-    case ::baidu::galaxy::proto::kAuthorityCreateContainer:
-        *authority = kAuthorityCreateContainer;
-        break;
-    case ::baidu::galaxy::proto::kAuthorityRemoveContainer:
-        *authority = kAuthorityRemoveContainer;
-        break;
-    case ::baidu::galaxy::proto::kAuthorityUpdateContainer:
-        *authority = kAuthorityUpdateContainer;
-        break;
-    case ::baidu::galaxy::proto::kAuthorityListContainer:
-        *authority = kAuthorityListContainer;
-        break;
-    case ::baidu::galaxy::proto::kAuthoritySubmitJob:
-        *authority = kAuthoritySubmitJob;
-        break;
-    case ::baidu::galaxy::proto::kAuthorityUpdateJob:
-        *authority = kAuthorityUpdateJob;
-        break;
-    case ::baidu::galaxy::proto::kAuthorityListJobs:
-        *authority = kAuthorityListJobs;
-        break;
-    default:
-        return false;
-    }
-    return true;
-}
-
 void FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
     user->set_user(sdk_user.user);
     user->set_token(sdk_user.token);
@@ -373,6 +167,18 @@ void FillPodDescription(const PodDescription& sdk_pod,
     }
 }
 
+void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
+    deploy->set_replica(sdk_deploy.replica);
+    deploy->set_step(sdk_deploy.step);
+    deploy->set_interval(sdk_deploy.interval);
+    deploy->set_max_per_host(sdk_deploy.max_per_host);
+    deploy->set_tag(sdk_deploy.tag);
+    for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
+        fprintf(stderr, "port is %s\n", sdk_deploy.pools[i].c_str());
+        deploy->add_pools(sdk_deploy.pools[i]);
+    }
+}
+
 void FillJobDescription(const JobDescription& sdk_job,
                         ::baidu::galaxy::proto::JobDescription* job) {
     job->set_name(sdk_job.name);
@@ -386,6 +192,7 @@ void FillJobDescription(const JobDescription& sdk_job,
     } else if (sdk_job.type == kJobBestEffort) {
         job->set_priority(::baidu::galaxy::proto::kJobBestEffort);
     }
+    FillDeploy(sdk_job.deploy, job->mutable_deploy());
     job->set_run_user(sdk_job.run_user);
     FillPodDescription(sdk_job.pod, job->mutable_pod());
 
@@ -457,10 +264,8 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
         job->deploy.pools.push_back(pb_job.deploy().pools(i));
     }
     job->pod.workspace_volum.size = pb_job.pod().workspace_volum().size();
-    //job->pod.workspace_volum.type = pb_job.pod().workspace_volum().type();
-    VolumTypeSwitch(pb_job.pod().workspace_volum().type(), &job->pod.workspace_volum.type);
-    //job->pod.workspace_volum.medium = pb_job.pod().workspace_volum().medium();
-    VolumMediumSwitch(pb_job.pod().workspace_volum().medium(), &job->pod.workspace_volum.medium);
+    job->pod.workspace_volum.type = (VolumType)pb_job.pod().workspace_volum().type();
+    job->pod.workspace_volum.medium = (VolumMedium)pb_job.pod().workspace_volum().medium();
     job->pod.workspace_volum.source_path = pb_job.pod().workspace_volum().source_path();
     job->pod.workspace_volum.dest_path = pb_job.pod().workspace_volum().dest_path();
     job->pod.workspace_volum.readonly = pb_job.pod().workspace_volum().readonly();
@@ -470,10 +275,8 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     for (int i = 0; i < pb_job.pod().data_volums().size(); ++i) {
         VolumRequired volum;
         volum.size = pb_job.pod().data_volums(i).size();
-        //volum.type = pb_job.pod().data_volums(i).type();
-        VolumTypeSwitch(pb_job.pod().data_volums(i).type(), &volum.type);
-        //volum.medium = pb_job.pod().data_volums(i).medium();
-        VolumMediumSwitch(pb_job.pod().data_volums(i).medium(), &volum.medium);
+        volum.type = (VolumType)pb_job.pod().data_volums(i).type();
+        volum.medium = (VolumMedium)pb_job.pod().data_volums(i).medium();
         volum.source_path = pb_job.pod().data_volums(i).source_path();
         volum.dest_path = pb_job.pod().data_volums(i).dest_path();
         volum.readonly = pb_job.pod().data_volums(i).readonly();

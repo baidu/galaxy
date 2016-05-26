@@ -35,7 +35,7 @@ public:
     int Load();
 
     baidu::galaxy::util::ErrorCode Allocat(const baidu::galaxy::proto::VolumRequired& require);
-    int Release(const baidu::galaxy::proto::VolumRequired& require);
+    baidu::galaxy::util::ErrorCode Release(const baidu::galaxy::proto::VolumRequired& require);
     void Resource(std::map<std::string, Volum>& r);
 
 private:
