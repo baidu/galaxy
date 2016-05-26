@@ -300,14 +300,14 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                     pod_manager_.SetPodDescription(response->pod());
                 }
                 break;
-            case proto::kJobReload:
+            case proto::kReload:
                 if (response->has_pod()) {
                     LOG(INFO) << "fetch task: kJobReload";
                     pod_manager_.SetPodDescription(response->pod());
                     pod_manager_.ReloadPod();
                 }
                 break;
-            case proto::kJobRebuild:
+            case proto::kRebuild:
                 if (response->has_pod()) {
                     LOG(INFO) << "fetch task: kJobRebuild";
                     pod_manager_.SetPodDescription(response->pod());
