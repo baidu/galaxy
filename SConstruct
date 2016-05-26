@@ -14,7 +14,7 @@ env = Environment(
         CCFLAGS = '-g2 -Wall -Werror -Wno-unused-but-set-variable',
         LINKFLAGS = '-Wl,-rpath-link ./thirdparty/boost_1_57_0/stage/lib')
 
-env.Program('resman', Glob('src/resman/*.cc') + Glob('src/utils/*.cc') 
+env.Program('resman', Glob('src/resman/*.cc') + Glob('src/utils/*.cc')
             + ['src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/agent.pb.cc'])
 
 env.Program('appmaster', Glob('src/appmaster/*.cc') + Glob('src/utils/*.cc')
