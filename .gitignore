@@ -31,9 +31,9 @@ _testmain.go
 #resman
 
 # dirs
-thirdparty /
-thirdsrc /
-.* /
+thirdparty/
+thirdsrc/
+.*/
 
 # pbs
 *.pb.*
@@ -54,5 +54,3 @@ tmp
 *.INFO*
 *.WARNING*
 *.ERROR*
-
-galaxy.flag
