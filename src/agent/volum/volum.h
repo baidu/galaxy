@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #pragma once
+#include "util/error_code.h"
 #include <boost/shared_ptr.hpp>
 #include <string>
 
@@ -34,10 +35,10 @@ public:
 
     static boost::shared_ptr<Volum> CreateVolum(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
 
-    virtual int Destroy();
-    virtual int Construct() = 0;
-    virtual int Gc() {
-        return 0;
+    virtual baidu::galaxy::util::ErrorCode Destroy();
+    virtual baidu::galaxy::util::ErrorCode Construct() = 0;
+    virtual baidu::galaxy::util::ErrorCode Gc() {
+        return ERRORCODE_OK;
     }
     virtual int64_t Used() = 0;
     virtual std::string ToString() = 0;

@@ -22,48 +22,108 @@ ContainerManager::~ContainerManager()
 
 int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
 {
+    // enter creating stage, every time only one thread does creating
     baidu::galaxy::util::ErrorCode ec = stage_.EnterCreatingStage(id.SubId());
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
-        LOG(WARNING) << ec.Message();
+        LOG(WARNING) << "container " << id.CompactId() << " has been in creating stage already: " << ec.Message();
         return 0;
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
-        LOG(WARNING) << ec.Message();
+        LOG(WARNING) << "container " << id.CompactId() << " enter create stage failed: " << ec.Message();
         return -1;
     }
 
-    int ret = CreateContainer_(id, desc);
-    stage_.LeaveCreatingStage(id.SubId());
-    return ret;
-}
-
-int ContainerManager::ReleaseContainer(const ContainerId& id)
-{
-    return 0;
-}
-
-int ContainerManager::CreateContainer_(const ContainerId& id,
-        const baidu::galaxy::proto::ContainerDescription& desc)
-{
+    // judge container is exist or not
     {
         boost::mutex::scoped_lock lock(mutex_);
         std::map<ContainerId, boost::shared_ptr<Container> >::const_iterator iter
             = work_containers_.find(id);
 
         if (work_containers_.end() != iter) {
-            LOG(WARNING) << "container " << id.CompactId() << " has already been created";
+            LOG(INFO) << "container " << id.CompactId() << " has already been created";
+            stage_.LeaveCreatingStage(id.SubId());
             return 0;
         }
     }
 
-    baidu::galaxy::util::ErrorCode ec = res_man_->Allocate(desc);
+    // allcate resource
+    ec = res_man_->Allocate(desc);
     if (0 != ec.Code()) {
         LOG(WARNING) << "fail in allocating resource for container "
                      << id.CompactId() << ", detail reason is: "
                      << ec.Message();
         return -1;
+    } else {
+        LOG(INFO) << "succeed in allocating resource for " << id.CompactId();
     }
+
+    // create container
+    int ret = CreateContainer_(id, desc);
+
+    if (0 != ret) {
+        ec = res_man_->Release(desc);
+        if (ec.Code() != 0) {
+            LOG(FATAL) << "failed in releasing resource for container "
+                       << id.CompactId() << ", detail reason is: "
+                       << ec.Message();
+        }
+    }
+    stage_.LeaveCreatingStage(id.SubId());
+    return ret;
+}
+
+int ContainerManager::ReleaseContainer(const ContainerId& id)
+{
+    // enter destroying stage, only one thread do releasing at a moment
+    baidu::galaxy::util::ErrorCode ec = stage_.EnterDestroyingStage(id.SubId());
+    if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
+        LOG(INFO) << "container " << id.CompactId()
+                  << " has been in destroying stage: " << ec.Message();
+        return 0;
+    }
+
+    if (ec.Code() != baidu::galaxy::util::kErrorOk) {
+        LOG(WARNING) << "failed in entering destroying stage for container " << id.CompactId()
+                     << ", reason: " << ec.Message();
+        return -1;
+    }
+
+    // judge container existence
+    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter;
+    {
+        boost::mutex::scoped_lock lock(mutex_);
+        iter = work_containers_.find(id);
+
+        if (work_containers_.end() == iter) {
+            stage_.LeaveDestroyingStage(id.SubId());
+            LOG(WARNING) << "container " << id.CompactId() << " do not exist";
+            return 0;
+        }
+    }
+
+    // do releasing
+    int ret = 0;
+    if (0 == (ret = iter->second->Destroy())) {
+        ec = res_man_->Release(iter->second->Description());
+        if (0 != ec.Code()) {
+            LOG(FATAL) << "failed in releasing resource for container " << id.CompactId()
+                       << " reason is: " << ec.Message();
+            exit(-1);
+        } else {
+            LOG(INFO) << "succeed in releasing resource for container " << id.CompactId();
+        }
+        work_containers_.erase(iter);
+    }
+    stage_.LeaveDestroyingStage(id.SubId());
+
+    LOG(INFO) << id.CompactId() << " leave destroying stage";
+    return ret;
+}
+
+int ContainerManager::CreateContainer_(const ContainerId& id,
+        const baidu::galaxy::proto::ContainerDescription& desc)
+{
 
     boost::shared_ptr<baidu::galaxy::container::Container>
     container(new baidu::galaxy::container::Container(id, desc));
@@ -76,37 +136,10 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
     {
         boost::mutex::scoped_lock lock(mutex_);
         work_containers_[id] = container;
-        LOG(INFO) << "success in constructing container " << id.CompactId();
+        LOG(INFO) << "succeed in constructing container " << id.CompactId();
     }
 
     return 0;
-}
-
-// FIXME release resource
-int ContainerManager::ReleaseContainer_(const ContainerId& id)
-{
-    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter;
-    {
-        boost::mutex::scoped_lock lock(mutex_);
-        iter = work_containers_.find(id);
-
-        if (work_containers_.end() == iter) {
-            LOG(WARNING) << "container " << id.CompactId() << "do not exist";
-            return 0;
-        }
-    }
-    // fix me run in threadpool
-    int ret;
-
-    if (0 == (ret = iter->second->Destroy())) {
-        work_containers_.erase(iter);
-        gc_containers_[id] = iter->second;
-        LOG(INFO) << "container " << id.CompactId() << " is destroyed successfully and is moved to gc queue";
-    } else {
-        LOG(WARNING) << "destroy container " << id.CompactId() << " failed";
-    }
-
-    return ret;
 }
 
 void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo)

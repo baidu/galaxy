@@ -14,7 +14,7 @@
 #include "agent/volum/volum.h"
 #include "agent/util/path_tree.h"
 
-class TestTmpfsVolum : public testing::Test {
+class TestVolumGroup : public testing::Test {
 protected:
     static void SetUpTestCase() {
         baidu::galaxy::path::SetRootPath("/tmp/galaxy");
@@ -24,7 +24,8 @@ protected:
     }
 };
 
-TEST_F(TestTmpfsVolum, Construct) {
+TEST_F(TestVolumGroup, Construct)
+{
     baidu::galaxy::volum::VolumGroup vg;
     baidu::galaxy::proto::VolumRequired vr;
     vr.set_source_path("/home/disk1");
@@ -42,7 +43,7 @@ TEST_F(TestTmpfsVolum, Construct) {
     vg.AddDataVolum(vr);
     vg.SetGcIndex(12345);
     vg.SetContainerId("container_test1");
-    EXPECT_EQ(0, vg.Construct());
+    EXPECT_EQ(0, vg.Construct().Code());
 }
 
 #endif
