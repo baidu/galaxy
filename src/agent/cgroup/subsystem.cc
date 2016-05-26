@@ -97,9 +97,12 @@ int Subsystem::GetProcs(std::vector<int>& pids)
         ::fclose(fin);
         return -1;
     }
-
     ::fclose(fin);
     boost::algorithm::trim(value);
+    if (value.empty()) {
+        return 0;
+    }
+
     std::vector<std::string> str_pids;
     boost::split(str_pids, value, boost::is_any_of("\n"));
 

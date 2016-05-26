@@ -26,10 +26,11 @@ protected:
 
     static void SetUpTestCase() {
         baidu::galaxy::container::ContainerStatus::Setup();
-        FLAGS_cgroup_root_path = "/tmp/cgroup";
-        FLAGS_mount_templat = "/home,/bin,/boot,/cgroups,/dev,/etc,/lib,/lib64,/lost+found,/media,/misc,/mnt,/opt,/sbin,/selinux,/srv,/sys,/tmp,/usr,/var";
+        FLAGS_cgroup_root_path = "/cgroups";
+        FLAGS_mount_templat = "/bin,/boot,/cgroups,/dev,/etc,/lib,/lib64,/lost+found,/media,/misc,/mnt,/opt,/sbin,/selinux,/srv,/sys,/tmp,/usr,/var,/proc";
         baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
-        FLAGS_cmd_line="/tmp/appworker --nexus_addr=cq01-ps-dev377.cq01.baidu.com:8868 --nexus_root_path=/galaxy3";
+        //FLAGS_cmd_line="/tmp/appworker --nexus_addr=cq01-ps-dev377.cq01.baidu.com:8868 --nexus_root_path=/galaxy3";
+        FLAGS_cmd_line = "/tmp/cmd.sh";
         baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     }
 
@@ -90,7 +91,7 @@ TEST_F(TestContainer, Construct1)
     baidu::galaxy::container::ContainerId id("container_group_id", "container_id");
     baidu::galaxy::container::Container container(id, desc);
     EXPECT_EQ(0, container.Construct());
-    int n = 10;
+    int n = 1;
     while (n--) {
         container.KeepAlive();
         sleep(1);
