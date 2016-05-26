@@ -22,6 +22,7 @@
 DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 DECLARE_int32(keepalive_interval);
+DECLARE_string(galaxy_root_path);
 
 namespace baidu {
 namespace galaxy {
@@ -77,7 +78,7 @@ void AgentImpl::Setup()
         exit(1);
     }
 
-    baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
+    baidu::galaxy::path::SetRootPath(FLAGS_galaxy_root_path);
     baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     baidu::galaxy::container::ContainerStatus::Setup();
 

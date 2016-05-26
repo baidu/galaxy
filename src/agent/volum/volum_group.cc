@@ -122,7 +122,6 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_container_workspace_path"] = workspace_volum_->Description()->dest_path();
     env["baidu_galaxy_container_workspace_abstargetpath"] = workspace_volum_->TargetPath();
     env["baidu_galaxy_container_workspace_abssourcepath"] = workspace_volum_->SourcePath();
-    env["baidu_galaxy_container_workspace_datavolum_size"] = boost::lexical_cast<std::string>(data_volum_.size());
     return 0;
 }
 
