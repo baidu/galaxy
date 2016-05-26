@@ -191,7 +191,7 @@ void AppWorkerImpl::PrepareEnvs() {
     return;
 }
 
-void AppWorkerImpl::Start() {
+void AppWorkerImpl::Init() {
     start_time_ = baidu::common::timer::get_micros();
     PrepareEnvs();
     LOG(INFO)\
@@ -320,6 +320,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                 break;
             case proto::kJobNotFound:
                 LOG(INFO) << "fetch task: kJobNotFound";
+                exit(-1);
             default:
                 break;
         }

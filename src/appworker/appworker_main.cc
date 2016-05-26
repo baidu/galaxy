@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     signal(SIGTERM, SignalIntHandler);
 
     baidu::galaxy::AppWorkerImpl* appworker_impl = new baidu::galaxy::AppWorkerImpl();
-    appworker_impl->Start();
+    appworker_impl->Init();
 
     while (!s_quit) {
         sleep(1);

@@ -36,12 +36,14 @@ PodManager::~PodManager() {
 int PodManager::SetPodEnv(const PodEnv& pod_env) {
     MutexLock lock(&mutex_);
     pod_.env = pod_env;
+
     return 0;
 }
 
 int PodManager::SetPodDescription(const PodDescription& pod_desc) {
     MutexLock lock(&mutex_);
     pod_.desc.CopyFrom(pod_desc);
+
     return 0;
 }
 
@@ -51,19 +53,21 @@ int PodManager::TerminatePod() {
         pod_.status = proto::kPodTerminated;
         return 0;
     }
+
     if (pod_.status == proto::kPodStopping
         || pod_.status == proto::kPodTerminated) {
         LOG(WARNING) << "pod is stopping";
         return 0;
     }
 
-   pod_.stage = kPodStageTerminating;
+    pod_.stage = kPodStageTerminating;
     LOG(INFO)\
         << "terminate pod"
         << ", current pod status: " << PodStatus_Name(pod_.status);
     if (0 == DoStopPod()) {
         pod_.status = proto::kPodStopping;
     }
+
     return 0;
 }
 
@@ -82,6 +86,7 @@ int PodManager::RebuildPod() {
     if (0 == DoStopPod()) {
         pod_.status = proto::kPodStopping;
     }
+
     return 0;
 }
 
@@ -91,6 +96,7 @@ int PodManager::ReloadPod() {
         LOG(WARNING) << "pod in reloading, ignore reload action";
         return -1;
     }
+
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
         LOG(WARNING)\
@@ -99,13 +105,14 @@ int PodManager::ReloadPod() {
         pod_.reload_status = proto::kPodFailed;
         return -1;
     }
-
     pod_.stage = kPodStageReloading;
+
     if (0 != DoReloadDeployPod()) {
         pod_.reload_status = proto::kPodFailed;
         return -1;
     }
     pod_.reload_status = proto::kPodDeploying;
+
     // 3.add pod reload status change loop
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
@@ -121,6 +128,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.env = pod_.env;
     pod.desc.CopyFrom(pod_.desc);
     pod.status = pod_.status;
+
     return 0;
 }
 
@@ -129,18 +137,21 @@ int PodManager::DoCreatePod() {
     if (proto::kPodPending != pod_.status) {
         return -1;
     }
+
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
         LOG(WARNING)\
-            << "container cgroup size: " << pod_.env.task_ids.size()\
-            << ", mismatch with task size: " << tasks_size;
+            << "cgroup size mismatch with task size"\
+            << ", cgroup size: " << pod_.env.task_ids.size()\
+            << ", task size: " << tasks_size;
         pod_.status = proto::kPodFailed;
         return -1;
     }
+
     pod_.pod_id = pod_.env.pod_id;
     pod_.status = proto::kPodReady;
     pod_.stage = kPodStageCreating;
-    LOG(INFO) << "create pod, " << tasks_size << " tasks need created";
+    LOG(INFO) << "create pod, task size: " << tasks_size;
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         TaskEnv env;
@@ -152,19 +163,21 @@ int PodManager::DoCreatePod() {
         env.ports = pod_.env.task_ports[i];
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
         if (0 != ret) {
-            LOG(WARNING) << "create task " << i << " fail";
+            LOG(WARNING) << "create task fail, task: " << task_id;
             DoClearPod();
             return ret;
         }
-        LOG(INFO) << "create task " << i << " ok";
+        LOG(INFO) << "create task ok, task " << task_id;
     }
     LOG(INFO) << "create pod ok";
+
     return 0;
 }
 
 int PodManager::DoClearPod() {
     mutex_.AssertHeld();
     task_manager_.ClearTasks();
+
     return 0;
 }
 
@@ -172,17 +185,18 @@ int PodManager::DoClearPod() {
 int PodManager::DoDeployPod() {
     mutex_.AssertHeld();
     int tasks_size = pod_.desc.tasks().size();
-    LOG(INFO) << "deploy pod, " << tasks_size << " tasks need deployed";
+    LOG(INFO) << "deploy pod, task size: " << tasks_size;
 
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         if (0 != task_manager_.DeployTask(task_id)) {
-            LOG(WARNING) << "create deploy process for task: " << task_id << " fail";
+            LOG(WARNING) << "create task deploy process fail, task: " << task_id;
             DoClearPod();
             return -1;
         }
-        LOG(INFO) << "create deploy process for task: " << task_id << " ok";
+        LOG(INFO) << "create task deploy process ok, task: " << task_id;
     }
+
     return 0;
 }
 
@@ -190,16 +204,17 @@ int PodManager::DoDeployPod() {
 int PodManager::DoStartPod() {
    mutex_.AssertHeld();
    int tasks_size = pod_.desc.tasks().size();
-   LOG(INFO) << "start pod, total " << tasks_size << " tasks to be start";
+   LOG(INFO) << "start pod, task size: " << tasks_size;
    for (int i = 0; i < tasks_size; i++) {
        std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
        int ret = task_manager_.StartTask(task_id);
        if (0 != ret) {
-           LOG(WARNING) << "create main process for task " << i << " fail";
+           LOG(WARNING) << "create task main process fail, task:  " << task_id;
            return ret;
        }
-       LOG(INFO) << "create main process for task " << i << " ok";
+       LOG(INFO) << "create task main process ok, task:  " << task_id;
    }
+
    return 0;
 }
 
@@ -207,28 +222,30 @@ int PodManager::DoStartPod() {
 int PodManager::DoStopPod() {
     mutex_.AssertHeld();
     int tasks_size = pod_.desc.tasks().size();
-    LOG(INFO) << "stop pod, total " << tasks_size << " tasks to be stop";
+    LOG(INFO) << "stop pod, task size: " << tasks_size;
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         if (0 != task_manager_.StopTask(task_id)) {
-            LOG(WARNING) << "create stop process for task " << i << " fail";
+            LOG(WARNING) << "create task stop process fail, task:  " << task_id;
             task_manager_.CleanTask(task_id);
         }
-        LOG(INFO) << "create stop process for task " << i << " ok";
+        LOG(INFO) << "create task stop process ok, task: " << task_id;
     }
+
     return 0;
 }
 
 int PodManager::DoReloadDeployPod() {
     mutex_.AssertHeld();
     int tasks_size = pod_.desc.tasks().size();
-    LOG(INFO) << "reload deploy pod, " << tasks_size << " tasks need deploy";
+    LOG(INFO) << "reload deploy pod, task_size: " << tasks_size;
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         if (0 != task_manager_.ReloadDeployTask(task_id, pod_.desc.tasks(i))) {
+            LOG(WARNING) << "reload create task deploy process fail, task:  " << task_id;
             return -1;
         }
-        LOG(INFO) << "create reload deploy process for task: " << task_id << " ok";
+        LOG(INFO) << "reload create task deploy process ok, task: " << task_id;
     }
 
     return 0;
@@ -237,15 +254,15 @@ int PodManager::DoReloadDeployPod() {
 int PodManager::DoReloadStartPod () {
     mutex_.AssertHeld();
     int tasks_size = pod_.desc.tasks().size();
-    LOG(INFO) << "reload start pod, total " << tasks_size << " tasks to be start";
+    LOG(INFO) << "reload start pod, task size: " << tasks_size;
     for (int i = 0; i < tasks_size; i++) {
        std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
        int ret = task_manager_.ReloadStartTask(task_id, pod_.desc.tasks(i));
        if (0 != ret) {
-           LOG(WARNING) << "create reload main process for task " << i << " fail";
+           LOG(WARNING) << "reload create task main process fail, task:  " << task_id;
            return ret;
        }
-       LOG(INFO) << "create reload main process for task " << i << " ok";
+       LOG(INFO) << "reload create task main process ok, task:  " << task_id;
    }
 
    return 0;
@@ -253,7 +270,9 @@ int PodManager::DoReloadStartPod () {
 
 void PodManager::LoopChangePodStatus() {
     MutexLock lock(&mutex_);
-    LOG(INFO) << "pod status: " << proto::PodStatus_Name(pod_.status);
+    LOG(INFO)\
+        << "loop change pod status"\
+        << ", pod status: " << proto::PodStatus_Name(pod_.status);
     switch (pod_.status) {
         case proto::kPodPending:
             PendingPodCheck();
@@ -317,8 +336,6 @@ void PodManager::DeployingPodCheck() {
         if (0 != task_manager_.CheckTask(task_id, task)) {
             return;
         }
-        LOG(INFO) << "task: " << task_id\
-            << ", status: " << proto::TaskStatus_Name(task.status);
         if (task.status == proto::kTaskFailed) {
             task_status = proto::kTaskFailed;
             break;
@@ -388,7 +405,6 @@ void PodManager::RunningPodCheck() {
 
 void PodManager::StoppingPodCheck() {
     mutex_.AssertHeld();
-    LOG(INFO) << "stopping pod check";
     int tasks_size = pod_.desc.tasks().size();
     TaskStatus task_status = proto::kTaskTerminated;
     for (int i = 0; i < tasks_size; i++) {
@@ -404,13 +420,13 @@ void PodManager::StoppingPodCheck() {
     }
     if (proto::kTaskTerminated == task_status) {
         LOG(WARNING) << "pod status change to kPodTerminated";
-        if (kPodStageTerminating == pod_.stage) {
-            pod_.status = proto::kPodTerminated;
+        pod_.status = proto::kPodTerminated;
+        if (kPodStageRebuilding == pod_.stage) {
+            LOG(WARNING) << "rebuilding stage, pod status change to kPodPending";
+            DoClearPod();
+            pod_.stage = kPodStageCreating;
+            pod_.status = proto::kPodPending;
         }
-        LOG(WARNING) << "rebuilding stage, pod status change to kPodPending";
-        DoClearPod();
-        pod_.stage = kPodStageCreating;
-        pod_.status = proto::kPodPending;
     }
 
     return;
@@ -420,7 +436,6 @@ void PodManager::LoopChangePodReloadStatus() {
     MutexLock lock(&mutex_);
     switch (pod_.reload_status) {
         case proto::kPodDeploying: {
-            LOG(WARNING) << "reload deploying check";
             int tasks_size = pod_.desc.tasks().size();
             TaskStatus task_status = proto::kTaskStarting;
             for (int i = 0; i < tasks_size; i++) {
@@ -429,8 +444,6 @@ void PodManager::LoopChangePodReloadStatus() {
                 if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
                     break;
                 }
-                LOG(INFO) << "task: " << task_id\
-                    << ", status: " << proto::TaskStatus_Name(task.reload_status);
                 if (task.reload_status == proto::kTaskFailed) {
                     task_status = proto::kTaskFailed;
                     break;
@@ -450,12 +463,11 @@ void PodManager::LoopChangePodReloadStatus() {
             break;
         }
         case proto::kPodStarting: {
-            LOG(WARNING) << "reload starting check";
             if (0 == DoReloadStartPod()) {
                 LOG(INFO) << "pod reload status change to kPodRunning";
                 pod_.reload_status = proto::kPodRunning;
             } else {
-                LOG(INFO) << "pod status change to kPodFailed";
+                LOG(WARNING) << "pod status change to kPodFailed";
                 pod_.reload_status = proto::kPodFailed;
             }
             break;
@@ -490,11 +502,11 @@ void PodManager::LoopChangePodReloadStatus() {
             break;
         }
         case proto::kPodFinished:
-            LOG(WARNING) << "### pod reload ok";
+            LOG(INFO) << "pod reload ok";
             pod_.stage = kPodStageCreating;
             return;
         case proto::kPodFailed:
-            LOG(WARNING) << "$$$ pod reload failed";
+            LOG(INFO) << "pod reload failed";
             return;
         default:
             return;

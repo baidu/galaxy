@@ -14,6 +14,7 @@
 #include <pwd.h>
 #include <linux/kdev_t.h>
 #include <set>
+#include <fstream>
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -502,6 +503,17 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path) {
         return false;
     }
     return true;
+}
+
+bool Append(const std::string& path, const std::string& content) {
+    std::ofstream f;
+    f.open(path.c_str(), std::ios::out | std::ios::app);
+    if (f.is_open()) {
+        f << content;
+        return true;
+    }
+
+    return false;
 }
 
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number) {

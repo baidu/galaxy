@@ -66,6 +66,7 @@ bool Chown(const std::string& path, uid_t uid, gid_t gid);
 bool SymbolLink(const std::string& old_path, const std::string& new_path);
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number);
 bool GetFileMd5(const std::string& path, std::string& md5);
+bool Append(const std::string& path, const std::string& content);
 
 }   // ending namespace file
 }   // ending namespace galaxy
