@@ -7,71 +7,95 @@
 #include <map>
 #include <set>
 
+#include "job_manager.h"
 #include "ins_sdk.h"
-#include "src/protocol/appmaster.pb.h"
+#include "rpc/rpc_client.h"
+#include "watcher.h"
 
 namespace baidu {
 namespace galaxy {
 
-typedef ::galaxy::ins::sdk::InsSDK InsSDK;
-typedef::galaxy::ins::sdk::SDKError  SDKError;
-typedef proto::PodDescription PodDescription;
-typedef proto::TaskDescription TaskDescription;
-typedef proto::ImagePackage ImagePackage;
-typedef proto::DataPackage DataPackage;
-typedef proto::Package Package;
-typedef proto::ErrorCode ErrorCode;
+using ::galaxy::ins::sdk::InsSDK;
+using ::baidu::galaxy::proto::ResMan_Stub;
+using ::baidu::galaxy::proto::Status;
+using ::baidu::galaxy::proto::ErrorCode;
+using ::baidu::galaxy::proto::Cgroup;
+using ::baidu::galaxy::proto::JobDescription;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
 
-AppMasterImpl();
-virtual ~AppMasterImpl();
+    AppMasterImpl();
+    virtual ~AppMasterImpl();
+    void Init();
+    void Start();
+    void SubmitJob(::google::protobuf::RpcController* controller,
+                  const ::baidu::galaxy::proto::SubmitJobRequest* request,
+                  ::baidu::galaxy::proto::SubmitJobResponse* response,
+                  ::google::protobuf::Closure* done);
 
-void SubmitJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::proto::SubmitJobRequest* request,
-               ::baidu::galaxy::proto::SubmitJobResponse* response,
-               ::google::protobuf::Closure* done);
+    void UpdateJob(::google::protobuf::RpcController* controller,
+                  const ::baidu::galaxy::proto::UpdateJobRequest* request,
+                  ::baidu::galaxy::proto::UpdateJobResponse* response,
+                  ::google::protobuf::Closure* done);
 
-void UpdateJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::proto::UpdateJobRequest* request,
-               ::baidu::galaxy::proto::UpdateJobResponse* response,
-               ::google::protobuf::Closure* done);
+    void RemoveJob(::google::protobuf::RpcController* controller,
+                  const ::baidu::galaxy::proto::RemoveJobRequest* request,
+                  ::baidu::galaxy::proto::RemoveJobResponse* response,
+                  ::google::protobuf::Closure* done);
 
-void RemoveJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::proto::RemoveJobRequest* request,
-               ::baidu::galaxy::proto::RemoveJobResponse* response,
-               ::google::protobuf::Closure* done);
+    void ListJobs(::google::protobuf::RpcController* controller,
+                  const ::baidu::galaxy::proto::ListJobsRequest* request,
+                  ::baidu::galaxy::proto::ListJobsResponse* response,
+                  ::google::protobuf::Closure* done);
 
-void ListJobs(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::proto::ListJobsRequest* request,
-               ::baidu::galaxy::proto::ListJobsResponse* response,
-               ::google::protobuf::Closure* done);
+    void ShowJob(::google::protobuf::RpcController* controller,
+                  const ::baidu::galaxy::proto::ShowJobRequest* request,
+                  ::baidu::galaxy::proto::ShowJobResponse* response,
+                  ::google::protobuf::Closure* done);
 
-void ShowJob(::google::protobuf::RpcController* controller,
-               const ::baidu::galaxy::proto::ShowJobRequest* request,
-               ::baidu::galaxy::proto::ShowJobResponse* response,
-               ::google::protobuf::Closure* done);
+    void ExecuteCmd(::google::protobuf::RpcController* controller,
+                   const ::baidu::galaxy::proto::ExecuteCmdRequest* request,
+                   ::baidu::galaxy::proto::ExecuteCmdResponse* response,
+                   ::google::protobuf::Closure* done);
 
-void ExecuteCmd(::google::protobuf::RpcController* controller,
-                               const ::baidu::galaxy::proto::ExecuteCmdRequest* request,
-                               ::baidu::galaxy::proto::ExecuteCmdResponse* response,
-                               ::google::protobuf::Closure* done);
-
-
-void FetchTask(::google::protobuf::RpcController* controller,
-               const::baidu::galaxy::proto::FetchTaskRequest* request,
-               ::baidu::galaxy::proto::FetchTaskResponse* response,
-               ::google::protobuf::Closure* done);
+    void FetchTask(::google::protobuf::RpcController* controller,
+                  const ::baidu::galaxy::proto::FetchTaskRequest* request,
+                  ::baidu::galaxy::proto::FetchTaskResponse* response,
+                  ::google::protobuf::Closure* done);
+    bool RegisterOnNexus(const std::string endpoint);
 
 private:
-    int32_t times_;
-    std::string endpoint_;
-    InsSDK* nexus_;
-    int64_t update_time1;
-    int64_t update_time2;
-};
+    void BuildContainerDescription(const JobDescription& job_desc,
+                                  ::baidu::galaxy::proto::ContainerDescription* container_desc);
+    void CreateContainerGroupCallBack(JobDescription job_desc,
+                                       proto::SubmitJobResponse* submit_response,
+                                       ::google::protobuf::Closure* done,
+                                       const proto::CreateContainerGroupRequest* request,
+                                       proto::CreateContainerGroupResponse* response,
+                                       bool failed, int err) ;
+    void UpdateContainerGroupCallBack(JobDescription job_desc, 
+                                     proto::UpdateJobResponse* update_response,
+                                     ::google::protobuf::Closure* done,
+                                     const proto::UpdateContainerGroupRequest* request,
+                                     proto::UpdateContainerGroupResponse* response,
+                                     bool failed, int err);
+    void HandleResmanChange(const std::string& new_endpoint);
+    void OnLockChange(std::string lock_session_id);
+    static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param,
+                            ::galaxy::ins::sdk::SDKError err);
 
+
+private:
+    JobManager job_manager_;
+    RpcClient rpc_client_;
+    InsSDK *nexus_;
+    std::string resman_endpoint_;
+    Watcher* resman_watcher_;
+    Mutex resman_mutex_;
+    bool running_;
+    //::baidu::galaxy::proto::ResourceManager_Stub* resman_;
+};
 
 } //namespace galaxy
 } //namespace baidu

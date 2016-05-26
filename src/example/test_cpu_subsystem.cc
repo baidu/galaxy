@@ -6,46 +6,48 @@
 #include "protocol/galaxy.pb.h"
 #include "agent/cgroup/cpu_subsystem.h"
 #include "protocol/galaxy.pb.h"
+#include "boost/filesystem/path.hpp"
+#include "boost/filesystem/operations.hpp"
 
 #include <boost/shared_ptr.hpp>
 
 #include <iostream>
 
 int main(int argc, char** argv) {
-    if (argc != 4) {
-        std::cout << "usage: " << argv[0] << " container_id milli_core excess_mode" << std::endl;
+    if (argc != 5) {
+        std::cerr << "usage: " << argv[0] << " container_id cgroup_id milli_core excess_mode" << std::endl;
         return -1;
     }
+    
+    std::string container_id = argv[1];
+    std::string cgroup_id = argv[2];
+    int millicore = atoi(argv[3]);
+    bool excess = strcmp(argv[4], "true") == 0;
+    
+    std::cerr << "container_id: " << container_id << "\n"
+            << "cgroup_id: " << cgroup_id << "\n"
+            << "millicore: " << millicore << "\n"
+            << "excess: " << excess << "\n";
     
     baidu::galaxy::cgroup::CpuSubsystem cpu_ss;
     
     
     boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup(new baidu::galaxy::proto::Cgroup());
     baidu::galaxy::proto::CpuRequired* cr = new baidu::galaxy::proto::CpuRequired();
-    cr->set_milli_core(atoi(argv[2]));
-    std::string excess(argv[3]);
-    if (excess == "true") {
-        cr->set_excess(true);
-    } else {
-        cr->set_excess(false);
-    }
-    cgroup->set_allocated_cpu(cr);
-    cgroup->set_id("1");
+    cr->set_milli_core(millicore);
+    cr->set_excess(excess);
     
-    cpu_ss.SetContainerId(argv[1]);
+    cgroup->set_allocated_cpu(cr);
+    cgroup->set_id(cgroup_id);
+    
+    cpu_ss.SetContainerId(container_id);
     cpu_ss.SetCgroup(cgroup);
     
     if (0 != cpu_ss.Construct()) {
         std::cerr << "construct subsystem" << cpu_ss.Name() << " failed\n";
+        cpu_ss.Destroy();
     } else {
         std::cerr << "construct subsystem" << cpu_ss.Name() << " successfully\n";
     }
-    
-    if (0 != cpu_ss.Destroy()) {
-        std::cerr << "destroy subsystem" << cpu_ss.Name() << " failed\n";
-    } else {
-        std::cerr << "destroy subsystem" << cpu_ss.Name() << " successfully\n";
-    }
-  
     return 0;
 }

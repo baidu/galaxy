@@ -11,10 +11,10 @@
 #include <string>
 
 namespace baidu {
-    namespace galaxy {
-        namespace user {
-            baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
-            baidu::galaxy::util::ErrorCode Su(const std::string& user_name);
-        }
-    }
+namespace galaxy {
+namespace user {
+baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
+baidu::galaxy::util::ErrorCode Su(const std::string& user_name);
+}
+}
 }

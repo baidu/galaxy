@@ -24,12 +24,16 @@ public:
     VolumGroup();
     ~VolumGroup();
 
+    void SetGcIndex(int gc_index);
+
     void AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum);
     void SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum);
     void SetContainerId(const std::string& container_id);
+    std::string Id() {
+        return container_id_;
+    }
 
     int Construct();
-    int Mount(const std::string& user);
     int Destroy();
     int ExportEnv(std::map<std::string, std::string>& env);
     boost::shared_ptr<google::protobuf::Message> Report();
@@ -46,6 +50,7 @@ private:
     boost::shared_ptr<Volum> workspace_volum_;
 
     std::string container_id_;
+    int gc_index_;
 
 };
 }

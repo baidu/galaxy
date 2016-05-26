@@ -12,65 +12,46 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-FreezerSubsystem::FreezerSubsystem() {
+FreezerSubsystem::FreezerSubsystem()
+{
 }
 
-FreezerSubsystem::~FreezerSubsystem() {
+FreezerSubsystem::~FreezerSubsystem()
+{
 }
 
-int FreezerSubsystem::Freeze() {
+int FreezerSubsystem::Freeze()
+{
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
-    FILE* fd = ::fopen(path.string().c_str(), "we");
-
-    if (fd == NULL) {
-        return -1;
-    }
-
-    int ret = ::fprintf(fd, "%s", "FROZEN");
-    ::fclose(fd);
-
-    if (ret <= 0) {
-        return -1;
-    }
-
-    return 0;
+    return baidu::galaxy::cgroup::Attach(path.string(), "FROZEN", false);
 }
 
-int FreezerSubsystem::Thaw() {
+int FreezerSubsystem::Thaw()
+{
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
-    FILE* fd = ::fopen(path.string().c_str(), "we");
-
-    if (fd == NULL) {
-        return -1;
-    }
-
-    int ret = ::fprintf(fd, "%s", "THAWED");
-    ::fclose(fd);
-
-    if (ret <= 0) {
-        return -1;
-    }
-
-    return 0;
+    return baidu::galaxy::cgroup::Attach(path.string(), "THAWED", false);
 }
 
-boost::shared_ptr<google::protobuf::Message> FreezerSubsystem::Status() {
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
+baidu::galaxy::util::ErrorCode FreezerSubsystem::Collect(std::map<std::string, AutoValue>& stat)
+{
+    return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> FreezerSubsystem::Clone() {
+boost::shared_ptr<Subsystem> FreezerSubsystem::Clone()
+{
     boost::shared_ptr<FreezerSubsystem> ret(new FreezerSubsystem());
     return ret;
 }
 
-std::string FreezerSubsystem::Name() {
+std::string FreezerSubsystem::Name()
+{
     return "freezer";
 }
 
-int FreezerSubsystem::Construct() {
+int FreezerSubsystem::Construct()
+{
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
@@ -79,6 +60,14 @@ int FreezerSubsystem::Construct() {
     }
 
     return 0;
+}
+
+
+bool FreezerSubsystem::Empty()
+{
+    std::vector<int> pids;
+    GetProcs(pids);
+    return pids.empty();
 }
 
 }

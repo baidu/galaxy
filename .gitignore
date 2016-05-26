@@ -49,6 +49,8 @@ GPATH
 tmp
 galaxy.flag
 
+*.orig
+
 # logs
 *.INFO*
 *.WARNING*
