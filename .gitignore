@@ -54,3 +54,4 @@ tmp
 *.INFO*
 *.WARNING*
 *.ERROR*
+galaxy.flag
