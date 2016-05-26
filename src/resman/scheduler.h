@@ -134,6 +134,7 @@ struct ContainerGroup {
     proto::ContainerDescription container_desc;
     int64_t submit_time;
     int64_t update_time;
+    std::string last_sched_container_id;
     ContainerGroup() : terminated(false),
                        update_interval(0),
                        last_update_time(0),
