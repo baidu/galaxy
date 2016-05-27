@@ -61,6 +61,7 @@ using ::baidu::galaxy::proto::kPodReady;
 using ::baidu::galaxy::proto::kPodDeploying;
 using ::baidu::galaxy::proto::kPodStarting;
 using ::baidu::galaxy::proto::kPodRunning;
+using ::baidu::galaxy::proto::kPodServing;
 using ::baidu::galaxy::proto::kPodFailed;
 using ::baidu::galaxy::proto::kPodFinished;
 using ::baidu::galaxy::proto::kPodStopping;

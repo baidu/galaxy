@@ -102,8 +102,9 @@ void JobManager::CheckUpdating(Job* job) {
     for (std::map<std::string, PodInfo*>::iterator it = job->pods_.begin();
         it != job->pods_.end(); ++it) {
         PodInfo* pod = it->second;
-        if (pod->version() != job->curent_version_) {
-            //log updating
+        if (pod->update_time() < job->update_time_) {
+            LOG(INFO) << "pod : " << pod->podid() << " updating " 
+            << __FUNCTION__;  
             return;
         }
     }
@@ -300,6 +301,11 @@ Status JobManager::UpdateJob(Job* job, void* arg) {
     job->update_time_ = ::baidu::common::timer::get_micros();
     job->curent_version_ = desc->version();
     job->job_descs_[desc->version()] = *desc;
+    if (desc->pod().tasks_size() != job->desc_.pod().tasks_size()) {
+        job->action_type_ = kActionRebuild;
+        LOG(INFO) << "job : " << job->id_ << "set act_type : rebuild" << __FUNCTION__;     
+    }
+
     for (int i = 0; i < desc->pod().tasks_size(); i++) {
         for (int j = 0; j < job->desc_.pod().tasks_size(); j++) {
             if (desc->pod().tasks(i).id() !=
@@ -309,26 +315,32 @@ Status JobManager::UpdateJob(Job* job, void* arg) {
             if (desc->pod().tasks(i).exe_package().package().version() !=
                 job->desc_.pod().tasks(j).exe_package().package().version()) {
                 job->action_type_ = kActionRebuild;
+                LOG(INFO) << "job : " << job->id_ << "set act_type : rebuild" << __FUNCTION__; 
             } else if (desc->pod().tasks(i).data_package().packages_size() !=
                 job->desc_.pod().tasks(j).data_package().packages_size()) {
                 job->action_type_ = kActionRebuild;
+                LOG(INFO) << "job : " << job->id_ << "set act_type : rebuild" << __FUNCTION__; 
             } else {
                 for (int k = 0; k < job->desc_.pod().tasks(j).data_package().packages_size();
                     k++) {
                     if (desc->pod().tasks(i).data_package().packages(k).version() !=
                         job->desc_.pod().tasks(j).data_package().packages(k).version()) {
                         job->action_type_ = kActionReload;
+                        LOG(INFO) << "job : " << job->id_ << "set act_type : reload" << __FUNCTION__; 
                     }
                 }
 
             }
         }
     }
+    /*
     for (std::map<std::string, PodInfo*>::iterator it = job->pods_.begin();
         it != job->pods_.end(); it++) {
         it->second->set_update_time(job->update_time_);
     }
-    //LOG(INFO, "job desc updated succes: %s", job_desc.name().c_str());
+    */
+    job->desc_.CopyFrom(*desc);
+    LOG(INFO) << "job desc update success: %s" << desc->name();
     return kOk;
 }
 
@@ -449,7 +461,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
         LOG(WARNING) << "DEBUG: fetch task deny "
         << " deploying: " << job->deploying_pods_.size()
         << " step: " << job->desc_.deploy().step();
-        return kDeny;
+        return kTerminate;
     }
     if (job->pods_.size() >= job->desc_.deploy().replica()) {
         LOG(WARNING) << "DEBUG: fetch task deny "
@@ -501,7 +513,7 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
     }
     //
     Status rlt_code = kOk;
-    if (podinfo->update_time() <= request->update_time()) {
+    if (job->update_time_ > request->update_time()) {  
         if (job->action_type_ == kActionNull) {
             rlt_code = kOk;
         } else if (job->action_type_ == kActionRebuild) {
@@ -511,9 +523,11 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
         } else {
             rlt_code = kError;
         }
-        
+        LOG(INFO) << "pod : " << request->podid() << "update status :" 
+        << Status_Name(rlt_code) << " " << __FUNCTION__;
     } else {
         podinfo->set_version(job->curent_version_);
+        podinfo->set_update_time(job->update_time_);
     }
     return rlt_code;
 }
@@ -583,6 +597,8 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     
     MutexLock lock(&mutex_);
     jobs_[job->id_] = job;
+    job_checker_.DelayTask(FLAGS_master_job_check_interval * 1000, boost::bind(&JobManager::CheckJobStatus, this, job));
+    return;
 }
 
 void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
