@@ -45,6 +45,9 @@ bool GetHostname(std::string* hostname);
 //读取endpoint
 bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::string>* agents);
 
+//自动生成json文件
+bool GenerateJson(int num_task, int num_data_volums, int num_port, int num_data_packages, int num_services);
+
 } //end namespace client
 } //end namespace galaxy
 } //end namespace baidu

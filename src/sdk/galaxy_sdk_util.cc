@@ -146,6 +146,8 @@ void FillTaskDescription(const TaskDescription& sdk_task,
         ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
         FillPortRequired(sdk_task.ports[i], port);
     }
+    FillTcpthrotRequired(sdk_task.tcp_throt, task->mutable_tcp_throt());
+    FillBlkioRequired(sdk_task.blkio, task->mutable_blkio());
     FillImagePackage(sdk_task.exe_package, task->mutable_exe_package());
     FilldataPackage(sdk_task.data_package, task->mutable_data_package());
     for (size_t i = 0; i < sdk_task.services.size(); ++i) {
@@ -174,7 +176,6 @@ void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     deploy->set_max_per_host(sdk_deploy.max_per_host);
     deploy->set_tag(sdk_deploy.tag);
     for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
-        fprintf(stderr, "port is %s\n", sdk_deploy.pools[i].c_str());
         deploy->add_pools(sdk_deploy.pools[i]);
     }
 }
@@ -292,6 +293,11 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
         task.cpu.excess = pb_job.pod().tasks(i).cpu().excess();
         task.memory.size = pb_job.pod().tasks(i).memory().size();
         task.memory.excess = pb_job.pod().tasks(i).memory().excess();
+        task.tcp_throt.recv_bps_quota = pb_job.pod().tasks(i).tcp_throt().recv_bps_quota();
+        task.tcp_throt.recv_bps_excess = pb_job.pod().tasks(i).tcp_throt().recv_bps_excess();
+        task.tcp_throt.send_bps_quota = pb_job.pod().tasks(i).tcp_throt().send_bps_quota();
+        task.tcp_throt.send_bps_excess = pb_job.pod().tasks(i).tcp_throt().send_bps_excess();
+        task.blkio.weight = pb_job.pod().tasks(i).blkio().weight();
         for (int j = 0; j < pb_job.pod().tasks(i).ports().size(); ++j) {
             PortRequired port;
             port.port_name = pb_job.pod().tasks(i).ports(j).port_name();

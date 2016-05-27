@@ -51,6 +51,7 @@ public:
     bool ShowUser(const ShowUserRequest& request, ShowUserResponse* response);
     bool GrantUser(const GrantUserRequest& request, GrantUserResponse* response);
     bool AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response);
+    bool Preempt(const PreemptRequest& request, PreemptResponse* response);
 private:
     ::galaxy::ins::sdk::InsSDK* nexus_;
     RpcClient* rpc_client_;
