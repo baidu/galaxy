@@ -28,17 +28,27 @@ std::string Subsystem::RootPath(const std::string& name)
     return path.string();
 }
 
-int Subsystem::Destroy()
+baidu::galaxy::util::ErrorCode Subsystem::Destroy()
 {
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec)) {
-        return 0;
+        return ERRORCODE_OK;
     }
 
     boost::filesystem::remove_all(path, ec);
-    return boost::filesystem::exists(path, ec) ? -1 : 0;
+
+    if (ec.value() != 0) {
+        return ERRORCODE(-1, "failed in removing %s: %s",
+                path.string().c_str(),
+                ec.message().c_str());
+    }
+
+    if (boost::filesystem::exists(path, ec)) {
+        return ERRORCODE(-1, "%s exist still after removing");
+    }
+    return ERRORCODE_OK;
 }
 
 std::string Subsystem::Path()

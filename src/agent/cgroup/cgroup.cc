@@ -12,6 +12,7 @@
 
 #include <sys/types.h>
 #include <signal.h>
+#include <unistd.h>
 
 namespace baidu {
 namespace galaxy {
@@ -91,16 +92,16 @@ int Cgroup::Construct()
 }
 
 // Fixme: freeze first, and than kill
-int Cgroup::Destroy()
+baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 {
-    if (subsystem_.empty() || NULL == freezer_.get()) {
-        return 0;
+    if (subsystem_.empty() && NULL == freezer_.get()) {
+        return ERRORCODE_OK;
     }
 
     int ret = 0;
 
     if (0 != freezer_->Freeze()) {
-        return -1;
+        return ERRORCODE(-1, "freeze failed");
     }
 
     std::vector<int> pids;
@@ -110,28 +111,38 @@ int Cgroup::Destroy()
     }
 
     if (0 != freezer_->Thaw()) {
-        return -1;
+        return ERRORCODE(-1, "thaw failed");
     }
+
     pids.clear();
     freezer_->GetProcs(pids);
     if (pids.size() > 0) {
-        return -1;
+        return ERRORCODE(-1, "kill pid failed");
     }
 
+    ::usleep(1000);
     for (size_t i = 0; i < subsystem_.size(); i++) {
-        if (0 != subsystem_[i]->Destroy()) {
-            ret = -1;
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                    "failed in destroying %s: %s",
+                    subsystem_[i]->Name().c_str(),
+                    ec.Message().c_str());
         }
     }
 
     subsystem_.clear();
 
     if (NULL !=  freezer_.get()) {
-        freezer_->Destroy();
+        baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1, "failed in destroying freezer:",
+                    ec.Message().c_str());
+        }
         freezer_.reset();
     }
 
-    return ret;
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<google::protobuf::Message> Cgroup::Report()

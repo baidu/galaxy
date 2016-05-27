@@ -27,7 +27,7 @@ protected:
     static void SetUpTestCase() {
         baidu::galaxy::container::ContainerStatus::Setup();
         FLAGS_cgroup_root_path = "/cgroups";
-        FLAGS_mount_templat = "/bin,/boot,/cgroups,/dev,/etc,/lib,/lib64,/lost+found,/media,/misc,/mnt,/opt,/sbin,/selinux,/srv,/sys,/tmp,/usr,/var,/proc";
+        FLAGS_mount_templat = "/bin,/boot,/cgroups,/dev,/etc,/lib,/lib64,/lost+found,/media,/misc,/mnt,/opt,/sbin,/selinux,/srv,/sys,/tmp,/usr,/var,/proc,/cgroups/cpu,/cgroups/memory,/cgroups/cpuacct,/cgroups/tcp_throt,/cgroups/blkio,/cgroups/freezer,/cgroups/net_cls";
         baidu::galaxy::path::SetRootPath("/tmp/galaxy_test");
         //FLAGS_cmd_line="/tmp/appworker --nexus_addr=cq01-ps-dev377.cq01.baidu.com:8868 --nexus_root_path=/galaxy3";
         FLAGS_cmd_line = "/tmp/cmd.sh";
@@ -51,7 +51,7 @@ TEST_F(TestContainer, Construct1)
     workspace->set_source_path("/home/disk1");
     workspace->set_exclusive(true);
     workspace->set_medium(baidu::galaxy::proto::kDisk);
-    workspace->set_use_symlink(true);
+    workspace->set_use_symlink(false);
     workspace->set_size(1024 * 1024 * 1024);
     desc.set_allocated_workspace_volum(workspace);
     baidu::galaxy::proto::VolumRequired* datavolum1 = desc.add_data_volums();;
@@ -59,7 +59,7 @@ TEST_F(TestContainer, Construct1)
     datavolum1->set_source_path("/home/disk1");
     datavolum1->set_size(1024 * 1024);
     datavolum1->set_medium(baidu::galaxy::proto::kDisk);
-    datavolum1->set_use_symlink(true);
+    datavolum1->set_use_symlink(false);
     baidu::galaxy::proto::VolumRequired* datavolum2 = desc.add_data_volums();;
     datavolum2->set_dest_path("/home/disk20");
     datavolum2->set_size(1024 * 1024);

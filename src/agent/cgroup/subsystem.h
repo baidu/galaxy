@@ -119,7 +119,7 @@ public:
     virtual std::string Name() = 0;
     virtual int Construct() = 0;
 
-    virtual int Destroy();
+    virtual baidu::galaxy::util::ErrorCode Destroy();
     virtual int Attach(pid_t pid);
     virtual int GetProcs(std::vector<int>& pids);
     virtual std::string Path();
