@@ -8,6 +8,7 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <timer.h>
+#include "utils.h"
 
 DECLARE_int32(task_manager_background_thread_pool_size);
 DECLARE_int32(task_manager_task_stop_command_timeout);
@@ -54,15 +55,20 @@ int TaskManager::DeployTask(const std::string& task_id) {
     LOG(INFO) << "deplay task start, task: " << task_id;
     Task* task = it->second;
     task->packages_size = 0;
+    std::string now_str_time;
+    GetStrFTime(&now_str_time);
     if (task->desc.has_exe_package()) {
         DownloadProcessContext context;
         context.process_id = task->task_id + "_deploy_0";
         context.src_path = task->desc.exe_package().package().source_path();
-        context.dst_path = "image.tar.gz";
+        context.dst_path = task->desc.exe_package().package().dest_path();
         context.version = task->desc.exe_package().package().version();
-        context.work_dir = task->task_id;
-        context.cmd = "wget -O " + context.dst_path\
-            + " " + context.src_path + " && tar -xzf image.tar.gz";
+        context.work_dir = "./";
+        std::string tmp_package = "/tmp/" + task->task_id + "_image_"\
+            + now_str_time + ".tar.gz";
+        context.cmd = "wget -O " + tmp_package + " " + context.src_path
+            + " && mkdir -p " + context.dst_path
+            + " && tar -xzf " + tmp_package + " -C " + context.dst_path;
 
         // process env
         ProcessEnv env;
@@ -82,8 +88,13 @@ int TaskManager::DeployTask(const std::string& task_id) {
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
-            context.work_dir = task->task_id;
-            context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
+            context.work_dir = "./";
+            std::string tmp_package = "/tmp/" + task->task_id
+                + "_data" + boost::lexical_cast<std::string>(i) + "_"\
+                + now_str_time + ".tar.gz";
+            context.cmd = "wget -O " + tmp_package + " " + context.src_path
+                + " && mkdir -p " + context.dst_path
+                + " && tar -xzf " + tmp_package + " -C " + context.dst_path;
 
             ProcessEnv env;
             MakeProcessEnv(task, env);
@@ -115,7 +126,7 @@ int TaskManager::DoStartTask(const std::string& task_id) {
         ProcessContext context;
         context.process_id = task->task_id + "_main";
         context.cmd = task->desc.exe_package().start_cmd();
-        context.work_dir = task->task_id;
+        context.work_dir = "./";
 
         ProcessEnv env;
         MakeProcessEnv(task, env);
@@ -320,23 +331,33 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
 
     // 2.deploy data packages
     LOG(INFO) << "reload deplay task start, task: " << task_id;
+    std::string now_str_time;
+    GetStrFTime(&now_str_time);
     task->packages_size = 0;
     if (task->desc.has_data_package()) {
-        for (int i = 0; i< task->desc.data_package().packages_size(); i++) {
+        for (int i = 0; i < task->desc.data_package().packages_size(); i++) {
             DownloadProcessContext context;
             context.process_id = task->task_id + "_reload_deploy_"\
                 + boost::lexical_cast<std::string>(i + 1);
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
-            context.work_dir = task->task_id;
-            context.cmd = "wget -O " + context.dst_path + " " + context.src_path;
+            context.work_dir = "./";
+            std::string tmp_package = "/tmp/" + task->task_id
+                + "_reload_data" + boost::lexical_cast<std::string>(i + 1) + "_"\
+                + now_str_time + ".tar.gz";
+            context.cmd = "wget -O " + tmp_package + " " + context.src_path
+                + " && mkdir -p " + context.dst_path
+                + " && tar -xzf " + tmp_package + " -C " + context.dst_path;
 
             ProcessEnv env;
             MakeProcessEnv(task, env);
 
             if (0 != process_manager_.CreateProcess(env, &context)) {
-                LOG(WARNING) << "command execute fail, command: " << context.cmd;
+                LOG(WARNING)
+                    << "command execute fail, "
+                    << "command: " << context.cmd << ", "
+                    << "dir: " << context.work_dir;
                 return -1;
             }
         }
@@ -361,13 +382,16 @@ int TaskManager::ReloadStartTask(const std::string& task_id,
         ProcessContext context;
         context.process_id = task->task_id + "_reload_main";
         context.cmd = task->desc.data_package().reload_cmd();
-        context.work_dir = task->task_id;
+        context.work_dir = "./";
 
         ProcessEnv env;
         MakeProcessEnv(task, env);
 
         if (0 != process_manager_.CreateProcess(env, &context)) {
-            LOG(WARNING) << "command execute fail,command: " << context.cmd;
+            LOG(WARNING)
+                << "command execute fail, "
+                << "command: " << context.cmd << ", "
+                << "dir: " << context.work_dir;
             return -1;
         }
         task->reload_status = proto::kTaskRunning;
@@ -382,7 +406,6 @@ int TaskManager::ReloadStartTask(const std::string& task_id,
 int TaskManager::ReloadCheckTask(const std::string& task_id,
                                  Task& task) {
     MutexLock lock(&mutex_);
-    LOG(WARNING) << "reloading check task";
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
     if (it == tasks_.end()) {
         LOG(INFO) << "task: " << task_id << " not exist";

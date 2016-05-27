@@ -264,10 +264,10 @@ void AppWorkerImpl::FetchTask() {
     request->set_update_time(update_time_);
     request->set_status(pod.status);
     request->set_reload_status(pod.reload_status);
-    LOG(INFO)
-        << "fetch task, "
-        << "status: " << proto::PodStatus_Name(pod.status) << ", "
-        << "reload_status: " << proto::PodStatus_Name(pod.reload_status);
+    LOG(INFO) << "task status: " << proto::PodStatus_Name(pod.status);
+    if (kPodStageReloading == pod.stage) {
+       LOG(INFO) << "task reload_status: " << proto::PodStatus_Name(pod.reload_status);
+    }
 
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
     fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback,

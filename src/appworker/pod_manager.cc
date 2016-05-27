@@ -134,6 +134,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.desc.CopyFrom(pod_.desc);
     pod.status = pod_.status;
     pod.reload_status = pod_.reload_status;
+    pod.stage = pod_.stage;
 
     return 0;
 }
