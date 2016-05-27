@@ -15,7 +15,7 @@ public:
     CpuacctSubsystem();
     ~CpuacctSubsystem();
     std::string Name();
-    int Construct();
+    baidu::galaxy::util::ErrorCode Construct();
     boost::shared_ptr<Subsystem> Clone();
     baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
 };

@@ -10,6 +10,8 @@
 #include "boost/shared_ptr.hpp"
 #include "boost/thread/mutex.hpp"
 
+#include "thread.h"
+
 #include <map>
 #include <string>
 
@@ -21,7 +23,8 @@ class ContainerManager {
 public:
     explicit ContainerManager(boost::shared_ptr<baidu::galaxy::resource::ResourceManager> resman);
     ~ContainerManager();
-
+    
+    void Setup();
     int CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
     int ReleaseContainer(const ContainerId& id);
     void ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo);
@@ -29,7 +32,8 @@ public:
 private:
     int CreateContainer_(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
     int ReleaseContainer_(boost::shared_ptr<Container> container);
-
+    void KeepAliveRoutine();
+    
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > gc_containers_;
     //boost::scoped_ptr<baidu::common::ThreadPool> gc_threadpool_;
@@ -40,6 +44,8 @@ private:
     ContainerStage stage_;
 
     boost::unordered_map<ContainerId, boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > contianer_info_;
+    baidu::common::Thread keep_alive_thread_;
+    bool running_;
 };
 
 } //namespace agent

@@ -117,11 +117,11 @@ public:
 
     virtual boost::shared_ptr<Subsystem> Clone() = 0;
     virtual std::string Name() = 0;
-    virtual int Construct() = 0;
+    virtual baidu::galaxy::util::ErrorCode Construct() = 0;
 
-    virtual int Destroy();
-    virtual int Attach(pid_t pid);
-    virtual int GetProcs(std::vector<int>& pids);
+    virtual baidu::galaxy::util::ErrorCode Destroy();
+    virtual baidu::galaxy::util::ErrorCode Attach(pid_t pid);
+    virtual baidu::galaxy::util::ErrorCode GetProcs(std::vector<int>& pids);
     virtual std::string Path();
 
     virtual baidu::galaxy::util::ErrorCode Collect(Metrix& metrix) {
@@ -135,8 +135,8 @@ protected:
 
 };
 
-int Attach(const std::string& file, int64_t value, bool append = false);
-int Attach(const std::string& file, const std::string& value, bool append = false);
+baidu::galaxy::util::ErrorCode Attach(const std::string& file, int64_t value, bool append = false);
+baidu::galaxy::util::ErrorCode Attach(const std::string& file, const std::string& value, bool append = false);
 
 
 int64_t CfsToMilliCore(int64_t cfs);
