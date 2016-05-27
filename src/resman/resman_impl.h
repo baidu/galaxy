@@ -149,7 +149,10 @@ public:
                          const ::baidu::galaxy::proto::AssignQuotaRequest* request,
                          ::baidu::galaxy::proto::AssignQuotaResponse* response,
                          ::google::protobuf::Closure* done);
-    
+    void Preempt(::google::protobuf::RpcController* controller,
+                 const ::baidu::galaxy::proto::PreemptRequest* request,
+                 ::baidu::galaxy::proto::PreemptResponse* response,
+                 ::google::protobuf::Closure* done);
 private:
 
     void QueryAgent(const std::string& agent_endpoint, bool is_first_query);
