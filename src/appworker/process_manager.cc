@@ -50,13 +50,17 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             processes_.erase(it);
         }
     }
-    LOG(INFO) << "create process, command: " << context->cmd;
+    LOG(INFO)
+        << "create process, "
+        << "command: " << context->cmd << ", "
+        << "dir: " << context->work_dir;
 
     // 2. prepare std fds for child
     int stdin_fd = -1;
     int stdout_fd = -1;
     int stderr_fd = -1;
-    if (!process::PrepareStdFds(context->work_dir, context->process_id,
+    std::string work_dir = context->work_dir + "/GALAXY/" + context->process_id;
+    if (!process::PrepareStdFds(work_dir, context->process_id,
                                 &stdout_fd, &stderr_fd)) {
         if (stdout_fd != -1) {
             ::close(stdout_fd);
@@ -225,7 +229,7 @@ void ProcessManager::LoopWaitProcesses() {
             }
             LOG(WARNING)
                 << "process: " << it->second->process_id << ", "
-                << "pid: " << pid
+                << "pid: " << pid << ", "
                 << "exit code: " << it->second->exit_code;
             break;
         }

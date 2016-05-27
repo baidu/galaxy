@@ -140,7 +140,7 @@ bool PrepareStdFds(const std::string& pwd,
         return false;
     }
 
-    baidu::galaxy::file::Mkdir(pwd);
+    baidu::galaxy::file::MkdirRecur(pwd);
     std::string now_str_time;
     GetStrFTime(&now_str_time);
     std::string stdout_file = pwd + "/" + process_id + "_stdout_" + now_str_time;
