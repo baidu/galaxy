@@ -19,9 +19,8 @@ namespace baidu {
 namespace galaxy {
 
 PodManager::PodManager() :
-    mutex_(),
-    background_pool_(10) {
-
+         mutex_(),
+         background_pool_(10) {
     pod_.status = proto::kPodPending;
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
@@ -36,6 +35,7 @@ PodManager::~PodManager() {
 int PodManager::SetPodEnv(const PodEnv& pod_env) {
     MutexLock lock(&mutex_);
     pod_.env = pod_env;
+    pod_.pod_id = pod_env.pod_id;
 
     return 0;
 }
@@ -76,15 +76,18 @@ int PodManager::RebuildPod() {
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
         LOG(WARNING)\
-            << "container cgroup size: " << pod_.env.task_ids.size()\
-            << ", mismatch with task size: " << tasks_size;
+            << "cgroup size mismatch task size"\
+            << ", cgroup size: " << pod_.env.task_ids.size()\
+            << ", task size: " << tasks_size;
         pod_.status = proto::kPodFailed;
         return -1;
     }
 
-    pod_.stage = kPodStageRebuilding;
-    if (0 == DoStopPod()) {
-        pod_.status = proto::kPodStopping;
+    if (proto::kPodPending != pod_.status) {
+        pod_.stage = kPodStageRebuilding;
+        if (0 == DoStopPod()) {
+            pod_.status = proto::kPodStopping;
+        }
     }
 
     return 0;
@@ -100,8 +103,9 @@ int PodManager::ReloadPod() {
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
         LOG(WARNING)\
-            << "container cgroup size: " << pod_.env.task_ids.size()\
-            << ", mismatch with task size: " << tasks_size;
+            << "cgroup size mismatch task size"\
+            << ", cgroup size: " << pod_.env.task_ids.size()\
+            << ", task size: " << tasks_size;
         pod_.reload_status = proto::kPodFailed;
         return -1;
     }
@@ -113,7 +117,7 @@ int PodManager::ReloadPod() {
     }
     pod_.reload_status = proto::kPodDeploying;
 
-    // 3.add pod reload status change loop
+    // 3.add change pod reload status loop
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodReloadStatus, this)
@@ -128,6 +132,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.env = pod_.env;
     pod.desc.CopyFrom(pod_.desc);
     pod.status = pod_.status;
+    pod.reload_status = pod.reload_status;
 
     return 0;
 }
@@ -141,7 +146,7 @@ int PodManager::DoCreatePod() {
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
         LOG(WARNING)\
-            << "cgroup size mismatch with task size"\
+            << "cgroup size mismatch task size"\
             << ", cgroup size: " << pod_.env.task_ids.size()\
             << ", task size: " << tasks_size;
         pod_.status = proto::kPodFailed;
@@ -228,8 +233,8 @@ int PodManager::DoStopPod() {
         if (0 != task_manager_.StopTask(task_id)) {
             LOG(WARNING) << "create task stop process fail, task:  " << task_id;
             task_manager_.CleanTask(task_id);
+            return -1;
         }
-        LOG(INFO) << "create task stop process ok, task: " << task_id;
     }
 
     return 0;
@@ -274,26 +279,26 @@ void PodManager::LoopChangePodStatus() {
         << "loop change pod status"\
         << ", pod status: " << proto::PodStatus_Name(pod_.status);
     switch (pod_.status) {
-        case proto::kPodPending:
-            PendingPodCheck();
-            break;
-        case proto::kPodReady:
-            ReadyPodCheck();
-            break;
-        case proto::kPodDeploying:
-            DeployingPodCheck();
-            break;
-        case proto::kPodStarting:
-            StartingPodCheck();
-            break;
-        case proto::kPodRunning:
-            RunningPodCheck();
-            break;
-        case proto::kPodStopping:
-            StoppingPodCheck();
-            break;
-        default:
-            break;
+    case proto::kPodPending:
+        PendingPodCheck();
+        break;
+    case proto::kPodReady:
+        ReadyPodCheck();
+        break;
+    case proto::kPodDeploying:
+        DeployingPodCheck();
+        break;
+    case proto::kPodStarting:
+        StartingPodCheck();
+        break;
+    case proto::kPodRunning:
+        RunningPodCheck();
+        break;
+    case proto::kPodStopping:
+        StoppingPodCheck();
+        break;
+    default:
+        break;
     }
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
@@ -366,6 +371,7 @@ void PodManager::StartingPodCheck() {
         LOG(INFO) << "pod status change to kPodFailed";
         pod_.status = proto::kPodFailed;
     }
+
     return;
 }
 
@@ -400,6 +406,7 @@ void PodManager::RunningPodCheck() {
             pod_.status = proto::kPodFailed;
         }
     }
+
     return;
 }
 
@@ -435,81 +442,81 @@ void PodManager::StoppingPodCheck() {
 void PodManager::LoopChangePodReloadStatus() {
     MutexLock lock(&mutex_);
     switch (pod_.reload_status) {
-        case proto::kPodDeploying: {
-            int tasks_size = pod_.desc.tasks().size();
-            TaskStatus task_status = proto::kTaskStarting;
-            for (int i = 0; i < tasks_size; i++) {
-                std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
-                Task task;
-                if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
-                    break;
-                }
-                if (task.reload_status == proto::kTaskFailed) {
-                    task_status = proto::kTaskFailed;
-                    break;
-                }
-                if (task.reload_status < task_status) {
-                    task_status = task.reload_status;
-                }
+    case proto::kPodDeploying: {
+        int tasks_size = pod_.desc.tasks().size();
+        TaskStatus task_status = proto::kTaskStarting;
+        for (int i = 0; i < tasks_size; i++) {
+            std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
+            Task task;
+            if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
+                break;
             }
-            if (proto::kTaskStarting == task_status) {
-                LOG(INFO) << "pod reload status change to kPodStarting";
-                pod_.reload_status = proto::kPodStarting;
+            if (task.reload_status == proto::kTaskFailed) {
+                task_status = proto::kTaskFailed;
+                break;
             }
-            if (proto::kTaskFailed == task_status) {
+            if (task.reload_status < task_status) {
+                task_status = task.reload_status;
+            }
+        }
+        if (proto::kTaskStarting == task_status) {
+            LOG(INFO) << "pod reload status change to kPodStarting";
+            pod_.reload_status = proto::kPodStarting;
+        }
+        if (proto::kTaskFailed == task_status) {
+            LOG(INFO) << "pod reload status change to kPodFailed";
+            pod_.reload_status = proto::kPodFailed;
+        }
+        break;
+    }
+    case proto::kPodStarting: {
+        if (0 == DoReloadStartPod()) {
+            LOG(INFO) << "pod reload status change to kPodRunning";
+            pod_.reload_status = proto::kPodRunning;
+        } else {
+            LOG(WARNING) << "pod reload status change to kPodFailed";
+            pod_.reload_status = proto::kPodFailed;
+        }
+        break;
+    }
+    case proto::kPodRunning: {
+        // queryreload  running process status
+        int tasks_size = pod_.desc.tasks().size();
+        TaskStatus task_status = proto::kTaskFinished;
+        for (int i = 0; i < tasks_size; i++) {
+            std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
+            Task task;
+            if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
+                return;
+            }
+            if (proto::kTaskFailed == task.reload_status) {
+                task_status = proto::kTaskFailed;
+                break;
+            }
+            if (task.reload_status < task_status) {
+                task_status = task.reload_status;
+            }
+        }
+        if (proto::kTaskRunning != task_status) {
+            if (proto::kTaskFinished == task_status) {
+                LOG(INFO) << "pod reload status change to kPodFinished";
+                pod_.reload_status = proto::kPodFinished;
+            } else {
                 LOG(INFO) << "pod reload status change to kPodFailed";
                 pod_.reload_status = proto::kPodFailed;
             }
-            break;
         }
-        case proto::kPodStarting: {
-            if (0 == DoReloadStartPod()) {
-                LOG(INFO) << "pod reload status change to kPodRunning";
-                pod_.reload_status = proto::kPodRunning;
-            } else {
-                LOG(WARNING) << "pod status change to kPodFailed";
-                pod_.reload_status = proto::kPodFailed;
-            }
-            break;
-        }
-        case proto::kPodRunning: {
-            // queryreload  running process status
-            int tasks_size = pod_.desc.tasks().size();
-            TaskStatus task_status = proto::kTaskFinished;
-            for (int i = 0; i < tasks_size; i++) {
-                std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
-                Task task;
-                if (0 != task_manager_.ReloadCheckTask(task_id, task)) {
-                    return;
-                }
-                if (proto::kTaskFailed == task.reload_status) {
-                    task_status = proto::kTaskFailed;
-                    break;
-                }
-                if (task.reload_status < task_status) {
-                    task_status = task.reload_status;
-                }
-            }
-            if (proto::kTaskRunning != task_status) {
-                if (proto::kTaskFinished == task_status) {
-                    LOG(INFO) << "pod status change to kPodFinished";
-                    pod_.reload_status = proto::kPodFinished;
-                } else {
-                    LOG(INFO) << "pod status change to kPodFailed";
-                    pod_.reload_status = proto::kPodFailed;
-                }
-            }
-            break;
-        }
-        case proto::kPodFinished:
-            LOG(INFO) << "pod reload ok";
-            pod_.stage = kPodStageCreating;
-            return;
-        case proto::kPodFailed:
-            LOG(INFO) << "pod reload failed";
-            return;
-        default:
-            return;
+        break;
+    }
+    case proto::kPodFinished:
+        LOG(INFO) << "pod reload ok";
+        pod_.stage = kPodStageCreating;
+        return;
+    case proto::kPodFailed:
+        LOG(INFO) << "pod reload failed";
+        return;
+    default:
+        break;
     }
 
     background_pool_.DelayTask(
