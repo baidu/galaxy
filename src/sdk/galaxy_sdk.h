@@ -643,6 +643,16 @@ struct StopJobResponse {
     ErrorCode error_code;
 };
 
+struct PreemptRequest {
+    User user;
+    std::string container_group_id;
+    std::string endpoint;
+};
+
+struct PreemptResponse {
+     ErrorCode error_code;
+};
+
 } //namespace sdk
 } //namespace galaxy
 } //namespace baidu

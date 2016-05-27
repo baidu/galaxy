@@ -317,8 +317,9 @@ message ShowAgentResponse {
 }
 
 message PreemptRequest {
-    optional string container_group_id = 1;
-    optional string endpoint = 2;
+    optional User user = 1;
+    optional string container_group_id = 2;
+    optional string endpoint = 3;
 }
 
 message PreemptResponse {

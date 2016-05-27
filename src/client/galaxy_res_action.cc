@@ -1341,6 +1341,33 @@ bool ResAction::AssignQuota(const std::string& user,
     return ret;
 } 
 
+bool ResAction::Preempt(const std::string& container_group_id, const std::string& endpoint) {
+
+    if (container_group_id.empty() || endpoint.empty()) {
+        fprintf(stderr, "container_group_id and endpoint are needed\n");
+        return false;
+    }
+    
+    if(!this->Init()) {
+        return false;
+    }
+
+    baidu::galaxy::sdk::PreemptRequest request;
+    baidu::galaxy::sdk::PreemptResponse response;
+    request.user = user_;
+    request.container_group_id = container_group_id;
+    request.endpoint = endpoint;
+    bool ret = resman_->Preempt(request, &response);
+    if (ret) {
+        printf("Preempt %s\n success", container_group_id.c_str());
+    } else {
+        printf("Preempt %s failed for reason %s:%s\n", 
+                container_group_id.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
 } // end namespace client
 } // end namespace galaxy
 } // end namespace baidu

@@ -30,6 +30,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client list_agents [-p pool -t tag]\n"
                                  "      galaxy_res_client online_agent -e endpoint\n"
                                  "      galaxy_res_client offline_agent -e endpoint\n\n"
+                                 "      galaxy_res_client preempt -i container_group_id -e endpoint\n\n"
                                  "  safemode usage:\n"
                                  "      galaxy_res_client enter_safemode\n"
                                  "      galaxy_res_client leave_safemode\n\n"
@@ -150,6 +151,16 @@ int main(int argc, char** argv) {
             return -1;
         }
         ok = resAction->OfflineAgent(FLAGS_e);
+    } else if (strcmp(argv[1], "preempt") == 0) {
+        if (FLAGS_e.empty()) {
+            fprintf(stderr, "-e is needed\n");
+            return -1;
+        }
+        if (FLAGS_i.empty()) {
+            fprintf(stderr, "-i is needed\n");
+            return -1;
+        }
+        ok = resAction->Preempt(FLAGS_i, FLAGS_e);
     } else if (strcmp(argv[1], "status") == 0) {
         ok = resAction->Status();
     } else if (strcmp(argv[1], "create_tag") == 0) { 

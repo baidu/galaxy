@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread.h>
 #include <tprinter.h>
 #include "galaxy_job_action.h"
 
@@ -179,7 +180,6 @@ bool JobAction::ListJobs() {
         return false;
     }
 
-    
     ::baidu::galaxy::sdk::ListContainerGroupsRequest resman_request;
     ::baidu::galaxy::sdk::ListContainerGroupsResponse resman_response;
     resman_request.user = user_;
@@ -519,7 +519,7 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     request.user = user_;
     request.jobid = jobid;
     request.cmd = cmd;
-    bool ret =  app_master_->ExecuteCmd(request, &response);
+    bool ret = app_master_->ExecuteCmd(request, &response);
     if (ret) {
         printf("Execute job %s\n success", jobid.c_str());
     } else {
