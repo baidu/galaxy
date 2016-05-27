@@ -291,6 +291,11 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
         task.cpu.excess = pb_job.pod().tasks(i).cpu().excess();
         task.memory.size = pb_job.pod().tasks(i).memory().size();
         task.memory.excess = pb_job.pod().tasks(i).memory().excess();
+        task.tcp_throt.recv_bps_quota = pb_job.pod().tasks(i).tcp_throt().recv_bps_quota();
+        task.tcp_throt.recv_bps_excess = pb_job.pod().tasks(i).tcp_throt().recv_bps_excess();
+        task.tcp_throt.send_bps_quota = pb_job.pod().tasks(i).tcp_throt().send_bps_quota();
+        task.tcp_throt.send_bps_excess = pb_job.pod().tasks(i).tcp_throt().send_bps_excess();
+        task.blkio.weight = pb_job.pod().tasks(i).blkio().weight();
         for (int j = 0; j < pb_job.pod().tasks(i).ports().size(); ++j) {
             PortRequired port;
             port.port_name = pb_job.pod().tasks(i).ports(j).port_name();

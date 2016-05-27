@@ -9,6 +9,7 @@
 #include <map>
 #include <vector>
 #include <fstream>
+#include "string_util.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
@@ -489,6 +490,11 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
 
     rapidjson::Document document;
     rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+   
+    //设置临时字符串使用
+    rapidjson::Value obj_str(rapidjson::kStringType);
+    std::string str;
+
     
     //根节点
     rapidjson::Value root(rapidjson::kObjectType);
@@ -524,14 +530,14 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
 
     rapidjson::Value data_volums(rapidjson::kArrayType);
     for (int i = 0; i < num_data_volums; ++i) {
-        //char dest_path[20];
-        //sprintf(dest_path, "/home/work%d", i);
-        //std::string dest = dest_path;
+        str = "/home/data/" + ::baidu::common::NumToString(i);
+        obj_str.SetString(str.c_str(), allocator);
+
         rapidjson::Value data_volum(rapidjson::kObjectType);
         data_volum.AddMember("size", "10M", allocator);
         data_volum.AddMember("type", "kEmptyDir", allocator);
         data_volum.AddMember("medium", "kDisk", allocator);
-        data_volum.AddMember("dest_path", "/home/work", allocator);
+        data_volum.AddMember("dest_path", obj_str, allocator);
         data_volum.AddMember("readonly", false, allocator);
         data_volum.AddMember("exclusive", false, allocator);
         data_volum.AddMember("use_symlink", true, allocator);
@@ -553,9 +559,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
 
         rapidjson::Value tcp(rapidjson::kObjectType);
         tcp.AddMember("recv_bps_quota", "15M", allocator);
-        tcp.AddMember("recv_bps_excess", "15M", allocator);
+        tcp.AddMember("recv_bps_excess", false, allocator);
         tcp.AddMember("send_bps_quota", "15M", allocator);
-        tcp.AddMember("send_bps_excess", "15M", allocator);
+        tcp.AddMember("send_bps_excess", false, allocator);
 
         rapidjson::Value blkio(rapidjson::kObjectType);
         blkio.AddMember("weight", 500, allocator);
@@ -563,14 +569,27 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value ports(rapidjson::kArrayType);
         for (int j = 0; j < num_ports; ++j) {
             rapidjson::Value port(rapidjson::kObjectType);
-            port.AddMember("name", "port0", allocator);
-            port.AddMember("port", "1234", allocator);
+            str = "port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            obj_str.SetString(str.c_str(), allocator);
+            port.AddMember("name", obj_str, allocator);
+
+            str = "123" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            obj_str.SetString(str.c_str(), allocator);
+            port.AddMember("port", obj_str, allocator);
+            
             ports.PushBack(port, allocator);
         }
 
+        
         rapidjson::Value package(rapidjson::kObjectType);
-        package.AddMember("source_path", "ftp://***.baidu.com/home/users/***/exec", allocator);
-        package.AddMember("dest_path", "/home/spider", allocator);
+        
+        str = "ftp://***.baidu.com/home/users/***/exec/" + ::baidu::common::NumToString(i) + "/linkbase.tar.gz";;
+        obj_str.SetString(str.c_str(), allocator);
+        package.AddMember("source_path", obj_str, allocator);
+
+        str = "/home/spider/" + ::baidu::common::NumToString(i);
+        obj_str.SetString(str.c_str(), allocator);
+        package.AddMember("dest_path", obj_str, allocator);
         package.AddMember("version", "1.0.0", allocator);
 
         rapidjson::Value exec_package(rapidjson::kObjectType);
@@ -580,9 +599,17 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
         for (int j = 0; j < num_data_packages; ++j) {
+
+            str = "ftp://***.baidu.com/home/users/***/data/" + ::baidu::common::NumToString(i)
+                  + ::baidu::common::NumToString(j) + "/linkbase.dict.tar.gz";
+            obj_str.SetString(str.c_str(), allocator);
+
             rapidjson::Value package(rapidjson::kObjectType);
-            package.AddMember("source_path", "ftp://***.baidu.com/home/users/***/data", allocator);
-            package.AddMember("dest_path", "/home/spider", allocator);
+            package.AddMember("source_path", obj_str, allocator);
+
+            str = "/home/spider/"  + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j) + "/dict";
+            obj_str.SetString(str.c_str(), allocator);
+            package.AddMember("dest_path", obj_str, allocator);
             package.AddMember("version", "1.0.0", allocator);
 
             data_packages.PushBack(package, allocator);
@@ -596,9 +623,15 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value services(rapidjson::kArrayType);
         for (int j = 0; j < num_services; ++j) {
             rapidjson::Value service(rapidjson::kObjectType);
-            service.AddMember("service_name", "service0", allocator);
-            service.AddMember("port_name", "port0", allocator);
+            str = "service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            obj_str.SetString(str.c_str(), allocator);
+            service.AddMember("service_name", obj_str, allocator);
+
+            str = "port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            obj_str.SetString(str.c_str(), allocator);
+            service.AddMember("port_name", obj_str, allocator);
             service.AddMember("user_bns", false, allocator);
+            services.PushBack(service, allocator);
         }
 
         rapidjson::Value task(rapidjson::kObjectType);
