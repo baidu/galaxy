@@ -114,6 +114,22 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
                 ec.Message().c_str());
     }
 
+    // mv container root dir to gc_dir
+    std::string container_root_path
+        = baidu::galaxy::path::ContainerRootPath(container_id_);
+    std::string container_gc_root_path
+        = baidu::galaxy::path::ContainerGcRootPath(container_id_, gc_index_);
+
+    boost::system::error_code boost_ec;
+    boost::filesystem::rename(container_root_path, container_gc_root_path, boost_ec);
+    if (boost_ec.value() != 0) {
+        return ERRORCODE(-1, "failed in renaming %s to %s: %s",
+                container_root_path.c_str(),
+                container_gc_root_path.c_str(),
+                boost_ec.message().c_str());
+    }
+
+
     return ERRORCODE_OK;
 }
 
