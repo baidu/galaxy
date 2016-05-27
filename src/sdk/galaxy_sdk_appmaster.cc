@@ -212,6 +212,7 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
         pod.status = (PodStatus)pb_response.job().pods(i).status();
         pod.version = pb_response.job().pods(i).version();
         pod.start_time = pb_response.job().pods(i).start_time();
+        pod.update_time = pb_response.job().pods(i).update_time();
         pod.fail_count = pb_response.job().pods(i).fail_count();
         response->job.pods.push_back(pod);
     }

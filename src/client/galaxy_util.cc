@@ -13,6 +13,8 @@
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
+#include "rapidjson/filewritestream.h"
+//#include "rapidjson/filestream.h"
 #include "sdk/galaxy_sdk.h"
 
 namespace baidu {
@@ -510,7 +512,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     deploy.AddMember("interval", 1, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
     deploy.AddMember("tag", "example", allocator);
-    deploy.AddMember("pools", "example", allocator);
+    deploy.AddMember("pools", "example1,example2", allocator);
 
     root.AddMember("deploy", deploy, allocator);
 
@@ -652,10 +654,10 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     root.AddMember("pod", pod, allocator);
 
     rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
     root.Accept(writer);
-    std::string reststring = buffer.GetString();
-    fprintf(stderr, "%s\n", reststring.c_str());
+    std::string str_json = buffer.GetString();
+    fprintf(stdout, "%s\n", str_json.c_str());
     return true;
 }
 

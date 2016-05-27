@@ -146,6 +146,8 @@ void FillTaskDescription(const TaskDescription& sdk_task,
         ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
         FillPortRequired(sdk_task.ports[i], port);
     }
+    FillTcpthrotRequired(sdk_task.tcp_throt, task->mutable_tcp_throt());
+    FillBlkioRequired(sdk_task.blkio, task->mutable_blkio());
     FillImagePackage(sdk_task.exe_package, task->mutable_exe_package());
     FilldataPackage(sdk_task.data_package, task->mutable_data_package());
     for (size_t i = 0; i < sdk_task.services.size(); ++i) {
