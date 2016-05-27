@@ -64,7 +64,7 @@ bool ResourceManager::EnterSafeMode(const EnterSafeModeRequest& request, EnterSa
                                         &pb_request, &pb_response, 5, 1);
     
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -86,7 +86,7 @@ bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSa
                                         &::baidu::galaxy::proto::ResMan_Stub::LeaveSafeMode, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
     
@@ -107,7 +107,7 @@ bool ResourceManager::Status(const StatusRequest& request, StatusResponse* respo
                                         &::baidu::galaxy::proto::ResMan_Stub::Status, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -167,7 +167,7 @@ bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& re
                                             &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
     
@@ -192,7 +192,7 @@ bool ResourceManager::RemoveContainerGroup(const RemoveContainerGroupRequest& re
                                         &pb_request, &pb_response, 5,1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -217,7 +217,7 @@ bool ResourceManager::UpdateContainerGroup(const UpdateContainerGroupRequest& re
                                         &::baidu::galaxy::proto::ResMan_Stub::UpdateContainerGroup, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
     
@@ -238,7 +238,7 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
                                         &::baidu::galaxy::proto::ResMan_Stub::ListContainerGroups, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
         
@@ -291,7 +291,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowContainerGroup, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -301,7 +301,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
         return false;
     }
 
-    response->desc.priority = pb_response.desc().priority();
+    response->desc.priority = (JobType)pb_response.desc().priority();
     response->desc.run_user = pb_response.desc().run_user();
     response->desc.version = pb_response.desc().version();
     response->desc.cmd_line = pb_response.desc().cmd_line();
@@ -398,7 +398,7 @@ bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse*
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) { 
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -421,7 +421,7 @@ bool ResourceManager::ShowAgent(const ShowAgentRequest& request, ShowAgentRespon
                                         &pb_request, &pb_response, 5, 1);
  
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -472,7 +472,7 @@ bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgent
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveAgent, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -494,7 +494,7 @@ bool ResourceManager::OnlineAgent(const OnlineAgentRequest& request, OnlineAgent
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -515,7 +515,7 @@ bool ResourceManager::OfflineAgent(const OfflineAgentRequest& request, OfflineAg
                                         &::baidu::galaxy::proto::ResMan_Stub::OfflineAgent, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -537,7 +537,7 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -593,7 +593,7 @@ bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagRespon
                                         &::baidu::galaxy::proto::ResMan_Stub::CreateTag, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -614,7 +614,7 @@ bool ResourceManager::ListTags(const ListTagsRequest& request, ListTagsResponse*
                                         &::baidu::galaxy::proto::ResMan_Stub::ListTags, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -640,7 +640,7 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByTag, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -694,7 +694,7 @@ bool ResourceManager::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTa
                                         &::baidu::galaxy::proto::ResMan_Stub::GetTagsByAgent, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -723,7 +723,7 @@ bool ResourceManager::AddAgentToPool(const AddAgentToPoolRequest& request, AddAg
                                         &::baidu::galaxy::proto::ResMan_Stub::AddAgentToPool, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -745,7 +745,7 @@ bool ResourceManager::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& requ
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveAgentFromPool, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     
     }
@@ -768,7 +768,7 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByPool, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     
     }
@@ -821,7 +821,7 @@ bool ResourceManager::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPo
                                         &::baidu::galaxy::proto::ResMan_Stub::GetPoolByAgent, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     
     }
@@ -847,7 +847,7 @@ bool ResourceManager::AddUser(const AddUserRequest& request, AddUserResponse* re
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     
     }
@@ -871,7 +871,7 @@ bool ResourceManager::RemoveUser(const RemoveUserRequest& request, RemoveUserRes
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     
     }
@@ -895,7 +895,7 @@ bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersRespon
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -922,7 +922,7 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -944,6 +944,16 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
     response->assigned.ssd = pb_response.assigned().ssd();
     response->assigned.replica = pb_response.assigned().replica();
 
+    for (int i = 0; i < pb_response.grants().size(); ++i) {
+        Grant grant;
+        grant.pool = pb_response.grants(i).pool();
+        grant.action = (AuthorityAction)pb_response.grants(i).action();
+        for (int j = 0; j < pb_response.grants(i).authority().size(); ++j) {
+            grant.authority.push_back((Authority)pb_response.grants(i).authority(j));
+        }
+        response->grants.push_back(grant);
+    }
+
     return true;
 }
 
@@ -958,7 +968,7 @@ bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserRespon
                                         &::baidu::galaxy::proto::ResMan_Stub::GrantUser, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -988,7 +998,7 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
                                         &pb_request, &pb_response, 5, 1);
 
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
     }
 
@@ -998,6 +1008,27 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
         return false;
     }
 
+    return true;
+}
+
+bool ResourceManager::Preempt(const PreemptRequest& request, PreemptResponse* response) {
+    ::baidu::galaxy::proto::PreemptRequest pb_request;
+    ::baidu::galaxy::proto::PreemptResponse pb_response;
+    FillUser(request.user, pb_request.mutable_user());
+    pb_request.set_container_group_id(request.container_group_id);
+    pb_request.set_endpoint(request.endpoint);
+    bool ok = rpc_client_->SendRequest(res_stub_,
+                                        &::baidu::galaxy::proto::ResMan_Stub::Preempt,
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "ResourceManager Rpc SendRequest failed";
+        return false;
+    }
+    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
     return true;
 }
 

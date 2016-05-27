@@ -143,6 +143,9 @@ enum PodStatus {
     kPodServing=5,
     kPodFailed=6,
     kPodFinished=7,
+    kPodRunning = 8,
+    kPodStopping = 9,
+    kPodTerminated = 10,
 };
 enum TaskStatus {
     kTaskPending=1,
@@ -452,8 +455,7 @@ struct ShowUserRequest {
 };
 struct ShowUserResponse {
     ErrorCode error_code;
-    std::vector<std::string> pools;
-    std::vector<Authority> authority;
+    std::vector<Grant> grants;
     Quota quota;
     Quota assigned;
 };
@@ -607,6 +609,7 @@ struct PodInfo {
     PodStatus status;
     std::string version;
     int64_t start_time;
+    int64_t update_time;
     int32_t fail_count;
 };
 struct JobInfo {
@@ -638,6 +641,16 @@ struct StopJobRequest {
 };
 struct StopJobResponse {
     ErrorCode error_code;
+};
+
+struct PreemptRequest {
+    User user;
+    std::string container_group_id;
+    std::string endpoint;
+};
+
+struct PreemptResponse {
+     ErrorCode error_code;
 };
 
 } //namespace sdk
