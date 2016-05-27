@@ -44,21 +44,17 @@ int DownloadByDirectWrite(const std::string& binary,
     int fd = ::open(tar_packet.c_str(),
             WRITE_FLAG, WRITE_MODE);
     if (fd == -1) {
-//        LOG(WARNING, "open download "
-//                "%s file failed err[%d: %s]",
-//                tar_packet.c_str(),
-//                errno,
-//                strerror(errno));
+        LOG(WARNING)
+            << "open download file " << tar_packet << " failed, "
+            << "err: " <<  errno << ", " << strerror(errno);
         return -1;
     }
     int write_len = ::write(fd,
             binary.c_str(), binary.size());
     if (write_len == -1) {
-//        LOG(WARNING, "write download "
-//                "%s file failed err[%d: %s]",
-//                tar_packet.c_str(),
-//                errno,
-//                strerror(errno));
+        LOG(WARNING)
+            << "write download " << tar_packet << " file failed, "
+            << "err: " << errno << ", " << strerror(errno);
         ::close(fd);
         return -1;
     }
@@ -120,8 +116,9 @@ bool GetCwd(std::string* dir) {
         if (errno == ERANGE) {
             continue;
         }
-//        LOG(WARNING, "get cwd failed err[%d: %s]",
-//                errno, strerror(errno));
+        LOG(WARNING)
+            << "get cwd failed, "
+            << "err: " << errno << ", " << strerror(errno);
         break;
     }
     if (ret) {
@@ -156,9 +153,9 @@ bool PrepareStdFds(const std::string& pwd,
     *stderr_fd = ::open(stderr_file.c_str(),
             STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
     if (*stdout_fd == -1 || *stderr_fd == -1) {
-        LOG(WARNING)\
-            << "fail to open file: " << stdout_file.c_str()\
-            << ", err: " << errno << ", " << strerror(errno);
+        LOG(WARNING)
+            << "fail to open file: " << stdout_file << ", "
+            << "err: " << errno << ", " << strerror(errno);
         return false;
     }
     return true;
@@ -176,7 +173,7 @@ void GetProcessOpenFds(const pid_t pid,
 
     std::vector<std::string> fd_files;
     if (!file::ListFiles(pid_path, &fd_files)) {
-//        LOG(WARNING, "list %s failed", pid_path.c_str());
+        LOG(WARNING) << "list " << pid_path << " failed";
         return;
     }
 
@@ -186,12 +183,11 @@ void GetProcessOpenFds(const pid_t pid,
         }
         fd_vector->push_back(::atoi(fd_files[i].c_str()));
     }
-//    LOG(DEBUG, "list pid %d fds size %u", pid, fd_vector->size());
+    LOG(INFO) << "list pid " << pid << " fds size " << fd_vector->size();
     return;
 }
 
 void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir) {
-    // pid_t my_pid = ::getpid();
     int ret = ::setpgid(pid, pid);
     if (ret != 0) {
         assert(0);
@@ -233,11 +229,11 @@ bool Su(const std::string& user_name) {
     uid_t uid;
     gid_t gid;
     if (!GetUidAndGid(user_name, &uid, &gid)) {
-        return false; 
+        return false;
     }
 
     if (::setgid(gid) != 0) {
-        return false; 
+        return false;
     }
 
     if (::setuid(uid) != 0) {
@@ -248,7 +244,7 @@ bool Su(const std::string& user_name) {
 
 bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
     if (user_name.empty() || uid == NULL || gid == NULL) {
-        return false; 
+        return false;
     }
     bool rs = false;
     struct passwd user_passd_info;
@@ -257,24 +253,24 @@ bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
     int user_passd_buf_len = ::sysconf(_SC_GETPW_R_SIZE_MAX);
     for (int i = 0; i < 2; i++) {
         if (user_passd_buf != NULL) {
-            delete []user_passd_buf; 
+            delete []user_passd_buf;
             user_passd_buf = NULL;
         }
         user_passd_buf = new char[user_passd_buf_len];
-        int ret = ::getpwnam_r(user_name.c_str(), &user_passd_info, 
+        int ret = ::getpwnam_r(user_name.c_str(), &user_passd_info,
                 user_passd_buf, user_passd_buf_len, &user_passd_rs);
         if (ret == 0 && user_passd_rs != NULL) {
-            *uid = user_passd_rs->pw_uid; 
+            *uid = user_passd_rs->pw_uid;
             *gid = user_passd_rs->pw_gid;
             rs = true;
             break;
         } else if (errno == ERANGE) {
-            user_passd_buf_len *= 2; 
+            user_passd_buf_len *= 2;
         }
         break;
     }
     if (user_passd_buf != NULL) {
-        delete []user_passd_buf; 
+        delete []user_passd_buf;
         user_passd_buf = NULL;
     }
     return rs;
@@ -291,10 +287,9 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
     }
     if (!rs) {
         if (0 != opt(path.c_str())) {
-//            LOG(WARNING, "opt %s failed err[%d: %s]",
-//                    path.c_str(),
-//                    errno,
-//                    strerror(errno));
+            LOG(WARNING)
+                << "opt " << path << " failed, "
+                << "err: " << errno << ", " << strerror(errno);
             return false;
         }
         return true;
@@ -309,7 +304,7 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
 
         bool is_dir;
         if (!IsDir(cur_path, is_dir)) {
-//            LOG(WARNING, "IsDir %s failed err", path.c_str());
+            LOG(WARNING) << "IsDir " << path << " failed err";
             return false;
         }
 
@@ -317,10 +312,9 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
             if (visited.find(cur_path) != visited.end()) {
                 stack.pop_back();
                 if (0 != opt(cur_path.c_str())) {
-//                    LOG(WARNING, "opt %s failed err[%d: %s]",
-//                            cur_path.c_str(),
-//                            errno,
-//                            strerror(errno));
+                    LOG(WARNING)
+                        << "opt " << cur_path << " failed, "
+                        << "err: " << errno << ", " << strerror(errno);
                     return false;
                 }
                 continue;
@@ -328,10 +322,9 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
             visited.insert(cur_path);
             DIR* dir_desc = ::opendir(cur_path.c_str());
             if (dir_desc == NULL) {
-//                LOG(WARNING, "open dir %s failed err[%d: %s]",
-//                        cur_path.c_str(),
-//                        errno,
-//                        strerror(errno));
+                LOG(WARNING)
+                    << "open dir " << cur_path << " failed, "
+                    << "err: " << errno << ", " << strerror(errno);
                 return false;
             }
             bool ret = true;
@@ -351,10 +344,9 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
                     stack.push_back(tmp_path);
                 } else {
                     if (opt(tmp_path.c_str()) != 0) {
-//                        LOG(WARNING, "opt %s failed err[%d: %s]",
-//                                tmp_path.c_str(),
-//                                errno,
-//                                strerror(errno));
+                        LOG(WARNING)
+                            << "opt " << tmp_path << " failed, "
+                            << "err: " << errno << ", " << strerror(errno);
                         ret = false;
                         break;
                     }
@@ -381,10 +373,9 @@ bool ListFiles(const std::string& dir_path,
     DIR* dir = ::opendir(dir_path.c_str());
 
     if (dir == NULL) {
-//        LOG(WARNING, "opendir %s failed err[%d: %s]",
-//                dir_path.c_str(),
-//                errno,
-//                strerror(errno));
+        LOG(WARNING)
+            << "opendir " << dir_path << " failed, "
+            << "err: " << errno << ", " << strerror(errno);
         return false;
     }
 
@@ -414,8 +405,9 @@ bool Mkdir(const std::string& dir_path) {
         return true;
     }
 
-//    LOG(WARNING, "mkdir %s failed err[%d: %s]",
-//            dir_path.c_str(), errno, strerror(errno));
+    LOG(WARNING)
+        << "mkdir " << dir_path << " failed, "
+        << "err: " << errno << ", " << strerror(errno);
     return false;
 }
 
@@ -424,10 +416,10 @@ bool MkdirRecur(const std::string& dir_path) {
     size_t seg = dir_path.find('/', beg);
     while (seg != std::string::npos) {
         if (seg + 1 >= dir_path.size()) {
-            break; 
+            break;
         }
         if (!Mkdir(dir_path.substr(0, seg + 1))) {
-            return false; 
+            return false;
         }
         beg = seg + 1;
         seg = dir_path.find('/', beg);
@@ -439,10 +431,9 @@ bool IsFile(const std::string& path, bool& is_file) {
     struct stat stat_buf;
     int ret = lstat(path.c_str(), &stat_buf);
     if (ret == -1) {
-//        LOG(WARNING, "stat path %s failed err[%d: %s]",
-//                path.c_str(),
-//                errno,
-//                strerror(errno));
+        LOG(WARNING)
+            << "stat path " << path << " failed, "
+            << "err: " << errno << ", " << strerror(errno);
         return false;
     }
 
@@ -458,7 +449,7 @@ bool IsDir(const std::string& path, bool& is_dir) {
     struct stat stat_buf;
     int ret = ::lstat(path.c_str(), &stat_buf);
     if (ret == -1) {
-        LOG(WARNING)\
+        LOG(WARNING)
             << "stat path " << path << " failed, "
             << "err: " << errno << ", " << strerror(errno);
         return false;
@@ -497,9 +488,10 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path) {
     }
 
     if (0 != ::symlink(old_path.c_str(), new_path.c_str())) {
-//        LOG(WARNING, "symlink failed for old[%s] new[%s] err[%d: %s]",
-//                     old_path.c_str(), new_path.c_str(),
-//                     errno, strerror(errno));
+        LOG(WARNING)
+            << "symlink failed for old: " << old_path << ", "
+            << "new: " << new_path << ", "
+            << "err: " << errno << ", " << strerror(errno);
         return false;
     }
     return true;

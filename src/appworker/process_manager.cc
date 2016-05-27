@@ -39,7 +39,7 @@ ProcessManager::~ProcessManager() {
 
 int ProcessManager::CreateProcess(const ProcessEnv& env,
                                   const ProcessContext* context) {
-    // 1.if old process exit, then kill and erase
+    // 1.kill and erase old process
     {
         MutexLock scope_lock(&mutex_);
         std::map<std::string, Process*>::iterator it =\
@@ -71,9 +71,9 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     // 3. Fork
     pid_t child_pid = ::fork();
     if (child_pid == -1) {
-        LOG(WARNING)\
-            << context->process_id << " fork failed"\
-            << ", errno: " << errno << ", err: "  << strerror(errno);
+        LOG(WARNING)
+            << context->process_id << " fork failed, "
+            << "errno: " << errno << ", err: "  << strerror(errno);
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
@@ -105,7 +105,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
                assert(0);
             }
         }
-
         // 4.prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),
@@ -224,10 +223,10 @@ void ProcessManager::LoopWaitProcesses() {
                     }
                 }
             }
-            LOG(WARNING)\
-                <<  "process: " << it->second->process_id\
-                << ", pid: " << pid\
-                << ", exit code: " << it->second->exit_code;
+            LOG(WARNING)
+                << "process: " << it->second->process_id << ", "
+                << "pid: " << pid
+                << "exit code: " << it->second->exit_code;
             break;
         }
     }
