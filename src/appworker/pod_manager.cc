@@ -22,6 +22,7 @@ PodManager::PodManager() :
          mutex_(),
          background_pool_(10) {
     pod_.status = proto::kPodPending;
+    pod_.reload_status = proto::kPodPending;
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodStatus, this)
@@ -132,7 +133,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.env = pod_.env;
     pod.desc.CopyFrom(pod_.desc);
     pod.status = pod_.status;
-    pod.reload_status = pod.reload_status;
+    pod.reload_status = pod_.reload_status;
 
     return 0;
 }
