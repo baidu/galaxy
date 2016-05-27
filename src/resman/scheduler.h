@@ -218,7 +218,8 @@ public:
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
-                        const ContainerGroupId& container_group_id);
+                        const ContainerGroupId& container_group_id,
+                        std::string& fail_reason);
 
     bool ChangeReplica(const ContainerGroupId& container_group_id, int replica);
     

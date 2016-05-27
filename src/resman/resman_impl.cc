@@ -590,6 +590,8 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
                                       ::baidu::galaxy::proto::UpdateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
     CHECK_USER()
+    LOG(INFO) << "user:" << request->user().user()
+              << " update container group: " << request->id();
     proto::ContainerGroupMeta new_meta;
     proto::ContainerGroupMeta old_meta;
     bool replica_changed = false;
@@ -1390,14 +1392,16 @@ void ResManImpl::RemoveContainerCallback(std::string agent_endpoint,
     boost::scoped_ptr<const proto::RemoveContainerRequest> request_guard(request);
     boost::scoped_ptr<proto::RemoveContainerResponse> response_guard(response);
     if (fail) {
-        LOG(WARNING) << "rpc fail of remote container, err: " << err
-                     << ", agent:" << agent_endpoint;
+        LOG(WARNING) << "rpc fail of remve container, err: " << err
+                     << ", agent:" << agent_endpoint
+                     << ", container:" << request->id();
         return;
     }
     if (response->code().status() != proto::kOk) {
-        LOG(WARNING) << "fail to create contaienr, reason:" 
+        LOG(WARNING) << "fail to remove contaienr, reason:" 
                      << response->code().reason()
-                     << ", agent:" << agent_endpoint;
+                     << ", agent:" << agent_endpoint
+                     << ", container:" << request->id();
         return;
     }
 }
@@ -1445,6 +1449,27 @@ bool ResManImpl::CheckUserAuth(const proto::ContainerDescription& desc,
         }
     }
     return true;
+}
+
+void ResManImpl::Preempt(::google::protobuf::RpcController* controller,
+                         const ::baidu::galaxy::proto::PreemptRequest* request,
+                         ::baidu::galaxy::proto::PreemptResponse* response,
+                         ::google::protobuf::Closure* done) {
+    const std::string& agent_endpoint = request->endpoint();
+    const std::string& container_group_id = request->container_group_id();
+    LOG(INFO) << "preempt scheduling: " << container_group_id
+              << " on:" << agent_endpoint;
+    std::string fail_reason;
+    bool ret = scheduler_->ManualSchedule(agent_endpoint, 
+                                          container_group_id,
+                                          fail_reason);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason(fail_reason);
+    } else {
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 } //namespace galaxy
