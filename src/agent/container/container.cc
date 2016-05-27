@@ -378,14 +378,30 @@ void Container::KeepAlive()
     }
 
     if (!Alive()) {
-        baidu::galaxy::util::ErrorCode ec = status_.EnterErrorFrom(baidu::galaxy::proto::kContainerReady);
-        if (ec.Code() != 0) {
-            LOG(WARNING) << "container " << id_.CompactId() << " failed in entering error status from kContainerReady:" << ec.Message();
+        boost::filesystem::path exit_file(baidu::galaxy::path::ContainerRootPath(id_.SubId()));
+        exit_file.append(".exit");
+        boost::system::error_code ec;
+        if (boost::filesystem::exists(exit_file, ec)) {
+            baidu::galaxy::util::ErrorCode ec = status_.EnterFinished();
+            if (ec.Code() != 0) {
+                LOG(WARNING) << "container " << id_.CompactId() 
+                    << " failed in entering finished status" << ec.Message();
+            } else {
+                LOG(INFO) << "container " << id_.CompactId() << " enter finished status";
+            }
+
         } else {
-            LOG(INFO) << "container " << id_.CompactId() << " enter error status from kContainerReady";
+            baidu::galaxy::util::ErrorCode ec = status_.EnterErrorFrom(baidu::galaxy::proto::kContainerReady);
+            if (ec.Code() != 0) {
+                LOG(WARNING) << "container " << id_.CompactId() 
+                    << " failed in entering error status from kContainerReady:" << ec.Message();
+            } else {
+                LOG(INFO) << "container " << id_.CompactId() << " enter error status from kContainerReady";
+            }
+
         }
     } else {
-        LOG(INFO) << "alive";
+        LOG(INFO) << "i am alive ...";
     }
 }
 
