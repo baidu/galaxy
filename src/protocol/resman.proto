@@ -316,11 +316,21 @@ message ShowAgentResponse {
     repeated ContainerStatistics containers = 2;
 }
 
+message PreemptRequest {
+    optional string container_group_id = 1;
+    optional string endpoint = 2;
+}
+
+message PreemptResponse {
+    optional ErrorCode error_code = 1;
+}
+
 service ResMan {
 
     //op api
     rpc EnterSafeMode(EnterSafeModeRequest) returns (EnterSafeModeResponse);
     rpc LeaveSafeMode(LeaveSafeModeRequest) returns (LeaveSafeModeResponse);
+    rpc Preempt(PreemptRequest) returns (PreemptResponse);
 
     rpc Status(StatusRequest) returns (StatusResponse);
 

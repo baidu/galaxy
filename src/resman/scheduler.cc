@@ -22,7 +22,7 @@ namespace baidu {
 namespace galaxy {
 namespace sched {
 
-const int sMaxPort = 60000;
+const int sMaxPort = 9999;
 const int sMinPort = 1000;
 const std::string kDynamicPort = "dynamic";
 
@@ -232,7 +232,7 @@ bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
     } else if (!has_determinate_port && has_dynamic_port) {
         size_t tries_count = 0;
         double rnd = (double)rand() / RAND_MAX;
-        int start_port = (int) ((sMaxPort - dynamic_port_count + 1) * rnd);
+        int start_port = sMinPort + (int) ((sMaxPort - sMinPort- dynamic_port_count + 1) * rnd);
         while (tries_count < port_total_) {
             free_random_ports.clear();
             for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
@@ -980,7 +980,8 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
 }
 
 bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
-                               const ContainerGroupId& container_group_id) {
+                               const ContainerGroupId& container_group_id,
+                               std::string& fail_reason) {
     LOG(INFO) << "manul scheduling: " << container_group_id << " @ " << endpoint;
     MutexLock lock(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator agent_it;
@@ -988,25 +989,28 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
     agent_it = agents_.find(endpoint);
     if (agent_it == agents_.end()) {
         LOG(WARNING) << "manual scheduling fail, no such agent:" << endpoint;
+        fail_reason = "agent not exist:" + endpoint;
         return false;
     }
     Agent::Ptr agent = agent_it->second;
     container_group_it = container_groups_.find(container_group_id);
     if (container_group_it == container_groups_.end()) {
         LOG(WARNING) << "manual scheduling fail, no such container_group:" << container_group_id;
+        fail_reason = "container group not exist:" + container_group_id;
         return false;
     }
     ContainerGroup::Ptr container_group = container_group_it->second;
     if (container_group->states[kContainerPending].size() == 0) {
         LOG(WARNING) << "manual scheduling exception, no pending containers to put, " << container_group_id;
+        fail_reason = "no pending pods";
         return false;
     }
     Container::Ptr container_manual = container_group->states[kContainerPending].begin()->second;
     if (!CheckTagAndPoolOnce(agent, container_manual)) {
         LOG(WARNING) << "manual scheduling fail, because of mismatching tag or pools";
+        fail_reason = "tag or pool mismatching";
         return false;
     }
-
     std::vector<Container::Ptr> agent_containers;
     BOOST_FOREACH(ContainerMap::value_type& pair, agent->containers_) {
         agent_containers.push_back(pair.second);
