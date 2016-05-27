@@ -52,6 +52,7 @@ public:
                      const std::string& ssd,
                      int replica
                   );
+    bool Preempt(const std::string& container_group_id, const std::string& endpoint);
 
 private:
     bool Init();
