@@ -10,8 +10,6 @@
 #include "subsystem.h"
 #include <glog/logging.h>
 
-#include <sys/types.h>
-#include <signal.h>
 #include <unistd.h>
 
 namespace baidu {
@@ -106,11 +104,16 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
                     err.Message().c_str());
     }
 
-    std::vector<int> pids;
-    freezer_->GetProcs(pids);
-    for (size_t i = 0; i < pids.size(); i++) {
-        ::kill(pids[i], SIGKILL);
+    for (size_t i = 0; i < subsystem_.size(); i++) {
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in destroying %s: %s",
+                        subsystem_[i]->Name().c_str(),
+                        ec.Message().c_str());
+        }
     }
+    subsystem_.clear();
 
     err = freezer_->Thaw();
     if (0 != err.Code()) {
@@ -118,25 +121,6 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
                     "thaw failed: %s",
                     err.Message().c_str());
     }
-
-    pids.clear();
-    freezer_->GetProcs(pids);
-    if (pids.size() > 0) {
-        return ERRORCODE(-1, "kill pid failed");
-    }
-
-    ::usleep(1000);
-    for (size_t i = 0; i < subsystem_.size(); i++) {
-        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
-        if (0 != ec.Code()) {
-            return ERRORCODE(-1,
-                    "failed in destroying %s: %s",
-                    subsystem_[i]->Name().c_str(),
-                    ec.Message().c_str());
-        }
-    }
-
-    subsystem_.clear();
 
     if (NULL !=  freezer_.get()) {
         baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
