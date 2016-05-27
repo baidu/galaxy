@@ -60,9 +60,12 @@ using ::baidu::galaxy::proto::kPodPending;
 using ::baidu::galaxy::proto::kPodReady;
 using ::baidu::galaxy::proto::kPodDeploying;
 using ::baidu::galaxy::proto::kPodStarting;
+using ::baidu::galaxy::proto::kPodRunning;
 using ::baidu::galaxy::proto::kPodServing;
 using ::baidu::galaxy::proto::kPodFailed;
 using ::baidu::galaxy::proto::kPodFinished;
+using ::baidu::galaxy::proto::kPodStopping;
+using ::baidu::galaxy::proto::kPodTerminated;
 using ::baidu::galaxy::proto::ResMan_Stub;
 using ::baidu::galaxy::proto::User;
 
@@ -78,7 +81,7 @@ struct Job {
     std::map<PodId, PodInfo*> pods_;
     JobDescription desc_;
     JobId id_;
-    std::map<Version, PodDescription> pod_desc_;
+    std::map<Version, JobDescription> job_descs_;
     std::set<PodId> deploying_pods_;
     std::string curent_version_;
     UpdateAction action_type_;
@@ -130,7 +133,7 @@ private:
     void RemoveContainerGroupCallBack(const proto::RemoveContainerGroupRequest* request,
                                   proto::RemoveContainerGroupResponse* response,
                                   bool failed, int);
-    void CreatePod(Job* job,
+    PodInfo* CreatePod(Job* job,
                 std::string podid,
                 std::string endpoint);
     Status PodHeartBeat(Job* job, void* arg);
