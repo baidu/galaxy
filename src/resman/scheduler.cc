@@ -1025,6 +1025,7 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
         Container::Ptr poor_container = *it;
         if (!agent->TryPut(container_manual.get(), res_err)) {
             if (res_err == proto::kTagMismatch || res_err == proto::kPoolMismatch) {
+                fail_reason = "tag or pool mismatching";
                 return false;
             }
             ChangeStatus(poor_container, kContainerPending); //evict one
