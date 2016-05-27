@@ -32,7 +32,7 @@ public:
     AppWorkerImpl();
     ~AppWorkerImpl();
     void PrepareEnvs();
-    void Start();
+    void Init();
 
 private:
     void FetchTask();

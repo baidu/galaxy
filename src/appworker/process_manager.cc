@@ -26,9 +26,8 @@ namespace baidu {
 namespace galaxy {
 
 ProcessManager::ProcessManager() :
-    mutex_(),
-    background_pool_(1) {
-
+        mutex_(),
+        background_pool_(1) {
     background_pool_.DelayTask(
         FLAGS_process_manager_loop_wait_interval,
         boost::bind(&ProcessManager::LoopWaitProcesses, this)
@@ -40,7 +39,7 @@ ProcessManager::~ProcessManager() {
 
 int ProcessManager::CreateProcess(const ProcessEnv& env,
                                   const ProcessContext* context) {
-    // if old process exit, then kill and erase
+    // 1.if old process exit, then kill and erase
     {
         MutexLock scope_lock(&mutex_);
         std::map<std::string, Process*>::iterator it =\
@@ -51,40 +50,8 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             processes_.erase(it);
         }
     }
-    LOG(INFO) << "create process of command: " << context->cmd;
+    LOG(INFO) << "create process, command: " << context->cmd;
 
-    // 1. collect initd fds
-    std::vector<int> fd_vector;
-//    std::string proc_path;
-//    if (!GetProcPath(&proc_path)) {
-//        response->set_status(kUnknown);
-//        done->Run();
-//        return;
-//    }
-//    std::vector<std::string> files;
-//    if (!file::ListFiles(proc_path, &files)) {
-//        LOG(WARNING, "list new proc failed");
-//    }
-//    proc_path.append(boost::lexical_cast<std::string>(::getpid()));
-//    proc_path.append("/fd/");
-//    if (!file::ListFiles(proc_path, &files)) {
-//        LOG(WARNING, "list new proc failed");
-//        response->set_status(kInputError);
-//        done->Run();
-//        return;
-//    }
-//    for (size_t i = 0; i < files.size(); i++) {
-//        if (files[i] == "." || files[i] == "..") {
-//            continue;
-//        }
-//        fd_vector.push_back(::atoi(files[i].c_str()));
-//    }
-//    // check if need chroot
-//    bool is_chroot = request->has_chroot_path();
-//    if (is_chroot) {
-//        LOG(WARNING, "chroot %s", request->chroot_path().c_str());
-//    }
-//
     // 2. prepare std fds for child
     int stdin_fd = -1;
     int stdout_fd = -1;
@@ -115,35 +82,43 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         }
         return -1;
     } else if (child_pid == 0) {
-        // setpgid  & chdir
+        // 1.setpgid  & chdir
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid,
                                              context->work_dir.c_str());
-        // attach cgroup
-        for (unsigned i = 0; i < env.cgroup_paths.size(); i++) {
-//            bool ok = cgroup::AttachCgroup(process_env.cgroup_paths[i], my_pid);
-//            if (!ok) {
-//                assert(0);
-//            }
-        }
-
+        // 2.dup std fds
+        std::vector<int> fd_vector;
         process::PrepareChildProcessEnvStep2(stdin_fd, stdout_fd,
                                              stderr_fd, fd_vector);
-        // prepare argv
+        // 3.attach cgroup
+        std::vector<std::string>::const_iterator c_it = env.cgroup_paths.begin();
+        for (; c_it != env.cgroup_paths.end(); ++c_it) {
+            std::string path = *c_it + "/tasks";
+            fprintf(stdout, "attach pid to cgroup, pid: %d, cgroup: %s\n",
+                    my_pid, path.c_str());
+            std::string content = boost::lexical_cast<std::string>(my_pid);
+            bool ok = file::Write(path, content);
+            if (!ok) {
+               fprintf(stdout, "atttach pid to cgroup fail, err: %d, %s\n",
+                       errno, strerror(errno));
+               fflush(stdout);
+               assert(0);
+            }
+        }
+
+        // 4.prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),
             const_cast<char*>("-c"),
             const_cast<char*>(context->cmd.c_str()),
             NULL};
-
-        // prepare envs
+        // 5.prepare envs
         char* envs[env.envs.size() + 1];
         envs[env.envs.size()]= NULL;
         for (unsigned i = 0; i < env.envs.size(); i++) {
             envs[i] = const_cast<char*>(env.envs[i].c_str());
         }
-
-        // different with deploy and main process
+        // 6.different with deploy and main process
         const DownloadProcessContext* download_context =\
              dynamic_cast<const DownloadProcessContext*>(context);
         if (NULL != download_context) {
@@ -153,15 +128,17 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             if (file::IsExists(download_context->dst_path)
                 && file::GetFileMd5(download_context->dst_path, md5)
                 && md5 == download_context->version) {
-                    // data not change
-                    fprintf(stdout, "data not change, md5: %s", md5.c_str());
-                    exit(0);
+                // data not change
+                fprintf(stdout, "data not change, md5: %s", md5.c_str());
+                fflush(stdout);
+                exit(0);
             }
         }
-        // do exec
+        // 7.do exec
         ::execve("/bin/sh", argv, envs);
         fprintf(stdout, "execve %s err[%d: %s]\n",
                 context->cmd.c_str(), errno, strerror(errno));
+        fflush(stdout);
         assert(0);
     }
 
@@ -228,14 +205,17 @@ void ProcessManager::LoopWaitProcesses() {
     if (pid > 0) {
         std::map<std::string, Process*>::iterator it = processes_.begin();
         for (; it != processes_.end(); ++it) {
-            if (it->second->pid == pid) {
-                it->second->status = proto::kProcessFinished;
-                if (WIFEXITED(status)) {
-                    it->second->exit_code = WEXITSTATUS(status);
-                    if (0 != it->second->exit_code) {
-                        it->second->status = proto::kProcessFailed;
-                    }
-                } else if (WIFSIGNALED(status)) {
+            if (it->second->pid != pid) {
+                continue;
+            }
+            it->second->status = proto::kProcessFinished;
+            if (WIFEXITED(status)) {
+                it->second->exit_code = WEXITSTATUS(status);
+                if (0 != it->second->exit_code) {
+                    it->second->status = proto::kProcessFailed;
+                }
+            } else {
+               if (WIFSIGNALED(status)) {
                     it->second->exit_code = 128 + WTERMSIG(status);
                     if (WCOREDUMP(status)) {
                         it->second->status = proto::kProcessCoreDump;
@@ -243,12 +223,12 @@ void ProcessManager::LoopWaitProcesses() {
                         it->second->status = proto::kProcessKilled;
                     }
                 }
-                LOG(WARNING)\
-                    <<  "process: " << it->second->process_id\
-                    << ", pid: " << pid\
-                    << ", exit code: " << it->second->exit_code;
-                break;
             }
+            LOG(WARNING)\
+                <<  "process: " << it->second->process_id\
+                << ", pid: " << pid\
+                << ", exit code: " << it->second->exit_code;
+            break;
         }
     }
     background_pool_.DelayTask(

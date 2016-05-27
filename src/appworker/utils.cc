@@ -14,6 +14,7 @@
 #include <pwd.h>
 #include <linux/kdev_t.h>
 #include <set>
+#include <fstream>
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -501,6 +502,23 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path) {
 //                     errno, strerror(errno));
         return false;
     }
+    return true;
+}
+
+bool Write(const std::string& path, const std::string& content) {
+    FILE* fd = ::fopen(path.c_str(), "we");
+    if (fd == NULL) {
+        fprintf(stderr, "open file %s failed", path.c_str());
+        return false;
+    }
+
+    int ret = ::fprintf(fd, "%s", content.c_str());
+    ::fclose(fd);
+    if (ret <= 0) {
+        fprintf(stderr, "write file %s failed", path.c_str());
+        return false;
+    }
+
     return true;
 }
 
