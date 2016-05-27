@@ -1,5 +1,3 @@
-
-
 // Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -165,7 +163,8 @@ int Container::Construct_()
         cg->SetContainerId(id_.SubId());
         cg->SetDescrition(desc);
 
-        if (0 != cg->Construct()) {
+        baidu::galaxy::util::ErrorCode err = cg->Construct();
+        if (0 != err.Code()) {
             LOG(WARNING) << "fail in constructing cgroup, cgroup id is " << cg->Id()
                          << ", container id is " << id_.CompactId();
             break;
@@ -182,7 +181,12 @@ int Container::Construct_()
                      << " real size is " << cgroup_.size();
 
         for (size_t i = 0; i < cgroup_.size(); i++) {
-            cgroup_[i]->Destroy();
+            baidu::galaxy::util::ErrorCode err = cgroup_[i]->Destroy();
+            if (err.Code() != 0) {
+                LOG(WARNING) << id_.CompactId()
+                    << " construc failed and destroy failed: " 
+                    << err.Message();
+            }
         }
 
         return -1;
@@ -238,16 +242,22 @@ int Container::Destroy_()
     if (pid > 0) {
         baidu::galaxy::util::ErrorCode ec = Process::Kill(pid);
         if (ec.Code() != 0) {
-            LOG(WARNING) << "failed in killing appwork for container " << id_.CompactId() << ": " << ec.Message();
+            LOG(WARNING) << "failed in killing appwork for container "
+                         << id_.CompactId() << ": " << ec.Message();
             return -1;
         }
     }
 
+    LOG(INFO) << "container " << id_.CompactId() << " suceed in killing appwork whose pid is " << pid;
     // destroy cgroup
     for (size_t i = 0; i < cgroup_.size(); i++) {
-        if (0 != cgroup_[i]->Destroy()) {
+        baidu::galaxy::util::ErrorCode ec = cgroup_[i]->Destroy();
+        if (0 != ec.Code()) {
+            LOG(WARNING) << "container " << id_.CompactId()
+                         << " failed in destroying cgroup: " << ec.Message();
             return -1;
         }
+        LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy cgroup";
     }
 
     // destroy volum
@@ -257,10 +267,7 @@ int Container::Destroy_()
                      << " " << ec.Message();
         return -1;
     }
-
-
-    // move container root path to  gc_dir
-
+    LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy volum";
 
     // mv to gc queue
     return 0;
@@ -270,31 +277,31 @@ int Container::RunRoutine(void*)
 {
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
-        std::cerr << "mount root fs failed" << std::endl;
+        std::cout << "mount root fs failed" << std::endl;
         return -1;
     }
 
     ::chdir(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str());
 
-    LOG(INFO) << "succed in mounting root fs";
+    std::cout << "succed in mounting root fs\n";
     // change root
     if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str())) {
-        LOG(WARNING) << "chroot failed: " << strerror(errno);
+        std::cout << "chroot failed: " << strerror(errno) << std::endl;
         return -1;
     }
-    LOG(INFO) << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId());
+    std::cout << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId()) << std::endl;
     // change user or sh -l
     //baidu::galaxy::util::ErrorCode ec = baidu::galaxy::user::Su(desc_.run_user());
     //if (ec.Code() != 0) {
-    //    LOG(WARNING) << "su user " << desc_.run_user() << " failed: " << ec.Message();
+    //    std::cout << "su user " << desc_.run_user() << " failed: " << ec.Message() << std::endl;
     //    return -1;
     //}
-    LOG(INFO) << "su user " << desc_.run_user() << " sucessfully";
+    std::cout << "su user " << desc_.run_user() << " sucessfully" << std::endl;
 
 
     // export env
     // start appworker
-    LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
+    std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
     std::string cmd_line = FLAGS_cmd_line;
     //char* argv[] = {"cat", NULL};
     char* argv[] = {
@@ -307,7 +314,7 @@ int Container::RunRoutine(void*)
 
     ExportEnv();
     ::execv("/bin/sh", argv);
-    LOG(WARNING) << "exec cmd " << cmd_line << " failed: " << strerror(errno);
+    std::cout << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
     return -1;
 }
 

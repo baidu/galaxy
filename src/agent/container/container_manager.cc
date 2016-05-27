@@ -4,6 +4,9 @@
 // found in the LICENSE file.
 
 #include "container_manager.h"
+#include "thread.h"
+
+#include "boost/bind.hpp"
 #include <glog/logging.h>
 
 namespace baidu {
@@ -11,13 +14,34 @@ namespace galaxy {
 namespace container {
 
 ContainerManager::ContainerManager(boost::shared_ptr<baidu::galaxy::resource::ResourceManager> resman) :
-    res_man_(resman)
+    res_man_(resman),
+    running_(false)
 {
     assert(NULL != resman);
 }
 
 ContainerManager::~ContainerManager()
 {
+    running_ = false;
+}
+
+void ContainerManager::Setup() {
+    running_ = true;
+    this->keep_alive_thread_.Start(boost::bind(&ContainerManager::KeepAliveRoutine, this));
+}
+
+void ContainerManager::KeepAliveRoutine() {
+    while (running_) {
+        {
+            boost::mutex::scoped_lock lock(mutex_);
+            std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter = work_containers_.begin();
+            while (iter != work_containers_.end()) {
+                iter->second->KeepAlive();
+                iter++;
+            }
+        }
+        ::sleep(1);
+    }
 }
 
 int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
@@ -105,6 +129,7 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
     // do releasing
     int ret = 0;
     if (0 == (ret = iter->second->Destroy())) {
+
         ec = res_man_->Release(iter->second->Description());
         if (0 != ec.Code()) {
             LOG(FATAL) << "failed in releasing resource for container " << id.CompactId()
@@ -113,6 +138,7 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         } else {
             LOG(INFO) << "succeed in releasing resource for container " << id.CompactId();
         }
+
         work_containers_.erase(iter);
     }
     stage_.LeaveDestroyingStage(id.SubId());
