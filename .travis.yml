@@ -5,7 +5,6 @@ install:
     - sudo apt-get install scons
 script:
     - sh build.sh
-
 deploy:
     provider: releases
     api_key: "73d6e92561a5c364fd2a1dabc3a5ed640f121d45"

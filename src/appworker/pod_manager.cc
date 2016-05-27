@@ -62,9 +62,9 @@ int PodManager::TerminatePod() {
     }
 
     pod_.stage = kPodStageTerminating;
-    LOG(INFO)\
-        << "terminate pod"
-        << ", current pod status: " << PodStatus_Name(pod_.status);
+    LOG(INFO)
+        << "terminate pod, "
+        << "current pod status: " << PodStatus_Name(pod_.status);
     if (0 == DoStopPod()) {
         pod_.status = proto::kPodStopping;
     }
@@ -76,10 +76,10 @@ int PodManager::RebuildPod() {
     MutexLock lock(&mutex_);
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
-        LOG(WARNING)\
-            << "cgroup size mismatch task size"\
-            << ", cgroup size: " << pod_.env.task_ids.size()\
-            << ", task size: " << tasks_size;
+        LOG(WARNING)
+            << "cgroup size mismatch task size, "
+            << "cgroup size: " << pod_.env.task_ids.size() << ", "
+            << "task size: " << tasks_size;
         pod_.status = proto::kPodFailed;
         return -1;
     }
@@ -103,10 +103,10 @@ int PodManager::ReloadPod() {
 
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
-        LOG(WARNING)\
-            << "cgroup size mismatch task size"\
-            << ", cgroup size: " << pod_.env.task_ids.size()\
-            << ", task size: " << tasks_size;
+        LOG(WARNING)
+            << "cgroup size mismatch task size, "
+            << "cgroup size: " << pod_.env.task_ids.size() << ", "
+            << "task size: " << tasks_size;
         pod_.reload_status = proto::kPodFailed;
         return -1;
     }
@@ -146,10 +146,10 @@ int PodManager::DoCreatePod() {
 
     int tasks_size = pod_.desc.tasks().size();
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
-        LOG(WARNING)\
-            << "cgroup size mismatch task size"\
-            << ", cgroup size: " << pod_.env.task_ids.size()\
-            << ", task size: " << tasks_size;
+        LOG(WARNING)
+            << "cgroup size mismatch task size, "
+            << "cgroup size: " << pod_.env.task_ids.size() << ", "
+            << "task size: " << tasks_size;
         pod_.status = proto::kPodFailed;
         return -1;
     }
@@ -276,9 +276,9 @@ int PodManager::DoReloadStartPod () {
 
 void PodManager::LoopChangePodStatus() {
     MutexLock lock(&mutex_);
-    LOG(INFO)\
-        << "loop change pod status"\
-        << ", pod status: " << proto::PodStatus_Name(pod_.status);
+    LOG(INFO)
+        << "loop change pod status, "
+        << "pod status: " << proto::PodStatus_Name(pod_.status);
     switch (pod_.status) {
     case proto::kPodPending:
         PendingPodCheck();
