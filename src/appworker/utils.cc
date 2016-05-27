@@ -505,15 +505,21 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path) {
     return true;
 }
 
-bool Append(const std::string& path, const std::string& content) {
-    std::ofstream f;
-    f.open(path.c_str(), std::ios::out | std::ios::app);
-    if (f.is_open()) {
-        f << content;
-        return true;
+bool Write(const std::string& path, const std::string& content) {
+    FILE* fd = ::fopen(path.c_str(), "we");
+    if (fd == NULL) {
+        fprintf(stderr, "open file %s failed", path.c_str());
+        return false;
     }
 
-    return false;
+    int ret = ::fprintf(fd, "%s", content.c_str());
+    ::fclose(fd);
+    if (ret <= 0) {
+        fprintf(stderr, "write file %s failed", path.c_str());
+        return false;
+    }
+
+    return true;
 }
 
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number) {
