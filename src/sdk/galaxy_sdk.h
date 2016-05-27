@@ -609,6 +609,7 @@ struct PodInfo {
     PodStatus status;
     std::string version;
     int64_t start_time;
+    int64_t update_time;
     int32_t fail_count;
 };
 struct JobInfo {

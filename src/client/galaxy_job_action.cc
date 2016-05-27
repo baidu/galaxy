@@ -175,13 +175,6 @@ bool JobAction::RemoveJob(const std::string& jobid) {
 
 bool JobAction::ListJobs() {
     
-    /*struct timeval t_start;
-    struct timeval t_finish;
-    double duration;
-
-    struct timeval tt_start;
-    gettimeofday(&tt_start, NULL);
-    */
     if(!this->Init()) {
         return false;
     }
@@ -192,15 +185,7 @@ bool JobAction::ListJobs() {
     resman_request.user = user_;
     std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics> containers;
 
-    //gettimeofday(&t_start, NULL);
-
     bool ret = resman_->ListContainerGroups(resman_request, &resman_response);
-
-    /*gettimeofday(&t_finish, NULL);
-    duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-    fprintf(stderr, "list container start time is %lf\n", t_start.tv_sec*1000000.0 + t_start.tv_usec);
-    fprintf(stderr, "list container finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
-    fprintf(stderr, "list container duration is %lf\n", duration);*/
 
     if (ret) {
         for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
@@ -216,14 +201,7 @@ bool JobAction::ListJobs() {
     ::baidu::galaxy::sdk::ListJobsRequest request;
     ::baidu::galaxy::sdk::ListJobsResponse response;
     request.user = user_;
-    
-    //gettimeofday(&t_start, NULL);
     ret = app_master_->ListJobs(request, &response);
-    /*gettimeofday(&t_finish, NULL);
-    duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-    fprintf(stderr, "list job start time is %lf\n", t_start.tv_sec*1000000.0 + t_start.tv_usec);
-    fprintf(stderr, "list job finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
-    fprintf(stderr, "list duration is %lf\n", duration);*/
     if (ret) {
         baidu::common::TPrinter jobs(12);
         jobs.AddRow(12, "", "id", "name", "type","status", "stat(r/p/dep/dea/f)", "replica", 
@@ -315,23 +293,12 @@ bool JobAction::ListJobs() {
 
             }
         }
-        //gettimeofday(&t_start, NULL);
         printf("%s\n", jobs.ToString().c_str());
-        /*gettimeofday(&t_finish, NULL);
-        duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-        fprintf(stderr, "print start time is %lf\n", t_start.tv_sec*1000000.0 + t_start.tv_usec);
-        fprintf(stderr, "print finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
-        fprintf(stderr, "print time is %lf\n", duration);*/
     } else {
         printf("List job failed for reason %s:%s\n", 
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
 
-    /*gettimeofday(&t_finish, NULL);
-    duration = (t_finish.tv_sec - tt_start.tv_sec)*1000000.0 + (t_finish.tv_usec - tt_start.tv_usec);
-    fprintf(stderr, "all start time is %lf\n", tt_start.tv_sec*1000000.0 + tt_start.tv_usec);
-    fprintf(stderr, "all finish time is %lf\n", t_finish.tv_sec*1000000.0 + t_finish.tv_usec);
-    fprintf(stderr, "all time is %lf\n", duration);*/
     return ret;
 }
 
@@ -510,18 +477,19 @@ bool JobAction::ShowJob(const std::string& jobid) {
         }
 
         printf("podinfo infomation\n");
-        ::baidu::common::TPrinter pods(7);
-        pods.AddRow(7, "", "podid", "endpoint", "status", "version", "start_time", "fail_count");
+        ::baidu::common::TPrinter pods(8);
+        pods.AddRow(8, "", "podid", "endpoint", "version", "status", "fail_count", "start_time", "update_time");
         for (uint32_t i = 0; i < response.job.pods.size(); ++i) {
             size_t pos = response.job.pods[i].podid.rfind("."); 
             std::string podid(response.job.pods[i].podid, pos + 1, response.job.pods[i].podid.size()- (pos + 1));
-            pods.AddRow(7, ::baidu::common::NumToString(i).c_str(),
+            pods.AddRow(8, ::baidu::common::NumToString(i).c_str(),
                             response.job.pods[i].podid.c_str(),
                             response.job.pods[i].endpoint.c_str(),
-                            StringPodStatus(response.job.pods[i].status).c_str(),
                             response.job.pods[i].version.c_str(),
+                            StringPodStatus(response.job.pods[i].status).c_str(),
+                            ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str(),
                             FormatDate(response.job.pods[i].start_time).c_str(),
-                            ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str()
+                            FormatDate(response.job.pods[i].update_time).c_str()
                           );
             }
             printf("%s\n", pods.ToString().c_str());
