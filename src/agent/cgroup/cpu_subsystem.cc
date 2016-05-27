@@ -31,7 +31,6 @@ baidu::galaxy::util::ErrorCode CpuSubsystem::Construct() {
     assert(!container_id_.empty());
     const std::string cpu_path = this->Path();
     boost::filesystem::path path(cpu_path);
-    int ret = -1;
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path) && !boost::filesystem::create_directories(path, ec)) {

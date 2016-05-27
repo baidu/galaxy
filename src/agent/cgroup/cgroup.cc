@@ -100,8 +100,6 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
         return ERRORCODE_OK;
     }
 
-    int ret = 0;
-
     baidu::galaxy::util::ErrorCode err = freezer_->Freeze();
     if (0 != err.Code()) {
         return ERRORCODE(-1, "freeze failed: %s",
