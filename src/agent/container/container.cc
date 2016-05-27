@@ -242,11 +242,16 @@ int Container::Destroy_()
         }
     }
 
+    LOG(INFO) << "container " << id_.CompactId() << " suceed in killing appwork whose pid is " << pid;
     // destroy cgroup
     for (size_t i = 0; i < cgroup_.size(); i++) {
-        if (0 != cgroup_[i]->Destroy()) {
+        baidu::galaxy::util::ErrorCode ec = cgroup_[i]->Destroy();
+        if (0 != ec.Code()) {
+            LOG(WARNING) << "container " << id_.CompactId()
+                         << " failed in destroying cgroup: " << ec.Message();
             return -1;
         }
+        LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy cgroup";
     }
 
     // destroy volum
@@ -256,6 +261,7 @@ int Container::Destroy_()
                      << " " << ec.Message();
         return -1;
     }
+    LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy volum";
 
     // mv to gc queue
     return 0;
@@ -265,31 +271,31 @@ int Container::RunRoutine(void*)
 {
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
-        std::cerr << "mount root fs failed" << std::endl;
+        std::cout << "mount root fs failed" << std::endl;
         return -1;
     }
 
     ::chdir(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str());
 
-    LOG(INFO) << "succed in mounting root fs";
+    std::cout << "succed in mounting root fs\n";
     // change root
     if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str())) {
-        LOG(WARNING) << "chroot failed: " << strerror(errno);
+        std::cout << "chroot failed: " << strerror(errno) << std::endl;
         return -1;
     }
-    LOG(INFO) << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId());
+    std::cout << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId()) << std::endl;
     // change user or sh -l
     //baidu::galaxy::util::ErrorCode ec = baidu::galaxy::user::Su(desc_.run_user());
     //if (ec.Code() != 0) {
-    //    LOG(WARNING) << "su user " << desc_.run_user() << " failed: " << ec.Message();
+    //    std::cout << "su user " << desc_.run_user() << " failed: " << ec.Message() << std::endl;
     //    return -1;
     //}
-    LOG(INFO) << "su user " << desc_.run_user() << " sucessfully";
+    std::cout << "su user " << desc_.run_user() << " sucessfully" << std::endl;
 
 
     // export env
     // start appworker
-    LOG(INFO) << "start cmd: /bin/sh -c " << desc_.cmd_line();
+    std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
     std::string cmd_line = FLAGS_cmd_line;
     //char* argv[] = {"cat", NULL};
     char* argv[] = {
@@ -302,7 +308,7 @@ int Container::RunRoutine(void*)
 
     ExportEnv();
     ::execv("/bin/sh", argv);
-    LOG(WARNING) << "exec cmd " << cmd_line << " failed: " << strerror(errno);
+    std::cout << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
     return -1;
 }
 
