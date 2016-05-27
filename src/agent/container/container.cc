@@ -163,7 +163,8 @@ int Container::Construct_()
         cg->SetContainerId(id_.SubId());
         cg->SetDescrition(desc);
 
-        if (0 != cg->Construct()) {
+        baidu::galaxy::util::ErrorCode err = cg->Construct();
+        if (0 != err.Code()) {
             LOG(WARNING) << "fail in constructing cgroup, cgroup id is " << cg->Id()
                          << ", container id is " << id_.CompactId();
             break;
@@ -180,7 +181,12 @@ int Container::Construct_()
                      << " real size is " << cgroup_.size();
 
         for (size_t i = 0; i < cgroup_.size(); i++) {
-            cgroup_[i]->Destroy();
+            baidu::galaxy::util::ErrorCode err = cgroup_[i]->Destroy();
+            if (err.Code() != 0) {
+                LOG(WARNING) << id_.CompactId()
+                    << " construc failed and destroy failed: " 
+                    << err.Message();
+            }
         }
 
         return -1;

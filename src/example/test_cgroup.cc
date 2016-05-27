@@ -42,8 +42,9 @@ int main(int argc, char** argv)
     cgroup->SetDescrition(description);
     cgroup->SetContainerId("container_id");
 
-    if (0 != cgroup->Construct()) {
-        std::cerr << "construct cgroup failed" << std::endl;
+    baidu::galaxy::util::ErrorCode err =  cgroup->Construct();
+    if (0 != err.Code()) {
+        std::cerr << "construct cgroup failed: " << err.Message() << std::endl;
     } else {
         std::cerr << "construct cgroup successfully" << std::endl;
     }
