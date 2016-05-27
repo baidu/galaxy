@@ -425,7 +425,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
                 << "refresh pod id : " << request->podid() << " status :"
                 << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()
                 << "END DEBUG";
-        if (request->status() != kPodDeploying &&
+        if (request->status() >= kPodServing &&
             job->deploying_pods_.find(request->podid()) != 
             job->deploying_pods_.end()) {
             job->deploying_pods_.erase(request->podid());
@@ -494,7 +494,7 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
     PodInfo* podinfo = pod_it->second;
     //fresh
     podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
-    if (request->status() != kPodDeploying &&
+    if (request->status() >= kPodServing &&
         job->deploying_pods_.find(request->podid()) != 
         job->deploying_pods_.end()) {
         job->deploying_pods_.erase(request->podid());
@@ -511,6 +511,7 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
         } else {
             rlt_code = kError;
         }
+        
     } else {
         podinfo->set_version(job->curent_version_);
     }
