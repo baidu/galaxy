@@ -235,22 +235,13 @@ void AppWorkerImpl::FetchTask() {
     // 1.validate pod status
     Pod pod;
     pod_manager_.QueryPod(pod);
-    // need exit or not
-    switch (pod.status) {
-    case proto::kPodFinished: {
-        LOG(INFO) << "pod finished";
-        std::string value = boost::lexical_cast<std::string>(0);
-        file::Write(FLAGS_appworker_exit_file, value);
-        exit(0);
-    }
-    case proto::kPodTerminated:{
+
+    // exit or not, only when terminated, appworker exit
+    if (proto::kPodTerminated == pod.status) {
         LOG(INFO) << "pod terminated";
         std::string value = boost::lexical_cast<std::string>(1);
         file::Write(FLAGS_appworker_exit_file, value);
-        exit(1);
-    }
-    default:
-        break;
+        exit(0);
     }
 
     // 2.validate stub
@@ -272,6 +263,12 @@ void AppWorkerImpl::FetchTask() {
     request->set_start_time(start_time_);
     request->set_update_time(update_time_);
     request->set_status(pod.status);
+    request->set_reload_status(pod.reload_status);
+    LOG(INFO)\
+        << "fetch task"
+        << ", status: " << proto::PodStatus_Name(pod.status)
+        << ", reload_status: " << proto::PodStatus_Name(pod.reload_status);
+
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
     fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback,
                                       this, _1, _2, _3, _4);
@@ -296,15 +293,21 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
         ErrorCode error_code = response->error_code();
+        LOG(INFO)\
+            << "fetch task call back"
+            << ", update_time: " << response->update_time()\
+            << ", status: " << proto::Status_Name(error_code.status());
+
         if (proto::kJobNotFound == error_code.status()) {
             LOG(WARNING) << "fetch task: kJobNotFound";
-            exit(-1);
+            break;
         }
         if (proto::kTerminate == error_code.status()) {
             LOG(WARNING) << "fetch task: kTerminate";
             pod_manager_.TerminatePod();
             break;
         }
+
         // ignore expired actions
         if (!response->has_update_time()
             || response->update_time() <= update_time_) {
@@ -312,6 +315,8 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
         update_time_ = response->update_time();
+        LOG(INFO) << "update_time updated";
+
         if (!response->has_pod()) {
             LOG(WARNING) << "ignore empty pod description";
             break;

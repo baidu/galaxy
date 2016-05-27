@@ -111,6 +111,7 @@ message FetchTaskRequest {
     optional PodStatus status = 5;
     optional int32 fail_count = 6;
     optional int64 update_time = 7;
+    optional PodStatus reload_status = 8;
 }
 
 message FetchTaskResponse {
