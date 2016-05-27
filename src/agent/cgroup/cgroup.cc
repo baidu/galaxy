@@ -37,7 +37,7 @@ void Cgroup::SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgrou
     cgroup_ = cgroup;
 }
 
-int Cgroup::Construct()
+baidu::galaxy::util::ErrorCode Cgroup::Construct()
 {
     assert(subsystem_.empty());
     std::vector<std::string> subsystems;
@@ -59,10 +59,12 @@ int Cgroup::Construct()
             subsystem_.push_back(ss);
         }
 
-        if (0 != ss->Construct()) {
+        baidu::galaxy::util::ErrorCode err = ss->Construct();
+        if (0 != err.Code()) {
             LOG(WARNING) << "construct subsystem " << ss->Name().c_str()
                          << " for cgroup " << ss->Path().c_str()
-                         << " failed";
+                         << " failed: "
+                         << err.Message();
             ok = false;
             break;
         }
@@ -85,10 +87,10 @@ int Cgroup::Construct()
             freezer_.reset();
         }
 
-        return -1;
+        return ERRORCODE(-1, "");
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
 // Fixme: freeze first, and than kill
@@ -100,8 +102,10 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 
     int ret = 0;
 
-    if (0 != freezer_->Freeze()) {
-        return ERRORCODE(-1, "freeze failed");
+    baidu::galaxy::util::ErrorCode err = freezer_->Freeze();
+    if (0 != err.Code()) {
+        return ERRORCODE(-1, "freeze failed: %s",
+                    err.Message().c_str());
     }
 
     std::vector<int> pids;
@@ -110,8 +114,11 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
         ::kill(pids[i], SIGKILL);
     }
 
-    if (0 != freezer_->Thaw()) {
-        return ERRORCODE(-1, "thaw failed");
+    err = freezer_->Thaw();
+    if (0 != err.Code()) {
+        return ERRORCODE(-1, 
+                    "thaw failed: %s",
+                    err.Message().c_str());
     }
 
     pids.clear();
