@@ -4,13 +4,14 @@
 
 #include "subsystem.h"
 #include "protocol/galaxy.pb.h"
+#include "gflags/gflags.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
-
-#include "gflags/gflags.h"
+#include <sys/types.h>
+#include <signal.h>
 
 #include <stdio.h>
 
@@ -30,11 +31,18 @@ std::string Subsystem::RootPath(const std::string& name)
 
 baidu::galaxy::util::ErrorCode Subsystem::Destroy()
 {
+
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec)) {
         return ERRORCODE_OK;
+    }
+
+    std::vector<int> pids;
+    this->GetProcs(pids);
+    for (size_t i = 0; i < pids.size(); i++) {
+        ::kill(pids[i], SIGKILL);
     }
 
     boost::filesystem::remove_all(path, ec);

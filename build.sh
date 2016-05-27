@@ -6,5 +6,5 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 echo "-->(2/2) call scons to build project"
-scons
+scons -j 8
 
