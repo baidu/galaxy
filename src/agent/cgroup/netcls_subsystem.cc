@@ -13,16 +13,19 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-NetclsSubsystem::NetclsSubsystem() {
+NetclsSubsystem::NetclsSubsystem()
+{
 }
 
 NetclsSubsystem::~NetclsSubsystem() {}
 
-std::string NetclsSubsystem::Name() {
+std::string NetclsSubsystem::Name()
+{
     return "net_cls";
 }
 
-baidu::galaxy::util::ErrorCode NetclsSubsystem::Construct() {
+baidu::galaxy::util::ErrorCode NetclsSubsystem::Construct()
+{
     assert(NULL != cgroup_.get());
     assert(!container_id_.empty());
     boost::filesystem::path path(this->Path());
@@ -30,7 +33,7 @@ baidu::galaxy::util::ErrorCode NetclsSubsystem::Construct() {
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
         return ERRORCODE(-1, "create file %s failed: ",
-                    ec.message().c_str());
+                ec.message().c_str());
     }
 
     path.append("net_cls.bind_port_range");
@@ -42,7 +45,8 @@ baidu::galaxy::util::ErrorCode NetclsSubsystem::Construct() {
     return baidu::galaxy::cgroup::Attach(path.string(), buf);
 }
 
-void NetclsSubsystem::PortRange(int* minp, int* maxp) {
+void NetclsSubsystem::PortRange(int* minp, int* maxp)
+{
     int min_port = 65535;
     int max_port = 0;
 
@@ -72,12 +76,14 @@ void NetclsSubsystem::PortRange(int* minp, int* maxp) {
     }
 }
 
-boost::shared_ptr<Subsystem> NetclsSubsystem::Clone() {
+boost::shared_ptr<Subsystem> NetclsSubsystem::Clone()
+{
     boost::shared_ptr<Subsystem> ret(new NetclsSubsystem());
     return ret;
 }
 
-baidu::galaxy::util::ErrorCode NetclsSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+baidu::galaxy::util::ErrorCode NetclsSubsystem::Collect(std::map<std::string, AutoValue>& stat)
+{
     return ERRORCODE_OK;
 }
 

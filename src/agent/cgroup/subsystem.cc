@@ -31,7 +31,6 @@ std::string Subsystem::RootPath(const std::string& name)
 
 baidu::galaxy::util::ErrorCode Subsystem::Destroy()
 {
-
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
@@ -41,6 +40,7 @@ baidu::galaxy::util::ErrorCode Subsystem::Destroy()
 
     std::vector<int> pids;
     this->GetProcs(pids);
+
     for (size_t i = 0; i < pids.size(); i++) {
         ::kill(pids[i], SIGKILL);
     }
@@ -56,6 +56,7 @@ baidu::galaxy::util::ErrorCode Subsystem::Destroy()
     if (boost::filesystem::exists(path, ec)) {
         return ERRORCODE(-1, "%s exist still after removing");
     }
+
     return ERRORCODE_OK;
 }
 
@@ -75,8 +76,8 @@ baidu::galaxy::util::ErrorCode Subsystem::Attach(pid_t pid)
 
     if (!boost::filesystem::exists(proc_path, ec)) {
         return ERRORCODE(-1, "no such file %s: ",
-                    proc_path.string().c_str(),
-                    ec.message().c_str());
+                   proc_path.string().c_str(),
+                   ec.message().c_str());
     }
 
     return baidu::galaxy::cgroup::Attach(proc_path.c_str(), int64_t(pid), true);
@@ -90,16 +91,16 @@ baidu::galaxy::util::ErrorCode Subsystem::GetProcs(std::vector<int>& pids)
 
     if (!boost::filesystem::exists(proc_path, ec)) {
         return ERRORCODE(-1, "no such file %s: %s",
-                    proc_path.string().c_str(),
-                    ec.message().c_str());
+                proc_path.string().c_str(),
+                ec.message().c_str());
     }
 
     FILE* fin = ::fopen(proc_path.string().c_str(), "re");
 
     if (NULL == fin) {
-        return ERRORCODE(-1, 
-                    "failed in open file: %s",
-                    proc_path.string().c_str());
+        return ERRORCODE(-1,
+                "failed in open file: %s",
+                proc_path.string().c_str());
     }
 
     std::string value;
@@ -119,12 +120,14 @@ baidu::galaxy::util::ErrorCode Subsystem::GetProcs(std::vector<int>& pids)
 
     if (::ferror(fin) != 0) {
         ::fclose(fin);
-        return ERRORCODE(-1, 
-                    "close file faile: %s",
-                    proc_path.string().c_str());
+        return ERRORCODE(-1,
+                "close file faile: %s",
+                proc_path.string().c_str());
     }
+
     ::fclose(fin);
     boost::algorithm::trim(value);
+
     if (value.empty()) {
         return ERRORCODE_OK;
     }
@@ -160,18 +163,18 @@ baidu::galaxy::util::ErrorCode Attach(const std::string& file, const std::string
     }
 
     if (NULL == fd) {
-        return PERRORCODE(-1, errno, 
-                    "open file(%s) failed",
-                    file.c_str());
+        return PERRORCODE(-1, errno,
+                "open file(%s) failed",
+                file.c_str());
     }
 
     int ret = ::fprintf(fd, "%s\n", value.c_str());
     ::fclose(fd);
 
     if (ret <= 0) {
-        return PERRORCODE(-1, errno, 
-                    "close file(%s) failed",
-                    file.c_str());
+        return PERRORCODE(-1, errno,
+                "close file(%s) failed",
+                file.c_str());
     }
 
     return ERRORCODE_OK;
