@@ -4,6 +4,7 @@
 #pragma once
 
 #include "util/error_code.h"
+#include "cgroup/metrix.h"
 #include <boost/shared_ptr.hpp>
 #include <google/protobuf/message.h>
 
@@ -82,20 +83,6 @@ private:
     };
     Value value_;
     Type type_;
-};
-
-class Metrix {
-public:
-    Metrix() :
-        cpu_usertime(0L),
-        cpu_systime(0L),
-        memory_used_in_byte(0L),
-        timestamp(0) {}
-
-    int64_t cpu_usertime;
-    int64_t cpu_systime;
-    int64_t memory_used_in_byte;
-    int64_t timestamp;
 };
 
 class Subsystem {
