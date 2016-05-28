@@ -2,41 +2,41 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "file_stream.h"
+#include "input_stream_file.h"
 #include <string.h>
 #include <errno.h>
 
 namespace baidu {
 namespace galaxy {
 namespace file {
-FileInputStream::FileInputStream(const std::string& path) :
+InputStreamFile::InputStreamFile(const std::string& path) :
     path_(path),
     file_(NULL) {
     file_ = fopen(path.c_str(), "r");
     errno_ = errno;
 }
 
-FileInputStream::~FileInputStream() {
+InputStreamFile::~InputStreamFile() {
     if (NULL != file_) {
         fclose(file_);
         errno_ = errno;
     }
 }
 
-bool FileInputStream::IsOpen() {
+bool InputStreamFile::IsOpen() {
     return NULL != file_;
 }
 
-bool FileInputStream::Eof() {
+bool InputStreamFile::Eof() {
     assert(NULL != file_);
     return 0 != feof(file_);
 }
 
-void FileInputStream::GetLastError(baidu::galaxy::util::ErrorCode& ec) {
+void InputStreamFile::GetLastError(baidu::galaxy::util::ErrorCode& ec) {
     ec = ERRORCODE(errno_, "%s", strerror(errno_));
 }
 
-baidu::galaxy::util::ErrorCode FileInputStream::ReadLine(std::string& line) {
+baidu::galaxy::util::ErrorCode InputStreamFile::ReadLine(std::string& line) {
     assert(IsOpen());
     size_t size;
     char* buf = NULL;
@@ -55,7 +55,7 @@ baidu::galaxy::util::ErrorCode FileInputStream::ReadLine(std::string& line) {
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode FileInputStream::Read(void* buf, size_t& size) {
+baidu::galaxy::util::ErrorCode InputStreamFile::Read(void* buf, size_t& size) {
     assert(IsOpen());
     assert(NULL != buf);
     assert(size > 0);
