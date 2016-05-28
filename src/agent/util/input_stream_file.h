@@ -11,10 +11,10 @@ namespace baidu {
 namespace galaxy {
 namespace file {
 
-class FileInputStream : public boost::noncopyable {
+class InputStreamFile : public boost::noncopyable {
 public:
-    explicit FileInputStream(const std::string& path);
-    ~FileInputStream();
+    explicit InputStreamFile(const std::string& path);
+    ~InputStreamFile();
 
     bool IsOpen();
     bool Eof();
