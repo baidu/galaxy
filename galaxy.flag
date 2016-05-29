@@ -7,3 +7,4 @@
 --nexus_addr=
 --nexus_root=/galaxy3
 --resman_path=/resman
+--appmaster=/appmaster

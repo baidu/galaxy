@@ -17,6 +17,7 @@
 
 DECLARE_string(nexus_root);
 DECLARE_string(nexus_addr);
+DECLARE_string(jobs_store_path);
 DECLARE_string(appworker_cmdline);
 
 const std::string sMASTERLock = "/appmaster_lock";
@@ -45,8 +46,32 @@ void AppMasterImpl::Init() {
     }
     LOG(INFO) << "init resource manager watcher successfully";
     job_manager_.Start();
+    ReloadAppInfo();
     running_ = true;
     return;
+}
+
+void AppMasterImpl::ReloadAppInfo() {
+    std::string start_key = FLAGS_nexus_root + FLAGS_jobs_store_path + "/";
+    std::string end_key = start_key + "~";
+    ::galaxy::ins::sdk::ScanResult* result = nexus_->Scan(start_key, end_key);
+    int job_amount = 0;
+    while (!result->Done()) {
+        assert(result->Error() == ::galaxy::ins::sdk::kOK);
+        std::string key = result->Key();
+        std::string job_raw_data = result->Value();
+        JobInfo job_info;
+        bool ok = job_info.ParseFromString(job_raw_data);
+        if (ok) {
+            LOG(INFO) << "reload job: " << job_info.jobid();
+            job_manager_.ReloadJobInfo(job_info);
+        } else {
+            LOG(WARNING) <<  "faild to parse job_info: " << key;
+        }
+        result->Next();
+        job_amount++;
+    }
+    LOG(INFO) << "reload all job desc finish, total#: " << job_amount;
 }
 
 void AppMasterImpl::HandleResmanChange(const std::string& new_endpoint) {
