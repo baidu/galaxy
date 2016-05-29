@@ -1155,6 +1155,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                 } else if (remote_st == kContainerError) {
                     cmd.action = kDestroyContainer;
                     commands.push_back(cmd);
+                    ChangeStatus(container_local, kContainerPending);
                 } else {
                     cmd.action = kCreateContainer;
                     cmd.desc = container_group->container_desc;
