@@ -61,7 +61,7 @@ bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* re
                                         &::baidu::galaxy::proto::AppMaster_Stub::SubmitJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
 
@@ -86,7 +86,7 @@ bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* re
                                         &::baidu::galaxy::proto::AppMaster_Stub::UpdateJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
 
@@ -110,7 +110,7 @@ bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response
                                         &::baidu::galaxy::proto::AppMaster_Stub::StopJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
     response->error_code.status = (Status)pb_response.error_code().status();
@@ -131,7 +131,7 @@ bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* re
                                         &::baidu::galaxy::proto::AppMaster_Stub::RemoveJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
 
@@ -188,7 +188,7 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
                                         &::baidu::galaxy::proto::AppMaster_Stub::ShowJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
 
@@ -212,6 +212,7 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
         pod.status = (PodStatus)pb_response.job().pods(i).status();
         pod.version = pb_response.job().pods(i).version();
         pod.start_time = pb_response.job().pods(i).start_time();
+        pod.update_time = pb_response.job().pods(i).update_time();
         pod.fail_count = pb_response.job().pods(i).fail_count();
         response->job.pods.push_back(pod);
     }
@@ -229,7 +230,7 @@ bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse*
                                         &::baidu::galaxy::proto::AppMaster_Stub::ExecuteCmd,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
 

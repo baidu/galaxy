@@ -20,14 +20,14 @@ FreezerSubsystem::~FreezerSubsystem()
 {
 }
 
-int FreezerSubsystem::Freeze()
+baidu::galaxy::util::ErrorCode FreezerSubsystem::Freeze()
 {
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
     return baidu::galaxy::cgroup::Attach(path.string(), "FROZEN", false);
 }
 
-int FreezerSubsystem::Thaw()
+baidu::galaxy::util::ErrorCode FreezerSubsystem::Thaw()
 {
     boost::filesystem::path path(this->Path());
     path.append("freezer.state");
@@ -50,16 +50,18 @@ std::string FreezerSubsystem::Name()
     return "freezer";
 }
 
-int FreezerSubsystem::Construct()
+baidu::galaxy::util::ErrorCode FreezerSubsystem::Construct()
 {
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
-        return -1;
+        return ERRORCODE(-1, "creat file(%s) failed: %s",
+                    path.string().c_str(),
+                    ec.message().c_str());
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
 

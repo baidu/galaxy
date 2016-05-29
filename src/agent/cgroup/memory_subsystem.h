@@ -17,7 +17,7 @@ public:
 
     boost::shared_ptr<Subsystem> Clone();
     std::string Name();
-    int Construct();
+    baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode Collect(Metrix& metrix);
 };
 

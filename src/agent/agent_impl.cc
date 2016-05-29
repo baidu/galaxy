@@ -78,6 +78,8 @@ void AgentImpl::Setup()
         exit(1);
     }
 
+    cm_->Setup();
+
     baidu::galaxy::path::SetRootPath(FLAGS_galaxy_root_path);
     baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     baidu::galaxy::container::ContainerStatus::Setup();
@@ -89,7 +91,6 @@ void AgentImpl::Setup()
         exit(1);
     }
     LOG(INFO) << "init resource manager watcher successfully";
-
 
     heartbeat_pool_.AddTask(boost::bind(&AgentImpl::KeepAlive, this, FLAGS_keepalive_interval));
     LOG(INFO) << "start keep alive thread, interval is " << FLAGS_keepalive_interval << "ms";

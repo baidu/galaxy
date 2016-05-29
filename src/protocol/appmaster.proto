@@ -84,6 +84,9 @@ message JobInfo {
     optional string version = 7;
     optional int64 create_time = 8;
     optional int64 update_time = 9;
+    repeated JobDescription descs = 10;
+    optional User user = 11;
+    optional UpdateAction action = 12;
 }
 
 message ShowJobResponse {
@@ -111,6 +114,7 @@ message FetchTaskRequest {
     optional PodStatus status = 5;
     optional int32 fail_count = 6;
     optional int64 update_time = 7;
+    optional PodStatus reload_status = 8;
 }
 
 message FetchTaskResponse {

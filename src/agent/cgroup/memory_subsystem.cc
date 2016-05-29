@@ -40,7 +40,7 @@ baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(Metrix& metrix)
     return ERRORCODE_OK;
 }
 
-int MemorySubsystem::Construct()
+baidu::galaxy::util::ErrorCode MemorySubsystem::Construct()
 {
     assert(!this->container_id_.empty());
     assert(NULL != this->cgroup_.get());
@@ -48,37 +48,49 @@ int MemorySubsystem::Construct()
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
-        return -1;
+        return ERRORCODE(-1, "failed in creating file %s: %s",
+                    path.c_str(),
+                    ec.message().c_str());
     }
 
     boost::filesystem::path memory_limit_path = path;
     memory_limit_path.append("memory.limit_in_bytes");
 
-    if (0 != baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(),
-            this->cgroup_->memory().size(), false)) {
-        return -1;
+    baidu::galaxy::util::ErrorCode err;
+    err = baidu::galaxy::cgroup::Attach(memory_limit_path.c_str(),
+                this->cgroup_->memory().size(), false);
+    if (0 != err.Code()) {
+        return ERRORCODE(-1,
+                    "attch memory.limit_in_bytes failed: %s", 
+                    err.Message().c_str());
     }
 
     int64_t excess_mode = this->cgroup_->memory().excess() ? 1L : 0L;
     boost::filesystem::path excess_mode_path = path;
     excess_mode_path.append("memory.excess_mode");
 
-    if (0 != baidu::galaxy::cgroup::Attach(excess_mode_path.c_str(),
-            excess_mode,
-            false)) {
-        return -1;
+    err = baidu::galaxy::cgroup::Attach(excess_mode_path.c_str(),
+                excess_mode,
+                false);
+    if (0 != err.Code()) {
+        return ERRORCODE(-1,
+                    "attch memory.excess_mode failed: %s",
+                    err.Message().c_str());
     }
 
     boost::filesystem::path kill_mode_path = path;
     kill_mode_path.append("memory.kill_mode");
+    err = baidu::galaxy::cgroup::Attach(kill_mode_path.c_str(),
+                0L,
+                false);
 
-    if (0 != baidu::galaxy::cgroup::Attach(kill_mode_path.c_str(),
-            0L,
-            false)) {
-        return -1;
+    if (0 != err.Code()) {
+        return ERRORCODE(-1,
+                    "attch memory.kill_mode failed: %s",
+                    err.Message().c_str());
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> MemorySubsystem::Clone()
