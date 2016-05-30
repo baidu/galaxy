@@ -6,10 +6,6 @@
 #include <string>
 #include <stdint.h>
 #include <vector>
-#include "rpc/rpc_client.h"
-#include "ins_sdk.h"
-//#include "protocol/resman.pb.h"
-//#include "protocol/galaxy.pb.h"
 
 namespace baidu {
 namespace galaxy {

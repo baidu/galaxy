@@ -5,35 +5,22 @@
 #ifndef BAIDU_GALAXY_SDK_APPMASTER_H
 #define BAIDU_GALAXY_SDK_APPMASTER_H
 
-#include "ins_sdk.h"
-#include "protocol/appmaster.pb.h"
-#include "protocol/galaxy.pb.h"
-#include "rpc/rpc_client.h"
+#include "galaxy_sdk.h"
 
 namespace baidu {
 namespace galaxy {
-
-class RpcClient;
-
 namespace sdk {
 
 class AppMaster {
 public:
-    AppMaster();
-    ~AppMaster();
-    bool GetStub();
-    bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response);
-    bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response);
-    bool StopJob(const StopJobRequest& request, StopJobResponse* response);
-    bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response);
-    bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response);
-    bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response);
-    bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response);
-private:
-    ::galaxy::ins::sdk::InsSDK* nexus_;
-    RpcClient* rpc_client_;
-    ::baidu::galaxy::proto::AppMaster_Stub* appmaster_stub_;
-    std::string full_key_;
+    static AppMaster* ConnectAppMaster();
+    virtual bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) = 0;
+    virtual bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) = 0;
+    virtual bool StopJob(const StopJobRequest& request, StopJobResponse* response) = 0;
+    virtual bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) = 0;
+    virtual bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response) = 0;
+    virtual bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response) = 0;
+    virtual bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) = 0;
 };
 
 } //end namespace sdk

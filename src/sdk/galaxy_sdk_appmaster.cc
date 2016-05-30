@@ -6,6 +6,8 @@
 #include "rpc/rpc_client.h"
 #include "ins_sdk.h"
 #include <gflags/gflags.h>
+#include "protocol/galaxy.pb.h"
+#include "protocol/appmaster.pb.h"
 #include "galaxy_sdk_appmaster.h"
 
 //nexus
@@ -15,27 +17,42 @@ DECLARE_string(appmaster_path);
 
 namespace baidu {
 namespace galaxy {
-
-class RpcClient;
-
 namespace sdk {
 
-AppMaster::AppMaster() : rpc_client_(NULL),
-                       appmaster_stub_(NULL) {
-    full_key_ = FLAGS_nexus_root + FLAGS_appmaster_path; 
-	rpc_client_ = new RpcClient();
-    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr); 
-}
-
-AppMaster::~AppMaster() {
-	delete rpc_client_;
-    if (NULL != appmaster_stub_) {
-        delete appmaster_stub_;
+class AppMasterImpl : public AppMaster {
+public:
+    AppMasterImpl() : rpc_client_(NULL),
+                      appmaster_stub_(NULL) {
+        full_key_ = FLAGS_nexus_root + FLAGS_appmaster_path;
+        rpc_client_ = new RpcClient();
+        nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
     }
-    delete nexus_;
-}
 
-bool AppMaster::GetStub() {
+    virtual ~AppMasterImpl() {
+        delete rpc_client_;
+        if (NULL != appmaster_stub_) {
+            delete appmaster_stub_;
+        }
+        delete nexus_;
+    }
+
+    bool GetStub();
+    bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response);
+    bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response);
+    bool StopJob(const StopJobRequest& request, StopJobResponse* response);
+    bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response);
+    bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response);
+    bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response);
+    bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response);
+private:
+    ::galaxy::ins::sdk::InsSDK* nexus_;
+    ::baidu::galaxy::RpcClient* rpc_client_;
+    ::baidu::galaxy::proto::AppMaster_Stub* appmaster_stub_;
+    std::string full_key_;
+
+};
+
+bool AppMasterImpl::GetStub() {
     std::string endpoint;
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Get(full_key_, &endpoint, &err);
@@ -51,7 +68,7 @@ bool AppMaster::GetStub() {
     return true;
 }
 
-bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) {
+bool AppMasterImpl::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) {
     ::baidu::galaxy::proto::SubmitJobRequest pb_request;
     ::baidu::galaxy::proto::SubmitJobResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -75,7 +92,7 @@ bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* re
     return true;
 }
 
-bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) {
+bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) {
     ::baidu::galaxy::proto::UpdateJobRequest pb_request;
     ::baidu::galaxy::proto::UpdateJobResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -99,7 +116,7 @@ bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* re
     return true;
 }
 
-bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response) {
+bool AppMasterImpl::StopJob(const StopJobRequest& request, StopJobResponse* response) {
     ::baidu::galaxy::proto::StopJobRequest pb_request;
     ::baidu::galaxy::proto::StopJobResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -121,7 +138,7 @@ bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response
     return true;
 }
 
-bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) {
+bool AppMasterImpl::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) {
     ::baidu::galaxy::proto::RemoveJobRequest pb_request;
     ::baidu::galaxy::proto::RemoveJobResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -143,7 +160,7 @@ bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* re
     return true;
 }
 
-bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* response) {
+bool AppMasterImpl::ListJobs(const ListJobsRequest& request, ListJobsResponse* response) {
     ::baidu::galaxy::proto::ListJobsRequest pb_request;
     ::baidu::galaxy::proto::ListJobsResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -179,7 +196,7 @@ bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* respo
     return true;
 }
 
-bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response) {
+bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* response) {
     ::baidu::galaxy::proto::ShowJobRequest pb_request;
     ::baidu::galaxy::proto::ShowJobResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -220,7 +237,7 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
     return true;
 }
 
-bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) {
+bool AppMasterImpl::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) {
     ::baidu::galaxy::proto::ExecuteCmdRequest pb_request;
     ::baidu::galaxy::proto::ExecuteCmdResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -241,6 +258,15 @@ bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse*
     }
 
     return true;
+}
+
+AppMaster* AppMaster::ConnectAppMaster() {
+    AppMasterImpl* appmaster = new AppMasterImpl();
+    if (!appmaster->GetStub()) {
+        delete appmaster;
+        return NULL;
+    }
+    return appmaster;
 }
 
 

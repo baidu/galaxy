@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "ins_sdk.h"
 #include "galaxy_sdk_util.h"
 
 #ifndef GALAXY_SDK_UTIL_H
