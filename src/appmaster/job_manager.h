@@ -34,7 +34,7 @@ using ::baidu::galaxy::proto::kOk;
 using ::baidu::galaxy::proto::kError;
 using ::baidu::galaxy::proto::kTerminate;
 using ::baidu::galaxy::proto::kAddAgentFail;
-using ::baidu::galaxy::proto::kDeny;
+using ::baidu::galaxy::proto::kSuspend;
 using ::baidu::galaxy::proto::kJobNotFound;
 using ::baidu::galaxy::proto::kCreateContainerGroupFail;
 using ::baidu::galaxy::proto::kRemoveContainerGroupFail;
