@@ -236,7 +236,7 @@ enum Status {
    kError = 2,
    kTerminate = 3,
    kAddAgentFail = 4,
-   kDeny = 5,
+   kSuspend = 5,
    kJobNotFound = 6,
    kCreateContainerGroupFail = 7,
    kRemoveContainerGroupFail = 8,
