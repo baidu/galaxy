@@ -13,7 +13,7 @@ namespace sdk {
 
 class AppMaster {
 public:
-    static AppMaster* ConnectAppMaster();
+    static AppMaster* ConnectAppMaster(const std::string& nexus_addr, const std::string& path);
     virtual bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) = 0;
     virtual bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) = 0;
     virtual bool StopJob(const StopJobRequest& request, StopJobResponse* response) = 0;

@@ -21,11 +21,11 @@ namespace sdk {
 
 class AppMasterImpl : public AppMaster {
 public:
-    AppMasterImpl() : rpc_client_(NULL),
+    AppMasterImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
                       appmaster_stub_(NULL) {
-        full_key_ = FLAGS_nexus_root + FLAGS_appmaster_path;
+        full_key_ = path;
         rpc_client_ = new RpcClient();
-        nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
+        nexus_ = new ::galaxy::ins::sdk::InsSDK(nexus_addr);
     }
 
     virtual ~AppMasterImpl() {
@@ -260,8 +260,8 @@ bool AppMasterImpl::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdRespo
     return true;
 }
 
-AppMaster* AppMaster::ConnectAppMaster() {
-    AppMasterImpl* appmaster = new AppMasterImpl();
+AppMaster* AppMaster::ConnectAppMaster(const std::string& nexus_addr, const std::string& path) {
+    AppMasterImpl* appmaster = new AppMasterImpl(nexus_addr, path);
     if (!appmaster->GetStub()) {
         delete appmaster;
         return NULL;
