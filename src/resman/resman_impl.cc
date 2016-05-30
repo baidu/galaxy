@@ -620,6 +620,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
         done->Run();
         return;
     }
+    std::string old_version = old_meta.desc().version();
     new_meta = old_meta; //copy
     new_meta.set_update_interval(request->interval());
     new_meta.mutable_desc()->CopyFrom(request->desc());
@@ -642,6 +643,8 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     if (version_changed) {
         LOG(INFO) << "container version changed: " << new_version;
         new_meta.mutable_desc()->set_version(new_version);
+    } else {
+        new_meta.mutable_desc()->set_version(old_version);
     }
     if (replica_changed) {
         scheduler_->ChangeReplica(new_meta.id(),
@@ -688,16 +691,18 @@ void ResManImpl::ShowContainerGroup(::google::protobuf::RpcController* controlle
         MutexLock lock(&mu_);
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
         it = container_groups_.find(request->id());
-        if (it == container_groups_.end()) {
-            response->mutable_error_code()->set_status(proto::kError);
-            response->mutable_error_code()->set_reason("no such group");
-            done->Run();
-            return;
+        if (it != container_groups_.end()) {
+            response->mutable_desc()->CopyFrom(it->second.desc());
         }
-        response->mutable_desc()->CopyFrom(it->second.desc());
     }
     std::vector<proto::ContainerStatistics> containers;
-    scheduler_->ShowContainerGroup(request->id(), containers);
+    bool ret = scheduler_->ShowContainerGroup(request->id(), containers);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("no such group");
+        done->Run();
+        return;
+    }
     for (size_t i = 0; i < containers.size(); i++) {
         response->add_containers()->CopyFrom(containers[i]);
     }
@@ -1368,6 +1373,7 @@ void ResManImpl::CreateContainerCallback(std::string agent_endpoint,
                                          bool fail, int err) {
     boost::scoped_ptr<const proto::CreateContainerRequest> request_guard(request);
     boost::scoped_ptr<proto::CreateContainerResponse> response_guard(response);
+    VLOG(10) << "create response:" << response->DebugString();
     if (fail) {
         LOG(WARNING) << "rpc fail of creating container, err: " << err
                      << ", agent: " << agent_endpoint; 

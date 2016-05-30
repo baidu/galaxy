@@ -213,10 +213,7 @@ bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
             dynamic_port_count++;
         }
     }
-    if (has_determinate_port && (max_port - min_port + 1 > determinate_port_count) ) {
-        LOG(WARNING) << "the port range is not continuous: " << min_port << max_port;
-        return false;
-    }
+
     if (has_dynamic_port && has_determinate_port) {
         int start_port = max_port + 1;
         for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
