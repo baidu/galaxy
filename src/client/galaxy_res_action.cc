@@ -556,7 +556,7 @@ bool ResAction::RemoveAgent(const std::string& endpoint) {
 
 }
 
-bool ResAction::ListAgents() {
+bool ResAction::ListAgents(const std::vector<std::string>& options) {
     if(!this->Init()) {
         return false;
     }
@@ -643,7 +643,7 @@ bool ResAction::ListAgents() {
 
 }
 
-bool ResAction::ListAgentsByTag(const std::string& tag) {
+bool ResAction::ListAgentsByTag(const std::string& tag, const std::vector<std::string>& options) {
     if (tag.empty()) {
         return false;
     }
@@ -737,7 +737,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag) {
 }
 
 
-bool ResAction::ListAgentsByPool(const std::string& pool) {
+bool ResAction::ListAgentsByPool(const std::string& pool, const std::vector<std::string>& options) {
     if (pool.empty()) {
         return false;
     }
@@ -1068,7 +1068,7 @@ bool ResAction::GetPoolByAgent(const std::string& endpoint) {
 
     bool ret = resman_->GetPoolByAgent(request, &response);
     if (ret) {
-        printf("Pool is %s\n", response.pool.c_str());
+        printf("%s Pool is %s\n", endpoint.c_str(), response.pool.c_str());
     } else {
         printf("Get Pool failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());

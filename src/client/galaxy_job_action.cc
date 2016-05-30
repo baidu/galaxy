@@ -328,7 +328,6 @@ bool JobAction::ShowJob(const std::string& jobid) {
        ::baidu::common::TPrinter base(4);
        base.AddRow(4, "id", "status", "create_time", "update_time");
        base.AddRow(4, response.job.jobid.c_str(),
-                      response.job.version.c_str(),
                       StringJobStatus(response.job.status).c_str(),
                       FormatDate(response.job.create_time).c_str(),
                       FormatDate(response.job.update_time).c_str()
@@ -336,13 +335,12 @@ bool JobAction::ShowJob(const std::string& jobid) {
        printf("%s\n", base.ToString().c_str());
 
        printf("job description base infomation\n");
-       ::baidu::common::TPrinter desc_base(4);
+       ::baidu::common::TPrinter desc_base(3);
        desc_base.AddRow(3, "name", "type", "run_user");
        desc_base.AddRow(3, response.job.desc.name.c_str(),
-                     StringJobType(response.job.desc.type).c_str(),
-                     //response.job.desc.version.c_str(),
-                     response.job.desc.run_user.c_str()
-                 );
+                           StringJobType(response.job.desc.type).c_str(),
+                           response.job.desc.run_user.c_str()
+                       );
        printf("%s\n", desc_base.ToString().c_str());
         
        printf("job description deploy infomation\n");
@@ -480,23 +478,44 @@ bool JobAction::ShowJob(const std::string& jobid) {
 
         }
 
+        ::baidu::galaxy::sdk::ShowContainerGroupRequest resman_request;
+        ::baidu::galaxy::sdk::ShowContainerGroupResponse resman_response;
+        resman_request.user = user_;
+        resman_request.id = jobid;
+
+        ret = resman_->ShowContainerGroup(resman_request, &resman_response);
+
+        if (!ret) {
+        
+            printf("Show container group failed for reason %s:%s\n",
+                        StringStatus(resman_response.error_code.status).c_str(), resman_response.error_code.reason.c_str());
+            return false;
+        }
+    
+        std::map<std::string, ::baidu::galaxy::sdk::PodInfo> pods;
+        for (size_t i = 0; i < response.job.pods.size(); ++i) {
+            pods[response.job.pods[i].podid] = response.job.pods[i];
+        }
+
         printf("podinfo infomation\n");
-        ::baidu::common::TPrinter pods(8);
-        pods.AddRow(8, "", "podid", "endpoint", "version", "status", "fail_count", "start_time", "update_time");
-        for (uint32_t i = 0; i < response.job.pods.size(); ++i) {
-            size_t pos = response.job.pods[i].podid.rfind("."); 
-            std::string podid(response.job.pods[i].podid, pos + 1, response.job.pods[i].podid.size()- (pos + 1));
-            pods.AddRow(8, ::baidu::common::NumToString(i).c_str(),
-                            response.job.pods[i].podid.c_str(),
-                            response.job.pods[i].endpoint.c_str(),
-                            response.job.pods[i].version.c_str(),
-                            StringPodStatus(response.job.pods[i].status).c_str(),
-                            ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str(),
+        ::baidu::common::TPrinter tp_pods(10);
+        tp_pods.AddRow(10, "", "podid", "endpoint", "version", "status", "fail_count", "container_status", "last_error", "start_time", "update_time");
+        for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
+            size_t pos = resman_response.containers[i].id.rfind("."); 
+            std::string podid(resman_response.containers[i].id, pos + 1, resman_response.containers[i].id.size()- (pos + 1));
+            tp_pods.AddRow(10, ::baidu::common::NumToString(i).c_str(),
+                            podid.c_str(),
+                            resman_response.containers[i].endpoint.c_str(),
+                            pods[resman_response.containers[i].id].version.c_str(),
+                            StringPodStatus(pods[resman_response.containers[i].id].status).c_str(),
+                            ::baidu::common::NumToString(pods[resman_response.containers[i].id].fail_count).c_str(),
+                            StringContainerStatus(resman_response.containers[i].status).c_str(),
+                            StringResourceError(resman_response.containers[i].last_res_err).c_str(),
                             FormatDate(response.job.pods[i].start_time).c_str(),
                             FormatDate(response.job.pods[i].update_time).c_str()
                           );
             }
-            printf("%s\n", pods.ToString().c_str());
+            printf("%s\n", tp_pods.ToString().c_str());
 
 
     } else {
