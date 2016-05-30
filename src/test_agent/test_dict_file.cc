@@ -32,18 +32,43 @@ TEST_F(TestDictFile, nornal) {
         EXPECT_EQ(ec.Code(), 0) << ec.Message();
     }
 
-    std::stringstream sskey1;
-    sskey1 << 3;
-    std::stringstream sskey2;
-    sskey2 << 8;
-    std::vector<baidu::galaxy::file::DictFile::Kv> v;
-    baidu::galaxy::util::ErrorCode ec = df.Scan(sskey1.str(), sskey2.str(), v);
-    EXPECT_EQ(ec.Code(), 0) << ec.Message();
-    EXPECT_EQ(v.size(), (size_t)6);
-    EXPECT_STREQ(v[0].key.c_str(), "3");
-    EXPECT_STREQ(v[0].value.c_str(), "30");
-    EXPECT_STREQ(v[5].key.c_str(), "8");
-    EXPECT_STREQ(v[5].value.c_str(), "80");
+    {
+        std::stringstream sskey1;
+        sskey1 << 3;
+        std::stringstream sskey2;
+        sskey2 << 8;
+        std::vector<baidu::galaxy::file::DictFile::Kv> v;
+        baidu::galaxy::util::ErrorCode ec = df.Scan(sskey1.str(), sskey2.str(), v);
+        EXPECT_EQ(ec.Code(), 0) << ec.Message();
+        EXPECT_EQ(v.size(), (size_t)6);
+        EXPECT_STREQ(v[0].key.c_str(), "3");
+        EXPECT_STREQ(v[0].value.c_str(), "30");
+        EXPECT_STREQ(v[5].key.c_str(), "8");
+        EXPECT_STREQ(v[5].value.c_str(), "80");
+    }
+
+    {
+        baidu::galaxy::util::ErrorCode ec = df.Delete("3");
+        EXPECT_EQ(ec.Code(), 0);
+        ec = df.Delete("8");
+        EXPECT_EQ(ec.Code(), 0);
+
+        ec = df.Delete("8888");
+        EXPECT_EQ(ec.Code(), 0);
+
+        std::stringstream sskey1;
+        sskey1 << 3;
+        std::stringstream sskey2;
+        sskey2 << 8;
+        std::vector<baidu::galaxy::file::DictFile::Kv> v;
+        ec = df.Scan(sskey1.str(), sskey2.str(), v);
+        EXPECT_EQ(ec.Code(), 0) << ec.Message();
+        EXPECT_EQ(v.size(), (size_t)4);
+        EXPECT_STREQ(v[0].key.c_str(), "4");
+        EXPECT_STREQ(v[0].value.c_str(), "40");
+        EXPECT_STREQ(v[3].key.c_str(), "7");
+        EXPECT_STREQ(v[3].value.c_str(), "70");
+    }
 }
 }
 }

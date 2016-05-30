@@ -12,6 +12,7 @@
 namespace baidu {
 namespace galaxy {
 namespace file {
+
 class DictFile {
 public:
     class Kv {
@@ -26,6 +27,7 @@ public:
     baidu::galaxy::util::ErrorCode GetLastError();
 
     baidu::galaxy::util::ErrorCode Write(const std::string& key, const std::string& value);
+    baidu::galaxy::util::ErrorCode Delete(const std::string& key);
     baidu::galaxy::util::ErrorCode Scan(const std::string& begin_key, 
                 const std::string& end_key,
                 std::vector<Kv>& v);

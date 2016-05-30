@@ -6,6 +6,7 @@
 #include "container.h"
 #include "resource/resource_manager.h"
 #include "container_stage.h"
+#include "serializer.h"
 
 #include "boost/shared_ptr.hpp"
 #include "boost/thread/mutex.hpp"
@@ -46,6 +47,8 @@ private:
     boost::unordered_map<ContainerId, boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > contianer_info_;
     baidu::common::Thread keep_alive_thread_;
     bool running_;
+
+    Serializer serializer_;
 };
 
 } //namespace agent

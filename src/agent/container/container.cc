@@ -195,7 +195,7 @@ int Container::Construct_()
     LOG(INFO) << "succeed in creating cgroup for container " << id_.CompactId();
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
-    volum_group_->SetGcIndex((int)time(NULL));
+    volum_group_->SetGcIndex(created_time_);
 
     for (int i = 0; i < desc_.data_volums_size(); i++) {
         volum_group_->AddDataVolum(desc_.data_volums(i));
@@ -471,6 +471,16 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     } else {
         cd->set_version(desc_.version());
     }
+    return ret;
+}
+
+
+boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta() {
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ret(new baidu::galaxy::proto::ContainerMeta());
+    ret->set_container_id(id_.SubId());
+    ret->set_group_id(id_.GroupId());
+    ret->set_gc_index(created_time_);
+    ret->mutable_container()->CopyFrom(desc_);
     return ret;
 }
 

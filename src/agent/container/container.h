@@ -108,6 +108,7 @@ public:
     baidu::galaxy::proto::ContainerStatus Status();
     const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta();
     void KeepAlive();
 private:
     int Construct_();

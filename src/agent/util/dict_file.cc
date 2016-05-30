@@ -53,6 +53,19 @@ baidu::galaxy::util::ErrorCode DictFile::Write(const std::string& key, const std
     return ERRORCODE_OK;
 }
 
+
+baidu::galaxy::util::ErrorCode DictFile::Delete(const std::string& key) {
+    assert(NULL != db_);
+
+    leveldb::WriteOptions ops;
+    ops.sync = true;
+    leveldb::Status status = db_->Delete(ops, key);
+    if (!status.ok()) {
+        return ERRORCODE(-1, "%s", status.ToString().c_str());
+    }
+    return ERRORCODE_OK;
+}
+
 baidu::galaxy::util::ErrorCode DictFile::Scan(const std::string& begin_key, 
             const std::string& end_key, 
             std::vector<Kv>& v) {

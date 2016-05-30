@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include "container_manager.h"
+#include "util/path_tree.h"
 #include "thread.h"
 
 #include "boost/bind.hpp"
@@ -26,6 +27,15 @@ ContainerManager::~ContainerManager()
 }
 
 void ContainerManager::Setup() {
+    std::string path = baidu::galaxy::path::RootPath();
+    path += "data";
+    baidu::galaxy::util::ErrorCode ec = serializer_.Setup(path);
+    if (ec.Code() != 0) {
+        LOG(FATAL) << "set up serilzer failed, path is" << path 
+            << " reason is: " << ec.Message();
+        exit(-1);
+    }
+
     running_ = true;
     this->keep_alive_thread_.Start(boost::bind(&ContainerManager::KeepAliveRoutine, this));
 }
@@ -77,6 +87,8 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
         LOG(WARNING) << "fail in allocating resource for container "
                      << id.CompactId() << ", detail reason is: "
                      << ec.Message();
+
+        stage_.LeaveCreatingStage(id.SubId());
         return -1;
     } else {
         LOG(INFO) << "succeed in allocating resource for " << id.CompactId();
@@ -92,7 +104,7 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                        << id.CompactId() << ", detail reason is: "
                        << ec.Message();
         }
-    }
+    } 
     stage_.LeaveCreatingStage(id.SubId());
     return ret;
 }
@@ -140,6 +152,12 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         }
 
         work_containers_.erase(iter);
+        ec = serializer_.DeleteWork(id.GroupId(), id.SubId());
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "delete key failed, key is: " << id.CompactId()
+                << " reason is: " << ec.Message();
+            ret = -1;
+        }
     }
     stage_.LeaveDestroyingStage(id.SubId());
 
@@ -156,6 +174,12 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
 
     if (0 != container->Construct()) {
         LOG(WARNING) << "fail in constructing container " << id.CompactId();
+        return -1;
+    }
+
+    baidu::galaxy::util::ErrorCode ec = serializer_.SerializeWork(container->ContainerMeta());
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "fail in serializing container meta " << id.CompactId();
         return -1;
     }
 
