@@ -469,7 +469,7 @@ int TaskManager::ReloadCheckTask(const std::string& task_id,
 
 int MakeProcessEnv(Task* task, ProcessEnv& env) {
     env.user = FLAGS_appworker_default_user;
-    env.envs.push_back("GLAXY_JOB_ID=" + task->env.job_id);
+    env.envs.push_back("GALAXY_JOB_ID=" + task->env.job_id);
     env.envs.push_back("GALAXY_POD_ID=" + task->env.pod_id);
     env.envs.push_back("GALAXY_TASK_ID=" + task->env.task_id);
     std::map<std::string, std::string>::iterator p_it = task->env.ports.begin();
