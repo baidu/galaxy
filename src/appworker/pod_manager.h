@@ -29,11 +29,8 @@ struct PodEnv {
     std::vector<std::map<std::string, std::string> > task_ports;
 };
 
-/**
- * when pod.stage == kPodRebuilding,
- * and pod.status == kPodTerminated,
- * set pod.status = kPodPending
- */
+// when pod.stage == kPodRebuilding and pod.status == kPodTerminated,
+// set pod.status = kPodPending
 enum PodStage {
     kPodStageCreating,
     kPodStageRebuilding,

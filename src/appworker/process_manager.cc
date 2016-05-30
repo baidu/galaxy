@@ -48,6 +48,11 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         if (it != processes_.end()) {
             int32_t pid = it->second->pid;
             killpg(pid, SIGKILL);
+
+            if (NULL != it->second) {
+                delete it->second;
+            }
+
             processes_.erase(it);
         }
     }
@@ -219,6 +224,11 @@ int ProcessManager::ClearProcesses() {
     std::map<std::string, Process*>::iterator it = processes_.begin();
 
     for (; it != processes_.end(); ++it) {
+
+        if (NULL != it->second) {
+            delete it->second;
+        }
+
         processes_.erase(it);
     }
 
