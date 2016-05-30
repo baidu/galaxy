@@ -10,12 +10,11 @@
 #include <vector>
 #include <fstream>
 #include "string_util.h"
+#include "galaxy_util.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/filewritestream.h"
-//#include "rapidjson/filestream.h"
-#include "sdk/galaxy_sdk.h"
 
 namespace baidu {
 namespace galaxy {

@@ -14,9 +14,7 @@ namespace baidu {
 namespace galaxy {
 namespace client {
 
-JobAction::JobAction() { 
-    app_master_ = new ::baidu::galaxy::sdk::AppMaster();
-    resman_ = new ::baidu::galaxy::sdk::ResourceManager();
+JobAction::JobAction() : app_master_(NULL), resman_(NULL) { 
     user_.user = FLAGS_username;
     user_.token = FLAGS_token;
 }
@@ -29,19 +27,19 @@ JobAction::~JobAction() {
     if (NULL != resman_) {
         delete resman_;
     }
-
 }
 
 bool JobAction::Init() {
     //用户名和token验证
     //
 
-    //
-    if (!app_master_->GetStub()) {
+    app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(); 
+    if (app_master_ == NULL) {
         return false;
     }
 
-    if (!resman_->GetStub()) {
+    resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager();
+    if (resman_ == NULL) {
         return false;
     }
     return true;
@@ -206,6 +204,7 @@ bool JobAction::ListJobs() {
         baidu::common::TPrinter jobs(12);
         jobs.AddRow(12, "", "id", "name", "type","status", "stat(r/p/dep/dea/f)", "replica", 
                     "cpu(a/u)", "memory(a/u)", "volums(med/a/u)", "create", "update");
+        std::vector<std::string> values;
         for (uint32_t i = 0; i < response.jobs.size(); ++i) {
             std::string sstat = baidu::common::NumToString(response.jobs[i].running_num) + "/" +
                                 baidu::common::NumToString(response.jobs[i].pending_num) + "/" +
@@ -230,18 +229,18 @@ bool JobAction::ListJobs() {
                               + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
                     if (j == 0) {
                         jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
-                                         response.jobs[i].jobid.c_str(),
-                                         response.jobs[i].desc.name.c_str(),
-                                         StringJobType(response.jobs[i].desc.type).c_str(),
-                                         StringJobStatus(response.jobs[i].status).c_str(),
-                                         sstat.c_str(),
-                                         ::baidu::common::NumToString(response.jobs[i].desc.deploy.replica).c_str(),
-                                         scpu.c_str(),
-                                         smem.c_str(),
-                                         svolums.c_str(),
-                                         FormatDate(response.jobs[i].create_time).c_str(),
-                                         FormatDate(response.jobs[i].update_time).c_str()
-                                   );
+                                        response.jobs[i].jobid.c_str(),
+                                        response.jobs[i].desc.name.c_str(),
+                                        StringJobType(response.jobs[i].desc.type).c_str(),
+                                        StringJobStatus(response.jobs[i].status).c_str(),
+                                        sstat.c_str(),
+                                        ::baidu::common::NumToString(response.jobs[i].desc.deploy.replica).c_str(),
+                                        scpu.c_str(),
+                                        smem.c_str(),
+                                        svolums.c_str(),
+                                        FormatDate(response.jobs[i].create_time).c_str(),
+                                        FormatDate(response.jobs[i].update_time).c_str()
+                                    );
 
                     } else {
                         jobs.AddRow(12, "",
@@ -257,7 +256,7 @@ bool JobAction::ListJobs() {
                                         "",
                                         ""
                                     );
-                    } 
+                        } 
                 }
                 if (it->second.volums.size() == 0) {
                     jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
@@ -289,7 +288,7 @@ bool JobAction::ListJobs() {
                                 "",
                                 FormatDate(response.jobs[i].create_time).c_str(),
                                 FormatDate(response.jobs[i].update_time).c_str()
-                            );
+                           );
 
             }
         }
@@ -321,9 +320,9 @@ bool JobAction::ShowJob(const std::string& jobid) {
 
     if (ret) {
        printf("base infomation\n"); 
-       ::baidu::common::TPrinter base(5);
-       base.AddRow(5, "id", "version", "status", "create_time", "update_time");
-       base.AddRow(5, response.job.jobid.c_str(),
+       ::baidu::common::TPrinter base(4);
+       base.AddRow(4, "id", "status", "create_time", "update_time");
+       base.AddRow(4, response.job.jobid.c_str(),
                       response.job.version.c_str(),
                       StringJobStatus(response.job.status).c_str(),
                       FormatDate(response.job.create_time).c_str(),
@@ -333,10 +332,10 @@ bool JobAction::ShowJob(const std::string& jobid) {
 
        printf("job description base infomation\n");
        ::baidu::common::TPrinter desc_base(4);
-       desc_base.AddRow(4, "name", "type", "version", "run_user");
-       desc_base.AddRow(4, response.job.desc.name.c_str(),
+       desc_base.AddRow(3, "name", "type", "run_user");
+       desc_base.AddRow(3, response.job.desc.name.c_str(),
                      StringJobType(response.job.desc.type).c_str(),
-                     response.job.desc.version.c_str(),
+                     //response.job.desc.version.c_str(),
                      response.job.desc.run_user.c_str()
                  );
        printf("%s\n", desc_base.ToString().c_str());
@@ -500,8 +499,6 @@ bool JobAction::ShowJob(const std::string& jobid) {
                         response.error_code.reason.c_str());
     }
     return ret;
-
-    return false;
 }
 
 bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {

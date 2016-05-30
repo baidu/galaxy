@@ -14,8 +14,7 @@ namespace baidu {
 namespace galaxy {
 namespace client {
 
-ResAction::ResAction() { 
-    resman_ = new ::baidu::galaxy::sdk::ResourceManager();
+ResAction::ResAction() : resman_(NULL) { 
     user_.user =  FLAGS_username;
     user_.token = FLAGS_token;
 }
@@ -30,8 +29,8 @@ bool ResAction::Init() {
     //用户名和token验证
     //
 
-    //
-    if (!resman_->GetStub()) {
+    resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager();
+    if (resman_ == NULL) {
         return false;
     }
     return true;

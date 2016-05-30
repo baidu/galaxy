@@ -612,12 +612,12 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     }
 
     //version
-    if (!doc.HasMember("version")) {
+    /*if (!doc.HasMember("version")) {
         fprintf(stderr, "version is required in config\n");
         return -1;
     }
     job->version = doc["version"].GetString();
-    boost::trim(job->version);
+    boost::trim(job->version);*/
 
     ::baidu::galaxy::sdk::Deploy& deploy = job->deploy;
 
