@@ -9,12 +9,14 @@
 #include <cctype>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <gflags/gflags.h>
 #include <timer.h>
 
 #include "protocol/appmaster.pb.h"
+#include "utils.h"
 
 DECLARE_int32(appworker_fetch_task_timeout);
 DECLARE_int32(appworker_fetch_task_interval);
@@ -35,16 +37,13 @@ DECLARE_string(appworker_cgroup_subsystems_env);
 namespace baidu {
 namespace galaxy {
 
-int SaveExitFile(const std::string& path, int32_t err);
-
 AppWorkerImpl::AppWorkerImpl() :
-    mutex_(),
-    start_time_(0),
-    update_time_(0),
-    nexus_(NULL),
-    appmaster_stub_(NULL),
-    backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
-
+        mutex_(),
+        start_time_(0),
+        update_time_(0),
+        nexus_(NULL),
+        appmaster_stub_(NULL),
+        backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
     backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
     backgroud_pool_.DelayTask(
@@ -156,7 +155,8 @@ void AppWorkerImpl::PrepareEnvs() {
         if (NULL != c_port_names) {
             std::string s_port_names = std::string(c_port_names);
             if (s_port_names != "") {
-                transform(s_port_names.begin(), s_port_names.end(), s_port_names.begin(), toupper);
+                transform(s_port_names.begin(), s_port_names.end(),
+                          s_port_names.begin(), toupper);
                 std::vector<std::string> port_names;
                 boost::split(port_names,
                              s_port_names,
@@ -188,10 +188,11 @@ void AppWorkerImpl::PrepareEnvs() {
     env.task_cgroup_paths = task_cgroup_paths;
     env.task_ports = task_ports;
     pod_manager_.SetPodEnv(env);
+
     return;
 }
 
-void AppWorkerImpl::Start() {
+void AppWorkerImpl::Init() {
     start_time_ = baidu::common::timer::get_micros();
     PrepareEnvs();
     LOG(INFO)\
@@ -219,7 +220,7 @@ void AppWorkerImpl::UpdateAppMasterStub() {
            break;
         }
         appmaster_endpoint_ = new_endpoint;
-        if(rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
+        if (rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
             LOG(INFO)\
                 << "appmaster stub updated, endpoint: "\
                 << appmaster_endpoint_;
@@ -234,20 +235,13 @@ void AppWorkerImpl::FetchTask() {
     // 1.validate pod status
     Pod pod;
     pod_manager_.QueryPod(pod);
-    // need exit or not
-    switch (pod.status) {
-        case proto::kPodFinished: {
-            LOG(INFO) << "pod finished";
-            int ret = SaveExitFile(FLAGS_appworker_exit_file, 0);
-            exit(ret);
-        }
-        case proto::kPodTerminated:{
-            LOG(INFO) << "pod terminated";
-            int ret = SaveExitFile(FLAGS_appworker_exit_file, -2);
-            exit(ret);
-        }
-        default:
-            break;
+
+    // exit or not, only when terminated, appworker exit
+    if (proto::kPodTerminated == pod.status) {
+        LOG(INFO) << "pod terminated";
+        std::string value = boost::lexical_cast<std::string>(1);
+        file::Write(FLAGS_appworker_exit_file, value);
+        exit(0);
     }
 
     // 2.validate stub
@@ -269,6 +263,12 @@ void AppWorkerImpl::FetchTask() {
     request->set_start_time(start_time_);
     request->set_update_time(update_time_);
     request->set_status(pod.status);
+    request->set_reload_status(pod.reload_status);
+    LOG(INFO)\
+        << "fetch task"
+        << ", status: " << proto::PodStatus_Name(pod.status)
+        << ", reload_status: " << proto::PodStatus_Name(pod.reload_status);
+
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
     fetch_task_callback = boost::bind(&AppWorkerImpl::FetchTaskCallback,
                                       this, _1, _2, _3, _4);
@@ -284,44 +284,60 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
     do {
         // rpc error
         if (failed) {
+            LOG(WARNING) << "fetch task failed, rpc failed";
             backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
             break;
         }
+        if (!response->has_error_code()) {
+            LOG(WARNING) << "fetch task failed, no error_code found";
+            break;
+        }
+        ErrorCode error_code = response->error_code();
+        LOG(INFO)\
+            << "fetch task call back"
+            << ", update_time: " << response->update_time()\
+            << ", status: " << proto::Status_Name(error_code.status());
+
+        if (proto::kJobNotFound == error_code.status()) {
+            LOG(WARNING) << "fetch task: kJobNotFound";
+            break;
+        }
+        if (proto::kTerminate == error_code.status()) {
+            LOG(WARNING) << "fetch task: kTerminate";
+            pod_manager_.TerminatePod();
+            break;
+        }
+
         // ignore expired actions
         if (!response->has_update_time()
             || response->update_time() <= update_time_) {
+            LOG(WARNING) << "ignore expire action, current: " << update_time_;
             break;
         }
         update_time_ = response->update_time();
-        ErrorCode* error_code = response->mutable_error_code();
-        switch (error_code->status()) {
-            case proto::kOk:
-                if (response->has_pod()) {
-                    pod_manager_.SetPodDescription(response->pod());
-                }
-                break;
-            case proto::kReload:
-                if (response->has_pod()) {
-                    LOG(INFO) << "fetch task: kJobReload";
-                    pod_manager_.SetPodDescription(response->pod());
-                    pod_manager_.ReloadPod();
-                }
-                break;
-            case proto::kRebuild:
-                if (response->has_pod()) {
-                    LOG(INFO) << "fetch task: kJobRebuild";
-                    pod_manager_.SetPodDescription(response->pod());
-                    pod_manager_.RebuildPod();
-                }
-                break;
-            case proto::kTerminate:
-                LOG(INFO) << "fetch task: kTerminate";
-                pod_manager_.TerminatePod();
-                break;
-            case proto::kJobNotFound:
-                LOG(INFO) << "fetch task: kJobNotFound";
-            default:
-                break;
+        LOG(INFO) << "update_time updated";
+
+        if (!response->has_pod()) {
+            LOG(WARNING) << "ignore empty pod description";
+            break;
+        }
+        switch (error_code.status()) {
+        case proto::kOk:
+            LOG(INFO) << "fetch task: kOk";
+            pod_manager_.SetPodDescription(response->pod());
+            break;
+        case proto::kReload:
+            LOG(INFO) << "fetch task: kJobReload";
+            pod_manager_.SetPodDescription(response->pod());
+            pod_manager_.ReloadPod();
+            break;
+        case proto::kRebuild:
+            LOG(INFO) << "fetch task: kJobRebuild";
+            pod_manager_.SetPodDescription(response->pod());
+            pod_manager_.RebuildPod();
+            break;
+        default:
+            break;
         }
     } while (0);
 
@@ -330,17 +346,6 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
     return;
-}
-
-int SaveExitFile(const std::string& path, int32_t err) {
-    std::ofstream f;
-    f.open(path.c_str(), std::ios::out | std::ios::trunc);
-    if (f.is_open()) {
-        f << err;
-        return 0;
-    }
-
-    return -1;
 }
 
 }   // ending namespace galaxy
