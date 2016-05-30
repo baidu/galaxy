@@ -104,16 +104,22 @@ public:
     ContainerId Id() const;
     int Construct();
     int Destroy();
+    int Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
 
     baidu::galaxy::proto::ContainerStatus Status();
     const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta();
     void KeepAlive();
+
 private:
     int Construct_();
     int Destroy_();
 
+    int ConstructCgroup();
+    int ConstructVolumGroup();
+    int ConstructProcess();
+    
     int RunRoutine(void*);
     void ExportEnv(std::map<std::string, std::string>& env);
     void ExportEnv();

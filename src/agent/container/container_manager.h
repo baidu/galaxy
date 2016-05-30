@@ -34,7 +34,8 @@ private:
     int CreateContainer_(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
     int ReleaseContainer_(boost::shared_ptr<Container> container);
     void KeepAliveRoutine();
-    
+    int Reload();
+
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > gc_containers_;
     //boost::scoped_ptr<baidu::common::ThreadPool> gc_threadpool_;
