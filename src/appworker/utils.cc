@@ -40,24 +40,28 @@ int DownloadByDirectWrite(const std::string& binary,
                           const std::string& tar_packet) {
     const int WRITE_FLAG = O_CREAT | O_WRONLY;
     const int WRITE_MODE = S_IRUSR | S_IWUSR
-        | S_IRGRP | S_IRWXO;
+                           | S_IRGRP | S_IRWXO;
     int fd = ::open(tar_packet.c_str(),
-            WRITE_FLAG, WRITE_MODE);
+                    WRITE_FLAG, WRITE_MODE);
+
     if (fd == -1) {
         LOG(WARNING)
-            << "open download file " << tar_packet << " failed, "
-            << "err: " <<  errno << ", " << strerror(errno);
+                << "open download file " << tar_packet << " failed, "
+                << "err: " <<  errno << ", " << strerror(errno);
         return -1;
     }
+
     int write_len = ::write(fd,
-            binary.c_str(), binary.size());
+                            binary.c_str(), binary.size());
+
     if (write_len == -1) {
         LOG(WARNING)
-            << "write download " << tar_packet << " file failed, "
-            << "err: " << errno << ", " << strerror(errno);
+                << "write download " << tar_packet << " file failed, "
+                << "err: " << errno << ", " << strerror(errno);
         ::close(fd);
         return -1;
     }
+
     ::close(fd);
     return 0;
 }
@@ -74,9 +78,9 @@ void GetStrFTime(std::string* time_str) {
     struct tm t;
     localtime_r(&seconds, &t);
     size_t len = strftime(time_buffer,
-            TIME_BUFFER_LEN - 1,
-            "%Y%m%d%H%M%S",
-            &t);
+                          TIME_BUFFER_LEN - 1,
+                          "%Y%m%d%H%M%S",
+                          &t);
     time_buffer[len] = '\0';
     time_str->clear();
     time_str->append(time_buffer, len);
@@ -85,6 +89,7 @@ void GetStrFTime(std::string* time_str) {
 
 void ReplaceEmptyChar(std::string& str) {
     size_t index = str.find_first_of(" ");
+
     while (index != std::string::npos) {
         str.replace(index, 1, "_");
         index = str.find_first_of(" ");
@@ -97,37 +102,47 @@ bool GetCwd(std::string* dir) {
     if (dir == NULL) {
         return false;
     }
+
     const int TEMP_PATH_LEN = 1024;
     char* path_buffer = NULL;
     int path_len = TEMP_PATH_LEN;
     bool ret = false;
+
     for (int i = 1; i < 10; i++) {
         path_len = i * TEMP_PATH_LEN;
+
         if (path_buffer != NULL) {
             delete []path_buffer;
             path_buffer = NULL;
         }
+
         path_buffer = new char[path_len];
         char* path = ::getcwd(path_buffer, path_len);
+
         if (path != NULL) {
             ret = true;
             break;
         }
+
         if (errno == ERANGE) {
             continue;
         }
+
         LOG(WARNING)
-            << "get cwd failed, "
-            << "err: " << errno << ", " << strerror(errno);
+                << "get cwd failed, "
+                << "err: " << errno << ", " << strerror(errno);
         break;
     }
+
     if (ret) {
         dir->clear();
         dir->append(path_buffer, strlen(path_buffer));
     }
+
     if (path_buffer != NULL) {
         delete []path_buffer;
     }
+
     return ret;
 }
 
@@ -149,15 +164,17 @@ bool PrepareStdFds(const std::string& pwd,
     const int STD_FILE_OPEN_FLAG = O_CREAT | O_APPEND | O_WRONLY;
     const int STD_FILE_OPEN_MODE = S_IRWXU | S_IRWXG | S_IROTH;
     *stdout_fd = ::open(stdout_file.c_str(),
-            STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
+                        STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
     *stderr_fd = ::open(stderr_file.c_str(),
-            STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
+                        STD_FILE_OPEN_FLAG, STD_FILE_OPEN_MODE);
+
     if (*stdout_fd == -1 || *stderr_fd == -1) {
         LOG(WARNING)
-            << "fail to open file: " << stdout_file << ", "
-            << "err: " << errno << ", " << strerror(errno);
+                << "fail to open file: " << stdout_file << ", "
+                << "err: " << errno << ", " << strerror(errno);
         return false;
     }
+
     return true;
 }
 
@@ -172,6 +189,7 @@ void GetProcessOpenFds(const pid_t pid,
     pid_path.append("/fd/");
 
     std::vector<std::string> fd_files;
+
     if (!file::ListFiles(pid_path, &fd_files)) {
         LOG(WARNING) << "list " << pid_path << " failed";
         return;
@@ -181,19 +199,23 @@ void GetProcessOpenFds(const pid_t pid,
         if (fd_files[i] == "." || fd_files[i] == "..") {
             continue;
         }
+
         fd_vector->push_back(::atoi(fd_files[i].c_str()));
     }
+
     LOG(INFO) << "list pid " << pid << " fds size " << fd_vector->size();
     return;
 }
 
 void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir) {
     int ret = ::setpgid(pid, pid);
+
     if (ret != 0) {
         assert(0);
     }
 
     ret = ::chdir(work_dir);
+
     if (ret != 0) {
         assert(0);
     }
@@ -205,18 +227,22 @@ void PrepareChildProcessEnvStep2(const int stdin_fd,
                                  const std::vector<int>& fd_vector) {
     while (::dup2(stdout_fd, STDOUT_FILENO) == -1
             && errno == EINTR) {}
+
     while (::dup2(stderr_fd, STDERR_FILENO) == -1
             && errno == EINTR) {}
+
     while (stdin_fd >= 0
             && ::dup2(stdin_fd, STDIN_FILENO) == -1
             && errno == EINTR) {}
+
     for (size_t i = 0; i < fd_vector.size(); i++) {
         if (fd_vector[i] == STDOUT_FILENO
-            || fd_vector[i] == STDERR_FILENO
-            || fd_vector[i] == STDIN_FILENO) {
+                || fd_vector[i] == STDERR_FILENO
+                || fd_vector[i] == STDIN_FILENO) {
             // not close std fds
             continue;
         }
+
         ::close(fd_vector[i]);
     }
 }
@@ -228,6 +254,7 @@ namespace user {
 bool Su(const std::string& user_name) {
     uid_t uid;
     gid_t gid;
+
     if (!GetUidAndGid(user_name, &uid, &gid)) {
         return false;
     }
@@ -239,6 +266,7 @@ bool Su(const std::string& user_name) {
     if (::setuid(uid) != 0) {
         return false;
     }
+
     return true;
 }
 
@@ -246,19 +274,23 @@ bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
     if (user_name.empty() || uid == NULL || gid == NULL) {
         return false;
     }
+
     bool rs = false;
     struct passwd user_passd_info;
     struct passwd* user_passd_rs;
     char* user_passd_buf = NULL;
     int user_passd_buf_len = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+
     for (int i = 0; i < 2; i++) {
         if (user_passd_buf != NULL) {
             delete []user_passd_buf;
             user_passd_buf = NULL;
         }
+
         user_passd_buf = new char[user_passd_buf_len];
         int ret = ::getpwnam_r(user_name.c_str(), &user_passd_info,
-                user_passd_buf, user_passd_buf_len, &user_passd_rs);
+                               user_passd_buf, user_passd_buf_len, &user_passd_rs);
+
         if (ret == 0 && user_passd_rs != NULL) {
             *uid = user_passd_rs->pw_uid;
             *gid = user_passd_rs->pw_gid;
@@ -267,12 +299,15 @@ bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
         } else if (errno == ERANGE) {
             user_passd_buf_len *= 2;
         }
+
         break;
     }
+
     if (user_passd_buf != NULL) {
         delete []user_passd_buf;
         user_passd_buf = NULL;
     }
+
     return rs;
 }
 
@@ -282,16 +317,19 @@ namespace file {
 
 bool Traverse(const std::string& path, const OptFunc& opt) {
     bool rs = false;
+
     if (!IsDir(path, rs)) {
-        return false; 
+        return false;
     }
+
     if (!rs) {
         if (0 != opt(path.c_str())) {
             LOG(WARNING)
-                << "opt " << path << " failed, "
-                << "err: " << errno << ", " << strerror(errno);
+                    << "opt " << path << " failed, "
+                    << "err: " << errno << ", " << strerror(errno);
             return false;
         }
+
         return true;
     }
 
@@ -299,10 +337,12 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
     stack.push_back(path);
     std::set<std::string> visited;
     std::string cur_path;
+
     while (stack.size() != 0) {
         cur_path = stack.back();
 
         bool is_dir;
+
         if (!IsDir(cur_path, is_dir)) {
             LOG(WARNING) << "IsDir " << path << " failed err";
             return false;
@@ -311,48 +351,59 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
         if (is_dir) {
             if (visited.find(cur_path) != visited.end()) {
                 stack.pop_back();
+
                 if (0 != opt(cur_path.c_str())) {
                     LOG(WARNING)
-                        << "opt " << cur_path << " failed, "
-                        << "err: " << errno << ", " << strerror(errno);
+                            << "opt " << cur_path << " failed, "
+                            << "err: " << errno << ", " << strerror(errno);
                     return false;
                 }
+
                 continue;
             }
+
             visited.insert(cur_path);
             DIR* dir_desc = ::opendir(cur_path.c_str());
+
             if (dir_desc == NULL) {
                 LOG(WARNING)
-                    << "open dir " << cur_path << " failed, "
-                    << "err: " << errno << ", " << strerror(errno);
+                        << "open dir " << cur_path << " failed, "
+                        << "err: " << errno << ", " << strerror(errno);
                 return false;
             }
+
             bool ret = true;
             struct dirent* dir_entity;
+
             while ((dir_entity = ::readdir(dir_desc)) != NULL) {
                 if (IsSpecialDir(dir_entity->d_name)) {
                     continue;
                 }
+
                 std::string tmp_path = cur_path + "/";
                 tmp_path.append(dir_entity->d_name);
                 is_dir = false;
+
                 if (!IsDir(tmp_path, is_dir)) {
                     ret = false;
                     break;
                 }
+
                 if (is_dir) {
                     stack.push_back(tmp_path);
                 } else {
                     if (opt(tmp_path.c_str()) != 0) {
                         LOG(WARNING)
-                            << "opt " << tmp_path << " failed, "
-                            << "err: " << errno << ", " << strerror(errno);
+                                << "opt " << tmp_path << " failed, "
+                                << "err: " << errno << ", " << strerror(errno);
                         ret = false;
                         break;
                     }
                 }
             }
+
             ::closedir(dir_desc);
+
             if (!ret) {
                 LOG(WARNING) << "opt " << path << " failed err";
                 return ret;
@@ -365,7 +416,7 @@ bool Traverse(const std::string& path, const OptFunc& opt) {
 }
 
 bool ListFiles(const std::string& dir_path,
-        std::vector<std::string>* files) {
+               std::vector<std::string>* files) {
     if (files == NULL) {
         return false;
     }
@@ -374,8 +425,8 @@ bool ListFiles(const std::string& dir_path,
 
     if (dir == NULL) {
         LOG(WARNING)
-            << "opendir " << dir_path << " failed, "
-            << "err: " << errno << ", " << strerror(errno);
+                << "opendir " << dir_path << " failed, "
+                << "err: " << errno << ", " << strerror(errno);
         return false;
     }
 
@@ -392,48 +443,56 @@ bool ListFiles(const std::string& dir_path,
 bool IsExists(const std::string& path) {
     struct stat stat_buf;
     int ret = ::lstat(path.c_str(), &stat_buf);
+
     if (ret < 0) {
         return false;
     }
+
     return true;
 }
 
 bool Mkdir(const std::string& dir_path) {
     const int dir_mode = 0777;
     int ret = ::mkdir(dir_path.c_str(), dir_mode);
+
     if (ret == 0 || errno == EEXIST) {
         return true;
     }
 
     LOG(WARNING)
-        << "mkdir " << dir_path << " failed, "
-        << "err: " << errno << ", " << strerror(errno);
+            << "mkdir " << dir_path << " failed, "
+            << "err: " << errno << ", " << strerror(errno);
     return false;
 }
 
 bool MkdirRecur(const std::string& dir_path) {
     size_t beg = 0;
     size_t seg = dir_path.find('/', beg);
+
     while (seg != std::string::npos) {
         if (seg + 1 >= dir_path.size()) {
             break;
         }
+
         if (!Mkdir(dir_path.substr(0, seg + 1))) {
             return false;
         }
+
         beg = seg + 1;
         seg = dir_path.find('/', beg);
     }
+
     return Mkdir(dir_path);
 }
 
 bool IsFile(const std::string& path, bool& is_file) {
     struct stat stat_buf;
     int ret = lstat(path.c_str(), &stat_buf);
+
     if (ret == -1) {
         LOG(WARNING)
-            << "stat path " << path << " failed, "
-            << "err: " << errno << ", " << strerror(errno);
+                << "stat path " << path << " failed, "
+                << "err: " << errno << ", " << strerror(errno);
         return false;
     }
 
@@ -442,16 +501,18 @@ bool IsFile(const std::string& path, bool& is_file) {
     } else {
         is_file = false;
     }
+
     return true;
 }
 
 bool IsDir(const std::string& path, bool& is_dir) {
     struct stat stat_buf;
     int ret = ::lstat(path.c_str(), &stat_buf);
+
     if (ret == -1) {
         LOG(WARNING)
-            << "stat path " << path << " failed, "
-            << "err: " << errno << ", " << strerror(errno);
+                << "stat path " << path << " failed, "
+                << "err: " << errno << ", " << strerror(errno);
         return false;
     }
 
@@ -460,6 +521,7 @@ bool IsDir(const std::string& path, bool& is_dir) {
     } else {
         is_dir = false;
     }
+
     return true;
 }
 
@@ -471,6 +533,7 @@ bool Remove(const std::string& path) {
     if (path.empty()) {
         return false;
     }
+
     return Traverse(path, boost::bind(::remove, _1));
 }
 
@@ -489,16 +552,18 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path) {
 
     if (0 != ::symlink(old_path.c_str(), new_path.c_str())) {
         LOG(WARNING)
-            << "symlink failed for old: " << old_path << ", "
-            << "new: " << new_path << ", "
-            << "err: " << errno << ", " << strerror(errno);
+                << "symlink failed for old: " << old_path << ", "
+                << "new: " << new_path << ", "
+                << "err: " << errno << ", " << strerror(errno);
         return false;
     }
+
     return true;
 }
 
 bool Write(const std::string& path, const std::string& content) {
     FILE* fd = ::fopen(path.c_str(), "we");
+
     if (fd == NULL) {
         fprintf(stderr, "open file %s failed", path.c_str());
         return false;
@@ -506,6 +571,7 @@ bool Write(const std::string& path, const std::string& content) {
 
     int ret = ::fprintf(fd, "%s", content.c_str());
     ::fclose(fd);
+
     if (ret <= 0) {
         fprintf(stderr, "write file %s failed", path.c_str());
         return false;
@@ -516,11 +582,13 @@ bool Write(const std::string& path, const std::string& content) {
 
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number) {
     struct stat sb;
+
     if (stat(path.c_str(), &sb) == -1) {
         return false;
-     }
-     major_number = major(sb.st_dev);
-     return true;
+    }
+
+    major_number = major(sb.st_dev);
+    return true;
 }
 
 bool GetFileMd5(const std::string& path, std::string& md5) {

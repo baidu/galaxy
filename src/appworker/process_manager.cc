@@ -42,8 +42,9 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     // 1.kill and erase old process
     {
         MutexLock scope_lock(&mutex_);
-        std::map<std::string, Process*>::iterator it =\
-            processes_.find(context->process_id);
+        std::map<std::string, Process*>::iterator it = \
+                processes_.find(context->process_id);
+
         if (it != processes_.end()) {
             int32_t pid = it->second->pid;
             killpg(pid, SIGKILL);
@@ -51,39 +52,46 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         }
     }
     LOG(INFO)
-        << "create process, "
-        << "command: " << context->cmd << ", "
-        << "dir: " << context->work_dir;
+            << "create process, "
+            << "command: " << context->cmd << ", "
+            << "dir: " << context->work_dir;
 
     // 2. prepare std fds for child
     int stdin_fd = -1;
     int stdout_fd = -1;
     int stderr_fd = -1;
     std::string work_dir = context->work_dir + "/GALAXY/" + context->process_id;
+
     if (!process::PrepareStdFds(work_dir, context->process_id,
                                 &stdout_fd, &stderr_fd)) {
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
+
         if (stderr_fd != -1) {
             ::close(stderr_fd);
         }
+
         LOG(WARNING) << context->process_id << " prepare std file failed";
         return -1;
     }
 
     // 3. Fork
     pid_t child_pid = ::fork();
+
     if (child_pid == -1) {
         LOG(WARNING)
-            << context->process_id << " fork failed, "
-            << "errno: " << errno << ", err: "  << strerror(errno);
+                << context->process_id << " fork failed, "
+                << "errno: " << errno << ", err: "  << strerror(errno);
+
         if (stdout_fd != -1) {
             ::close(stdout_fd);
         }
+
         if (stderr_fd != -1) {
             ::close(stderr_fd);
         }
+
         return -1;
     } else if (child_pid == 0) {
         // 1.setpgid  & chdir
@@ -96,47 +104,56 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
                                              stderr_fd, fd_vector);
         // 3.attach cgroup
         std::vector<std::string>::const_iterator c_it = env.cgroup_paths.begin();
+
         for (; c_it != env.cgroup_paths.end(); ++c_it) {
             std::string path = *c_it + "/tasks";
             fprintf(stdout, "attach pid to cgroup, pid: %d, cgroup: %s\n",
                     my_pid, path.c_str());
             std::string content = boost::lexical_cast<std::string>(my_pid);
             bool ok = file::Write(path, content);
+
             if (!ok) {
-               fprintf(stdout, "atttach pid to cgroup fail, err: %d, %s\n",
-                       errno, strerror(errno));
-               fflush(stdout);
-               assert(0);
+                fprintf(stdout, "atttach pid to cgroup fail, err: %d, %s\n",
+                        errno, strerror(errno));
+                fflush(stdout);
+                assert(0);
             }
         }
+
         // 4.prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),
             const_cast<char*>("-c"),
             const_cast<char*>(context->cmd.c_str()),
-            NULL};
+            NULL
+        };
         // 5.prepare envs
         char* envs[env.envs.size() + 1];
-        envs[env.envs.size()]= NULL;
+        envs[env.envs.size()] = NULL;
+
         for (unsigned i = 0; i < env.envs.size(); i++) {
             envs[i] = const_cast<char*>(env.envs[i].c_str());
         }
+
         // 6.different with deploy and main process
-        const DownloadProcessContext* download_context =\
-             dynamic_cast<const DownloadProcessContext*>(context);
+        const DownloadProcessContext* download_context = \
+                dynamic_cast<const DownloadProcessContext*>(context);
+
         if (NULL != download_context) {
             // do deploy, if file no change then exit
             fprintf(stdout, "execve deploy process\n");
             std::string md5;
+
             if (file::IsExists(download_context->dst_path)
-                && file::GetFileMd5(download_context->dst_path, md5)
-                && md5 == download_context->version) {
+                    && file::GetFileMd5(download_context->dst_path, md5)
+                    && md5 == download_context->version) {
                 // data not change
                 fprintf(stdout, "data not change, md5: %s", md5.c_str());
                 fflush(stdout);
                 exit(0);
             }
         }
+
         // 7.do exec
         ::execve("/bin/sh", argv, envs);
         fprintf(stdout, "execve %s err[%d: %s]\n",
@@ -148,9 +165,11 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     if (stdout_fd != -1) {
         ::close(stdout_fd);
     }
+
     if (stderr_fd != -1) {
         ::close(stderr_fd);
     }
+
     Process* process = new Process();
     process->process_id = context->process_id;
     process->pid = child_pid;
@@ -166,10 +185,12 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 int ProcessManager::KillProcess(const std::string& process_id) {
     MutexLock scope_lock(&mutex_);
     std::map<std::string, Process*>::iterator it = processes_.find(process_id);
+
     if (it == processes_.end()) {
         LOG(INFO) << "process: " << process_id << " not exist";
         return 0;
     }
+
     ::killpg(it->second->pid, SIGKILL);
 
     return 0;
@@ -179,10 +200,12 @@ int ProcessManager::QueryProcess(const std::string& process_id,
                                  Process& process) {
     MutexLock scope_lock(&mutex_);
     std::map<std::string, Process*>::iterator it = processes_.find(process_id);
+
     if (it == processes_.end()) {
         LOG(WARNING) << "process: " << process_id << " not exist";
         return -1;
     }
+
     process.process_id = process_id;
     process.pid = it->second->pid;
     process.status = it->second->status;
@@ -194,6 +217,7 @@ int ProcessManager::QueryProcess(const std::string& process_id,
 int ProcessManager::ClearProcesses() {
     MutexLock scope_lock(&mutex_);
     std::map<std::string, Process*>::iterator it = processes_.begin();
+
     for (; it != processes_.end(); ++it) {
         processes_.erase(it);
     }
@@ -205,21 +229,27 @@ void ProcessManager::LoopWaitProcesses() {
     MutexLock scope_lock(&mutex_);
     int status = 0;
     pid_t pid = ::waitpid(-1, &status, WNOHANG);
+
     if (pid > 0) {
         std::map<std::string, Process*>::iterator it = processes_.begin();
+
         for (; it != processes_.end(); ++it) {
             if (it->second->pid != pid) {
                 continue;
             }
+
             it->second->status = proto::kProcessFinished;
+
             if (WIFEXITED(status)) {
                 it->second->exit_code = WEXITSTATUS(status);
+
                 if (0 != it->second->exit_code) {
                     it->second->status = proto::kProcessFailed;
                 }
             } else {
-               if (WIFSIGNALED(status)) {
+                if (WIFSIGNALED(status)) {
                     it->second->exit_code = 128 + WTERMSIG(status);
+
                     if (WCOREDUMP(status)) {
                         it->second->status = proto::kProcessCoreDump;
                     } else {
@@ -227,13 +257,15 @@ void ProcessManager::LoopWaitProcesses() {
                     }
                 }
             }
+
             LOG(WARNING)
-                << "process: " << it->second->process_id << ", "
-                << "pid: " << pid << ", "
-                << "exit code: " << it->second->exit_code;
+                    << "process: " << it->second->process_id << ", "
+                    << "pid: " << pid << ", "
+                    << "exit code: " << it->second->exit_code;
             break;
         }
     }
+
     background_pool_.DelayTask(
         FLAGS_process_manager_loop_wait_interval,
         boost::bind(&ProcessManager::LoopWaitProcesses, this)
