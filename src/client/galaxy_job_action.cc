@@ -6,9 +6,12 @@
 #include <tprinter.h>
 #include "galaxy_job_action.h"
 
-//user
-DECLARE_string(username);
-DECLARE_string(token);
+DEFINE_string(nexus_root, "/galaxy3", "root prefix on nexus");
+DEFINE_string(nexus_addr, "", "nexus server list");
+DEFINE_string(resman_path, "/resman", "resman path on nexus");
+DEFINE_string(appmaster_path, "/appmaster", "appmaster path on nexus");
+DEFINE_string(username, "default", "username");
+DEFINE_string(token, "default", "token");
 
 namespace baidu {
 namespace galaxy {
@@ -33,12 +36,14 @@ bool JobAction::Init() {
     //用户名和token验证
     //
 
-    app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(); 
+    std::string path = FLAGS_nexus_root + FLAGS_appmaster_path;
+    app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(FLAGS_nexus_addr, path); 
     if (app_master_ == NULL) {
         return false;
     }
 
-    resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager();
+    path = FLAGS_nexus_root + FLAGS_resman_path;
+    resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager(FLAGS_nexus_addr, path);
     if (resman_ == NULL) {
         return false;
     }

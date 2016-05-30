@@ -6,9 +6,16 @@
 #include <boost/algorithm/string.hpp>
 #include "galaxy_res_action.h"
 
+DEFINE_string(nexus_root, "/galaxy3", "root prefix on nexus");
+DEFINE_string(nexus_addr, "", "nexus server list");
+DEFINE_string(resman_path, "/resman", "resman path on nexus");
+DEFINE_string(appmaster_path, "/appmaster", "appmaster path on nexus");
+DEFINE_string(username, "default", "username");
+DEFINE_string(token, "default", "token");
+
 //user
-DECLARE_string(username);
-DECLARE_string(token);
+//DECLARE_string(username);
+//DECLARE_string(token);
 
 namespace baidu {
 namespace galaxy {
@@ -28,8 +35,8 @@ ResAction::~ResAction() {
 bool ResAction::Init() {
     //用户名和token验证
     //
-
-    resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager();
+    std::string path = FLAGS_nexus_root + FLAGS_resman_path;
+    resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager(FLAGS_nexus_addr, path);
     if (resman_ == NULL) {
         return false;
     }

@@ -22,11 +22,11 @@ namespace sdk {
 
 class ResourceManagerImpl : public ResourceManager {
 public:
-    ResourceManagerImpl() : rpc_client_(NULL),
+    ResourceManagerImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
  							res_stub_(NULL) {
 	    rpc_client_ = new ::baidu::galaxy::RpcClient();
-        full_key_ = FLAGS_nexus_root + FLAGS_resman_path;
-        nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
+        full_key_ = path;
+        nexus_ = new ::galaxy::ins::sdk::InsSDK(nexus_addr);
     }
 
     virtual ~ResourceManagerImpl() {
@@ -1076,8 +1076,8 @@ bool ResourceManagerImpl::Preempt(const PreemptRequest& request, PreemptResponse
     return true;
 }
 
-ResourceManager* ResourceManager::ConnectResourceManager() {
-    ResourceManagerImpl* resman = new ResourceManagerImpl();
+ResourceManager* ResourceManager::ConnectResourceManager(const std::string& nexus_addr, const std::string& path) {
+    ResourceManagerImpl* resman = new ResourceManagerImpl(nexus_addr, path);
     if (!resman->GetStub()) {
         delete resman;
         return NULL;
