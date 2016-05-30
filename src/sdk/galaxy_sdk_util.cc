@@ -76,7 +76,7 @@ bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, Status* statu
         *status = kAddAgentFail;
         break;
     case ::baidu::galaxy::proto::kSuspend:
-        *status = kSuspend;
+        *status = kDeny;
         break;
     case ::baidu::galaxy::proto::kJobNotFound:
         *status = kOk;
