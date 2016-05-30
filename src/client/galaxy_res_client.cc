@@ -39,6 +39,8 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "  tag usage:\n"
                                  "      galaxy_res_client create_tag -t tag -f endpoint_file\n"
                                  "      galaxy_res_client list_tags\n\n"
+                                 "  pool usage:\n"
+                                 "      galaxy_res_client list_pools -e endpoint"
                                  "  user usage:\n"
                                  "      galaxy_res_client add_user -u user -t token\n"
                                  "      galaxy_res_client remove_user -u user -t token\n"
@@ -127,12 +129,13 @@ int main(int argc, char** argv) {
         }
         ok = resAction->RemoveAgent(FLAGS_e);
     } else if (strcmp(argv[1], "list_agents") == 0) {
+        std::vector<std::string> options;
         if (!FLAGS_p.empty()) {
-            ok = resAction->ListAgentsByPool(FLAGS_p);
+            ok = resAction->ListAgentsByPool(FLAGS_p, options);
         } else if (!FLAGS_t.empty()) {
-            ok = resAction->ListAgentsByTag(FLAGS_t);
+            ok = resAction->ListAgentsByTag(FLAGS_t, options);
         } else {
-            ok = resAction->ListAgents();
+            ok = resAction->ListAgents(options);
         }
     } else if (strcmp(argv[1], "enter_safemode") == 0) { 
         ok =  resAction->EnterSafeMode();
@@ -171,7 +174,7 @@ int main(int argc, char** argv) {
         ok = resAction->CreateTag(FLAGS_t, FLAGS_f);
     } else if (strcmp(argv[1], "list_tags") == 0) {
         ok = resAction->ListTags();
-    } else if (strcmp(argv[1], "list_tags") == 0) {
+    } else if (strcmp(argv[1], "list_pools") == 0) {
         if (FLAGS_e.empty()) {
             fprintf(stderr, "-e is needed\n");
             return -1;
