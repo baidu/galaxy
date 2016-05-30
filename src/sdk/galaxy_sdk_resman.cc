@@ -10,12 +10,6 @@
 #include "protocol/galaxy.pb.h"
 #include "galaxy_sdk_resman.h"
 
-//nexus
-DECLARE_string(nexus_addr);
-DECLARE_string(nexus_root);
-DECLARE_string(resman_path);
-DECLARE_string(appmaster_path);
-
 namespace baidu {
 namespace galaxy {
 namespace sdk {
