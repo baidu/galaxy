@@ -61,16 +61,11 @@ bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* re
                                         &::baidu::galaxy::proto::AppMaster_Stub::SubmitJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
-    
+
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -91,16 +86,11 @@ bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* re
                                         &::baidu::galaxy::proto::AppMaster_Stub::UpdateJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
-    
+
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -120,15 +110,10 @@ bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response
                                         &::baidu::galaxy::proto::AppMaster_Stub::StopJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -146,15 +131,11 @@ bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* re
                                         &::baidu::galaxy::proto::AppMaster_Stub::RemoveJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
+
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -170,15 +151,11 @@ bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* respo
                                         &::baidu::galaxy::proto::AppMaster_Stub::ListJobs,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "Appmaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
+
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -195,13 +172,7 @@ bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* respo
         job.fail_count = pb_job.fail_count();
         job.create_time = pb_job.create_time();
         job.update_time = pb_job.update_time();
-       
-        if (!JobStatusSwitch(pb_job.status(), &job.status)) {
-            response->error_code.reason = "JobStatusSwitch from pb status:";
-            response->error_code.reason += pb_response.error_code().status();
-            response->error_code.reason += "failed";
-            return false;
-        }
+        job.status = (JobStatus)pb_job.status();
         PbJobDescription2SdkJobDescription(pb_job.desc(), &job.desc);
         response->jobs.push_back(job);
     }
@@ -217,15 +188,11 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
                                         &::baidu::galaxy::proto::AppMaster_Stub::ShowJob,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
+
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -235,24 +202,17 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
     response->job.version = pb_response.job().version();
     response->job.create_time = pb_response.job().create_time();
     response->job.update_time = pb_response.job().update_time();
-    
-    if (!JobStatusSwitch(pb_response.job().status(), &response->job.status)) {
-            response->error_code.reason = "JobStatusSwitch from pb status:";
-            response->error_code.reason += pb_response.error_code().status();
-            response->error_code.reason += "failed";
-            return false;
-    }
-
+    response->job.status = (JobStatus)pb_response.job().status();
     PbJobDescription2SdkJobDescription(pb_response.job().desc(), &response->job.desc);
     for (int32_t i = 0; i < pb_response.job().pods().size(); ++i) {
         PodInfo pod;
         pod.podid = pb_response.job().pods(i).podid();
         pod.jobid = pb_response.job().pods(i).jobid();
         pod.endpoint = pb_response.job().pods(i).endpoint();
-        //pod.status = pb_response.job().pods(i).status();
-        PodStatusSwitch(pb_response.job().pods(i).status(), &pod.status);
+        pod.status = (PodStatus)pb_response.job().pods(i).status();
         pod.version = pb_response.job().pods(i).version();
         pod.start_time = pb_response.job().pods(i).start_time();
+        pod.update_time = pb_response.job().pods(i).update_time();
         pod.fail_count = pb_response.job().pods(i).fail_count();
         response->job.pods.push_back(pod);
     }
@@ -270,15 +230,11 @@ bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse*
                                         &::baidu::galaxy::proto::AppMaster_Stub::ExecuteCmd,
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
-        response->error_code.reason = "Rpc SendRequest failed";
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
         return false;
     }
-    if (!StatusSwitch(pb_response.error_code().status(), &response->error_code.status)) {
-        response->error_code.reason = "StatusSwitch from pb status:";
-        response->error_code.reason += pb_response.error_code().status();
-        response->error_code.reason += "failed";
-        return false;
-    }
+
+    response->error_code.status = (Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;

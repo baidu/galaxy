@@ -61,6 +61,21 @@ enum VolumMedium {
     kBfs=3,
     kTmpfs=4,
 };
+
+enum ResourceError {
+    kResOk = 0,
+    kNoCpu = 1,
+    kNoMemory = 2,
+    kNoMedium = 3,
+    kNoDevice = 4,
+    kNoPort = 5,
+    kPortConflict = 6,
+    kTagMismatch = 7,
+    kNoMemoryForTmpfs = 8,
+    kPoolMismatch = 9,
+    kTooManyPods = 10,
+};
+
 struct VolumResource {
     VolumMedium medium;
     Resource volum;
@@ -128,6 +143,9 @@ enum PodStatus {
     kPodServing=5,
     kPodFailed=6,
     kPodFinished=7,
+    kPodRunning = 8,
+    kPodStopping = 9,
+    kPodTerminated = 10,
 };
 enum TaskStatus {
     kTaskPending=1,
@@ -168,6 +186,8 @@ struct TaskDescription {
     std::string id;
     CpuRequired cpu;
     MemoryRequired memory;
+    TcpthrotRequired tcp_throt;
+    BlkioRequired blkio;
     std::vector<PortRequired> ports;
     ImagePackage exe_package;
     DataPackage data_package;
@@ -210,7 +230,7 @@ enum ContainerStatus {
     kContainerPending=1,
     kContainerAllocating=2,
     kContainerReady=3,
-     kContainerFinish = 4,      // finish , when appworker exit with code 0
+    kContainerFinish = 4,      // finish , when appworker exit with code 0
     kContainerError=5,
     kContainerDestroying=6,
     kContainerTerminated=7,
@@ -328,6 +348,7 @@ struct OfflineAgentRequest {
 struct OfflineAgentResponse {
     ErrorCode error_code;
 };
+
 struct ListAgentsRequest {
     User user;
 };
@@ -434,8 +455,7 @@ struct ShowUserRequest {
 };
 struct ShowUserResponse {
     ErrorCode error_code;
-    std::vector<std::string> pools;
-    std::vector<Authority> authority;
+    std::vector<Grant> grants;
     Quota quota;
     Quota assigned;
 };
@@ -506,17 +526,30 @@ struct ShowContainerGroupRequest {
     std::string id;
 };
 struct ContainerStatistics {
+    std::string id;
     ContainerStatus status;
     std::string endpoint;
     Resource cpu;
     Resource memory;
     std::vector<VolumResource> volums;
+    ResourceError last_res_err;
 };
 struct ShowContainerGroupResponse {
     ErrorCode error_code;
     ContainerDescription desc;
     std::vector<ContainerStatistics> containers;
 };
+
+struct ShowAgentRequest {
+    User user;
+    std::string endpoint;
+};
+
+struct ShowAgentResponse {
+    ErrorCode error_code;
+    std::vector<ContainerStatistics> containers;
+};
+
 struct SubmitJobRequest {
     User user;
     JobDescription job;
@@ -576,6 +609,7 @@ struct PodInfo {
     PodStatus status;
     std::string version;
     int64_t start_time;
+    int64_t update_time;
     int32_t fail_count;
 };
 struct JobInfo {
@@ -607,6 +641,16 @@ struct StopJobRequest {
 };
 struct StopJobResponse {
     ErrorCode error_code;
+};
+
+struct PreemptRequest {
+    User user;
+    std::string container_group_id;
+    std::string endpoint;
+};
+
+struct PreemptResponse {
+     ErrorCode error_code;
 };
 
 } //namespace sdk

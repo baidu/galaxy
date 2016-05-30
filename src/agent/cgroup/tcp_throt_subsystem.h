@@ -15,7 +15,7 @@ public:
     ~TcpThrotSubsystem();
 
     std::string Name();
-    int Construct();
+    baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     boost::shared_ptr<Subsystem> Clone();
 

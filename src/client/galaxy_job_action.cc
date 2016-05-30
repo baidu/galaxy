@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <thread.h>
 #include <tprinter.h>
 #include "galaxy_job_action.h"
 
@@ -15,6 +16,7 @@ namespace client {
 
 JobAction::JobAction() { 
     app_master_ = new ::baidu::galaxy::sdk::AppMaster();
+    resman_ = new ::baidu::galaxy::sdk::ResourceManager();
     user_.user = FLAGS_username;
     user_.token = FLAGS_token;
 }
@@ -23,6 +25,11 @@ JobAction::~JobAction() {
     if (NULL != app_master_) {
         delete app_master_;
     }
+
+    if (NULL != resman_) {
+        delete resman_;
+    }
+
 }
 
 bool JobAction::Init() {
@@ -31,6 +38,10 @@ bool JobAction::Init() {
 
     //
     if (!app_master_->GetStub()) {
+        return false;
+    }
+
+    if (!resman_->GetStub()) {
         return false;
     }
     return true;
@@ -64,7 +75,8 @@ bool JobAction::SubmitJob(const std::string& json_file) {
     if (ret) {
         printf("Submit job %s\n", response.jobid.c_str());
     } else {
-        printf("Submit job failed for reason %d:%s\n", response.error_code.status, response.error_code.reason.c_str());
+        printf("Submit job failed for reason %s:%s\n", StringStatus(response.error_code.status).c_str(), 
+                    response.error_code.reason.c_str());
     }
     return ret;
 }
@@ -96,8 +108,8 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
     if (ret) {
         printf("Update job %s\n success", jobid.c_str());
     } else {
-        printf("Update job %s failed for reason %d:%s\n", 
-                jobid.c_str(), response.error_code.status, response.error_code.reason.c_str());
+        printf("Update job %s failed for reason %s:%s\n", 
+                jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
 
     return ret;
@@ -126,8 +138,8 @@ bool JobAction::StopJob(const std::string& jobid) {
     if (ret) {
         printf("Stop job %s\n success", jobid.c_str());
     } else {
-        printf("Stop job %s failed for reason %d:%s\n", 
-                jobid.c_str(), response.error_code.status, response.error_code.reason.c_str());
+        printf("Stop job %s failed for reason %s:%s\n", 
+                jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
 
     return ret;
@@ -148,21 +160,19 @@ bool JobAction::RemoveJob(const std::string& jobid) {
     request.jobid = jobid;
     request.user = user_;
     
-    if (GetHostname(&request.hostname)) {
+    if (!GetHostname(&request.hostname)) {
         return false;
     }
 
     bool ret =  app_master_->RemoveJob(request, &response);
     if (ret) {
-        printf("Stop job %s\n success", jobid.c_str());
+        printf("Remove job %s success\n", jobid.c_str());
     } else {
-        printf("Stop job %s failed for reason %d:%s\n", 
-                jobid.c_str(), response.error_code.status, response.error_code.reason.c_str());
+        printf("Remove job %s failed for reason %s:%s\n", 
+                jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
 }
-
-//待补充
 
 bool JobAction::ListJobs() {
     
@@ -170,57 +180,128 @@ bool JobAction::ListJobs() {
         return false;
     }
 
+    ::baidu::galaxy::sdk::ListContainerGroupsRequest resman_request;
+    ::baidu::galaxy::sdk::ListContainerGroupsResponse resman_response;
+    resman_request.user = user_;
+    std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics> containers;
+
+    bool ret = resman_->ListContainerGroups(resman_request, &resman_response);
+
+    if (ret) {
+        for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
+            containers[resman_response.containers[i].id] = resman_response.containers[i];
+        }
+        
+    } else {
+        printf("List container group failed for reason %s:%s\n",
+                    StringStatus(resman_response.error_code.status).c_str(), resman_response.error_code.reason.c_str());
+        return false;
+    }
+
     ::baidu::galaxy::sdk::ListJobsRequest request;
     ::baidu::galaxy::sdk::ListJobsResponse response;
     request.user = user_;
-
-    bool ret = app_master_->ListJobs(request, &response);
+    ret = app_master_->ListJobs(request, &response);
     if (ret) {
-        baidu::common::TPrinter tp(12);
-        tp.AddRow(12, "", "id", "name", "type","status", "stat(run/pending/deploy/death/fail)", "replica", 
-                    "work_volum", "data_volum", "cpu", "memory", "create", "update");
+        baidu::common::TPrinter jobs(12);
+        jobs.AddRow(12, "", "id", "name", "type","status", "stat(r/p/dep/dea/f)", "replica", 
+                    "cpu(a/u)", "memory(a/u)", "volums(med/a/u)", "create", "update");
         for (uint32_t i = 0; i < response.jobs.size(); ++i) {
-            std::vector<std::string> vs;
-            vs.push_back(baidu::common::NumToString(i));
-            vs.push_back(response.jobs[i].jobid);
-            vs.push_back(response.jobs[i].desc.name);
-            vs.push_back(baidu::common::NumToString(response.jobs[i].desc.type));
-            vs.push_back(baidu::common::NumToString(response.jobs[i].status));
-            vs.push_back(baidu::common::NumToString(response.jobs[i].running_num) + "/" +
-                         baidu::common::NumToString(response.jobs[i].pending_num) + "/" +
-                         baidu::common::NumToString(response.jobs[i].deploying_num) + "/" +
-                         baidu::common::NumToString(response.jobs[i].death_num) + "/" +
-                         baidu::common::NumToString(response.jobs[i].fail_count)
-                        );
-            vs.push_back(baidu::common::NumToString(response.jobs[i].desc.deploy.replica));
-            vs.push_back(baidu::common::NumToString(response.jobs[i].desc.pod.workspace_volum.size));
-            int64_t data_vol = 0;
-            for (uint32_t j = 0; j < response.jobs[i].desc.pod.data_volums.size(); ++j) {
-                data_vol  += response.jobs[i].desc.pod.data_volums[j].size; 
-            }
+            std::string sstat = baidu::common::NumToString(response.jobs[i].running_num) + "/" +
+                                baidu::common::NumToString(response.jobs[i].pending_num) + "/" +
+                                baidu::common::NumToString(response.jobs[i].deploying_num) + "/" +
+                                baidu::common::NumToString(response.jobs[i].death_num) + "/" +
+                                baidu::common::NumToString(response.jobs[i].fail_count);
+            std::string scpu;
+            std::string smem;
+            std::string svolums;
 
-            vs.push_back(baidu::common::NumToString(data_vol));
+            std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>::iterator it 
+                                        = containers.find(response.jobs[i].jobid);
+            if (it != containers.end()) {
+                scpu = ::baidu::common::NumToString(it->second.cpu.assigned / 1000.0) + "/"
+                       + ::baidu::common::NumToString(it->second.cpu.used / 1000.0);
+                smem = ::baidu::common::HumanReadableString(it->second.memory.assigned) + "/"
+                       + ::baidu::common::HumanReadableString(it->second.memory.used);
+                for (size_t j = 0; j < it->second.volums.size(); ++j) {
+                    std::string svolums;
+                    svolums = StringVolumMedium(it->second.volums[j].medium) + "/"
+                              + ::baidu::common::HumanReadableString(it->second.volums[j].volum.assigned) + "/"
+                              + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
+                    if (j == 0) {
+                        jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
+                                         response.jobs[i].jobid.c_str(),
+                                         response.jobs[i].desc.name.c_str(),
+                                         StringJobType(response.jobs[i].desc.type).c_str(),
+                                         StringJobStatus(response.jobs[i].status).c_str(),
+                                         sstat.c_str(),
+                                         ::baidu::common::NumToString(response.jobs[i].desc.deploy.replica).c_str(),
+                                         scpu.c_str(),
+                                         smem.c_str(),
+                                         svolums.c_str(),
+                                         FormatDate(response.jobs[i].create_time).c_str(),
+                                         FormatDate(response.jobs[i].update_time).c_str()
+                                   );
 
-            int64_t cpu = 0;
-            int64_t mem = 0;
-            for (uint32_t j = 0; j < response.jobs[i].desc.pod.tasks.size(); ++j) {
-                cpu += response.jobs[i].desc.pod.tasks[j].cpu.milli_core;
-                mem += response.jobs[i].desc.pod.tasks[j].memory.size;
+                    } else {
+                        jobs.AddRow(12, "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        "",
+                                        svolums.c_str(),
+                                        "",
+                                        ""
+                                    );
+                    } 
+                }
+                if (it->second.volums.size() == 0) {
+                    jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
+                                    response.jobs[i].jobid.c_str(),
+                                    response.jobs[i].desc.name.c_str(),
+                                    StringJobType(response.jobs[i].desc.type).c_str(),
+                                    StringJobStatus(response.jobs[i].status).c_str(),
+                                    sstat.c_str(),
+                                    ::baidu::common::NumToString(response.jobs[i].desc.deploy.replica).c_str(),
+                                    scpu.c_str(),
+                                    smem.c_str(),
+                                    "",
+                                    FormatDate(response.jobs[i].create_time).c_str(),
+                                    FormatDate(response.jobs[i].update_time).c_str()
+                               );
+
+                }
+            } else {
+
+                jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
+                                response.jobs[i].jobid.c_str(),
+                                response.jobs[i].desc.name.c_str(),
+                                StringJobType(response.jobs[i].desc.type).c_str(),
+                                StringJobStatus(response.jobs[i].status).c_str(),
+                                sstat.c_str(),
+                                ::baidu::common::NumToString(response.jobs[i].desc.deploy.replica).c_str(),
+                                "",
+                                "",
+                                "",
+                                FormatDate(response.jobs[i].create_time).c_str(),
+                                FormatDate(response.jobs[i].update_time).c_str()
+                            );
+
             }
-            vs.push_back(baidu::common::NumToString(cpu));
-            vs.push_back(baidu::common::NumToString(mem));
-            vs.push_back(FormatDate(response.jobs[i].create_time));
-            vs.push_back(FormatDate(response.jobs[i].update_time));
-            tp.AddRow(vs);
         }
-        printf("%s\n", tp.ToString().c_str());
+        printf("%s\n", jobs.ToString().c_str());
     } else {
-        printf("List job failed for reason %d:%s\n", response.error_code.status, response.error_code.reason.c_str());
+        printf("List job failed for reason %s:%s\n", 
+                StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
+
     return ret;
 }
 
-//待补充
 bool JobAction::ShowJob(const std::string& jobid) {
     
     if (jobid.empty()) {
@@ -239,9 +320,184 @@ bool JobAction::ShowJob(const std::string& jobid) {
     bool ret = app_master_->ShowJob(request, &response);
 
     if (ret) {
-        printf("Show job %s\n", response.job.jobid.c_str());
+       printf("base infomation\n"); 
+       ::baidu::common::TPrinter base(5);
+       base.AddRow(5, "id", "version", "status", "create_time", "update_time");
+       base.AddRow(5, response.job.jobid.c_str(),
+                      response.job.version.c_str(),
+                      StringJobStatus(response.job.status).c_str(),
+                      FormatDate(response.job.create_time).c_str(),
+                      FormatDate(response.job.update_time).c_str()
+                  );
+       printf("%s\n", base.ToString().c_str());
+
+       printf("job description base infomation\n");
+       ::baidu::common::TPrinter desc_base(4);
+       desc_base.AddRow(4, "name", "type", "version", "run_user");
+       desc_base.AddRow(4, response.job.desc.name.c_str(),
+                     StringJobType(response.job.desc.type).c_str(),
+                     response.job.desc.version.c_str(),
+                     response.job.desc.run_user.c_str()
+                 );
+       printf("%s\n", desc_base.ToString().c_str());
+        
+       printf("job description deploy infomation\n");
+       std::string pools;
+       for (size_t i = 0; i < response.job.desc.deploy.pools.size(); ++i) {
+           pools += response.job.desc.deploy.pools[i] + ",";
+       }
+       ::baidu::common::TPrinter desc_deploy(6);
+       desc_deploy.AddRow(6, "replica", "step", "interval", "max_per_host", "tag", "pools");
+       desc_deploy.AddRow(6, ::baidu::common::NumToString(response.job.desc.deploy.replica).c_str(),
+                           ::baidu::common::NumToString(response.job.desc.deploy.step).c_str(),
+                           ::baidu::common::NumToString(response.job.desc.deploy.interval).c_str(),
+                           ::baidu::common::NumToString(response.job.desc.deploy.max_per_host).c_str(),
+                           response.job.desc.deploy.tag.c_str(),
+                           pools.c_str()
+                       );
+        printf("%s\n", desc_deploy.ToString().c_str());
+
+        printf("job description pod workspace_volum infomation\n");
+        ::baidu::common::TPrinter desc_workspace_volum(7);
+        desc_workspace_volum.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
+        desc_workspace_volum.AddRow(7, ::baidu::common::HumanReadableString(response.job.desc.pod.workspace_volum.size).c_str(),
+                                       StringVolumType(response.job.desc.pod.workspace_volum.type).c_str(),
+                                       StringVolumMedium(response.job.desc.pod.workspace_volum.medium).c_str(),
+                                       response.job.desc.pod.workspace_volum.dest_path.c_str(),
+                                       StringBool(response.job.desc.pod.workspace_volum.readonly).c_str(),
+                                       StringBool(response.job.desc.pod.workspace_volum.exclusive).c_str(),
+                                       StringBool(response.job.desc.pod.workspace_volum.use_symlink).c_str()
+                                   );  
+        printf("%s\n", desc_workspace_volum.ToString().c_str());
+
+        printf("job description pod data_volums infomation\n");
+        ::baidu::common::TPrinter desc_data_volums(7);
+        desc_data_volums.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
+        for (size_t i = 0; i < response.job.desc.pod.data_volums.size(); ++i) {
+        desc_data_volums.AddRow(7, ::baidu::common::HumanReadableString(response.job.desc.pod.data_volums[i].size).c_str(),
+                                       StringVolumType(response.job.desc.pod.data_volums[i].type).c_str(),
+                                       StringVolumMedium(response.job.desc.pod.data_volums[i].medium).c_str(),
+                                       response.job.desc.pod.data_volums[i].dest_path.c_str(),
+                                       StringBool(response.job.desc.pod.data_volums[i].readonly).c_str(),
+                                       StringBool(response.job.desc.pod.data_volums[i].exclusive).c_str(),
+                                       StringBool(response.job.desc.pod.data_volums[i].use_symlink).c_str()
+                                   );  
+        }
+        printf("%s\n", desc_data_volums.ToString().c_str());
+
+        printf("job description pod task infomation\n");
+        for (uint32_t i = 0; i < response.job.desc.pod.tasks.size(); ++i) {
+            printf("=========================================================\n");
+            printf("job description pod task [%u] base infomation\n", i);
+            ::baidu::common::TPrinter desc_task(7);
+            desc_task.AddRow(7, "", "id", "cpu(cores/excess)", "memory(size/excess)", "tcp_throt(r/re/s/se)", "blkio", "ports(name/port)");
+            std::string scpu = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].cpu.milli_core / 1000.0) + "/"
+                               + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
+            std::string smem = ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].memory.size) + "/"
+                               + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
+            std::string stcp = ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_quota) + "/"
+                               + StringBool(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_excess) + "/"
+                               + ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.send_bps_quota) + "/"
+                               + StringBool(response.job.desc.pod.tasks[i].tcp_throt.send_bps_excess);
+            std::string sblkio;
+            if (response.job.desc.pod.tasks[i].blkio.weight >= 0 && response.job.desc.pod.tasks[i].blkio.weight <= 1000) {
+                sblkio = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].blkio.weight);
+            }
+
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].ports.size(); ++j) {
+                std::string sports = response.job.desc.pod.tasks[i].ports[j].port_name + "/"
+                                    + response.job.desc.pod.tasks[i].ports[j].port;
+                                    //+ response.job.desc.pod.tasks[i].ports[j].real_port;
+                if (j == 0) {
+                    desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                                          response.job.desc.pod.tasks[i].id.c_str(),
+                                          scpu.c_str(),
+                                          smem.c_str(),
+                                          stcp.c_str(),
+                                          sblkio.c_str(),
+                                          sports.c_str()
+                                     );
+                } else {
+                    desc_task.AddRow(7, "",
+                                         "",
+                                         "",
+                                         "",
+                                         "",
+                                         "",
+                                         sports.c_str()
+                                     );
+                }
+
+            }
+            
+            if (response.job.desc.pod.tasks[i].ports.size() == 0) {
+                desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                                     response.job.desc.pod.tasks[i].id.c_str(), 
+                                     scpu.c_str(),
+                                     smem.c_str(),
+                                     stcp.c_str(),
+                                     sblkio.c_str(),
+                                     ""
+                                 );
+            }
+            printf("%s\n", desc_task.ToString().c_str());
+
+            printf("job description pod task [%u] exe_package infomation\n", i);
+            printf("-----------------------------------------------\n");
+            printf("start_cmd: %s\n", response.job.desc.pod.tasks[i].exe_package.start_cmd.c_str());
+            printf("stop_cmd: %s\n", response.job.desc.pod.tasks[i].exe_package.stop_cmd.c_str());
+            printf("dest_path: %s\n", response.job.desc.pod.tasks[i].exe_package.package.dest_path.c_str());
+            printf("version: %s\n", response.job.desc.pod.tasks[i].exe_package.package.version.c_str());
+
+            printf("\njob description pod task [%u] data_package infomation\n", i);
+            printf("-----------------------------------------------\n");
+            printf("reload_cmd: %s\n", response.job.desc.pod.tasks[i].data_package.reload_cmd.c_str());
+            ::baidu::common::TPrinter packages(3);
+            packages.AddRow(3, "", "version", "dest_path");
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].data_package.packages.size(); ++j) {
+                 packages.AddRow(3, ::baidu::common::NumToString(j).c_str(),
+                                    response.job.desc.pod.tasks[i].data_package.packages[j].version.c_str(),
+                                    response.job.desc.pod.tasks[i].data_package.packages[j].dest_path.c_str()
+                                );
+            }
+            printf("%s\n", packages.ToString().c_str());
+
+            printf("job description pod task [%u] services infomation\n", i);
+            ::baidu::common::TPrinter services(4);
+            services.AddRow(4, "", "name", "port_name", "use_bns");
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].services.size(); ++j) {
+                services.AddRow(4, ::baidu::common::NumToString(j).c_str(),
+                                   response.job.desc.pod.tasks[i].services[j].service_name.c_str(),
+                                   response.job.desc.pod.tasks[i].services[j].port_name.c_str(),
+                                   StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str()
+                               );
+            }
+            printf("%s\n", services.ToString().c_str());
+
+        }
+
+        printf("podinfo infomation\n");
+        ::baidu::common::TPrinter pods(8);
+        pods.AddRow(8, "", "podid", "endpoint", "version", "status", "fail_count", "start_time", "update_time");
+        for (uint32_t i = 0; i < response.job.pods.size(); ++i) {
+            size_t pos = response.job.pods[i].podid.rfind("."); 
+            std::string podid(response.job.pods[i].podid, pos + 1, response.job.pods[i].podid.size()- (pos + 1));
+            pods.AddRow(8, ::baidu::common::NumToString(i).c_str(),
+                            response.job.pods[i].podid.c_str(),
+                            response.job.pods[i].endpoint.c_str(),
+                            response.job.pods[i].version.c_str(),
+                            StringPodStatus(response.job.pods[i].status).c_str(),
+                            ::baidu::common::NumToString(response.job.pods[i].fail_count).c_str(),
+                            FormatDate(response.job.pods[i].start_time).c_str(),
+                            FormatDate(response.job.pods[i].update_time).c_str()
+                          );
+            }
+            printf("%s\n", pods.ToString().c_str());
+
+
     } else {
-        printf("Show job failed for reason %d:%s\n", response.error_code.status, response.error_code.reason.c_str());
+        printf("Show job failed for reason %s:%s\n", StringStatus(response.error_code.status).c_str(), 
+                        response.error_code.reason.c_str());
     }
     return ret;
 
@@ -263,12 +519,12 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     request.user = user_;
     request.jobid = jobid;
     request.cmd = cmd;
-    bool ret =  app_master_->ExecuteCmd(request, &response);
+    bool ret = app_master_->ExecuteCmd(request, &response);
     if (ret) {
         printf("Execute job %s\n success", jobid.c_str());
     } else {
-        printf("Execute job %s failed for reason %d:%s\n", 
-                jobid.c_str(), response.error_code.status, response.error_code.reason.c_str());
+        printf("Execute job %s failed for reason %s:%s\n", 
+                jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
 }

@@ -13,7 +13,6 @@
 #include <string>
 #include <fstream>
 
-
 namespace baidu {
 namespace galaxy {
 namespace volum {

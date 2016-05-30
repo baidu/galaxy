@@ -227,10 +227,9 @@ message ShowUserRequest {
 
 message ShowUserResponse {
     optional ErrorCode error_code = 1;
-    repeated string pools = 2;
-    repeated Authority authority = 3;
-    optional Quota quota = 4;
-    optional Quota assigned = 5;
+    repeated Grant grants = 2;
+    optional Quota quota = 3;
+    optional Quota assigned = 4;
 }
 
 message GrantUserRequest {
@@ -317,11 +316,22 @@ message ShowAgentResponse {
     repeated ContainerStatistics containers = 2;
 }
 
+message PreemptRequest {
+    optional User user = 1;
+    optional string container_group_id = 2;
+    optional string endpoint = 3;
+}
+
+message PreemptResponse {
+    optional ErrorCode error_code = 1;
+}
+
 service ResMan {
 
     //op api
     rpc EnterSafeMode(EnterSafeModeRequest) returns (EnterSafeModeResponse);
     rpc LeaveSafeMode(LeaveSafeModeRequest) returns (LeaveSafeModeResponse);
+    rpc Preempt(PreemptRequest) returns (PreemptResponse);
 
     rpc Status(StatusRequest) returns (StatusResponse);
 

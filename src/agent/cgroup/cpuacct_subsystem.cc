@@ -19,17 +19,18 @@ std::string CpuacctSubsystem::Name() {
     return "cpuacct";
 }
 
-int CpuacctSubsystem::Construct() {
+baidu::galaxy::util::ErrorCode CpuacctSubsystem::Construct() {
     assert(NULL != cgroup_.get());
     assert(!container_id_.empty());
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
-        return -1;
+        return ERRORCODE(-1, "create file %s failed: ",
+                    ec.message().c_str());
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<Subsystem> CpuacctSubsystem::Clone() {
