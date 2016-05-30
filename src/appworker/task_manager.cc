@@ -350,6 +350,11 @@ int TaskManager::ClearTasks() {
     std::map<std::string, Task*>::iterator it = tasks_.begin();
 
     for (; it != tasks_.end(); ++it) {
+
+        if (NULL != it->second) {
+            delete it->second;
+        }
+
         tasks_.erase(it);
     }
 

@@ -474,6 +474,7 @@ void PodManager::StoppingPodCheck() {
 
         if (0 != task_manager_.CheckTask(task_id, task)) {
             task_manager_.CleanTask(task_id);
+            task.status = proto::kTaskTerminated;
         }
 
         if (proto::kTaskStopping == task.status) {
