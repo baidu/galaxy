@@ -28,7 +28,6 @@ public:
     AppMasterImpl();
     virtual ~AppMasterImpl();
     void Init();
-    void Start();
     void SubmitJob(::google::protobuf::RpcController* controller,
                   const ::baidu::galaxy::proto::SubmitJobRequest* request,
                   ::baidu::galaxy::proto::SubmitJobResponse* response,
@@ -82,6 +81,7 @@ private:
                                      bool failed, int err);
     void HandleResmanChange(const std::string& new_endpoint);
     void OnLockChange(std::string lock_session_id);
+    void ReloadAppInfo();
     static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param,
                             ::galaxy::ins::sdk::SDKError err);
 

@@ -33,7 +33,7 @@ public:
     std::string ToString();
 
     baidu::galaxy::util::ErrorCode Allocate(const baidu::galaxy::proto::ContainerDescription& desc);
-    int Release(const baidu::galaxy::proto::ContainerDescription& desc);
+    baidu::galaxy::util::ErrorCode Release(const baidu::galaxy::proto::ContainerDescription& desc);
     int Resource(boost::shared_ptr<void> resource);
 
     boost::shared_ptr<baidu::galaxy::proto::Resource> GetCpuResource();

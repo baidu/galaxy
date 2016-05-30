@@ -22,14 +22,15 @@ std::string NetclsSubsystem::Name() {
     return "net_cls";
 }
 
-int NetclsSubsystem::Construct() {
+baidu::galaxy::util::ErrorCode NetclsSubsystem::Construct() {
     assert(NULL != cgroup_.get());
     assert(!container_id_.empty());
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
-        return -1;
+        return ERRORCODE(-1, "create file %s failed: ",
+                    ec.message().c_str());
     }
 
     path.append("net_cls.bind_port_range");

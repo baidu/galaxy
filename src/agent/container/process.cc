@@ -26,27 +26,49 @@ namespace galaxy {
 namespace container {
 
 Process::Process() :
-    pid_(-1) {
+    pid_(-1)
+{
 }
 
-Process::~Process() {
+Process::~Process()
+{
 }
 
-pid_t Process::SelfPid() {
+pid_t Process::SelfPid()
+{
     return getpid();
 }
 
-int Process::RedirectStderr(const std::string& path) {
+
+baidu::galaxy::util::ErrorCode Process::Kill(pid_t pid)
+{
+    int ret = ::kill(pid, SIGKILL);
+    int err = errno;
+    if (0 == ret) {
+        return ERRORCODE_OK;
+    }
+
+    if (err == ESRCH) {
+        return PERRORCODE(0, err, "pid %d not exist", (int)pid);
+    }
+
+    return PERRORCODE(-1, err, "failed in killing pid %d: ", (int)pid);
+}
+
+int Process::RedirectStderr(const std::string& path)
+{
     stderr_path_ = path;
     return 0;
 }
 
-int Process::RedirectStdout(const std::string& path) {
+int Process::RedirectStdout(const std::string& path)
+{
     stdout_path_ = path;
     return 0;
 }
 
-int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t flag) {
+int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t flag)
+{
     assert(!stderr_path_.empty());
     assert(!stdout_path_.empty());
     Context* context = new Context();
@@ -82,21 +104,20 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     context->routine = routine;
     context->parameter = param;
 
-    const static int CLONE_FLAG = CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS;
+    const static int CLONE_FLAG = CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | SIGCHLD;
     const static int CLONE_STACK_SIZE = 1024 * 1024;
     static char CLONE_STACK[CLONE_STACK_SIZE];
     pid = ::clone(&Process::CloneRoutine,
             CLONE_STACK + CLONE_STACK_SIZE,
-            CLONE_FLAG | SIGCHLD,
+            CLONE_FLAG,
             context);
 
     int en = errno;
     if (pid != 0) {
+        ::close(context->stdout_fd);
+        ::close(context->stderr_fd);
         pid_ = pid;
     }
-
-    ::close(context->stdout_fd);
-    ::close(context->stderr_fd);
 
     if (-1 == pid_) {
         LOG(WARNING) << "clone failed: " << strerror(en);
@@ -106,7 +127,8 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     return pid_;
 }
 
-int Process::CloneRoutine(void* param) {
+int Process::CloneRoutine(void* param)
+{
     assert(NULL != param);
     Context* context = (Context*) param;
     assert(context->stdout_fd > 0);
@@ -145,16 +167,19 @@ int Process::CloneRoutine(void* param) {
 
 
 
-int Process::Fork(boost::function<int (void*) > routine, void* param) {
+int Process::Fork(boost::function<int (void*) > routine, void* param)
+{
     assert(0);
     return -1;
 }
 
-pid_t Process::Pid() {
+pid_t Process::Pid()
+{
     return pid_;
 }
 
-int Process::Wait(int& status) {
+int Process::Wait(int& status)
+{
     if (pid_ <= 0) {
         return -1;
     }
@@ -166,7 +191,8 @@ int Process::Wait(int& status) {
     return 0;
 }
 
-int Process::ListFds(pid_t pid, std::vector<int>& fd) {
+int Process::ListFds(pid_t pid, std::vector<int>& fd)
+{
     std::stringstream ss;
     ss << "/proc/" << (int)pid << "/fd";
     boost::filesystem::path path(ss.str());

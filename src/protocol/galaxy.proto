@@ -305,7 +305,7 @@ message Cgroup {
 
 // resource manager -> agent
 message ContainerDescription {
-    optional uint32 priority = 1;
+    optional int32 priority = 1;
     optional string run_user = 2;
     optional string version = 3;
     optional VolumRequired workspace_volum = 4;
@@ -375,6 +375,7 @@ enum Status {
    kReload = 18;
    kStatusConflict = 19;
    kJobTerminateFail = 20;
+   kSuspend = 21;
 }
 
 message ErrorCode {

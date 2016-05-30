@@ -33,10 +33,9 @@ env.Program('galaxy_res_client', Glob('src/client/galaxy_res_*.cc')
             'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
             'src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
-env.Program('galaxy_client', Glob('src/client/galaxy_job_*.cc')
-            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_appmaster.cc',
-            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
-            'src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc'])
+env.Program('galaxy_client', Glob('src/client/galaxy_job_*.cc') + Glob('src/sdk/*.cc')
+            + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc',
+            'src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/resman.pb.cc'])
 
 #unittest
 agent_unittest_src=Glob('src/test_agent/*.cc')+ Glob('src/agent/*/*.cc') + ['src/agent/agent_flags.cc', 'src/protocol/galaxy.pb.cc']

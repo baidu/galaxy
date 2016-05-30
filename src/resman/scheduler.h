@@ -134,6 +134,7 @@ struct ContainerGroup {
     proto::ContainerDescription container_desc;
     int64_t submit_time;
     int64_t update_time;
+    std::string last_sched_container_id;
     ContainerGroup() : terminated(false),
                        update_interval(0),
                        last_update_time(0),
@@ -217,7 +218,8 @@ public:
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
-                        const ContainerGroupId& container_group_id);
+                        const ContainerGroupId& container_group_id,
+                        std::string& fail_reason);
 
     bool ChangeReplica(const ContainerGroupId& container_group_id, int replica);
     

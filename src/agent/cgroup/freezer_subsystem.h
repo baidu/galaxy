@@ -14,14 +14,14 @@ public:
     FreezerSubsystem();
     ~FreezerSubsystem();
 
-    int Freeze();
-    int Thaw();
+    baidu::galaxy::util::ErrorCode Freeze();
+    baidu::galaxy::util::ErrorCode Thaw();
     bool Empty();
 
     baidu::galaxy::util::ErrorCode Collect(std::map<std::string, AutoValue>& stat);
     boost::shared_ptr<Subsystem> Clone();
     std::string Name();
-    int Construct();
+    baidu::galaxy::util::ErrorCode Construct();
 
 };
 }

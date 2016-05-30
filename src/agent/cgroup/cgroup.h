@@ -9,6 +9,8 @@
 #include <string>
 #include <map>
 
+#include "util/error_code.h"
+
 namespace baidu {
 namespace galaxy {
 namespace proto {
@@ -27,8 +29,8 @@ public:
     void SetContainerId(const std::string& container_id);
     void SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup);
 
-    int Construct();
-    int Destroy();
+    baidu::galaxy::util::ErrorCode Construct();
+    baidu::galaxy::util::ErrorCode Destroy();
     boost::shared_ptr<google::protobuf::Message> Report();
     void ExportEnv(std::map<std::string, std::string>& evn);
     std::string Id();

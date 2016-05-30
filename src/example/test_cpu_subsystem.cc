@@ -43,8 +43,10 @@ int main(int argc, char** argv) {
     cpu_ss.SetContainerId(container_id);
     cpu_ss.SetCgroup(cgroup);
     
-    if (0 != cpu_ss.Construct()) {
-        std::cerr << "construct subsystem" << cpu_ss.Name() << " failed\n";
+    baidu::galaxy::util::ErrorCode err =  cpu_ss.Construct();
+    if (err.Code() != 0) {
+        std::cerr << "construct subsystem" << cpu_ss.Name() 
+            << " failed: " << err.Message();
         cpu_ss.Destroy();
     } else {
         std::cerr << "construct subsystem" << cpu_ss.Name() << " successfully\n";

@@ -8,6 +8,7 @@
 #include "galaxy_util.h"
 #include <gflags/gflags.h>
 #include "sdk/galaxy_sdk_appmaster.h"
+#include "sdk/galaxy_sdk_resman.h"
 
 namespace baidu {
 namespace galaxy {
@@ -31,6 +32,7 @@ private:
 private:
     ::baidu::galaxy::sdk::AppMaster* app_master_;
     ::baidu::galaxy::sdk::User user_;
+    ::baidu::galaxy::sdk::ResourceManager* resman_;
 
 }; // end class JobAction
 
