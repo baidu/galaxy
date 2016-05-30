@@ -375,6 +375,7 @@ enum Status {
    kReload = 18;
    kStatusConflict = 19;
    kJobTerminateFail = 20;
+   kSuspend = 21;
 }
 
 message ErrorCode {
