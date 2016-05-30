@@ -12,12 +12,19 @@ message SubmitJobResponse {
     optional ErrorCode error_code = 1;
     optional string jobid = 2;
 }
+
+enum UpdateJobOprate {
+    kUpdateJobStart = 1;
+    kUpdateJobContinue = 2;
+    kUpdateJobRollback = 3;
+}
 message UpdateJobRequest {
     optional User user = 1;
     optional string jobid = 2;
     optional string hostname = 3;
     optional uint32 interval = 4;
-    optional JobDescription job = 5; 
+    optional JobDescription job = 5;
+    optional UpdateJobOprate oprate = 6;
 }
 message UpdateJobResponse {
     optional ErrorCode error_code = 1;
