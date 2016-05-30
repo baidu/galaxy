@@ -1,8 +1,8 @@
 // Copyright (c) 2015, Baidu.com, Inc. All Rights Reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef BAIDU_GALAXY_UTILS_UTILS_H
-#define BAIDU_GALAXY_UTILS_UTILS_H
+#ifndef BAIDU_GALAXY_APPWORKER_UTILS_H
+#define BAIDU_GALAXY_APPWORKER_UTILS_H
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -15,12 +15,9 @@ namespace baidu {
 namespace galaxy {
 
 void GetStrFTime(std::string* time);
-
 int RandRange(int min, int max);
-
-int DownloadByDirectWrite(const std::string& binary, 
+int DownloadByDirectWrite(const std::string& binary,
                           const std::string& write_file);
-
 std::string GenerateTaskId(const std::string& pod_id);
 
 namespace process {
@@ -34,8 +31,8 @@ bool PrepareStdFds(const std::string& pwd,
 void ReplaceEmptyChar(std::string& str);
 void PrepareChildProcessEnvStep1(pid_t pid, const char* work_dir);
 void PrepareChildProcessEnvStep2(const int stdin_fd,
-                                 const int stdout_fd, 
-                                 const int stderr_fd, 
+                                 const int stdout_fd,
+                                 const int stderr_fd,
                                  const std::vector<int>& fd_vector);
 bool GetCwd(std::string* dir);
 
@@ -46,12 +43,11 @@ namespace user {
 bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
 bool Su(const std::string& user_name);
 
-}
+} // ending namespace user
 
 namespace file {
 
 typedef boost::function<bool(const char* path)> OptFunc;
-
 bool ListFiles(const std::string& dir,
                std::vector<std::string>* files);
 bool Traverse(const std::string& path, const OptFunc& func);
@@ -69,8 +65,9 @@ bool GetFileMd5(const std::string& path, std::string& md5);
 bool Write(const std::string& path, const std::string& content);
 
 }   // ending namespace file
+
 }   // ending namespace galaxy
 }   // ending namespace baidu
 
 
-#endif // BAIDU_GALAXY_UTILS_UTILS_H
+#endif // BAIDU_GALAXY_APPWORKER_UTILS_H
