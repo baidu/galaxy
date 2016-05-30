@@ -106,7 +106,7 @@ baidu::galaxy::util::ErrorCode ResourceManager::Allocate(std::vector<const baidu
 
 
 
-int ResourceManager::Release(const baidu::galaxy::proto::ContainerDescription& desc)
+baidu::galaxy::util::ErrorCode ResourceManager::Release(const baidu::galaxy::proto::ContainerDescription& desc)
 {
     int64_t memroy_require = 0;
     int64_t cpu_millicores = 0;
@@ -114,16 +114,25 @@ int ResourceManager::Release(const baidu::galaxy::proto::ContainerDescription& d
     CalResource(desc, cpu_millicores, memroy_require, vv);
     boost::mutex::scoped_lock lock(mutex_);
     int ret = cpu_->Release(cpu_millicores);
-    assert(0 == ret);
-    ret = memory_->Release(memroy_require);
-    assert(0 == ret);
-
-    for (size_t i = 0; i < vv.size(); i++) {
-        ret = volum_->Release(*vv[i]);
-        assert(0 == ret);
+    if (0 != ret) {
+        return ERRORCODE(-1, "release cpu resource failed");
     }
 
-    return 0;
+    ret = memory_->Release(memroy_require);
+    if (0 != ret) {
+        return ERRORCODE(-1, "release memory resource failed");
+    }
+
+    for (size_t i = 0; i < vv.size(); i++) {
+        baidu::galaxy::util::ErrorCode ret = volum_->Release(*vv[i]);
+        if (ret.Code() != 0) {
+            return ERRORCODE(-1,
+                    "release resource failed: %s",
+                    ret.Message().c_str());
+        }
+    }
+
+    return ERRORCODE_OK;
 }
 
 int ResourceManager::Resource(boost::shared_ptr<void> resource)
@@ -163,10 +172,9 @@ void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::gala
         boost::shared_ptr<baidu::galaxy::proto::VolumResource> vr(new baidu::galaxy::proto::VolumResource());
         vr->set_medium(iter->second.medium_);
         vr->set_device_path(iter->first);
-        baidu::galaxy::proto::Resource* r = new baidu::galaxy::proto::Resource();
+        baidu::galaxy::proto::Resource* r = vr->mutable_volum();
         r->set_assigned(iter->second.assigned_);
         r->set_total(iter->second.total_);
-        vr->set_allocated_volum(r);
         resource.push_back(vr);
         iter++;
     }
@@ -197,6 +205,7 @@ void ResourceManager::CalResource(const baidu::galaxy::proto::ContainerDescripti
         vv.push_back(&desc.data_volums(i));
     }
 }
+
 }
 }
 }

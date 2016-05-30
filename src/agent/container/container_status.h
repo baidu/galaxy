@@ -31,9 +31,11 @@ public:
     baidu::galaxy::util::ErrorCode EnterDestroying();
     baidu::galaxy::util::ErrorCode EnterTerminated();
     baidu::galaxy::proto::ContainerStatus Status();
+    baidu::galaxy::util::ErrorCode EnterFinished();
     bool CmpRetOld(const baidu::galaxy::proto::ContainerStatus status,
             baidu::galaxy::proto::ContainerStatus* old);
 
+    baidu::galaxy::util::ErrorCode EnterErrorFrom(baidu::galaxy::proto::ContainerStatus prestatus);
 private:
     baidu::galaxy::util::ErrorCode Enter(const std::set<baidu::galaxy::proto::ContainerStatus>& allow,
             baidu::galaxy::proto::ContainerStatus target_status);
@@ -49,6 +51,7 @@ private:
     static std::set<baidu::galaxy::proto::ContainerStatus> kerror_pre_status_;
     static std::set<baidu::galaxy::proto::ContainerStatus> kdestroying_pre_status_;
     static std::set<baidu::galaxy::proto::ContainerStatus> kterminated_pre_status_;
+    static std::set<baidu::galaxy::proto::ContainerStatus> kfinished_pre_status_;
     static bool setup_ok_;
 
 };

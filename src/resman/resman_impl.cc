@@ -85,6 +85,8 @@ bool ResManImpl::Init() {
         LOG(WARNING) << "fail to load user meta";
         return false;
     }
+    
+    ReloadUsersAuth();
     load_ok = LoadObjects(sContainerGroupPrefix, container_groups_);
     if (!load_ok) {
         LOG(WARNING) << "failt to load container groups meta";
@@ -100,6 +102,30 @@ bool ResManImpl::Init() {
                  << "TRACE END";
     }
     return true;
+}
+
+void ResManImpl::ReloadUsersAuth() {
+    std::map<std::string, proto::UserMeta>::const_iterator user_it;
+    for (user_it = users_.begin(); user_it != users_.end(); user_it++) {
+        const std::string& user_name = user_it->first;
+        const proto::UserMeta& user_meta = user_it->second;
+        for (int i = 0; i < user_meta.grants_size(); i++) {
+            const proto::Grant& grant = user_meta.grants(i);
+            const std::string& pool_name = grant.pool();
+            for (int j = 0; j < grant.authority_size(); j++) {
+                const proto::Authority& auth = grant.authority(j);
+                if (auth == proto::kAuthorityCreateContainer) {
+                    users_can_create_[pool_name].insert(user_name);
+                } else if (auth == proto::kAuthorityUpdateContainer) {
+                    users_can_update_[pool_name].insert(user_name);
+                } else if (auth == proto::kAuthorityRemoveContainer) {
+                    users_can_remove_[pool_name].insert(user_name);
+                } else if (auth == proto::kAuthorityListContainer) {
+                    users_can_list_[pool_name].insert(user_name);
+                }
+            }
+        }
+    }
 }
 
 bool ResManImpl::RegisterOnNexus(const std::string& endpoint) {
@@ -240,6 +266,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         vrs->mutable_volum()->set_total(size_total);
         vrs->mutable_volum()->set_assigned(volum_assigned[medium]);
         vrs->mutable_volum()->set_used(volum_used[medium]);
+        vrs->set_medium(medium);
     }
     response->set_total_containers(total_containers);
     response->set_total_groups(total_container_groups);
@@ -252,6 +279,7 @@ void ResManImpl::Status(::google::protobuf::RpcController* controller,
         pool_status->set_alive_agents(pool_alive[pool_name]);
     }
     response->set_in_safe_mode(safe_mode_);
+    VLOG(10) << "cluster status:" << response->DebugString();
     done->Run();
 }
 
@@ -467,6 +495,13 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     CHECK_USER()
     std::string user = request->user().user();
     LOG(INFO) << "user:" << user << " create container group";
+    std::string invalid_pool;
+    if (!CheckUserAuth(request->desc(), user, users_can_create_, invalid_pool)) {
+        response->mutable_error_code()->set_status(proto::kCreateContainerGroupFail);
+        response->mutable_error_code()->set_reason("no create permission on pool: " + invalid_pool);
+        done->Run();
+        return;
+    }
     proto::ContainerGroupMeta container_group_meta;
     container_group_meta.set_name(request->name());
     container_group_meta.set_user_name(request->user().user());
@@ -511,6 +546,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
                                       ::baidu::galaxy::proto::RemoveContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
     CHECK_USER()
+    proto::ContainerDescription desc;
     {
         MutexLock lock(&mu_);
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
@@ -520,10 +556,19 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
             response->mutable_error_code()->set_reason("no such group");
             done->Run();
             return;
+        } else {
+            desc =  it->second.desc();
         }
     }
     std::string user = request->user().user();
     LOG(INFO) << "user: " << user << " remove container group: " << request->id();
+    std::string invalid_pool;
+    if (!CheckUserAuth(desc, user, users_can_remove_, invalid_pool)) {
+        response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+        response->mutable_error_code()->set_reason("no remove permission on pool: " + invalid_pool);
+        done->Run();
+        return;
+    }
     bool ret = RemoveObject(sContainerGroupPrefix + "/" + request->id());
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();
@@ -545,7 +590,10 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
                                       ::baidu::galaxy::proto::UpdateContainerGroupResponse* response,
                                       ::google::protobuf::Closure* done) {
     CHECK_USER()
+    LOG(INFO) << "user:" << request->user().user()
+              << " update container group: " << request->id();
     proto::ContainerGroupMeta new_meta;
+    proto::ContainerGroupMeta old_meta;
     bool replica_changed = false;
     {
         MutexLock lock(&mu_);
@@ -563,14 +611,28 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
             done->Run();
             return;
         }
-        new_meta = it->second;
-        new_meta.set_update_interval(request->interval());
-        new_meta.mutable_desc()->CopyFrom(request->desc());
-        new_meta.set_update_time(common::timer::get_micros());
-        if (new_meta.replica() != request->replica()) {
-            new_meta.set_replica(request->replica());
-            replica_changed = true;
-        }
+        old_meta = it->second;
+    }
+    std::string invalid_pool;
+    if (!CheckUserAuth(old_meta.desc(), request->user().user(), users_can_update_, invalid_pool)) {
+        response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+        response->mutable_error_code()->set_reason("no update permission on pool: " + invalid_pool);
+        done->Run();
+        return;
+    }
+    new_meta = old_meta; //copy
+    new_meta.set_update_interval(request->interval());
+    new_meta.mutable_desc()->CopyFrom(request->desc());
+    new_meta.set_update_time(common::timer::get_micros());
+    if (new_meta.replica() != request->replica()) {
+        new_meta.set_replica(request->replica());
+        replica_changed = true;
+    }
+    if (!CheckUserAuth(new_meta.desc(), request->user().user(), users_can_create_, invalid_pool)) {
+        response->mutable_error_code()->set_status(proto::kCreateContainerGroupFail);
+        response->mutable_error_code()->set_reason("no create permission on pool: " + invalid_pool);
+        done->Run();
+        return;
     }
     std::string new_version;
     bool version_changed = scheduler_->Update(new_meta.id(),
@@ -781,7 +843,7 @@ void ResManImpl::ShowAgent(::google::protobuf::RpcController* controller,
                            ::google::protobuf::Closure* done) {
     const std::string& endpoint = request->endpoint();
     std::vector<proto::ContainerStatistics> containers;
-    bool ret = scheduler_->ShowContainerGroup(endpoint, containers);
+    bool ret = scheduler_->ShowAgent(endpoint, containers);
     if (!ret) {
         response->mutable_error_code()->set_status(proto::kError);
         response->mutable_error_code()->set_reason("no such agent");
@@ -1107,6 +1169,9 @@ void ResManImpl::ShowUser(::google::protobuf::RpcController* controller,
     response->mutable_assigned()->CopyFrom(alloc);
     response->mutable_quota()->CopyFrom(users_[user_name].quota());
     response->mutable_error_code()->set_status(proto::kOk);
+    const proto::UserMeta& user_meta = users_[user_name];
+    response->mutable_grants()->CopyFrom(user_meta.grants());
+    VLOG(10) << "show user: " << response->DebugString();
     done->Run();
 }
 
@@ -1171,6 +1236,46 @@ void ResManImpl::GrantUser(::google::protobuf::RpcController* controller,
     } else {
         MutexLock lock(&mu_);
         users_[user_name] = user_meta;
+        for (int i = 0; i < user_meta.grants_size(); i++) {
+            const proto::Grant& grant = user_meta.grants(i);
+            const std::string& pool_name = grant.pool();
+            bool can_create = false;
+            bool can_update = false;
+            bool can_remove = false;
+            bool can_list = false;
+            for (int j = 0; j < grant.authority_size(); j++) {
+                const proto::Authority& auth = grant.authority(j);
+                if (auth == proto::kAuthorityCreateContainer) {
+                    can_create = true;
+                } else if (auth == proto::kAuthorityUpdateContainer) {
+                    can_update = true;
+                } else if (auth == proto::kAuthorityRemoveContainer) {
+                    can_remove = true;
+                } else if (auth == proto::kAuthorityListContainer) {
+                    can_list = true;
+                }
+            }
+            if (can_create) {
+                users_can_create_[pool_name].insert(user_name);
+            } else {
+                users_can_create_[pool_name].erase(user_name);
+            }
+            if (can_update) {
+                users_can_update_[pool_name].insert(user_name);
+            } else {
+                users_can_update_[pool_name].erase(user_name);
+            }
+            if (can_remove) {
+                users_can_remove_[pool_name].insert(user_name);
+            } else {
+                users_can_remove_[pool_name].erase(user_name);
+            }
+            if (can_list) {
+                users_can_list_[pool_name].insert(user_name);
+            } else {
+                users_can_list_[pool_name].erase(user_name);
+            }
+        }
         response->mutable_error_code()->set_status(proto::kOk);
         VLOG(10) <<  "grant user:" << user_meta.DebugString();
     }
@@ -1287,14 +1392,16 @@ void ResManImpl::RemoveContainerCallback(std::string agent_endpoint,
     boost::scoped_ptr<const proto::RemoveContainerRequest> request_guard(request);
     boost::scoped_ptr<proto::RemoveContainerResponse> response_guard(response);
     if (fail) {
-        LOG(WARNING) << "rpc fail of remote container, err: " << err
-                     << ", agent:" << agent_endpoint;
+        LOG(WARNING) << "rpc fail of remve container, err: " << err
+                     << ", agent:" << agent_endpoint
+                     << ", container:" << request->id();
         return;
     }
     if (response->code().status() != proto::kOk) {
-        LOG(WARNING) << "fail to create contaienr, reason:" 
+        LOG(WARNING) << "fail to remove contaienr, reason:" 
                      << response->code().reason()
-                     << ", agent:" << agent_endpoint;
+                     << ", agent:" << agent_endpoint
+                     << ", container:" << request->id();
         return;
     }
 }
@@ -1312,7 +1419,57 @@ bool ResManImpl::CheckUserExist(const RpcRequest* request,
         done->Run();
         return false;
     }
+    const std::string& right_token = users_[user_name].user().token();
+    if (request->user().token() != right_token) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason("wrong token!" + user_name);
+        done->Run();
+        return false;
+    }
     return true;
+}
+
+bool ResManImpl::CheckUserAuth(const proto::ContainerDescription& desc,
+                               const std::string& user_name,
+                               const std::map<std::string, std::set<std::string> > & users_auth,
+                               std::string& invalid_pool) {
+    MutexLock lock(&mu_);
+    for (int i = 0; i < desc.pool_names_size(); i++) {
+        const std::string& pool_name = desc.pool_names(i);
+        std::map<std::string, std::set<std::string> >::const_iterator u_it;
+        u_it = users_auth.find(pool_name);
+        if (u_it == users_auth.end()) {
+            invalid_pool = pool_name;
+            return false;
+        }
+        const std::set<std::string>& valid_users = u_it->second;
+        if (valid_users.find(user_name) == valid_users.end()) {
+            invalid_pool = pool_name;
+            return false;
+        }
+    }
+    return true;
+}
+
+void ResManImpl::Preempt(::google::protobuf::RpcController* controller,
+                         const ::baidu::galaxy::proto::PreemptRequest* request,
+                         ::baidu::galaxy::proto::PreemptResponse* response,
+                         ::google::protobuf::Closure* done) {
+    const std::string& agent_endpoint = request->endpoint();
+    const std::string& container_group_id = request->container_group_id();
+    LOG(INFO) << "preempt scheduling: " << container_group_id
+              << " on:" << agent_endpoint;
+    std::string fail_reason;
+    bool ret = scheduler_->ManualSchedule(agent_endpoint, 
+                                          container_group_id,
+                                          fail_reason);
+    if (!ret) {
+        response->mutable_error_code()->set_status(proto::kError);
+        response->mutable_error_code()->set_reason(fail_reason);
+    } else {
+        response->mutable_error_code()->set_status(proto::kOk);
+    }
+    done->Run();
 }
 
 } //namespace galaxy

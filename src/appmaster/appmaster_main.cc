@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     std::string appmaster_endpoint = ::baidu::common::util::GetLocalHostName() + ":" +FLAGS_appmaster_port;
     bool nexus_ok = appmaster->RegisterOnNexus(appmaster_endpoint);
     if (!nexus_ok) {
-        LOG(WARNING) << "fail to register RM on nexus";
+        LOG(WARNING) << "fail to register AppMaster on nexus";
         exit(-1);
     }
     sofa::pbrpc::RpcServerOptions options;

@@ -17,6 +17,7 @@
 
 DECLARE_string(nexus_root);
 DECLARE_string(nexus_addr);
+DECLARE_string(jobs_store_path);
 DECLARE_string(appworker_cmdline);
 
 const std::string sMASTERLock = "/appmaster_lock";
@@ -34,6 +35,7 @@ AppMasterImpl::AppMasterImpl() : running_(false) {
 AppMasterImpl::~AppMasterImpl() {
     //delete resman_watcher_;
     delete nexus_;
+    delete resman_watcher_;
 }
 
 void AppMasterImpl::Init() {
@@ -43,17 +45,42 @@ void AppMasterImpl::Init() {
         exit(1);
     }
     LOG(INFO) << "init resource manager watcher successfully";
+    job_manager_.Start();
+    ReloadAppInfo();
     running_ = true;
     return;
 }
 
+void AppMasterImpl::ReloadAppInfo() {
+    std::string start_key = FLAGS_nexus_root + FLAGS_jobs_store_path + "/";
+    std::string end_key = start_key + "~";
+    ::galaxy::ins::sdk::ScanResult* result = nexus_->Scan(start_key, end_key);
+    int job_amount = 0;
+    while (!result->Done()) {
+        assert(result->Error() == ::galaxy::ins::sdk::kOK);
+        std::string key = result->Key();
+        std::string job_raw_data = result->Value();
+        JobInfo job_info;
+        bool ok = job_info.ParseFromString(job_raw_data);
+        if (ok) {
+            LOG(INFO) << "reload job: " << job_info.jobid();
+            job_manager_.ReloadJobInfo(job_info);
+        } else {
+            LOG(WARNING) <<  "faild to parse job_info: " << key;
+        }
+        result->Next();
+        job_amount++;
+    }
+    LOG(INFO) << "reload all job desc finish, total#: " << job_amount;
+}
+
 void AppMasterImpl::HandleResmanChange(const std::string& new_endpoint) {
     if (new_endpoint.empty()) {
-        LOG(WARNING) << "endpoint of RM is deleted from nexus";
+        LOG(WARNING) << "endpoint of AM is deleted from nexus";
     }
     if (new_endpoint != resman_endpoint_) {
         MutexLock lock(&resman_mutex_);
-        LOG(INFO) << "RM changes to " << new_endpoint.c_str();
+        LOG(INFO) << "AM changes to " << new_endpoint.c_str();
         resman_endpoint_ = new_endpoint;
         job_manager_.SetResmanEndpoint(resman_endpoint_);
     }
@@ -78,12 +105,12 @@ bool AppMasterImpl::RegisterOnNexus(const std::string endpoint) {
     ::galaxy::ins::sdk::SDKError err;
     bool ret = nexus_->Lock(FLAGS_nexus_root + sMASTERLock, &err);
     if (!ret) {
-        LOG(WARNING) << "failed to acquire appmaster lock, " << err;
+        LOG(WARNING) << "failed to acquire AM lock, " << err;
         return false;
     }
     ret = nexus_->Put(FLAGS_nexus_root + sMASTERAddr, endpoint, &err);
     if (!ret) {
-        LOG(WARNING) << "failed to write appmaster endpoint to nexus, " << err;
+        LOG(WARNING) << "failed to write AM endpoint to nexus, " << err;
         return false;
     }
     ret = nexus_->Watch(FLAGS_nexus_root + sMASTERLock, &OnMasterLockChange, this, &err);
@@ -103,13 +130,16 @@ void AppMasterImpl::CreateContainerGroupCallBack(JobDescription job_desc,
     boost::scoped_ptr<const baidu::galaxy::proto::CreateContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<baidu::galaxy::proto::CreateContainerGroupResponse> response_ptr(response);
     if (failed || response_ptr->error_code().status() != proto::kOk) {
-        //LOG(WARNING, "fail to create container group");
+        LOG(WARNING) << "fail to create container group with status " 
+        << Status_Name(response_ptr->error_code().status());
         submit_response->mutable_error_code()->CopyFrom(response_ptr->error_code());
         done->Run();
         return;
     }
     Status status = job_manager_.Add(response->id(), job_desc);
     if (status != proto::kOk) {
+        LOG(WARNING) << "fail to add job :" << response->id() 
+        << " with status " << Status_Name(status);
         submit_response->mutable_error_code()->set_status(status);
         submit_response->mutable_error_code()->set_reason("appmaster add job error");
         done->Run();
@@ -128,20 +158,27 @@ void AppMasterImpl::BuildContainerDescription(const ::baidu::galaxy::proto::JobD
     container_desc->set_run_user(job_desc.run_user());
     container_desc->set_version(job_desc.version());
     container_desc->set_max_per_host(job_desc.deploy().max_per_host());
-    container_desc->set_tag(job_desc.tag());
+    container_desc->set_tag(job_desc.deploy().tag());
     container_desc->set_cmd_line(FLAGS_appworker_cmdline);
-    for (int i = 0; i < job_desc.pool_names_size(); i++) {
-        container_desc->add_pool_names(job_desc.pool_names(i));
+    for (int i = 0; i < job_desc.deploy().pools_size(); i++) {
+        container_desc->add_pool_names(job_desc.deploy().pools(i));
     }
     container_desc->mutable_workspace_volum()->CopyFrom(job_desc.pod().workspace_volum());
     container_desc->mutable_data_volums()->CopyFrom(job_desc.pod().data_volums());
     for (int i = 0; i < job_desc.pod().tasks_size(); i++) {
         Cgroup* cgroup = container_desc->add_cgroups();
+        cgroup->set_id(job_desc.pod().tasks(i).id());
         cgroup->mutable_cpu()->CopyFrom(job_desc.pod().tasks(i).cpu());
         cgroup->mutable_memory()->CopyFrom(job_desc.pod().tasks(i).memory());
         cgroup->mutable_tcp_throt()->CopyFrom(job_desc.pod().tasks(i).tcp_throt());
         cgroup->mutable_blkio()->CopyFrom(job_desc.pod().tasks(i).blkio());
+        for (int j = 0; j < job_desc.pod().tasks(i).ports_size(); j++) {
+            cgroup->add_ports()->CopyFrom(job_desc.pod().tasks(i).ports(j));
+        }
     }
+    VLOG(10) << "TRACE BuildContainerDescription: " << job_desc.name();
+    VLOG(10) <<  container_desc->DebugString();
+    VLOG(10) << "TRACE END";
     return;
 }
 
@@ -149,6 +186,15 @@ void AppMasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::SubmitJobRequest* request,
                ::baidu::galaxy::proto::SubmitJobResponse* response,
                ::google::protobuf::Closure* done) {
+    VLOG(10) << "DEBUG SubmitJob: ";
+    VLOG(10) << request->DebugString();
+    VLOG(10) << "DEBUG END";
+    if (!running_) {
+        response->mutable_error_code()->set_status(kError);
+        response->mutable_error_code()->set_reason("AM not running");
+        done->Run();
+        return;
+    }
     const JobDescription& job_desc = request->job();
     MutexLock lock(&resman_mutex_);
     proto::CreateContainerGroupRequest* container_request = new proto::CreateContainerGroupRequest();
@@ -156,6 +202,9 @@ void AppMasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
     container_request->set_name(job_desc.name());
     BuildContainerDescription(job_desc, container_request->mutable_desc());
     container_request->set_replica(job_desc.deploy().replica());
+    VLOG(10) << "DEBUG CreateContainer: ";
+    VLOG(10) <<  container_request->DebugString();
+    VLOG(10) << "DEBUG END";
     proto::CreateContainerGroupResponse* container_response = new proto::CreateContainerGroupResponse();
     
     boost::function<void (const proto::CreateContainerGroupRequest*,
@@ -207,6 +256,15 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::UpdateJobRequest* request,
                ::baidu::galaxy::proto::UpdateJobResponse* response,
                ::google::protobuf::Closure* done) {
+    VLOG(10) << "DEBUG UpdateJob: ";
+    VLOG(10) << request->DebugString();
+    VLOG(10) << "DEBUG END";
+    if (!running_) {
+        response->mutable_error_code()->set_status(kError);
+        response->mutable_error_code()->set_reason("AM not running");
+        done->Run();
+        return;
+    }
     const JobDescription& job_desc = request->job();
     MutexLock lock(&resman_mutex_);
     proto::UpdateContainerGroupRequest* container_request = new proto::UpdateContainerGroupRequest();
@@ -215,6 +273,9 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     container_request->set_interval(job_desc.deploy().interval());
     BuildContainerDescription(job_desc, container_request->mutable_desc());
     container_request->set_replica(job_desc.deploy().replica());
+    VLOG(10) << "DEBUG UpdateContainer: ";
+    VLOG(10) <<  container_request->DebugString();
+    VLOG(10) << "DEBUG END";
     proto::UpdateContainerGroupResponse* container_response = new proto::UpdateContainerGroupResponse();
     boost::function<void (const proto::UpdateContainerGroupRequest*,
                           proto::UpdateContainerGroupResponse*, 
@@ -238,8 +299,18 @@ void AppMasterImpl::RemoveJob(::google::protobuf::RpcController* controller,
                const ::baidu::galaxy::proto::RemoveJobRequest* request,
                ::baidu::galaxy::proto::RemoveJobResponse* response,
                ::google::protobuf::Closure* done) {
+    VLOG(10) << "DEBUG RemoveJob: ";
+    VLOG(10) << request->DebugString();
+    VLOG(10) << "DEBUG END";
+    if (!running_) {
+        response->mutable_error_code()->set_status(kError);
+        response->mutable_error_code()->set_reason("AM not running");
+        done->Run();
+        return;
+    }
     Status status = job_manager_.Terminate(request->jobid(), 
                                             request->user(), request->hostname());
+    VLOG(10) << "remove job : " << request->DebugString();
     response->mutable_error_code()->set_status(status);
     response->mutable_error_code()->set_reason("remove job ok");
     done->Run();
@@ -250,6 +321,12 @@ void AppMasterImpl::ListJobs(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::proto::ListJobsRequest* request,
                             ::baidu::galaxy::proto::ListJobsResponse* response,
                             ::google::protobuf::Closure* done) {
+    if (!running_) {
+        response->mutable_error_code()->set_status(kError);
+        response->mutable_error_code()->set_reason("AM not running");
+        done->Run();
+        return;
+    }
     job_manager_.GetJobsOverview(response->mutable_jobs());
     response->mutable_error_code()->set_status(kOk);
     done->Run();
@@ -259,7 +336,12 @@ void AppMasterImpl::ShowJob(::google::protobuf::RpcController* controller,
                             const ::baidu::galaxy::proto::ShowJobRequest* request,
                             ::baidu::galaxy::proto::ShowJobResponse* response,
                             ::google::protobuf::Closure* done) {
-
+    if (!running_) {
+        response->mutable_error_code()->set_status(kError);
+        response->mutable_error_code()->set_reason("AM not running");
+        done->Run();
+        return;
+    }
     Status rlt = job_manager_.GetJobInfo(request->jobid(), response->mutable_job());
     response->mutable_error_code()->set_status(rlt);
     done->Run();
@@ -275,10 +357,22 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
                               const ::baidu::galaxy::proto::FetchTaskRequest* request,
                               ::baidu::galaxy::proto::FetchTaskResponse* response,
                               ::google::protobuf::Closure* done) {
+    VLOG(10) << "DEBUG: FetchTask"
+    << request->DebugString() 
+    <<"DEBUG END";
+    if (!running_) {
+        response->mutable_error_code()->set_status(kError);
+        response->mutable_error_code()->set_reason("AM not running");
+        done->Run();
+        return;
+    }
     Status status = job_manager_.HandleFetch(request, response);
     if (status != kOk) {
-        LOG(WARNING) << "FetchTask failed, code:" << status << ", method:" << __FUNCTION__;
+        LOG(WARNING) << "FetchTask failed, code:" << Status_Name(status) << ", method:" << __FUNCTION__;
     }
+    VLOG(10) << "DEBUG: Fetch response " 
+    << response->DebugString() 
+    <<"DEBUG END";
     done->Run();
     return;
 }

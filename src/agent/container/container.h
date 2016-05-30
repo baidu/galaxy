@@ -4,6 +4,7 @@
 #pragma once
 #include "protocol/galaxy.pb.h"
 #include "container_status.h"
+#include "timer.h"
 
 #include <sys/types.h>
 
@@ -104,12 +105,10 @@ public:
     int Construct();
     int Destroy();
 
-    int Tasks(std::vector<pid_t>& pids);
-    int Pids(std::vector<pid_t>& pids);
-    boost::shared_ptr<google::protobuf::Message> Report();
     baidu::galaxy::proto::ContainerStatus Status();
-
+    const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
+    void KeepAlive();
 private:
     int Construct_();
     int Destroy_();
@@ -126,6 +125,7 @@ private:
     ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
     std::vector<boost::shared_ptr<baidu::galaxy::collector::Collector> > collectors_;
+    int64_t created_time_;
 
 };
 

@@ -10,8 +10,7 @@
 #include "subsystem.h"
 #include <glog/logging.h>
 
-#include <sys/types.h>
-#include <signal.h>
+#include <unistd.h>
 
 namespace baidu {
 namespace galaxy {
@@ -36,7 +35,7 @@ void Cgroup::SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgrou
     cgroup_ = cgroup;
 }
 
-int Cgroup::Construct()
+baidu::galaxy::util::ErrorCode Cgroup::Construct()
 {
     assert(subsystem_.empty());
     std::vector<std::string> subsystems;
@@ -58,10 +57,12 @@ int Cgroup::Construct()
             subsystem_.push_back(ss);
         }
 
-        if (0 != ss->Construct()) {
+        baidu::galaxy::util::ErrorCode err = ss->Construct();
+        if (0 != err.Code()) {
             LOG(WARNING) << "construct subsystem " << ss->Name().c_str()
                          << " for cgroup " << ss->Path().c_str()
-                         << " failed";
+                         << " failed: "
+                         << err.Message();
             ok = false;
             break;
         }
@@ -84,50 +85,53 @@ int Cgroup::Construct()
             freezer_.reset();
         }
 
-        return -1;
+        return ERRORCODE(-1, "");
     }
 
-    return 0;
+    return ERRORCODE_OK;
 }
 
 // Fixme: freeze first, and than kill
-int Cgroup::Destroy()
+baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 {
-    int ret = 0;
-
-    if (0 != freezer_->Freeze()) {
-        return -1;
+    if (subsystem_.empty() && NULL == freezer_.get()) {
+        return ERRORCODE_OK;
     }
 
-    std::vector<int> pids;
-    freezer_->GetProcs(pids);
-    for (size_t i = 0; i < pids.size(); i++) {
-        ::kill(pids[i], SIGKILL);
-    }
-
-    if (0 != freezer_->Thaw()) {
-        return -1;
-    }
-    pids.clear();
-    freezer_->GetProcs(pids);
-    if (pids.size() > 0) {
-        return -1;
+    baidu::galaxy::util::ErrorCode err = freezer_->Freeze();
+    if (0 != err.Code()) {
+        return ERRORCODE(-1, "freeze failed: %s",
+                    err.Message().c_str());
     }
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
-        if (0 != subsystem_[i]->Destroy()) {
-            ret = -1;
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in destroying %s: %s",
+                        subsystem_[i]->Name().c_str(),
+                        ec.Message().c_str());
         }
     }
-
     subsystem_.clear();
 
+    err = freezer_->Thaw();
+    if (0 != err.Code()) {
+        return ERRORCODE(-1, 
+                    "thaw failed: %s",
+                    err.Message().c_str());
+    }
+
     if (NULL !=  freezer_.get()) {
-        freezer_->Destroy();
+        baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1, "failed in destroying freezer:",
+                    ec.Message().c_str());
+        }
         freezer_.reset();
     }
 
-    return ret;
+    return ERRORCODE_OK;
 }
 
 boost::shared_ptr<google::protobuf::Message> Cgroup::Report()
@@ -152,9 +156,32 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
         std::stringstream ss;
-        ss << "baidu_galaxy_contianer_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
+        ss << "baidu_galaxy_container_" << cgroup_->id() << "_" << subsystem_[i]->Name() << "_path";
         env[ss.str()] = subsystem_[i]->Path();
     }
+
+    {
+        std::stringstream ss;
+        ss << "baidu_galaxy_container_" << cgroup_->id() << "_" << freezer_->Name() << "_path";
+        env[ss.str()] = freezer_->Path();
+    }
+
+    // export port
+    std::string port_names;
+    for (int i = 0; i < cgroup_->ports_size(); i++) {
+        std::stringstream ss;
+        const baidu::galaxy::proto::PortRequired& pr = cgroup_->ports(i);
+        if (!port_names.empty()) {
+            port_names += ",";
+        }
+        port_names += pr.port_name();
+        ss << "baidu_galaxy_container_" << cgroup_->id() << "_port_" << pr.port_name();
+        env[ss.str()] = pr.real_port();
+    }
+
+    std::stringstream ss;
+    ss << "baidu_galaxy_container_" << cgroup_->id() << "_portlist";
+    env[ss.str()] = port_names;
 }
 
 std::string Cgroup::Id()
