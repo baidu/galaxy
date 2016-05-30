@@ -49,7 +49,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
@@ -123,7 +123,7 @@ int TaskManager::DoStartTask(const std::string& task_id) {
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
@@ -161,7 +161,7 @@ int TaskManager::StopTask(const std::string& task_id) {
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
@@ -198,7 +198,7 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
@@ -276,7 +276,7 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
         process_id = task_id + "_stop";
 
         if (0 != process_manager_.QueryProcess(process_id, process)) {
-            LOG(INFO) << "query stop process: " << process_id << " fail";
+            LOG(WARNING) << "query stop process: " << process_id << " fail";
             return -1;
         }
 
@@ -307,11 +307,11 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
 
 int TaskManager::CleanTask(const std::string& task_id) {
     MutexLock lock(&mutex_);
-    LOG(WARNING) << "clean task: " << task_id;
+    LOG(INFO) << "clean task: " << task_id;
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
@@ -319,7 +319,7 @@ int TaskManager::CleanTask(const std::string& task_id) {
 
     switch (it->second->prev_status) {
     case proto::kTaskDeploying:
-        LOG(WARNING) << "clean deploying task";
+        LOG(INFO) << "clean deploying task";
 
         for (int i = 0; i < it->second->packages_size; i++) {
             process_id = task_id + "_deploy_"\
@@ -330,7 +330,7 @@ int TaskManager::CleanTask(const std::string& task_id) {
         break;
 
     case proto::kTaskRunning:
-        LOG(WARNING) << "clean running task";
+        LOG(INFO) << "clean running task";
         process_id = task_id + "_main";
         process_manager_.KillProcess(process_id);
         break;
@@ -346,7 +346,7 @@ int TaskManager::CleanTask(const std::string& task_id) {
 
 int TaskManager::ClearTasks() {
     MutexLock lock(&mutex_);
-    LOG(WARNING) << "clear all tasks";
+    LOG(INFO) << "clear all tasks";
     std::map<std::string, Task*>::iterator it = tasks_.begin();
 
     for (; it != tasks_.end(); ++it) {
@@ -361,18 +361,18 @@ int TaskManager::ClearTasks() {
 int TaskManager::ReloadDeployTask(const std::string& task_id,
                                   const TaskDescription& task_desc) {
     MutexLock lock(&mutex_);
-    LOG(WARNING) << "reload deploy task: " << task_id;
+    LOG(INFO) << "reload deploy task: " << task_id;
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
     // 1.replace desc
     Task* task = it->second;
     task->desc.CopyFrom(task_desc);
-    LOG(WARNING) << task_id << " desc replaced ok";
+    LOG(INFO) << task_id << " desc replaced ok";
 
     // 2.deploy data packages
     LOG(INFO) << "reload deplay task start, task: " << task_id;
@@ -420,7 +420,7 @@ int TaskManager::ReloadStartTask(const std::string& task_id,
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 
@@ -459,7 +459,7 @@ int TaskManager::ReloadCheckTask(const std::string& task_id,
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
     if (it == tasks_.end()) {
-        LOG(INFO) << "task: " << task_id << " not exist";
+        LOG(WARNING) << "task: " << task_id << " not exist";
         return -1;
     }
 

@@ -32,7 +32,7 @@ struct PodEnv {
 /**
  * when pod.stage == kPodRebuilding,
  * and pod.status == kPodTerminated,
- * lset pod.status = kPodPending
+ * set pod.status = kPodPending
  */
 enum PodStage {
     kPodStageCreating,
