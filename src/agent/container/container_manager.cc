@@ -203,6 +203,33 @@ void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galax
     }
 }
 
+
+int ContainerManager::Reload() {
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> > metas;
+    baidu::galaxy::util::ErrorCode ec = serializer_.LoadWork(metas);
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "load from db failed: " << ec.Message();
+        return -1;
+    }
+
+    for (size_t i = 0; i < metas.size(); i++) {
+        ec = res_man_->Allocate(metas[i]->container());
+        ContainerId id(metas[i]->group_id(), metas[i]->container_id());
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "allocat failed for container " << id.CompactId() 
+                << " reason is:" << ec.Message();
+            return -1;
+        }
+        boost::shared_ptr<Container> container(new Container(id, metas[i]->container()));
+        if (0 != container->Reload(metas[i])) {
+            LOG(WARNING) << "failed in reaload container " << id.CompactId();
+            return -1;
+        }
+        work_containers_[id] = container;
+    }
+    return 0;
+}
+
 }
 }
 }

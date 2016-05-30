@@ -82,7 +82,8 @@ int Container::Construct()
         LOG(WARNING) << "construct failed " << id_.CompactId() << ": " << ec.Message();
         return -1;
     }
-
+    
+    created_time_ = baidu::common::timer::get_micros();
     int ret = Construct_();
 
     if (0 != ret) {
@@ -94,7 +95,6 @@ int Container::Construct()
         }
     } else {
         ec = status_.EnterReady();
-        created_time_ = baidu::common::timer::get_micros();
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
         }
@@ -154,8 +154,61 @@ int Container::Construct_()
     // cgroup
     LOG(INFO) << "to create cgroup for container " << id_.CompactId()
               << ", expect cgroup size is " << desc_.cgroups_size();
+    int ret = ConstructCgroup();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in constructing cgroup for contanier " << id_.CompactId();
+        return -1;
+    }
+    LOG(INFO) << "succeed in constructing cgroup for contanier " << id_.CompactId();
+   
+    ret = ConstructVolumGroup();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in constructing volum group for container " << id_.CompactId();
+        return -1;
+    }
+    LOG(INFO) << "succeed in constructing volum group for container " << id_.CompactId();
 
-    for (int i = 0; i < desc_.cgroups_size(); i++) {
+    // clone
+    LOG(INFO) << "to clone appwork process for container " << id_.CompactId();
+    ret = ConstructProcess();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in constructing process for container " << id_.CompactId();
+        return -1;
+    }    
+    LOG(INFO) << "succeed in construct process (whose pid is " << process_->Pid()
+              << ") for container " << id_.CompactId();
+    return 0;
+}
+
+
+int Container::Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
+    assert(!id_.Empty());
+    
+    created_time_ = meta->created_time();
+    status_.EnterAllocating();
+    int ret = ConstructCgroup();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in constructing cgroup for contanier " << id_.CompactId();
+        status_.EnterError();
+        return -1;
+    }
+    LOG(INFO) << "succeed in constructing cgroup for contanier " << id_.CompactId();
+    
+    ret = ConstructVolumGroup();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in constructing volum group for container " << id_.CompactId();
+        status_.EnterError();
+        return -1;
+    }
+    LOG(INFO) << "succeed in constructing volum group for container " << id_.CompactId();
+    
+    process_->Reload(meta->pid());
+    status_.EnterReady();
+    return 0;
+}
+
+int Container::ConstructCgroup() {
+     for (int i = 0; i < desc_.cgroups_size(); i++) {
         boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> cg(new baidu::galaxy::cgroup::Cgroup(
                 baidu::galaxy::cgroup::SubsystemFactory::GetInstance()));
         boost::shared_ptr<baidu::galaxy::proto::Cgroup> desc(new baidu::galaxy::proto::Cgroup());
@@ -191,8 +244,11 @@ int Container::Construct_()
 
         return -1;
     }
+    
+    return 0;
+}
 
-    LOG(INFO) << "succeed in creating cgroup for container " << id_.CompactId();
+int Container::ConstructVolumGroup() {
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
     volum_group_->SetGcIndex(created_time_);
@@ -207,12 +263,11 @@ int Container::Construct_()
                      << ", reason is: " << ec.Message();
         return -1;
     }
+    return 0;
+}
 
-    LOG(INFO) << "succeed in constructing volum group for container " << id_.CompactId();
-    // clone
-    LOG(INFO) << "to clone appwork process for container " << id_.CompactId();
+int Container::ConstructProcess() {
     std::string container_root_path = baidu::galaxy::path::ContainerRootPath(id_.SubId());
-
     int now = (int)time(NULL);
     std::stringstream ss;
     ss << container_root_path << "/stderr." << now;
@@ -229,12 +284,10 @@ int Container::Construct_()
         LOG(INFO) << "fail in clonning appwork process for container " << id_.CompactId();
         return -1;
     }
-
-    LOG(INFO) << "succeed in cloning appwork process (pid is " << process_->Pid()
-              << " for container " << id_.CompactId();
     return 0;
 }
-
+    
+    
 int Container::Destroy_()
 {
     // kill appwork
@@ -479,7 +532,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta(
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ret(new baidu::galaxy::proto::ContainerMeta());
     ret->set_container_id(id_.SubId());
     ret->set_group_id(id_.GroupId());
-    ret->set_gc_index(created_time_);
+    ret->set_created_time(created_time_);
     ret->mutable_container()->CopyFrom(desc_);
     return ret;
 }

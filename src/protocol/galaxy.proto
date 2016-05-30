@@ -293,7 +293,7 @@ message ContainerMeta {
     optional ContainerDescription container = 1;
     optional string group_id = 2;
     optional string container_id = 3;
-    optional int64 gc_index = 4;
+    optional int64 created_time = 4;
     optional int32 pid = 5;
 }
 

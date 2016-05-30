@@ -32,6 +32,56 @@ private:
     boost::mutex mutex_;
 
 };
+
+class ScopedDestroyingStage {
+    public:
+        ScopedDestroyingStage(ContainerStage& stage, const std::string& id) :
+            stage_(stage),
+            id_(id) {
+            ec_ = stage_.EnterDestroyingStage(id_);
+        }
+
+        ~ScopedDestroyingStage() {
+            ec_ = stage_.LeaveDestroyingStage(id_);
+        }
+
+        baidu::galaxy::util::ErrorCode GetLastError() {
+            return ec_;
+        }
+
+    private:
+        ContainerStage& stage_;
+        const std::string id_;
+        baidu::galaxy::util::ErrorCode ec_;
+
+};
+
+
+class ScopedCreatingStage {
+    public:
+        ScopedCreatingStage(ContainerStage& stage, const std::string& id) :
+            stage_(stage),
+            id_(id) {
+            ec_ = stage_.EnterCreatingStage(id_);
+        }
+
+        ~ScopedCreatingStage() {
+            ec_ = stage_.LeaveCreatingStage(id_);
+        }
+
+        baidu::galaxy::util::ErrorCode GetLastError() {
+            return ec_;
+        }
+
+    private:
+        ContainerStage& stage_;
+        const std::string id_;
+        baidu::galaxy::util::ErrorCode ec_;
+
+};
+
+
+
 }
 }
 }
