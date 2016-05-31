@@ -14,7 +14,8 @@ int main(int argc, char** argv) {
 
     std::cout << "  name: " << job.name << std::endl;
     std::cout << "  type: " << job.type << std::endl;
-    std::cout << "  version: " << job.version << std::endl;
+    //std::cout << "  version: " << job.version << std::endl;
+    std::cout << "  run_user: " << job.run_user << std::endl;
     
     std::cout << "  deploy: " << std::endl;
 

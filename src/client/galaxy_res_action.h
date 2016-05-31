@@ -25,10 +25,10 @@ public:
     bool ShowContainerGroup(const std::string& id);
     bool AddAgent(const std::string& pool, const std::string& endpoint);
     bool RemoveAgent(const std::string& endpoint);
-    bool ListAgentsByPool(const std::string& pool);
-    bool ShowAgent(const std::string& endpoint);
-    bool ListAgentsByTag(const std::string& tag);
-    bool ListAgents();
+    bool ListAgentsByPool(const std::string& pool, const std::string& soptions);
+    bool ShowAgent(const std::string& endpoint, const std::string& soptions);
+    bool ListAgentsByTag(const std::string& tag, const std::string& soptions);
+    bool ListAgents(const std::string& soptions);
     bool EnterSafeMode();
     bool LeaveSafeMode();
     bool OnlineAgent(const std::string& endpoint);
@@ -54,6 +54,11 @@ public:
                   );
     bool Preempt(const std::string& container_group_id, const std::string& endpoint);
 
+    bool GetTagsByAgent(const std::string& endpoint);
+    bool AddAgentToPool(const std::string& endpoint, const std::string& pool);
+    //暂时不需要
+    bool RemoveAgentFromPool(const std::string& endpoint, const std::string& pool);
+    
 private:
     bool Init();
 
