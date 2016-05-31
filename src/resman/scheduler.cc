@@ -213,10 +213,7 @@ bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
             dynamic_port_count++;
         }
     }
-    if (has_determinate_port && (max_port - min_port + 1 > determinate_port_count) ) {
-        LOG(WARNING) << "the port range is not continuous: " << min_port << max_port;
-        return false;
-    }
+
     if (has_dynamic_port && has_determinate_port) {
         int start_port = max_port + 1;
         for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
@@ -388,6 +385,8 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
         for (int k = 0; k < cgroup.ports_size(); k++) {
             require->ports.push_back(cgroup.ports(k));
         }
+        require->tcp_throts.push_back(cgroup.tcp_throt());
+        require->blkios.push_back(cgroup.blkio());
     }
     require->volums.push_back(container_desc.workspace_volum());
     for (int j = 0; j < container_desc.data_volums_size(); j++) {
@@ -822,11 +821,16 @@ void Scheduler::ChangeStatus(ContainerGroup::Ptr container_group,
         }
         container->allocated_volums.clear();
         container->allocated_ports.clear();
-        container->allocated_agent = "";
         container->require = container_group->require;
         container->remote_info.Clear();
+        if (new_status == kContainerPending) {
+            container->allocated_agent.erase();
+        }
     }
     container->status = new_status;
+    if (new_status == kContainerReady) {
+        container->last_res_err = proto::kResOk;
+    }
 }
 
 void Scheduler::CheckTagAndPool(Agent::Ptr agent) {
@@ -1233,6 +1237,12 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     if (v1->ports.size() != v2->ports.size()) {
         return true;
     }
+    if (v1->tcp_throts.size() != v2->tcp_throts.size()) {
+        return true;
+    }
+    if (v1->blkios.size() != v2->blkios.size()) {
+        return true;
+    }
     for (size_t i = 0; i < v1->volums.size(); i++) {
         const proto::VolumRequired& vr_1 = v1->volums[i];
         const proto::VolumRequired& vr_2 = v2->volums[i];
@@ -1245,12 +1255,29 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
         }
     }
     for (size_t i = 0; i < v1->ports.size(); i++) {
-        const proto::PortRequired pt_1 = v1->ports[i];
-        const proto::PortRequired pt_2 = v2->ports[i];
+        const proto::PortRequired& pt_1 = v1->ports[i];
+        const proto::PortRequired& pt_2 = v2->ports[i];
         if (pt_1.port() != pt_2.port() || 
             pt_1.port_name() != pt_2.port_name()) {
             return true;
-        }   
+        }
+    }
+    for (size_t i = 0; i < v1->tcp_throts.size(); i++) {
+        const proto::TcpthrotRequired& t1 = v1->tcp_throts[i];
+        const proto::TcpthrotRequired& t2 = v2->tcp_throts[i];
+        if (t1.recv_bps_quota() != t2.recv_bps_quota()
+            || t1.recv_bps_excess() != t2.recv_bps_excess()
+            || t1.send_bps_quota() != t2.send_bps_quota()
+            || t1.send_bps_excess() != t2.send_bps_excess()) {
+            return true;
+        }
+    }
+    for (size_t i = 0; i < v1->blkios.size(); i++) {
+        const proto::BlkioRequired& b1 = v1->blkios[i];
+        const proto::BlkioRequired& b2 = v2->blkios[i];
+        if (b1.weight() != b2.weight()) {
+            return true;
+        }
     }
     return false;
 }
