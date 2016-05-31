@@ -42,7 +42,9 @@ class ScopedDestroyingStage {
         }
 
         ~ScopedDestroyingStage() {
-            ec_ = stage_.LeaveDestroyingStage(id_);
+            if (0 == ec_.Code()) {
+                ec_ = stage_.LeaveDestroyingStage(id_);
+            }
         }
 
         baidu::galaxy::util::ErrorCode GetLastError() {
@@ -66,7 +68,9 @@ class ScopedCreatingStage {
         }
 
         ~ScopedCreatingStage() {
-            ec_ = stage_.LeaveCreatingStage(id_);
+            if (0 == ec_.Code()) {
+                ec_ = stage_.LeaveCreatingStage(id_);
+            }
         }
 
         baidu::galaxy::util::ErrorCode GetLastError() {

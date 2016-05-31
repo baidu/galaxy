@@ -28,12 +28,21 @@ ContainerManager::~ContainerManager()
 
 void ContainerManager::Setup() {
     std::string path = baidu::galaxy::path::RootPath();
-    path += "data";
+    path += "/data";
     baidu::galaxy::util::ErrorCode ec = serializer_.Setup(path);
     if (ec.Code() != 0) {
         LOG(FATAL) << "set up serilzer failed, path is" << path 
             << " reason is: " << ec.Message();
         exit(-1);
+    }
+    LOG(INFO) << "succeed in setting up serialize db: " << path;
+
+    int ret = Reload();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in recovering container from meta, agent will exit";
+        exit(-1);
+    } else {
+        LOG(INFO) <<"succeed in recovering container from meta";
     }
 
     running_ = true;
@@ -157,6 +166,8 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
             LOG(WARNING) << "delete key failed, key is: " << id.CompactId()
                 << " reason is: " << ec.Message();
             ret = -1;
+        } else {
+            LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
     }
     stage_.LeaveDestroyingStage(id.SubId());
@@ -182,6 +193,7 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
         LOG(WARNING) << "fail in serializing container meta " << id.CompactId();
         return -1;
     }
+    LOG(INFO) << "succeed in serializing container meta for cantainer " << id.CompactId();
 
     {
         boost::mutex::scoped_lock lock(mutex_);

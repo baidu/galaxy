@@ -106,28 +106,38 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
     }
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
-        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
-
-        if (0 != ec.Code()) {
-            return ERRORCODE(-1,
-                    "failed in destroying %s: %s",
-                    subsystem_[i]->Name().c_str(),
-                    ec.Message().c_str());
-        }
+        subsystem_[i]->Kill();
     }
 
-    subsystem_.clear();
     err = freezer_->Thaw();
 
     if (0 != err.Code()) {
         return ERRORCODE(-1,
-                "thaw failed: %s",
-                err.Message().c_str());
+                    "thaw failed: %s",
+                    err.Message().c_str());
     }
 
-    if (NULL !=  freezer_.get()) {
-        baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
+    for (size_t i = 0; i < subsystem_.size(); i++) {
 
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
+
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in destroying %s: %s",
+                        subsystem_[i]->Name().c_str(),
+                        ec.Message().c_str());
+        }
+    }
+
+    //subsystem_.clear();
+
+
+    if (NULL !=  freezer_.get()) {
+        freezer_->Freeze();
+        freezer_->Kill();
+        freezer_->Thaw();
+
+        baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
         if (0 != ec.Code()) {
             return ERRORCODE(-1, "failed in destroying freezer:",
                     ec.Message().c_str());
