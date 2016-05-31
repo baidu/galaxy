@@ -4,6 +4,7 @@
 #pragma once
 
 #include "util/error_code.h"
+#include "cgroup/metrix.h"
 #include <boost/shared_ptr.hpp>
 #include <google/protobuf/message.h>
 
@@ -84,20 +85,6 @@ private:
     Type type_;
 };
 
-class Metrix {
-public:
-    Metrix() :
-        cpu_usertime(0L),
-        cpu_systime(0L),
-        memory_used_in_byte(0L),
-        timestamp(0) {}
-
-    int64_t cpu_usertime;
-    int64_t cpu_systime;
-    int64_t memory_used_in_byte;
-    int64_t timestamp;
-};
-
 class Subsystem {
 public:
     Subsystem() {}
@@ -120,6 +107,7 @@ public:
     virtual baidu::galaxy::util::ErrorCode Construct() = 0;
 
     virtual baidu::galaxy::util::ErrorCode Destroy();
+    virtual void Kill();
     virtual baidu::galaxy::util::ErrorCode Attach(pid_t pid);
     virtual baidu::galaxy::util::ErrorCode GetProcs(std::vector<int>& pids);
     virtual std::string Path();
