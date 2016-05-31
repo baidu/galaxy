@@ -18,17 +18,21 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-BlkioSubsystem::BlkioSubsystem() {
+BlkioSubsystem::BlkioSubsystem()
+{
 }
 
-BlkioSubsystem::~BlkioSubsystem() {
+BlkioSubsystem::~BlkioSubsystem()
+{
 }
 
-std::string BlkioSubsystem::Name() {
+std::string BlkioSubsystem::Name()
+{
     return "blkio";
 }
 
-baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct() {
+baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct()
+{
     assert(NULL != cgroup_);
     assert(!container_id_.empty());
     boost::system::error_code ec;
@@ -36,34 +40,37 @@ baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct() {
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
         return ERRORCODE(-1, "crate file %s failed:",
-                    path.string().c_str(),
-                    ec.message().c_str());
+                path.string().c_str(),
+                ec.message().c_str());
     }
 
     // tcp_throt.recv_bps_quota & tcp_throt.recv_bps_limit
     boost::filesystem::path blkio_weight = path;
     blkio_weight.append("blkio.weight");
-
     baidu::galaxy::util::ErrorCode err = baidu::galaxy::cgroup::Attach(blkio_weight.string(),
-                (int64_t)cgroup_->blkio().weight());
+                                         (int64_t)cgroup_->blkio().weight());
+
     if (0 != err.Code()) {
         return ERRORCODE(-1, "attch weight failed: %s",
-                    err.Message().c_str());
+                err.Message().c_str());
     }
 
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> BlkioSubsystem::Clone() {
+boost::shared_ptr<Subsystem> BlkioSubsystem::Clone()
+{
     boost::shared_ptr<Subsystem> ret(new BlkioSubsystem());
     return ret;
 }
 
-baidu::galaxy::util::ErrorCode BlkioSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+baidu::galaxy::util::ErrorCode BlkioSubsystem::Collect(std::map<std::string, AutoValue>& stat)
+{
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode BlkioSubsystem::GetDeviceNum(const std::string& path, int& major, int& minor) {
+baidu::galaxy::util::ErrorCode BlkioSubsystem::GetDeviceNum(const std::string& path, int& major, int& minor)
+{
     struct stat st;
 
     if (0 != ::stat(path.c_str(), &st)) {

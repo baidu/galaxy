@@ -218,6 +218,11 @@ int Process::ListFds(pid_t pid, std::vector<int>& fd)
     return 0;
 }
 
+
+void Process::Reload(pid_t pid) {
+    pid_ = pid;
+}
+
 } //namespace container
 } //namespace galaxy
 } //namespace baidu

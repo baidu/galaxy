@@ -16,17 +16,21 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-CpuSubsystem::CpuSubsystem() {
+CpuSubsystem::CpuSubsystem()
+{
 }
 
-CpuSubsystem::~CpuSubsystem() {
+CpuSubsystem::~CpuSubsystem()
+{
 }
 
-std::string CpuSubsystem::Name() {
+std::string CpuSubsystem::Name()
+{
     return "cpu";
 }
 
-baidu::galaxy::util::ErrorCode CpuSubsystem::Construct() {
+baidu::galaxy::util::ErrorCode CpuSubsystem::Construct()
+{
     assert(NULL != cgroup_);
     assert(!container_id_.empty());
     const std::string cpu_path = this->Path();
@@ -35,39 +39,39 @@ baidu::galaxy::util::ErrorCode CpuSubsystem::Construct() {
 
     if (!boost::filesystem::exists(path) && !boost::filesystem::create_directories(path, ec)) {
         return ERRORCODE(-1, "failed in creating path %s: %s",
-                    path.string().c_str(),
-                    ec.message().c_str());
+                path.string().c_str(),
+                ec.message().c_str());
     }
 
     boost::filesystem::path cpu_share(cpu_path);
     cpu_share.append("cpu.shares");
     boost::filesystem::path cpu_cfs(cpu_path);
     cpu_cfs.append("cpu.cfs_quota_us");
-
     baidu::galaxy::util::ErrorCode err;
+
     if (cgroup_->cpu().excess()) {
         err = baidu::galaxy::cgroup::Attach(cpu_share.c_str(),
-                     MilliCoreToShare(cgroup_->cpu().milli_core()),
-                    false);
+                MilliCoreToShare(cgroup_->cpu().milli_core()),
+                false);
+
         if (err.Code() != 0) {
             return ERRORCODE(-1, "%s", err.Message().c_str());
         }
-
 
         err = baidu::galaxy::cgroup::Attach(cpu_share.c_str(),
-                     MilliCoreToShare(cgroup_->cpu().milli_core()),
-                     false);
+                MilliCoreToShare(cgroup_->cpu().milli_core()),
+                false);
+
         if (err.Code() != 0) {
             return ERRORCODE(-1, "%s", err.Message().c_str());
         }
-
     } else {
         boost::filesystem::path cpu_cfs(cpu_path);
         cpu_cfs.append("cpu.cfs_quota_us");
-
         err = baidu::galaxy::cgroup::Attach(cpu_cfs.c_str(),
-                    MilliCoreToCfs(cgroup_->cpu().milli_core()),
-                    false);
+                MilliCoreToCfs(cgroup_->cpu().milli_core()),
+                false);
+
         if (0 != err.Code()) {
             return ERRORCODE(-1, "%s", err.Message().c_str());
         }
@@ -76,11 +80,13 @@ baidu::galaxy::util::ErrorCode CpuSubsystem::Construct() {
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode CpuSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+baidu::galaxy::util::ErrorCode CpuSubsystem::Collect(std::map<std::string, AutoValue>& stat)
+{
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> CpuSubsystem::Clone() {
+boost::shared_ptr<Subsystem> CpuSubsystem::Clone()
+{
     boost::shared_ptr<Subsystem> ret(new CpuSubsystem());
     return ret;
 }
