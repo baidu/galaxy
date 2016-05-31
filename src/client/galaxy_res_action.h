@@ -26,7 +26,7 @@ public:
     bool AddAgent(const std::string& pool, const std::string& endpoint);
     bool RemoveAgent(const std::string& endpoint);
     bool ListAgentsByPool(const std::string& pool, const std::string& soptions);
-    bool ShowAgent(const std::string& endpoint);
+    bool ShowAgent(const std::string& endpoint, const std::string& soptions);
     bool ListAgentsByTag(const std::string& tag, const std::string& soptions);
     bool ListAgents(const std::string& soptions);
     bool EnterSafeMode();
