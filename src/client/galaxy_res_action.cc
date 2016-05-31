@@ -1584,9 +1584,9 @@ bool ResAction::AddAgentToPool(const std::string& endpoint, const std::string& p
 
     bool ret = resman_->AddAgentToPool(request, &response);
     if (ret) {
-        printf("Add agent %s to pool %s successfully\n", endpoint.c_str(), pool.c_str());
+        printf("Set agent %s to pool %s successfully\n", endpoint.c_str(), pool.c_str());
     } else {
-        printf("Add agent failed for reason %s:%s\n",
+        printf("Set agent failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;

@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
         }
         ok = resAction->ShowContainerGroup(FLAGS_i);
 
-    } else if (strcmp(argv[1], "set_agent") == 0) {
-        //已有agent,重置pool
+    } else if (strcmp(argv[1], "add_agent") == 0) {
+        //agent不存在,将agent加入到pool
         if (FLAGS_p.empty()) {
             fprintf(stderr, "-p is needed\n");
             return -1;
@@ -118,7 +118,8 @@ int main(int argc, char** argv) {
             return -1;
         }
         ok =  resAction->AddAgent(FLAGS_p, FLAGS_e);
-    } else if (strcmp(argv[1], "add_agent") == 0) { 
+    } else if (strcmp(argv[1], "set_agent") == 0) { 
+        //已有agent,重置pool
         if (FLAGS_p.empty()) {
             fprintf(stderr, "-p is needed\n");
             return -1;
