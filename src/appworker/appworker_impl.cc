@@ -294,10 +294,10 @@ void AppWorkerImpl::FetchTask() {
     request->set_update_time(update_time_);
     request->set_status(pod.status);
     request->set_reload_status(pod.reload_status);
-    LOG(INFO) << "task status: " << proto::PodStatus_Name(pod.status);
+    LOG(INFO) << "pod status: " << proto::PodStatus_Name(pod.status);
 
     if (kPodStageReloading == pod.stage) {
-        LOG(INFO) << "task reload_status: " << proto::PodStatus_Name(pod.reload_status);
+        LOG(INFO) << "pod reload_status: " << proto::PodStatus_Name(pod.reload_status);
     }
 
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
@@ -306,6 +306,8 @@ void AppWorkerImpl::FetchTask() {
     rpc_client_.AsyncRequest(appmaster_stub_, &AppMaster_Stub::FetchTask,
                              request, response, fetch_task_callback,
                              FLAGS_appworker_fetch_task_timeout, 0);
+
+    return;
 }
 
 void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
@@ -384,6 +386,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
+
     return;
 }
 

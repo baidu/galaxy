@@ -30,6 +30,7 @@ struct TaskEnv {
     std::vector<std::string> cgroup_subsystems;
     std::map<std::string, std::string> cgroup_paths;
     std::map<std::string, std::string> ports;
+    std::string workspace;
 };
 
 struct Task {
