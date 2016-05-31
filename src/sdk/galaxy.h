@@ -5,9 +5,11 @@
 #ifndef  GALAXY_GALAXY_H_
 #define  GALAXY_GALAXY_H_
 
+#include <map>
 #include <string>
 #include <vector>
 #include <set>
+
 #include <stdint.h>
 
 namespace baidu {
@@ -51,6 +53,8 @@ struct PodDescription {
    std::vector<TaskDescription> tasks;
    std::string version;
    bool namespace_isolation;
+   std::string tmpfs_path;
+   int64_t tmpfs_size;
 };
 
 struct JobDescription {

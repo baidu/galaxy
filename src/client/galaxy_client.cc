@@ -23,6 +23,7 @@
 #include <string_util.h>
 #include "rapidjson/document.h"
 #include "rapidjson/filereadstream.h"
+#include "rapidjson/error/en.h"
 #include "master/master_watcher.h"
 #include "ins_sdk.h"
 
@@ -184,6 +185,7 @@ int BuildPreemptFromConfig(const std::string& config, ::baidu::galaxy::PreemptPr
     document.ParseStream<0>(frs);
     if (!document.IsObject()) {
         fprintf(stderr, "invalidate config file\n");
+        fprintf(stderr, "%s\n", rapidjson::GetParseError_En(document.GetParseError()));
         return -1;
     }
     if (!document.HasMember("addr")) {
@@ -237,11 +239,15 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
     int ok = 0;
     FILE* fd = fopen(config.c_str(), "r");
     char buffer[5120];
+    int64_t cpu_total = 0;
+    int64_t memory_total = 0;
+
     rapidjson::FileReadStream frs(fd, buffer, sizeof(buffer));
     rapidjson::Document document;
     document.ParseStream<0>(frs);
     if (!document.IsObject()) {
-        fprintf(stderr, "invalidate config file\n");
+        fprintf(stderr, "parse job description %s", 
+                    config.c_str());
         return -1;
     }
     fclose(fd);
@@ -296,11 +302,15 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         fprintf(stderr, "memory is required\n");
         return -1;
     }
+    cpu_total = res->millicores;
+
     ok = ReadableStringToInt(pod_require["memory"].GetString(), &res->memory);
     if (ok != 0) {
         fprintf(stderr, "fail to parse pod memory %s\n", pod_require["memory"].GetString());
         return -1;
     }
+
+    memory_total = res->memory;
     if (pod_require.HasMember("ports")) {
         const rapidjson::Value&  pod_ports = pod_require["ports"];
         for (rapidjson::SizeType i = 0; i < pod_ports.Size(); i++) {
@@ -346,6 +356,36 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
         res->write_io_ps = pod_require["write_io_ps"].GetInt();
     }
 
+    int64_t tmpfs_size = 0;
+    if (pod_require.HasMember("tmpfs")) {
+        const rapidjson::Value& tmpfs = pod_require["tmpfs"];
+
+        if (!tmpfs.HasMember("size")) {
+            fprintf(stderr, "size is required in tmpfs\n");
+            return -1;
+        }
+
+        if (0 !=  ReadableStringToInt(tmpfs["size"].GetString(), &tmpfs_size)) {
+            fprintf(stderr, "get tmpfs size failed");
+            return -1;
+        }
+
+        if (!tmpfs.HasMember("path")) {
+            fprintf(stderr, "path is required in tmpfs\n");
+        }
+
+        std::string tmpfs_path = tmpfs["path"].GetString();
+        if (tmpfs_path.empty()) {
+            fprintf(stderr, "not empty path is required in tmpfs\n");
+            return -1;
+        }
+
+        pod.tmpfs_path = tmpfs_path;
+        pod.tmpfs_size = tmpfs_size;
+    }
+
+    int64_t task_cpu_sum = 0;
+    int64_t task_memory_sum = 0;
     std::vector< ::baidu::galaxy::TaskDescription>& tasks = pod.tasks;
     if (pod_json.HasMember("tasks")) {
         const rapidjson::Value& tasks_json = pod_json["tasks"];
@@ -373,6 +413,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     task.envs.insert(task_envs[i].GetString());
                 }
             }
+
             task.cpu_isolation_type= "kCpuIsolationHard";
             if (tasks_json[i].HasMember("cpu_isolation_type")) {
                 task.cpu_isolation_type = tasks_json[i]["cpu_isolation_type"].GetString();
@@ -381,11 +422,15 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
 
             res = &task.requirement;
             res->millicores = tasks_json[i]["requirement"]["millicores"].GetInt();
+            task_cpu_sum += res->millicores;
+
             ok = ReadableStringToInt(tasks_json[i]["requirement"]["memory"].GetString(), &res->memory);
             if (ok != 0) {
                 fprintf(stderr, "fail to parse task memory %s\n", tasks_json[i]["requirement"]["memory"].GetString());
                 return -1;
             }
+            task_memory_sum += res->memory;
+
             if (tasks_json[i]["requirement"].HasMember("ports")) {
                 const rapidjson::Value& task_ports = tasks_json[i]["requirement"]["ports"];
                 for (rapidjson::SizeType i = 0; i < task_ports.Size(); i++) {
@@ -439,11 +484,28 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                 }
             }
 
+
             tasks.push_back(task);
         }
     }
+
+    if (task_cpu_sum > cpu_total) {
+        fprintf(stderr, 
+                    "sum of task-millicore(%lld) is more than total-millicore(%lld)\n",
+                    (long long int)task_cpu_sum,
+                    (long long int)cpu_total);
+        return -1;
+    }
+
+    if (task_memory_sum + tmpfs_size > memory_total) {
+        fprintf(stderr,
+                    "sum of task-memory and tmpfs (%lld) is more than total-memory(%lld)",
+                    (long long int)(task_memory_sum + tmpfs_size),
+                    (long long int)memory_total);
+        return -1;
+    }
     return 0;
- 
+
 }
 
 int AddJob() { 

@@ -14,10 +14,12 @@
 
 #include <fstream>
 #include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include "gce/initd_impl.h"
 #include "gflags/gflags.h"
 #include "sofa/pbrpc/pbrpc.h"
 #include "logging.h"
+
 #include "agent/utils.h"
 
 using baidu::common::Log;
@@ -29,7 +31,10 @@ const int MAX_START_TIMES = 15;
 
 DECLARE_string(gce_initd_dump_file);
 DECLARE_string(gce_initd_port);
+DECLARE_int64(gce_initd_tmpfs_size);
+DECLARE_string(gce_initd_tmpfs_path);
 DECLARE_string(gce_bind_config);
+DECLARE_string(agent_default_user);
 
 volatile static bool s_is_stop = false;
 volatile static bool s_is_restart = false;
@@ -214,6 +219,52 @@ bool MountProc() {
     return true;
 }
 
+bool MountTmpfs() {
+    if (FLAGS_gce_initd_tmpfs_path.empty() || FLAGS_gce_initd_tmpfs_size == 0) {
+        return true;
+    }
+    /*mount("tmpfs", "/dev", "tmpfs", MS_NOSUID, "mode=0755");*/
+
+    std::string proc_path;
+    if (!baidu::galaxy::process::GetCwd(&proc_path)) {
+        LOG(WARNING, "get cwd failed"); 
+        return false;
+    }
+
+    proc_path = proc_path + "/" + FLAGS_gce_initd_tmpfs_path;
+
+    if (!baidu::galaxy::file::Mkdir(proc_path)) {
+        LOG(WARNING, "mkdir tmpfs path %s failed", proc_path.c_str()); 
+        return false;
+    }
+
+    std::string option = "mode=755,size=";
+    option += boost::lexical_cast<std::string>(FLAGS_gce_initd_tmpfs_size);
+    if (0 != ::mount("tmpfs", proc_path.c_str(), "tmpfs", 0, option.c_str())) {
+        LOG(WARNING, "mount tmpfs at %s failed", FLAGS_gce_initd_tmpfs_path.c_str()); 
+        return false;
+    }
+
+    LOG(INFO, "mount tmpfs success", proc_path.c_str());
+    uid_t user_uid;
+    gid_t user_gid;
+    if (!baidu::galaxy::user::GetUidAndGid(FLAGS_agent_default_user,
+                    &user_uid, &user_gid)) {
+        LOG(WARNING, "user %s not exists",
+                    FLAGS_agent_default_user.c_str());
+        return false;
+    }
+
+    if (!baidu::galaxy::file::Chown(proc_path,
+                    user_uid, user_gid)) {
+        LOG(WARNING, "chown %s to user %s failed",
+                    proc_path.c_str(),
+                    FLAGS_agent_default_user.c_str());
+        return false;
+    }
+    return true;
+}
+
 int main(int argc, char* argv[]) {
     // keep argv for restart
     char* restart_argv[argc + 1];
@@ -231,8 +282,13 @@ int main(int argc, char* argv[]) {
     if (!MountProc()) {
         return EXIT_FAILURE; 
     }
+
     if (!MountRootfs()) {
         return EXIT_FAILURE; 
+    }
+
+    if (!MountTmpfs()) {
+        return EXIT_FAILURE;
     }
 
     baidu::galaxy::InitdImpl* initd_service =
