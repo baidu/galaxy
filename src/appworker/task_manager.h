@@ -24,6 +24,7 @@ typedef proto::Package Package;
 typedef proto::ProcessStatus ProcessStatus;
 
 struct TaskEnv {
+    std::string user;
     std::string job_id;
     std::string pod_id;
     std::string task_id;
