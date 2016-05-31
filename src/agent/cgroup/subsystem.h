@@ -107,6 +107,7 @@ public:
     virtual baidu::galaxy::util::ErrorCode Construct() = 0;
 
     virtual baidu::galaxy::util::ErrorCode Destroy();
+    virtual void Kill();
     virtual baidu::galaxy::util::ErrorCode Attach(pid_t pid);
     virtual baidu::galaxy::util::ErrorCode GetProcs(std::vector<int>& pids);
     virtual std::string Path();

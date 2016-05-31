@@ -249,9 +249,10 @@ int Container::ConstructCgroup() {
 }
 
 int Container::ConstructVolumGroup() {
+    assert(created_time_ > 0);
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
-    volum_group_->SetGcIndex(created_time_);
+    volum_group_->SetGcIndex(created_time_/1000000);
 
     for (int i = 0; i < desc_.data_volums_size(); i++) {
         volum_group_->AddDataVolum(desc_.data_volums(i));
@@ -533,6 +534,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta(
     ret->set_container_id(id_.SubId());
     ret->set_group_id(id_.GroupId());
     ret->set_created_time(created_time_);
+    ret->set_pid(process_->Pid());
     ret->mutable_container()->CopyFrom(desc_);
     return ret;
 }

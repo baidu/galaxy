@@ -29,6 +29,16 @@ std::string Subsystem::RootPath(const std::string& name)
     return path.string();
 }
 
+
+void Subsystem::Kill() {
+    std::vector<int> pids;
+    this->GetProcs(pids);
+
+    for (size_t i = 0; i < pids.size(); i++) {
+        ::kill(pids[i], SIGKILL);
+    }
+}
+
 baidu::galaxy::util::ErrorCode Subsystem::Destroy()
 {
     boost::filesystem::path path(this->Path());
@@ -38,15 +48,7 @@ baidu::galaxy::util::ErrorCode Subsystem::Destroy()
         return ERRORCODE_OK;
     }
 
-    std::vector<int> pids;
-    this->GetProcs(pids);
-
-    for (size_t i = 0; i < pids.size(); i++) {
-        ::kill(pids[i], SIGKILL);
-    }
-
     boost::filesystem::remove_all(path, ec);
-
     if (ec.value() != 0) {
         return ERRORCODE(-1, "failed in removing %s: %s",
                 path.string().c_str(),
