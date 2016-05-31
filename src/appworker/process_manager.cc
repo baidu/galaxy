@@ -156,6 +156,11 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
         fprintf(stdout, "cmd: %s\n", cmd.c_str());
         fflush(stdout);
 
+//        // set user
+//        if (context->user() && !user::Su(context->user())) {
+//            assert(0);
+//        }
+
         // 5.prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),
