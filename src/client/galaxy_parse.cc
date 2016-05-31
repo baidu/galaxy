@@ -619,6 +619,14 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     job->version = doc["version"].GetString();
     boost::trim(job->version);*/
 
+    //run_user
+    if (!doc.HasMember("run_user")) {
+        fprintf(stderr, "run_user is required in config\n");
+        return -1;
+    }
+    job->run_user = doc["run_user"].GetString();
+    boost::trim(job->run_user);
+
     ::baidu::galaxy::sdk::Deploy& deploy = job->deploy;
 
     //deploy

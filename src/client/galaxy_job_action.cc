@@ -72,8 +72,6 @@ bool JobAction::SubmitJob(const std::string& json_file) {
         return false;
     }
 
-    request.job.run_user = user_.user;
-
     bool ret = app_master_->SubmitJob(request, &response);
     if (ret) {
         printf("Submit job %s\n", response.jobid.c_str());
