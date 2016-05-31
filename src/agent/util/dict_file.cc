@@ -72,7 +72,6 @@ baidu::galaxy::util::ErrorCode DictFile::Scan(const std::string& begin_key,
     assert(NULL != db_);
     leveldb::Iterator* it = db_->NewIterator(leveldb::ReadOptions());
     it->Seek(begin_key);
-    bool ret = true;
 
     while (it->Valid()) {
         DictFile::Kv kv;
