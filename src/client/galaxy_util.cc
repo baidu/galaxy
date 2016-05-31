@@ -502,7 +502,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     
     root.AddMember("name", "example", allocator);
     root.AddMember("type", "kJobService", allocator);
-    root.AddMember("version", "1.0.0", allocator);
+    //root.AddMember("version", "1.0.0", allocator);
    
     //deploy节点
     rapidjson::Value deploy(rapidjson::kObjectType);
@@ -511,7 +511,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     deploy.AddMember("interval", 1, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
     deploy.AddMember("tag", "example", allocator);
-    deploy.AddMember("pools", "example1,example2", allocator);
+    deploy.AddMember("pools", "example1,test", allocator);
 
     root.AddMember("deploy", deploy, allocator);
 
@@ -519,7 +519,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     rapidjson::Value pod(rapidjson::kObjectType);
 
     rapidjson::Value workspace_volum(rapidjson::kObjectType);
-    workspace_volum.AddMember("size", "10M", allocator);
+    workspace_volum.AddMember("size", "300M", allocator);
     workspace_volum.AddMember("type", "kEmptyDir", allocator);
     workspace_volum.AddMember("medium", "kDisk", allocator);
     workspace_volum.AddMember("dest_path", "/home/work", allocator);
@@ -535,7 +535,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         obj_str.SetString(str.c_str(), allocator);
 
         rapidjson::Value data_volum(rapidjson::kObjectType);
-        data_volum.AddMember("size", "10M", allocator);
+        data_volum.AddMember("size", "800M", allocator);
         data_volum.AddMember("type", "kEmptyDir", allocator);
         data_volum.AddMember("medium", "kDisk", allocator);
         data_volum.AddMember("dest_path", obj_str, allocator);
@@ -555,13 +555,13 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         cpu.AddMember("excess", false, allocator); 
 
         rapidjson::Value mem(rapidjson::kObjectType);
-        mem.AddMember("size", "10M", allocator);
+        mem.AddMember("size", "800M", allocator);
         mem.AddMember("excess", false, allocator);
 
         rapidjson::Value tcp(rapidjson::kObjectType);
-        tcp.AddMember("recv_bps_quota", "15M", allocator);
+        tcp.AddMember("recv_bps_quota", "30M", allocator);
         tcp.AddMember("recv_bps_excess", false, allocator);
-        tcp.AddMember("send_bps_quota", "15M", allocator);
+        tcp.AddMember("send_bps_quota", "30M", allocator);
         tcp.AddMember("send_bps_excess", false, allocator);
 
         rapidjson::Value blkio(rapidjson::kObjectType);
