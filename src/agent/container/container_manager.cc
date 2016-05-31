@@ -66,7 +66,8 @@ void ContainerManager::KeepAliveRoutine() {
 int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
 {
     // enter creating stage, every time only one thread does creating
-    baidu::galaxy::util::ErrorCode ec = stage_.EnterCreatingStage(id.SubId());
+    ScopedCreatingStage lock_stage(stage_, id.SubId());
+    baidu::galaxy::util::ErrorCode ec = lock_stage.GetLastError();
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << "container " << id.CompactId() << " has been in creating stage already: " << ec.Message();
         return 0;
@@ -85,7 +86,6 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
 
         if (work_containers_.end() != iter) {
             LOG(INFO) << "container " << id.CompactId() << " has already been created";
-            stage_.LeaveCreatingStage(id.SubId());
             return 0;
         }
     }
@@ -97,7 +97,6 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                      << id.CompactId() << ", detail reason is: "
                      << ec.Message();
 
-        stage_.LeaveCreatingStage(id.SubId());
         return -1;
     } else {
         LOG(INFO) << "succeed in allocating resource for " << id.CompactId();
@@ -114,14 +113,14 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                        << ec.Message();
         }
     } 
-    stage_.LeaveCreatingStage(id.SubId());
     return ret;
 }
 
 int ContainerManager::ReleaseContainer(const ContainerId& id)
 {
     // enter destroying stage, only one thread do releasing at a moment
-    baidu::galaxy::util::ErrorCode ec = stage_.EnterDestroyingStage(id.SubId());
+    ScopedDestroyingStage lock_stage(stage_, id.SubId());
+    baidu::galaxy::util::ErrorCode ec = lock_stage.GetLastError();
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(INFO) << "container " << id.CompactId()
                   << " has been in destroying stage: " << ec.Message();
@@ -141,7 +140,6 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         iter = work_containers_.find(id);
 
         if (work_containers_.end() == iter) {
-            stage_.LeaveDestroyingStage(id.SubId());
             LOG(WARNING) << "container " << id.CompactId() << " do not exist";
             return 0;
         }
@@ -170,9 +168,6 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
             LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
     }
-    stage_.LeaveDestroyingStage(id.SubId());
-
-    LOG(INFO) << id.CompactId() << " leave destroying stage";
     return ret;
 }
 
