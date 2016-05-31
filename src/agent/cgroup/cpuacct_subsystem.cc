@@ -9,17 +9,21 @@
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
-CpuacctSubsystem::CpuacctSubsystem() {
+CpuacctSubsystem::CpuacctSubsystem()
+{
 }
 
-CpuacctSubsystem::~CpuacctSubsystem() {
+CpuacctSubsystem::~CpuacctSubsystem()
+{
 }
 
-std::string CpuacctSubsystem::Name() {
+std::string CpuacctSubsystem::Name()
+{
     return "cpuacct";
 }
 
-baidu::galaxy::util::ErrorCode CpuacctSubsystem::Construct() {
+baidu::galaxy::util::ErrorCode CpuacctSubsystem::Construct()
+{
     assert(NULL != cgroup_.get());
     assert(!container_id_.empty());
     boost::filesystem::path path(this->Path());
@@ -27,18 +31,20 @@ baidu::galaxy::util::ErrorCode CpuacctSubsystem::Construct() {
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
         return ERRORCODE(-1, "create file %s failed: ",
-                    ec.message().c_str());
+                ec.message().c_str());
     }
 
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> CpuacctSubsystem::Clone() {
+boost::shared_ptr<Subsystem> CpuacctSubsystem::Clone()
+{
     boost::shared_ptr<Subsystem> ret(new CpuacctSubsystem());
     return ret;
 }
 
-baidu::galaxy::util::ErrorCode CpuacctSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
+baidu::galaxy::util::ErrorCode CpuacctSubsystem::Collect(std::map<std::string, AutoValue>& stat)
+{
     return ERRORCODE_OK;
 }
 

@@ -31,11 +31,10 @@ public:
 
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode Destroy();
-    boost::shared_ptr<google::protobuf::Message> Report();
     void ExportEnv(std::map<std::string, std::string>& evn);
     std::string Id();
 
-    void Statistics(Metrix& matrix);
+    baidu::galaxy::util::ErrorCode Statistics(Metrix& matrix);
 
 private:
     std::vector<boost::shared_ptr<Subsystem> > subsystem_;

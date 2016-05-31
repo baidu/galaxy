@@ -49,6 +49,7 @@ public:
     int Clone(boost::function<int (void*)> routine, void* param, int32_t flag);
     int Fork(boost::function<int (void*)> routine, void* param);
     int Wait(int& status);
+    void Reload(pid_t pid);
     pid_t Pid();
 
 private:

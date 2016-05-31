@@ -4,6 +4,7 @@
 // found in the LICENSE file.
 
 #include "container_manager.h"
+#include "util/path_tree.h"
 #include "thread.h"
 
 #include "boost/bind.hpp"
@@ -26,6 +27,24 @@ ContainerManager::~ContainerManager()
 }
 
 void ContainerManager::Setup() {
+    std::string path = baidu::galaxy::path::RootPath();
+    path += "/data";
+    baidu::galaxy::util::ErrorCode ec = serializer_.Setup(path);
+    if (ec.Code() != 0) {
+        LOG(FATAL) << "set up serilzer failed, path is" << path 
+            << " reason is: " << ec.Message();
+        exit(-1);
+    }
+    LOG(INFO) << "succeed in setting up serialize db: " << path;
+
+    int ret = Reload();
+    if (0 != ret) {
+        LOG(WARNING) << "failed in recovering container from meta, agent will exit";
+        exit(-1);
+    } else {
+        LOG(INFO) <<"succeed in recovering container from meta";
+    }
+
     running_ = true;
     this->keep_alive_thread_.Start(boost::bind(&ContainerManager::KeepAliveRoutine, this));
 }
@@ -77,6 +96,8 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
         LOG(WARNING) << "fail in allocating resource for container "
                      << id.CompactId() << ", detail reason is: "
                      << ec.Message();
+
+        stage_.LeaveCreatingStage(id.SubId());
         return -1;
     } else {
         LOG(INFO) << "succeed in allocating resource for " << id.CompactId();
@@ -92,7 +113,7 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                        << id.CompactId() << ", detail reason is: "
                        << ec.Message();
         }
-    }
+    } 
     stage_.LeaveCreatingStage(id.SubId());
     return ret;
 }
@@ -140,6 +161,14 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         }
 
         work_containers_.erase(iter);
+        ec = serializer_.DeleteWork(id.GroupId(), id.SubId());
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "delete key failed, key is: " << id.CompactId()
+                << " reason is: " << ec.Message();
+            ret = -1;
+        } else {
+            LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
+        }
     }
     stage_.LeaveDestroyingStage(id.SubId());
 
@@ -159,6 +188,13 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
         return -1;
     }
 
+    baidu::galaxy::util::ErrorCode ec = serializer_.SerializeWork(container->ContainerMeta());
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "fail in serializing container meta " << id.CompactId();
+        return -1;
+    }
+    LOG(INFO) << "succeed in serializing container meta for cantainer " << id.CompactId();
+
     {
         boost::mutex::scoped_lock lock(mutex_);
         work_containers_[id] = container;
@@ -177,6 +213,33 @@ void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galax
         cis.push_back(ci);
         iter++;
     }
+}
+
+
+int ContainerManager::Reload() {
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> > metas;
+    baidu::galaxy::util::ErrorCode ec = serializer_.LoadWork(metas);
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "load from db failed: " << ec.Message();
+        return -1;
+    }
+
+    for (size_t i = 0; i < metas.size(); i++) {
+        ec = res_man_->Allocate(metas[i]->container());
+        ContainerId id(metas[i]->group_id(), metas[i]->container_id());
+        if (ec.Code() != 0) {
+            LOG(WARNING) << "allocat failed for container " << id.CompactId() 
+                << " reason is:" << ec.Message();
+            return -1;
+        }
+        boost::shared_ptr<Container> container(new Container(id, metas[i]->container()));
+        if (0 != container->Reload(metas[i])) {
+            LOG(WARNING) << "failed in reaload container " << id.CompactId();
+            return -1;
+        }
+        work_containers_[id] = container;
+    }
+    return 0;
 }
 
 }
