@@ -41,7 +41,6 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
     std::vector<std::string> subsystems;
     factory_->GetSubsystems(subsystems);
     assert(subsystems.size() > 0);
-
     bool ok = true;
 
     for (size_t i = 0; i < subsystems.size(); i++) {
@@ -58,6 +57,7 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
         }
 
         baidu::galaxy::util::ErrorCode err = ss->Construct();
+
         if (0 != err.Code()) {
             LOG(WARNING) << "construct subsystem " << ss->Name().c_str()
                          << " for cgroup " << ss->Path().c_str()
@@ -99,13 +99,28 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
     }
 
     baidu::galaxy::util::ErrorCode err = freezer_->Freeze();
+
     if (0 != err.Code()) {
         return ERRORCODE(-1, "freeze failed: %s",
+                   err.Message().c_str());
+    }
+
+    for (size_t i = 0; i < subsystem_.size(); i++) {
+        subsystem_[i]->Kill();
+    }
+
+    err = freezer_->Thaw();
+
+    if (0 != err.Code()) {
+        return ERRORCODE(-1,
+                    "thaw failed: %s",
                     err.Message().c_str());
     }
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
+
         baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
+
         if (0 != ec.Code()) {
             return ERRORCODE(-1,
                         "failed in destroying %s: %s",
@@ -113,31 +128,25 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
                         ec.Message().c_str());
         }
     }
-    subsystem_.clear();
 
-    err = freezer_->Thaw();
-    if (0 != err.Code()) {
-        return ERRORCODE(-1, 
-                    "thaw failed: %s",
-                    err.Message().c_str());
-    }
+    //subsystem_.clear();
+
 
     if (NULL !=  freezer_.get()) {
+        freezer_->Freeze();
+        freezer_->Kill();
+        freezer_->Thaw();
+
         baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
         if (0 != ec.Code()) {
             return ERRORCODE(-1, "failed in destroying freezer:",
                     ec.Message().c_str());
         }
+
         freezer_.reset();
     }
 
     return ERRORCODE_OK;
-}
-
-boost::shared_ptr<google::protobuf::Message> Cgroup::Report()
-{
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
 }
 
 void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
@@ -145,14 +154,16 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
     std::vector<std::string> subsystems;
     factory_->GetSubsystems(subsystems);
     std::string value;
+
     for (size_t i = 0; i < subsystems.size(); i++) {
         if (!value.empty()) {
             value += ",";
         }
+
         value += subsystems[i];
     }
-    env["baidu_galaxy_cgroup_subsystems"] = value;
 
+    env["baidu_galaxy_cgroup_subsystems"] = value;
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
         std::stringstream ss;
@@ -168,12 +179,15 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
 
     // export port
     std::string port_names;
+
     for (int i = 0; i < cgroup_->ports_size(); i++) {
         std::stringstream ss;
         const baidu::galaxy::proto::PortRequired& pr = cgroup_->ports(i);
+
         if (!port_names.empty()) {
             port_names += ",";
         }
+
         port_names += pr.port_name();
         ss << "baidu_galaxy_container_" << cgroup_->id() << "_port_" << pr.port_name();
         env[ss.str()] = pr.real_port();
@@ -189,14 +203,19 @@ std::string Cgroup::Id()
     return cgroup_->id();
 }
 
-void Cgroup::Statistics(Metrix& matrix)
+baidu::galaxy::util::ErrorCode Cgroup::Statistics(Metrix& matrix)
 {
     for (size_t i = 0; i < subsystem_.size(); i++) {
         baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(matrix);
+
         if (ec.Code() != 0) {
-            LOG(WARNING) << "collect metrix failed: " << ec.Message();
+            return ERRORCODE(-1, "collect %s failed: %s",
+                    subsystem_[i]->Name().c_str(),
+                    ec.Message().c_str());
         }
     }
+
+    return ERRORCODE_OK;
 }
 
 }
