@@ -50,13 +50,13 @@ int main(int argc, char* argv[])
     }
 
     std::string endpoint = "0.0.0.0:" + FLAGS_agent_port;
+    agent->Setup();
 
     if (!rpc_server.Start(endpoint)) {
         LOG(WARNING) << "failed to start server on " << endpoint;
         exit(-2);
     }
 
-    agent->Setup();
 
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);

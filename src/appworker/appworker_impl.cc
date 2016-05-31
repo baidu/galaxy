@@ -245,6 +245,11 @@ void AppWorkerImpl::UpdateAppMasterStub() {
 
         appmaster_endpoint_ = new_endpoint;
 
+        if (NULL != appmaster_stub_) {
+            delete appmaster_stub_;
+            appmaster_stub_ = NULL;
+        }
+
         if (rpc_client_.GetStub(appmaster_endpoint_, &appmaster_stub_)) {
             LOG(INFO)
                     << "appmaster stub updated, endpoint: "
@@ -264,7 +269,7 @@ void AppWorkerImpl::FetchTask() {
     // exit or not, only when terminated, appworker exit
     if (proto::kPodTerminated == pod.status) {
         LOG(INFO) << "pod terminated";
-        std::string value = boost::lexical_cast<std::string>(1);
+        std::string value = boost::lexical_cast<std::string>(0);
         file::Write(FLAGS_appworker_exit_file, value);
         exit(0);
     }
@@ -332,6 +337,11 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
 
+        if (proto::kSuspend == error_code.status()) {
+            LOG(WARNING) << "fetch task: kSuspend";
+            break;
+        }
+
         if (proto::kTerminate == error_code.status()) {
             LOG(WARNING) << "fetch task: kTerminate";
             pod_manager_.TerminatePod();
@@ -353,21 +363,15 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
 
-        switch (error_code.status()) {
-        case proto::kOk:
-            LOG(INFO) << "fetch task: kOk";
-            pod_manager_.SetPodDescription(response->pod());
-            break;
+        LOG(INFO) << "fetch task: " << proto::Status_Name(error_code.status());
+        pod_manager_.SetPodDescription(response->pod());
 
+        switch (error_code.status()) {
         case proto::kReload:
-            LOG(INFO) << "fetch task: kJobReload";
-            pod_manager_.SetPodDescription(response->pod());
             pod_manager_.ReloadPod();
             break;
 
         case proto::kRebuild:
-            LOG(INFO) << "fetch task: kJobRebuild";
-            pod_manager_.SetPodDescription(response->pod());
             pod_manager_.RebuildPod();
             break;
 
