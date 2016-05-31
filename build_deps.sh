@@ -212,17 +212,20 @@ if [ ! -f "${FLAG_DIR}/common" ] \
     touch "${FLAG_DIR}/common"
 fi
 
-if [ -d "leveldb" ]
+if [ -f "${FLAG_DIR}/leveldb" ] \
+    && [ -f "${DEPS_PREFIX}/lib/libleveldb.a" ]
 then
     echo "leveldb exist"
 else
     # leveldb
+    rm -rf leveldb
     git clone https://github.com/google/leveldb.git
     cd leveldb
     make -j8 out-static/libleveldb.a OPT=-fno-access-control >/dev/null 
     cp -rf include/* ${DEPS_PREFIX}/include
     cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
     cd -
+    touch "${FLAG_DIR}/leveldb"
 fi
 
 cd ${WORK_DIR}
