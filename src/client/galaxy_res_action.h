@@ -26,6 +26,7 @@ public:
     bool AddAgent(const std::string& pool, const std::string& endpoint);
     bool RemoveAgent(const std::string& endpoint);
     bool ListAgentsByPool(const std::string& pool);
+    bool ShowAgent(const std::string& endpoint);
     bool ListAgentsByTag(const std::string& tag);
     bool ListAgents();
     bool EnterSafeMode();
@@ -33,25 +34,25 @@ public:
     bool OnlineAgent(const std::string& endpoint);
     bool OfflineAgent(const std::string& endpoint);
     bool Status();
-    //NO finish
     bool CreateTag(const std::string& tag, const std::string& file);
     bool ListTags();
     bool GetPoolByAgent(const std::string& endpoint);
     bool AddUser(const std::string& user, const std::string& token);
     bool RemoveUser(const std::string& user, const std::string& token);
     bool ListUsers();
-    bool ShowUser(const std::string& user, const std::string& token);
+    bool ShowUser(const std::string& user);
     bool GrantUser(const std::string& user, const std::string& token, 
                    const std::string& pool, const std::string& opration, 
                    const std::string& authority);
     bool AssignQuota(const std::string& user,
-                 const std::string& token,
-                 uint32_t millicores,
-                 const std::string& memory,
-                 const std::string& disk,
-                 const std::string& ssd,
-                 int replica
-                 );
+                     const std::string& token,
+                     uint32_t millicores,
+                     const std::string& memory,
+                     const std::string& disk,
+                     const std::string& ssd,
+                     int replica
+                  );
+    bool Preempt(const std::string& container_group_id, const std::string& endpoint);
 
 private:
     bool Init();

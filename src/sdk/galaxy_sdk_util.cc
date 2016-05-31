@@ -75,7 +75,7 @@ bool StatusSwitch(const ::baidu::galaxy::proto::Status& pb_status, Status* statu
     case ::baidu::galaxy::proto::kAddAgentFail:
         *status = kAddAgentFail;
         break;
-    case ::baidu::galaxy::proto::kDeny:
+    case ::baidu::galaxy::proto::kSuspend:
         *status = kDeny;
         break;
     case ::baidu::galaxy::proto::kJobNotFound:
@@ -352,6 +352,8 @@ void FillTaskDescription(const TaskDescription& sdk_task,
         ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
         FillPortRequired(sdk_task.ports[i], port);
     }
+    FillTcpthrotRequired(sdk_task.tcp_throt, task->mutable_tcp_throt());
+    FillBlkioRequired(sdk_task.blkio, task->mutable_blkio());
     FillImagePackage(sdk_task.exe_package, task->mutable_exe_package());
     FilldataPackage(sdk_task.data_package, task->mutable_data_package());
     for (size_t i = 0; i < sdk_task.services.size(); ++i) {
@@ -373,6 +375,17 @@ void FillPodDescription(const PodDescription& sdk_pod,
     }
 }
 
+void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
+    deploy->set_replica(sdk_deploy.replica);
+    deploy->set_step(sdk_deploy.step);
+    deploy->set_interval(sdk_deploy.interval);
+    deploy->set_max_per_host(sdk_deploy.max_per_host);
+    deploy->set_tag(sdk_deploy.tag);
+    for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
+        deploy->add_pools(sdk_deploy.pools[i]);
+    }
+}
+
 void FillJobDescription(const JobDescription& sdk_job,
                         ::baidu::galaxy::proto::JobDescription* job) {
     job->set_name(sdk_job.name);
@@ -386,6 +399,7 @@ void FillJobDescription(const JobDescription& sdk_job,
     } else if (sdk_job.type == kJobBestEffort) {
         job->set_priority(::baidu::galaxy::proto::kJobBestEffort);
     }
+    FillDeploy(sdk_job.deploy, job->mutable_deploy());
     job->set_run_user(sdk_job.run_user);
     FillPodDescription(sdk_job.pod, job->mutable_pod());
 
@@ -457,10 +471,8 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
         job->deploy.pools.push_back(pb_job.deploy().pools(i));
     }
     job->pod.workspace_volum.size = pb_job.pod().workspace_volum().size();
-    //job->pod.workspace_volum.type = pb_job.pod().workspace_volum().type();
-    VolumTypeSwitch(pb_job.pod().workspace_volum().type(), &job->pod.workspace_volum.type);
-    //job->pod.workspace_volum.medium = pb_job.pod().workspace_volum().medium();
-    VolumMediumSwitch(pb_job.pod().workspace_volum().medium(), &job->pod.workspace_volum.medium);
+    job->pod.workspace_volum.type = (VolumType)pb_job.pod().workspace_volum().type();
+    job->pod.workspace_volum.medium = (VolumMedium)pb_job.pod().workspace_volum().medium();
     job->pod.workspace_volum.source_path = pb_job.pod().workspace_volum().source_path();
     job->pod.workspace_volum.dest_path = pb_job.pod().workspace_volum().dest_path();
     job->pod.workspace_volum.readonly = pb_job.pod().workspace_volum().readonly();
@@ -470,10 +482,8 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     for (int i = 0; i < pb_job.pod().data_volums().size(); ++i) {
         VolumRequired volum;
         volum.size = pb_job.pod().data_volums(i).size();
-        //volum.type = pb_job.pod().data_volums(i).type();
-        VolumTypeSwitch(pb_job.pod().data_volums(i).type(), &volum.type);
-        //volum.medium = pb_job.pod().data_volums(i).medium();
-        VolumMediumSwitch(pb_job.pod().data_volums(i).medium(), &volum.medium);
+        volum.type = (VolumType)pb_job.pod().data_volums(i).type();
+        volum.medium = (VolumMedium)pb_job.pod().data_volums(i).medium();
         volum.source_path = pb_job.pod().data_volums(i).source_path();
         volum.dest_path = pb_job.pod().data_volums(i).dest_path();
         volum.readonly = pb_job.pod().data_volums(i).readonly();
@@ -489,6 +499,11 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
         task.cpu.excess = pb_job.pod().tasks(i).cpu().excess();
         task.memory.size = pb_job.pod().tasks(i).memory().size();
         task.memory.excess = pb_job.pod().tasks(i).memory().excess();
+        task.tcp_throt.recv_bps_quota = pb_job.pod().tasks(i).tcp_throt().recv_bps_quota();
+        task.tcp_throt.recv_bps_excess = pb_job.pod().tasks(i).tcp_throt().recv_bps_excess();
+        task.tcp_throt.send_bps_quota = pb_job.pod().tasks(i).tcp_throt().send_bps_quota();
+        task.tcp_throt.send_bps_excess = pb_job.pod().tasks(i).tcp_throt().send_bps_excess();
+        task.blkio.weight = pb_job.pod().tasks(i).blkio().weight();
         for (int j = 0; j < pb_job.pod().tasks(i).ports().size(); ++j) {
             PortRequired port;
             port.port_name = pb_job.pod().tasks(i).ports(j).port_name();

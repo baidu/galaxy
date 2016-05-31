@@ -153,13 +153,20 @@ enum JobType {
 // update incrementally may cause new problems: version confusion 
 // Appmaster must save descrition of last 2 versions, and  a complete desc.
 enum JobStatus {
-   kJobPending = 1; 
+   kJobPending = 1;
    kJobRunning = 2;
-   kJobFinished = 3; 
+   kJobFinished = 3;
    kJobDestroying = 4;
+   kJobUpdating = 5;
 }
 
-
+enum JobEvent {
+    kFetch = 1;
+    kUpdate = 2;
+    kRemove = 3;
+    kRemoveFinish = 4;
+    kUpdateFinish = 5;
+}
 // Task or pod
 enum PodStatus {
     kPodPending = 1;
@@ -169,15 +176,35 @@ enum PodStatus {
     kPodServing = 5;
     kPodFailed = 6;
     kPodFinished = 7;
+    kPodRunning = 8;
+    kPodStopping = 9;
+    kPodTerminated = 10;
+}
+
+enum ProcessStatus {
+    kProcessRunning = 0;
+    kProcessFinished = 1;
+    kProcessFailed = 2;
+    kProcessKilled = 3;
+    kProcessCoreDump = 4;
+}
+
+message ProcessInfo {
+   optional string key = 1;
+   optional int32 pid = 2;
+   optional ProcessStatus status = 3;
+   optional int32 exit_code = 4;
 }
 
 enum TaskStatus {
     kTaskPending = 1;
     kTaskDeploying = 2;
     kTaskStarting = 3;
-    kTaskServing = 4;
-    kTaskFailed = 5;
-    kTaskFinished = 6;
+    kTaskRunning = 4;
+    kTaskStopping = 5;
+    kTaskFailed = 6;
+    kTaskFinished = 7;
+    kTaskTerminated = 8;
 }
 
 message TaskInfo {
@@ -192,13 +219,13 @@ message TaskInfo {
 
 message Package {
     optional string source_path = 1; // support nfs/hdfs/ftp
-    optional string dest_path = 2;   // local path
+    optional string dest_path = 2; // local path
     optional string version = 3;
 }
 message ImagePackage {
     optional Package package = 1;
-    optional string start_cmd = 2;     
-    optional string stop_cmd = 3;    
+    optional string start_cmd = 2;
+    optional string stop_cmd = 3;
 }
 
 message DataPackage {
@@ -222,7 +249,7 @@ message Service {
 }
 
 message TaskDescription {
-    // set by user or by 
+    // set by user or by
     optional string id = 1;
     // resource
     optional CpuRequired cpu = 2;
@@ -243,7 +270,7 @@ message TaskDescription {
 message PodDescription {
     // workspace volum
     optional VolumRequired workspace_volum = 3;
-    // Resource, volum is owned by Pod
+    // Resource, volum is owned by Pod/
     repeated VolumRequired data_volums = 4;
     // tasks
     repeated TaskDescription tasks = 5;
@@ -251,13 +278,14 @@ message PodDescription {
 }
 
 message JobDescription {
-    // Job
     optional string name = 1;
     optional uint32 priority = 2;
     optional string version = 3;
     optional Deploy deploy = 4;
     optional PodDescription pod = 5;
     optional string run_user = 6;
+    optional string tag = 7;
+    repeated string pool_names = 8;
 }
 
 
@@ -277,7 +305,7 @@ message Cgroup {
 
 // resource manager -> agent
 message ContainerDescription {
-    optional uint32 priority = 1;
+    optional int32 priority = 1;
     optional string run_user = 2;
     optional string version = 3;
     optional VolumRequired workspace_volum = 4;
@@ -350,6 +378,11 @@ enum Status {
    kRemoveUserFail = 14;
    kGrantUserFail = 15;
    kAssignQuotaFail = 16;
+   kRebuild = 17;
+   kReload = 18;
+   kStatusConflict = 19;
+   kJobTerminateFail = 20;
+   kSuspend = 21;
 }
 
 message ErrorCode {
@@ -409,6 +442,7 @@ message ContainerGroupStatistics {
     optional int64 submit_time = 11;
     optional int64 update_time = 12;
     optional string user_name = 13;
+    optional uint32 destroying = 14;
 }
 
 //proto that used to be saved in nexus
@@ -432,6 +466,8 @@ message ContainerGroupMeta {
     optional uint32 update_interval = 5;
     optional ContainerDescription desc = 6;
     optional ContainerGroupStatus status = 7;
+    optional int64 submit_time = 8;
+    optional int64 update_time = 9;
 }
 
 message TagMeta {

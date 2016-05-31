@@ -48,6 +48,7 @@ GPATH
 *.swp
 *.swo
 tmp
+galaxy.flag
 
 *.orig
 

@@ -7,6 +7,8 @@
 #include <time.h>
 #include <algorithm>
 #include <sstream>
+#include <deque>
+#include <limits>
 #include <boost/foreach.hpp>
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
@@ -20,8 +22,8 @@ namespace baidu {
 namespace galaxy {
 namespace sched {
 
-const uint32_t kMaxPort = 60000;
-const uint32_t kMinPort = 1000;
+const int sMaxPort = 9999;
+const int sMinPort = 1000;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -36,7 +38,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
     memory_total_ = memory;
     memory_assigned_ = 0;
     volum_total_ = volums;
-    port_total_ = kMaxPort - kMinPort + 1;
+    port_total_ = sMaxPort - sMinPort + 1;
     tags_ = tags;
     pool_name_ = pool_name;
 }
@@ -123,12 +125,10 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
     }
 
     const std::vector<proto::PortRequired> ports = container->require->ports;
-    BOOST_FOREACH(const proto::PortRequired& port, ports) {
-        if (port.port() != kDynamicPort
-            && port_assigned_.find(port.port()) != port_assigned_.end()) {
-            err = proto::kPortConflict;
-            return false;
-        } 
+    std::vector<std::string> ports_free;
+    if (!SelectFreePorts(ports, ports_free)) {
+        err = proto::kPortConflict;
+        return false;
     }
     return true;
 }
@@ -172,33 +172,11 @@ void Agent::Put(Container::Ptr container) {
         }
     }
     //ports
-    BOOST_FOREACH(const proto::PortRequired& port, container->require->ports) {
-        std::string s_port;
-        if (port.port() != kDynamicPort) {
-            s_port = port.port();
-        } else {
-            uint32_t max_tries = (kMaxPort - kMinPort + 1);
-            double rand_scale = (double)rand() / (RAND_MAX + 1.0);
-            uint32_t start_port = kMinPort + (uint32_t)(max_tries * rand_scale);
-            for (uint32_t i = 0; i < max_tries; i++) {
-                std::stringstream ss;
-                ss << start_port;
-                const std::string& random_port = ss.str();
-                if (port_assigned_.find(random_port) == port_assigned_.end()) {
-                    s_port = random_port;
-                    break;
-                }
-                start_port ++;
-                if (start_port > kMaxPort) {
-                    start_port = kMinPort;
-                }
-            }
-        }
-        if (!s_port.empty()) {
-            port_assigned_.insert(s_port);
-            container->allocated_ports.push_back(s_port);
-        } else {
-            LOG(WARNING) << "no free port.";
+    std::vector<std::string> ports_free;
+    if (SelectFreePorts(container->require->ports, ports_free)) {
+        for (size_t i = 0; i < ports_free.size(); i++) {
+            container->allocated_ports.push_back(ports_free[i]);
+            port_assigned_.insert(ports_free[i]);
         }
     }
     //put on this agent succesfully
@@ -206,6 +184,93 @@ void Agent::Put(Container::Ptr container) {
     container->last_res_err = proto::kResOk;
     containers_[container->id] = container;
     container_counts_[container->container_group_id] += 1;
+}
+
+bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
+                            std::vector<std::string>& ports_free) {
+    bool has_determinate_port = false;
+    bool has_dynamic_port = false;
+    int max_port = 0;
+    int min_port = std::numeric_limits<int>::max();
+    int dynamic_port_count = 0;
+    int determinate_port_count = 0;
+    std::deque<std::string> free_random_ports;
+    BOOST_FOREACH(const proto::PortRequired& port, ports_need) {
+        if (port.port() != kDynamicPort) {
+            has_determinate_port = true;
+            std::stringstream ss;
+            int n_port;
+            ss << port.port();
+            ss >> n_port;
+            max_port = std::max(max_port, n_port);
+            min_port = std::min(min_port, n_port);
+            determinate_port_count++;
+            if (port_assigned_.find(port.port()) != port_assigned_.end()) {
+                return false;
+            }
+        } else {
+            has_dynamic_port = true;
+            dynamic_port_count++;
+        }
+    }
+    if (has_determinate_port && (max_port - min_port + 1 > determinate_port_count) ) {
+        LOG(WARNING) << "the port range is not continuous: " << min_port << max_port;
+        return false;
+    }
+    if (has_dynamic_port && has_determinate_port) {
+        int start_port = max_port + 1;
+        for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
+            std::stringstream ss;
+            ss << x;
+            std::string s_port = ss.str();
+            if (port_assigned_.find(s_port) != port_assigned_.end()) {
+                return false;
+            } else {
+                free_random_ports.push_back(s_port);
+            }
+        }
+    } else if (!has_determinate_port && has_dynamic_port) {
+        size_t tries_count = 0;
+        double rnd = (double)rand() / RAND_MAX;
+        int start_port = sMinPort + (int) ((sMaxPort - sMinPort- dynamic_port_count + 1) * rnd);
+        while (tries_count < port_total_) {
+            free_random_ports.clear();
+            for (int x = start_port; x < (start_port + dynamic_port_count); x++) {
+                std::stringstream ss;
+                ss << x;
+                std::string s_port = ss.str();
+                if (port_assigned_.find(s_port) != port_assigned_.end()) {
+                    start_port = x + 1;
+                    break;
+                } else {
+                    free_random_ports.push_back(s_port);
+                }
+            }
+            if ((int)free_random_ports.size() == dynamic_port_count) {
+                //found enough ports
+                break;
+            }
+            tries_count ++;
+            if (start_port > sMaxPort) {
+                start_port = sMinPort;
+            }
+        }
+    }
+    
+    if (has_dynamic_port &&  ((int)free_random_ports.size() != dynamic_port_count) ) {
+        return false;
+    }
+
+    BOOST_FOREACH(const proto::PortRequired& port, ports_need) {
+        if (port.port() != kDynamicPort) {
+            ports_free.push_back(port.port());
+        } else {
+            const std::string& dyn_port = free_random_ports.front();
+            ports_free.push_back(dyn_port);
+            free_random_ports.pop_front();
+        }
+    }
+    return true;
 }
 
 void Agent::Evict(Container::Ptr container) {
@@ -379,7 +444,6 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->require = require;
         cpu_assigned += require->CpuNeed();
         memory_assigned += require->MemoryNeed();
-
         for (int j = 0; j < container_desc.cgroups_size(); j++) {
             const proto::Cgroup& cgroup = container_desc.cgroups(j);
             for (int k = 0; k < cgroup.ports_size(); k++) {
@@ -408,11 +472,11 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         for (int j = 0; j < container_desc.data_volums_size(); j++) {
             VolumInfo data_volum;
             data_volum.medium = container_desc.data_volums(j).medium();
+            data_volum.size = container_desc.data_volums(j).size();
             if (data_volum.medium == proto::kTmpfs) {
                 memory_assigned += data_volum.size;
                 continue;
             }
-            data_volum.size = container_desc.data_volums(j).size();
             data_volum.exclusive = container_desc.data_volums(j).exclusive();
             std::string device_path = container_desc.data_volums(j).source_path();
             container->allocated_volums.push_back(
@@ -445,7 +509,11 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
     ContainerMap containers = agent->containers_; //copy
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        ChangeStatus(container, kContainerPending);        
+        if (container->status == kContainerDestroying) {
+            ChangeStatus(container, kContainerTerminated);
+        } else {
+            ChangeStatus(container, kContainerPending);
+        }     
     }
     agents_.erase(endpoint);
 }
@@ -504,7 +572,7 @@ ContainerGroupId Scheduler::GenerateContainerGroupId(const std::string& containe
     char time_buf[32] = { 0 };
     ::strftime(time_buf, 32, "%Y%m%d_%H%M%S", &t);
     ss << "job_" << time_buf << "_"
-       << random() << "_" << suffix;
+       << random() % 1000 << "_" << suffix;
     return ss.str();
 }
 
@@ -534,6 +602,7 @@ ContainerGroupId Scheduler::Submit(const std::string& container_group_name,
     container_group->replica = replica;
     container_group->name = container_group_name;
     container_group->user_name = user_name;
+    container_group->submit_time = common::timer::get_micros();
     for (int i = 0 ; i < replica; i++) {
         Container::Ptr container(new Container());
         container->container_group_id = container_group->id;
@@ -562,6 +631,8 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     container_group->container_desc = container_group_meta.desc();
     container_group->name = container_group_meta.name();
     container_group->user_name = container_group_meta.user_name();
+    container_group->submit_time = container_group_meta.submit_time();
+    container_group->update_time = container_group_meta.update_time();
     if (container_group_meta.status() == proto::kContainerGroupTerminated) {
         container_group->terminated = true;
     } else {
@@ -739,6 +810,9 @@ void Scheduler::ChangeStatus(ContainerGroup::Ptr container_group,
     ContainerStatus old_status = container->status;
     container_group->states[old_status].erase(container_id);
     container_group->states[new_status][container_id] = container;
+    LOG(INFO) << "change status: " << container_id
+              << " from: " << proto::ContainerStatus_Name(old_status)
+              << " to:" << proto::ContainerStatus_Name(new_status);
     if (new_status == kContainerPending || new_status == kContainerTerminated) {
         std::map<AgentEndpoint, Agent::Ptr>::iterator it;
         it = agents_.find(container->allocated_agent);
@@ -881,11 +955,19 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         if (container_group->states[kContainerPending].size() == 0) {
             continue; // no pending pods
         }
-        Container::Ptr container = container_group->states[kContainerPending].begin()->second;
+        ContainerId last_id = container_group->last_sched_container_id;
+        ContainerMap::iterator container_it = 
+                container_group->states[kContainerPending].upper_bound(last_id);
+        if (container_it == container_group->states[kContainerPending].end()) {
+            container_it = container_group->states[kContainerPending].begin();
+        }
+        Container::Ptr container = container_it->second;
+        container_group->last_sched_container_id = container->id;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
             container->last_res_err = res_err;
             VLOG(10) << "try put fail: " << container->id 
+                     << " agent:" << endpoint
                      << ", err:" << proto::ResourceError_Name(res_err); 
             continue; //no feasiable
         }
@@ -898,7 +980,8 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
 }
 
 bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
-                               const ContainerGroupId& container_group_id) {
+                               const ContainerGroupId& container_group_id,
+                               std::string& fail_reason) {
     LOG(INFO) << "manul scheduling: " << container_group_id << " @ " << endpoint;
     MutexLock lock(&mu_);
     std::map<AgentEndpoint, Agent::Ptr>::iterator agent_it;
@@ -906,25 +989,28 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
     agent_it = agents_.find(endpoint);
     if (agent_it == agents_.end()) {
         LOG(WARNING) << "manual scheduling fail, no such agent:" << endpoint;
+        fail_reason = "agent not exist:" + endpoint;
         return false;
     }
     Agent::Ptr agent = agent_it->second;
     container_group_it = container_groups_.find(container_group_id);
     if (container_group_it == container_groups_.end()) {
         LOG(WARNING) << "manual scheduling fail, no such container_group:" << container_group_id;
+        fail_reason = "container group not exist:" + container_group_id;
         return false;
     }
     ContainerGroup::Ptr container_group = container_group_it->second;
     if (container_group->states[kContainerPending].size() == 0) {
         LOG(WARNING) << "manual scheduling exception, no pending containers to put, " << container_group_id;
+        fail_reason = "no pending pods";
         return false;
     }
     Container::Ptr container_manual = container_group->states[kContainerPending].begin()->second;
     if (!CheckTagAndPoolOnce(agent, container_manual)) {
         LOG(WARNING) << "manual scheduling fail, because of mismatching tag or pools";
+        fail_reason = "tag or pool mismatching";
         return false;
     }
-
     std::vector<Container::Ptr> agent_containers;
     BOOST_FOREACH(ContainerMap::value_type& pair, agent->containers_) {
         agent_containers.push_back(pair.second);
@@ -938,6 +1024,10 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
          it != agent_containers.rend(); it++) {
         Container::Ptr poor_container = *it;
         if (!agent->TryPut(container_manual.get(), res_err)) {
+            if (res_err == proto::kTagMismatch || res_err == proto::kPoolMismatch) {
+                fail_reason = "tag or pool mismatching";
+                return false;
+            }
             ChangeStatus(poor_container, kContainerPending); //evict one
         }
         //try again after evicting
@@ -978,6 +1068,7 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
     container_group->require = require;
     container_group->container_desc = container_desc;
     container_group->container_desc.set_version(new_version);
+    container_group->update_time = common::timer::get_micros();
     BOOST_FOREACH(ContainerMap::value_type& pair, container_group->states[kContainerPending]) {
         Container::Ptr pending_container = pair.second;
         pending_container->require = container_group->require;
@@ -1062,6 +1153,8 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                 } else if (remote_st == kContainerFinish) {
                     ChangeStatus(container_local, kContainerTerminated);
                 } else if (remote_st == kContainerError) {
+                    cmd.action = kDestroyContainer;
+                    commands.push_back(cmd);
                     ChangeStatus(container_local, kContainerPending);
                 } else {
                     cmd.action = kCreateContainer;
@@ -1073,6 +1166,9 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             case kContainerReady:
                 if (remote_st == kContainerFinish) {
                     ChangeStatus(container_local, kContainerTerminated);
+                } else if (remote_st == kContainerError) {
+                    cmd.action = kDestroyContainer;
+                    commands.push_back(cmd);
                 } else if (remote_st != kContainerReady) {
                     ChangeStatus(container_local, kContainerPending);
                 }
@@ -1174,8 +1270,7 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
     }
     for (int i = 0; i < container_desc.data_volums_size(); i++) {
         if (idx >= container->allocated_volums.size()) {
-            LOG(WARNING) << "fail to set allocated volums device path";
-            return;
+            break;
         }
         proto::VolumRequired* vol = container_desc.mutable_data_volums(i);
         if (vol->medium() != proto::kTmpfs) {
@@ -1216,7 +1311,10 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
         group_stat.set_ready(container_group->states[kContainerReady].size());
         group_stat.set_pending(container_group->states[kContainerPending].size());
         group_stat.set_allocating(container_group->states[kContainerAllocating].size());
+        group_stat.set_destroying(container_group->states[kContainerDestroying].size());
         group_stat.set_user_name(container_group->user_name);
+        group_stat.set_submit_time(container_group->submit_time);
+        group_stat.set_update_time(container_group->update_time);
         if (container_group->terminated) {
             group_stat.set_status(proto::kContainerGroupTerminated);
         } else {
@@ -1289,29 +1387,33 @@ void Scheduler::GetContainersStatistics(const ContainerMap& containers_map,
         container_stat.set_status(container->status);
         container_stat.set_endpoint(container->allocated_agent);
         container_stat.set_last_res_err(container->last_res_err);
-        std::map<proto::VolumMedium, int64_t> volum_assigned;
-        std::map<proto::VolumMedium, int64_t> volum_used;
+        std::map<DevicePath, VolumInfo> volum_assigned;
+        std::map<DevicePath, VolumInfo> volum_used;
         int64_t cpu_assigned = container->require->CpuNeed();
         int64_t cpu_used = container->remote_info.cpu_used();
         int64_t memory_assigned = container->require->MemoryNeed();
         int64_t memory_used = container->remote_info.memory_used();
         for (size_t i = 0; i < container->require->volums.size(); i++) {
             proto::VolumMedium medium = container->require->volums[i].medium();
+            const std::string& dest_path = container->require->volums[i].dest_path();
             int64_t as = container->require->volums[i].size();
-            int64_t us = 0;
-            if ((int)i < container->remote_info.volum_used_size()) {
-                us = container->remote_info.volum_used(i).used_size();
-            }
-            volum_assigned[medium] += as;
-            volum_used[medium] += us;
+            volum_assigned[dest_path].size = as;
+            volum_assigned[dest_path].medium = medium;
         }
-        std::map<proto::VolumMedium, int64_t>::iterator v_it;
+        for (int i = 0; i < container->remote_info.volum_used_size(); i++) {
+            const std::string& dest_path = container->remote_info.volum_used(i).path();
+            volum_used[dest_path].size = container->remote_info.volum_used(i).used_size();
+            volum_used[dest_path].medium = container->remote_info.volum_used(i).medium();
+        }
+        std::map<DevicePath, VolumInfo>::const_iterator v_it;
         for (v_it = volum_assigned.begin(); v_it != volum_assigned.end(); v_it++) {
             proto::VolumResource* volum_stat = container_stat.add_volums();
-            proto::VolumMedium medium = v_it->first;
-            int64_t assigned_size = v_it->second;
-            int64_t used_size = volum_used[medium];
-            volum_stat->set_medium(medium);
+            const DevicePath& dest_path = v_it->first;
+            const VolumInfo& v_info = v_it->second;
+            int64_t assigned_size = v_info.size;
+            int64_t used_size = volum_used[dest_path].size;
+            volum_stat->set_medium(v_info.medium);
+            volum_stat->set_device_path(dest_path);
             volum_stat->mutable_volum()->set_assigned(assigned_size);
             volum_stat->mutable_volum()->set_used(used_size);
         }

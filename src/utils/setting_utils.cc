@@ -29,6 +29,7 @@ void SetupLog(const std::string& name) {
     google::SetLogSymlink(google::WARNING, program_name.c_str());
     google::SetLogSymlink(google::ERROR, "");
     google::SetLogSymlink(google::FATAL, "");
+    google::InstallFailureSignalHandler();
 }
 
 } //namespace galaxy
