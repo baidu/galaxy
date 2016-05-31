@@ -57,8 +57,8 @@ baidu::galaxy::util::ErrorCode FreezerSubsystem::Construct()
 
     if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
         return ERRORCODE(-1, "creat file(%s) failed: %s",
-                    path.string().c_str(),
-                    ec.message().c_str());
+                path.string().c_str(),
+                ec.message().c_str());
     }
 
     return ERRORCODE_OK;

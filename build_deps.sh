@@ -212,6 +212,19 @@ if [ ! -f "${FLAG_DIR}/common" ] \
     touch "${FLAG_DIR}/common"
 fi
 
+if [ -d "leveldb" ]
+then
+    echo "leveldb exist"
+else
+    # leveldb
+    git clone https://github.com/google/leveldb.git
+    cd leveldb
+    make -j8 >/dev/null 
+    cp -rf include/* ${DEPS_PREFIX}/include
+    cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
+    cd -
+fi
+
 cd ${WORK_DIR}
 echo "build deps done!"
 
