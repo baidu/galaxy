@@ -6,6 +6,7 @@
 #include "container.h"
 #include "resource/resource_manager.h"
 #include "container_stage.h"
+#include "serializer.h"
 
 #include "boost/shared_ptr.hpp"
 #include "boost/thread/mutex.hpp"
@@ -33,7 +34,8 @@ private:
     int CreateContainer_(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
     int ReleaseContainer_(boost::shared_ptr<Container> container);
     void KeepAliveRoutine();
-    
+    int Reload();
+
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > gc_containers_;
     //boost::scoped_ptr<baidu::common::ThreadPool> gc_threadpool_;
@@ -46,6 +48,8 @@ private:
     boost::unordered_map<ContainerId, boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > contianer_info_;
     baidu::common::Thread keep_alive_thread_;
     bool running_;
+
+    Serializer serializer_;
 };
 
 } //namespace agent

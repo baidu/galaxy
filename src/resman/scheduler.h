@@ -54,6 +54,8 @@ struct Requirement {
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
     std::string version;
+    std::vector<proto::TcpthrotRequired> tcp_throts;
+    std::vector<proto::BlkioRequired> blkios;
     Requirement() : max_per_host(0) {};
     int64_t CpuNeed() {
         int64_t total = 0;
@@ -108,6 +110,7 @@ struct Container {
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
     proto::ContainerInfo remote_info;
+    Container() : status(kContainerPending), last_res_err(proto::kResOk) {}
     typedef boost::shared_ptr<Container> Ptr;
 };
 
