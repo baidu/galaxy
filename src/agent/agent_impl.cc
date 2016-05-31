@@ -72,17 +72,18 @@ void AgentImpl::HandleMasterChange(const std::string& new_master_endpoint)
 
 void AgentImpl::Setup()
 {
+
+    baidu::galaxy::path::SetRootPath(FLAGS_galaxy_root_path);
     running_ = true;
     if (0 != rm_->Load()) {
         LOG(FATAL) << "resource manager loads resource failed";
         exit(1);
     }
 
-    cm_->Setup();
-
-    baidu::galaxy::path::SetRootPath(FLAGS_galaxy_root_path);
     baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     baidu::galaxy::container::ContainerStatus::Setup();
+
+    cm_->Setup();
 
     LOG(INFO) << "resource manager load resource successfully: " << rm_->ToString();
 
@@ -215,7 +216,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
     ec->set_status(baidu::galaxy::proto::kOk);
 
-    LOG(INFO) << "query:" << response->DebugString();
+    //LOG(INFO) << "query:" << response->DebugString();
     done->Run();
 }
 
