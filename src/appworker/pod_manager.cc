@@ -173,6 +173,7 @@ int PodManager::DoCreatePod() {
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         TaskEnv env;
+        env.user = pod_.env.user;
         env.job_id = pod_.env.job_id;
         env.pod_id = pod_.env.pod_id;
         env.task_id = task_id;

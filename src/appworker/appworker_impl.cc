@@ -21,6 +21,7 @@ DECLARE_string(nexus_addr);
 DECLARE_string(nexus_root_path);
 DECLARE_string(appmaster_nexus_path);
 DECLARE_string(appworker_exit_file);
+DECLARE_string(appworker_user_env);
 DECLARE_string(appworker_agent_hostname_env);
 DECLARE_string(appworker_agent_ip_env);
 DECLARE_string(appworker_agent_port_env);
@@ -63,6 +64,15 @@ AppWorkerImpl::~AppWorkerImpl() {
 }
 
 void AppWorkerImpl::PrepareEnvs() {
+    // 0.user
+    char* c_user = getenv(FLAGS_appworker_user_env.c_str());
+
+    if (NULL == c_user) {
+        LOG(WARNING) << FLAGS_appworker_user_env << " is  not set";
+        exit(-1);
+    }
+    std::string user = std::string(c_user);
+
     // 1.job_id
     char* c_job_id = getenv(FLAGS_appworker_job_id_env.c_str());
 
@@ -202,6 +212,7 @@ void AppWorkerImpl::PrepareEnvs() {
     }
 
     PodEnv env;
+    env.user = user;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
     env.task_ids = task_ids;

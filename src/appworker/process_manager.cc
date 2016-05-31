@@ -153,13 +153,13 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             }
         }
 
-        fprintf(stdout, "cmd: %s\n", cmd.c_str());
+        fprintf(stdout, "cmd: %s, user: %s\n", cmd.c_str(), env.user.c_str());
         fflush(stdout);
 
-//        // set user
-//        if (context->user() && !user::Su(context->user())) {
-//            assert(0);
-//        }
+        // set user
+        if (!user::Su(env.user)) {
+            assert(0);
+        }
 
         // 5.prepare argv
         char* argv[] = {
