@@ -19,9 +19,9 @@ DEFINE_string(appworker_agent_ip_env, "BAIDU_GALAXY_AGENT_IP", "agent ip env nam
 DEFINE_string(appworker_agent_port_env, "BAIDU_GALAXY_AGENT_PORT", "agent port env name");
 DEFINE_string(appworker_job_id_env, "BAIDU_GALAXY_CONTAINERGROUP_ID", "job id env name");
 DEFINE_string(appworker_pod_id_env, "BAIDU_GALAXY_CONTAINER_ID", "pod id env name");
+DEFINE_string(appworker_run_user_env, "BAIDU_GALAXY_CONTAINER_USER", "pod run user env name");
 DEFINE_string(appworker_task_ids_env, "BAIDU_GALAXY_CONTAINER_CGROUP_IDS", "task ids env name");
 DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
-DEFINE_string(appworker_default_user, "galaxy", "appworker default user");
 DEFINE_string(appworker_exit_file, ".exit", "appworker exit file");
 
 // pod_manager

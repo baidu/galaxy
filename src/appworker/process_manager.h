@@ -29,6 +29,7 @@ struct ProcessContext {
     std::string process_id;
     std::string cmd;
     std::string work_dir;
+    std::string user;
     virtual ~ProcessContext() {};
 };
 
