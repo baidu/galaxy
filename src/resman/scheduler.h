@@ -132,10 +132,15 @@ struct ContainerGroup {
     std::string name;
     std::string user_name;
     proto::ContainerDescription container_desc;
+    int64_t submit_time;
+    int64_t update_time;
+    std::string last_sched_container_id;
     ContainerGroup() : terminated(false),
                        update_interval(0),
                        last_update_time(0),
-                       replica(0) {};
+                       replica(0),
+                       submit_time(0),
+                       update_time(0) {};
     int Replica() const {
         return states[kContainerPending].size() 
                + states[kContainerAllocating].size() 
@@ -168,6 +173,8 @@ private:
     bool RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
                             std::map<DevicePath, VolumInfo>& volum_free,
                             std::vector<DevicePath>& devices);
+    bool SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
+                         std::vector<std::string>& ports_free);
     AgentEndpoint endpoint_;
     std::set<std::string> tags_;
     std::string pool_name_;
@@ -211,7 +218,8 @@ public:
     void Reload(const proto::ContainerGroupMeta& container_group_meta);
     bool Kill(const ContainerGroupId& container_group_id);
     bool ManualSchedule(const AgentEndpoint& endpoint,
-                        const ContainerGroupId& container_group_id);
+                        const ContainerGroupId& container_group_id,
+                        std::string& fail_reason);
 
     bool ChangeReplica(const ContainerGroupId& container_group_id, int replica);
     

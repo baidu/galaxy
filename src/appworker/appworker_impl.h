@@ -10,11 +10,11 @@
 
 #include <mutex.h>
 #include <thread_pool.h>
+#include <ins_sdk.h>
 
 #include "protocol/appmaster.pb.h"
 #include "rpc/rpc_client.h"
 #include "pod_manager.h"
-#include "ins_sdk.h"
 
 namespace baidu {
 namespace galaxy {
@@ -25,12 +25,14 @@ typedef google::protobuf::RepeatedPtrField<proto::TaskInfo> TaskInfoList;
 typedef proto::AppMaster_Stub AppMaster_Stub;
 typedef proto::FetchTaskRequest FetchTaskRequest;
 typedef proto::FetchTaskResponse FetchTaskResponse;
+typedef proto::ErrorCode ErrorCode;
 
 class AppWorkerImpl {
 public:
     AppWorkerImpl();
-    virtual ~AppWorkerImpl();
-    void Start();
+    ~AppWorkerImpl();
+    void PrepareEnvs();
+    void Init();
 
 private:
     void FetchTask();
@@ -40,16 +42,17 @@ private:
     void UpdateAppMasterStub();
 
 private:
-    Mutex mutex_appworker_;
+    Mutex mutex_;
+    int64_t start_time_;
+    int64_t update_time_;
+    std::string hostname_;
+    std::string endpoint_;
     std::string job_id_;
     std::string pod_id_;
-    std::string container_id_;
-    std::string endpoint_;
-    std::string appmaster_endpoint_;
-    int64_t start_time_;
 
     RpcClient rpc_client_;
     InsSDK* nexus_;
+    std::string appmaster_endpoint_;
     AppMaster_Stub* appmaster_stub_;
     PodManager pod_manager_;
     ThreadPool backgroud_pool_;
