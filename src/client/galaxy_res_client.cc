@@ -26,7 +26,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "  agent usage:\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
                                  "      galaxy_res_client set_agent -p pool -e endpoint\n"
-                                 "      galaxy_res_client show_agent -e endpoint\n"
+                                 "      galaxy_res_client show_agent -e endpoint [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client remove_agent -e endpoint\n"
                                  "      galaxy_res_client list_agents [-p pool -t tag -o cpu,mem,volums]\n"
                                  "      galaxy_res_client online_agent -e endpoint\n"
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-e is needed\n");
             return -1;
         }
-        ok = resAction->ShowAgent(FLAGS_e);
+        ok = resAction->ShowAgent(FLAGS_e, FLAGS_o);
     } else if (strcmp(argv[1], "remove_agent") == 0) {
         if (FLAGS_e.empty()) {
             fprintf(stderr, "-e is needed\n");

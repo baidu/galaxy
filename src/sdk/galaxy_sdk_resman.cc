@@ -453,7 +453,6 @@ bool ResourceManagerImpl::ShowAgent(const ShowAgentRequest& request, ShowAgentRe
     ::baidu::galaxy::proto::ShowAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    fprintf(stderr, "endpoint:%s\n", request.endpoint.c_str());
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowAgent,
                                         &pb_request, &pb_response, 5, 1);
