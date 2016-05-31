@@ -219,7 +219,7 @@ else
     # leveldb
     git clone https://github.com/google/leveldb.git
     cd leveldb
-    make -j8 >/dev/null 
+    make -j8 out-static/libleveldb.a OPT=-fno-access-control >/dev/null 
     cp -rf include/* ${DEPS_PREFIX}/include
     cp out-static/libleveldb.a ${DEPS_PREFIX}/lib
     cd -
