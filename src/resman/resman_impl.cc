@@ -592,6 +592,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     CHECK_USER()
     LOG(INFO) << "user:" << request->user().user()
               << " update container group: " << request->id();
+    VLOG(10) << request->DebugString();
     proto::ContainerGroupMeta new_meta;
     proto::ContainerGroupMeta old_meta;
     bool replica_changed = false;
