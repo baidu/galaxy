@@ -179,6 +179,16 @@ int PodManager::DoCreatePod() {
         env.cgroup_subsystems = pod_.env.cgroup_subsystems;
         env.cgroup_paths = pod_.env.task_cgroup_paths[i];
         env.ports = pod_.env.task_ports[i];
+
+        if (pod_.desc.has_workspace_volum()
+                && pod_.desc.workspace_volum().has_dest_path()) {
+            env.workspace = pod_.desc.workspace_volum().dest_path();
+        } else {
+            env.workspace = "/";
+        }
+
+        LOG(WARNING) << "task workspace: " << env.workspace;
+
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
 
         if (0 != ret) {

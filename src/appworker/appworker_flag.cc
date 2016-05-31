@@ -12,7 +12,7 @@ DEFINE_string(appmaster_nexus_path, "appmaster", "appmaster path on nexus");
 
 // appworker
 DEFINE_int32(appworker_fetch_task_timeout, 10000, "appworker fetch task timeout");
-DEFINE_int32(appworker_fetch_task_interval, 1000, "appworker fetch task interval");
+DEFINE_int32(appworker_fetch_task_interval, 2000, "appworker fetch task interval");
 DEFINE_int32(appworker_background_thread_pool_size, 5, "appworker background trehad pool size");
 DEFINE_string(appworker_agent_hostname_env, "BAIDU_GALAXY_AGENT_HOSTNAME", "agent hostname env name");
 DEFINE_string(appworker_agent_ip_env, "BAIDU_GALAXY_AGENT_IP", "agent ip env name");
@@ -25,7 +25,7 @@ DEFINE_string(appworker_default_user, "galaxy", "appworker default user");
 DEFINE_string(appworker_exit_file, ".exit", "appworker exit file");
 
 // pod_manager
-DEFINE_int32(pod_manager_change_pod_status_interval, 1000, "pod manager check pod status change interval");
+DEFINE_int32(pod_manager_change_pod_status_interval, 500, "pod manager check pod status change interval");
 
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 10, "task manager background thread pool size");
