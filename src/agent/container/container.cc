@@ -548,6 +548,9 @@ boost::shared_ptr<ContainerProperty> Container::Property() {
     property->workspace_volum_.phy_source_path = wv->SourcePath();
     property->workspace_volum_.container_rel_path = wv->Description()->dest_path();
     property->workspace_volum_.phy_gc_path = wv->SourceGcPath();
+    property->workspace_volum_.medium = baidu::galaxy::proto::VolumMedium_Name(wv->Description()->medium());
+    property->workspace_volum_.quota = wv->Description()->size();
+    // 
     
     for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
         ContainerProperty::Volum cv;
@@ -556,6 +559,8 @@ boost::shared_ptr<ContainerProperty> Container::Property() {
         cv.phy_source_path = v->SourcePath();
         cv.container_rel_path = v->Description()->dest_path();
         cv.phy_gc_path = v->SourceGcPath();
+        cv.medium = baidu::galaxy::proto::VolumMedium_Name(v->Description()->medium());
+        cv.quota = v->Description()->size();
         property->data_volums_.push_back(cv);
     }
     return property;
