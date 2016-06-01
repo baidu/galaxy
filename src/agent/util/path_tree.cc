@@ -37,7 +37,7 @@ void SetRootPath(const std::string& root_path)
     boost::system::error_code ec;
     if (!boost::filesystem::exists(path, ec)
             && !boost::filesystem::create_directories(path, ec)) {
-        LOG(FATAL) << "failed in creating root path: " << ec.message();
+        LOG(FATAL) << "failed in creating root path: " << path.string() << " " << ec.message();
         exit(1);
     }
 

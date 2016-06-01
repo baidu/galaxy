@@ -4,6 +4,7 @@
 #include "bind_volum.h"
 #include "protocol/galaxy.pb.h"
 #include "mounter.h"
+#include "util/user.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -42,6 +43,18 @@ baidu::galaxy::util::ErrorCode BindVolum::Construct()
         return ERRORCODE(-1, "failed in creating dir(%s): %s",
                 source_path.string().c_str(),
                 ec.message().c_str());
+    }
+
+    std::string user = Owner();
+    if (!user.empty()) {
+        baidu::galaxy::util::ErrorCode err = baidu::galaxy::user::Chown(source_path.string(), user);
+        if (0 != err.Code()) {
+            return ERRORCODE(-1, "chown %s to user %s failed: %s",
+                        source_path.string().c_str(),
+                        user.c_str(),
+                        err.Message().c_str());
+        }
+        
     }
 
     std::map<std::string, boost::shared_ptr<Mounter> > mounters;
