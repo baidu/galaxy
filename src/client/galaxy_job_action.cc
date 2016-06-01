@@ -20,7 +20,6 @@ namespace galaxy {
 namespace client {
 
 JobAction::JobAction() : app_master_(NULL), resman_(NULL) { 
-    //thread_ = new ::baidu::comm::Thread();
     user_.user = FLAGS_username;
     user_.token = FLAGS_token;
 }
@@ -203,7 +202,6 @@ struct ListJobParams {
 };
 
 void* JobAction::ListContainers(void* param) {
-    ::baidu::galaxy::sdk::ResourceManager* resman_;
     ListContainerParams* container_params = (ListContainerParams*)param;
     JobAction* self = container_params->action;
     if (!self->InitResman()) {
