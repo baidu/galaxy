@@ -94,6 +94,23 @@ const std::string ContainerRootPath(const std::string& container_id)
     return path.string();
 }
 
+
+const std::string ContainerPropertyPath(const std::string& container_id) {
+    assert(!root_path_.empty());
+    boost::filesystem::path path(ContainerRootPath(container_id));
+    path.append("container.property");
+    return path.string();
+}
+
+
+const std::string ContainerMetaPath(const std::string& container_id) {
+    assert(!root_path_.empty());
+    boost::filesystem::path path(ContainerRootPath(container_id));
+    path.append("container.meta");
+    return path.string();
+}
+
+
 const std::string ContainerGcRootPath(const std::string& container_id, uint32_t index)
 {
     assert(!root_path_.empty());
