@@ -21,6 +21,7 @@ typedef proto::PodDescription PodDescription;
 typedef proto::PodStatus PodStatus;
 
 struct PodEnv {
+    std::string user;
     std::string job_id;
     std::string pod_id;
     std::vector<std::string> task_ids;
@@ -45,6 +46,7 @@ struct Pod {
     PodStage stage;
     PodEnv env;
     PodDescription desc;
+    int32_t fail_count;
 };
 
 class PodManager {
