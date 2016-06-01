@@ -79,14 +79,18 @@ struct Job {
     JobStatus status_;
     User user_;
     std::map<PodId, PodInfo*> pods_;
+    std::map<PodId, PodInfo*> history_pods_;
     JobDescription desc_;
     JobId id_;
     std::map<Version, JobDescription> job_descs_;
     std::set<PodId> deploying_pods_;
+    std::set<PodId> reloading_pods_;
     std::string curent_version_;
+    std::string last_version_;
     UpdateAction action_type_;
     int64_t create_time_;
     int64_t update_time_;
+    int64_t rollback_time_;
 };
 
 typedef boost::function<Status (Job* job, void* arg)> TransFunc;
