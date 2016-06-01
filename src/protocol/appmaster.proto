@@ -81,6 +81,7 @@ message PodInfo {
     optional int64 update_time = 7;
     optional int32 fail_count = 8; 
     optional int64 heartbeat_time = 9;
+    optional int64 last_normal_time = 10;
 }
 
 message JobInfo {
@@ -91,9 +92,10 @@ message JobInfo {
     optional string version = 7;
     optional int64 create_time = 8;
     optional int64 update_time = 9;
-    repeated JobDescription descs = 10;
+    optional JobDescription last_desc = 10;
     optional User user = 11;
     optional UpdateAction action = 12;
+    optional string last_version = 13;
 }
 
 message ShowJobResponse {
