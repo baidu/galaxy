@@ -1,7 +1,6 @@
 {
     "name": "example",
     "type": "kJobService",
-    "run_user": "galaxy",
     "deploy": {
         "replica": 1,
         "step": 1,
