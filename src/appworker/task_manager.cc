@@ -292,6 +292,7 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
     task.task_id = it->second->task_id;
     task.desc.CopyFrom(it->second->desc);
     task.status = it->second->status;
+    task.fail_retry_times = it->second->fail_retry_times;
 
     return 0;
 }

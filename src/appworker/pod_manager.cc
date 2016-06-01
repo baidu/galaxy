@@ -143,6 +143,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.status = pod_.status;
     pod.reload_status = pod_.reload_status;
     pod.stage = pod_.stage;
+    pod.fail_count = pod_.fail_count;
 
     return 0;
 }
@@ -168,6 +169,7 @@ int PodManager::DoCreatePod() {
     pod_.pod_id = pod_.env.pod_id;
     pod_.status = proto::kPodReady;
     pod_.stage = kPodStageCreating;
+    pod_.fail_count = 0;
     LOG(INFO) << "create pod, task size: " << tasks_size;
 
     for (int i = 0; i < tasks_size; i++) {
@@ -443,6 +445,8 @@ void PodManager::RunningPodCheck() {
     int tasks_size = pod_.desc.tasks().size();
     TaskStatus task_status = proto::kTaskFinished;
 
+    int32_t fail_count = 0;
+
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         Task task;
@@ -459,6 +463,8 @@ void PodManager::RunningPodCheck() {
         if (task.status < task_status) {
             task_status = task.status;
         }
+
+        fail_count += task.fail_retry_times;
     }
 
     if (proto::kTaskRunning != task_status) {
@@ -471,6 +477,8 @@ void PodManager::RunningPodCheck() {
         }
     }
 
+    pod_.fail_count = fail_count;
+    LOG(INFO) << "++++++ total fail times: " << fail_count;
     return;
 }
 
