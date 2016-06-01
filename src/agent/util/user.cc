@@ -9,6 +9,8 @@
 
 #include <errno.h>
 #include <pwd.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <iostream>
 #include <fstream>
@@ -41,13 +43,6 @@ baidu::galaxy::util::ErrorCode Su(const std::string& user_name)
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode Chown(const std::string& file, const std::string& user)
-{
-    //boost::filesystem::path path(file);
-    //if (boost::)
-    return ERRORCODE_OK;
-}
-
 baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid)
 {
     // i can not get uid & gid by getpwnam_r after calling chroot, i donot know why
@@ -75,6 +70,20 @@ baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t*
     return ERRORCODE(-1, "user %s donot exist", user_name.c_str());
 }
 
+
+baidu::galaxy::util::ErrorCode Chown(const std::string& path, const std::string& user) {
+    uid_t uid;
+    gid_t gid;
+    baidu::galaxy::util::ErrorCode ec = GetUidAndGid(user, &uid, &gid);
+
+    if (0 != ec.Code()) {
+        return ec;
+    }
+    if (0 != ::chown(path.c_str(), uid, gid)) {
+        return PERRORCODE(-1, errno, "chown failed");
+    }
+    return ERRORCODE_OK;
+}
 
 }
 }

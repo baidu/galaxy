@@ -46,11 +46,6 @@ namespace baidu {
 namespace galaxy {
 namespace container {
 
-bool is_null(const std::string& x)
-{
-    return x.empty();
-}
-
 Container::Container(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc) :
     desc_(desc),
     volum_group_(new baidu::galaxy::volum::VolumGroup()),
@@ -253,6 +248,7 @@ int Container::ConstructVolumGroup() {
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
     volum_group_->SetGcIndex(created_time_/1000000);
+    volum_group_->SetOwner(desc_.run_user());
 
     for (int i = 0; i < desc_.data_volums_size(); i++) {
         volum_group_->AddDataVolum(desc_.data_volums(i));
@@ -297,12 +293,12 @@ int Container::Destroy_()
         baidu::galaxy::util::ErrorCode ec = Process::Kill(pid);
         if (ec.Code() != 0) {
             LOG(WARNING) << "failed in killing appwork for container "
-                         << id_.CompactId() << ": " << ec.Message();
+                << id_.CompactId() << ": " << ec.Message();
             return -1;
         }
     }
-
     LOG(INFO) << "container " << id_.CompactId() << " suceed in killing appwork whose pid is " << pid;
+
     // destroy cgroup
     for (size_t i = 0; i < cgroup_.size(); i++) {
         baidu::galaxy::util::ErrorCode ec = cgroup_[i]->Destroy();
@@ -318,11 +314,10 @@ int Container::Destroy_()
     baidu::galaxy::util::ErrorCode ec = volum_group_->Destroy();
     if (0 != ec.Code()) {
         LOG(WARNING) << "failed in destroying volum group in container " << id_.CompactId()
-                     << " " << ec.Message();
+            << " " << ec.Message();
         return -1;
     }
     LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy volum";
-
     // mv to gc queue
     return 0;
 }
@@ -413,6 +408,7 @@ void Container::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_agent_hostname"] = FLAGS_agent_hostname;
     env["baidu_galaxy_agent_ip"] = FLAGS_agent_ip;
     env["baidu_galaxy_agent_port"] = FLAGS_agent_port;
+    env["baidu_galaxy_container_user"] = desc_.run_user();
 }
 
 baidu::galaxy::proto::ContainerStatus Container::Status()

@@ -78,7 +78,7 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
         return -1;
     }
 
-    // judge container is exist or not
+    // judge container exist or not
     {
         boost::mutex::scoped_lock lock(mutex_);
         std::map<ContainerId, boost::shared_ptr<Container> >::const_iterator iter
@@ -177,9 +177,11 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
 
     boost::shared_ptr<baidu::galaxy::container::Container>
     container(new baidu::galaxy::container::Container(id, desc));
-
+    
     if (0 != container->Construct()) {
         LOG(WARNING) << "fail in constructing container " << id.CompactId();
+
+        container->Destroy();
         return -1;
     }
 
@@ -193,9 +195,8 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
     {
         boost::mutex::scoped_lock lock(mutex_);
         work_containers_[id] = container;
-        LOG(INFO) << "succeed in constructing container " << id.CompactId();
     }
-
+    LOG(INFO) << "succeed in constructing container " << id.CompactId();
     return 0;
 }
 

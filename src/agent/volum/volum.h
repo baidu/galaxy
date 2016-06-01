@@ -28,6 +28,14 @@ public:
 
     void SetGcIndex(int32_t index);  // timestamp is ok
     void SetContainerId(const std::string& container_id);
+    void SetUser(const std::string& user) {
+        user_ = user;
+    }
+
+    const std::string Owner() const {
+        return user_;
+    }
+
     void SetDescription(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr);
 
     const std::string ContainerId() const;
@@ -47,6 +55,7 @@ private:
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr_;
     std::string container_id_;
     int32_t gc_index_;
+    std::string user_;
 
 };
 

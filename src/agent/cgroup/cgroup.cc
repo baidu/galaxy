@@ -98,23 +98,25 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
         return ERRORCODE_OK;
     }
 
-    baidu::galaxy::util::ErrorCode err = freezer_->Freeze();
+    if (freezer_.get() != NULL) {
+        baidu::galaxy::util::ErrorCode err = freezer_->Freeze();
 
-    if (0 != err.Code()) {
-        return ERRORCODE(-1, "freeze failed: %s",
-                   err.Message().c_str());
-    }
+        if (0 != err.Code()) {
+            return ERRORCODE(-1, "freeze failed: %s",
+                        err.Message().c_str());
+        }
 
-    for (size_t i = 0; i < subsystem_.size(); i++) {
-        subsystem_[i]->Kill();
-    }
+        for (size_t i = 0; i < subsystem_.size(); i++) {
+            subsystem_[i]->Kill();
+        }
 
-    err = freezer_->Thaw();
+        err = freezer_->Thaw();
 
-    if (0 != err.Code()) {
-        return ERRORCODE(-1,
-                    "thaw failed: %s",
-                    err.Message().c_str());
+        if (0 != err.Code()) {
+            return ERRORCODE(-1,
+                        "thaw failed: %s",
+                        err.Message().c_str());
+        }
     }
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
@@ -128,8 +130,7 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
                         ec.Message().c_str());
         }
     }
-
-    //subsystem_.clear();
+    subsystem_.clear();
 
 
     if (NULL !=  freezer_.get()) {

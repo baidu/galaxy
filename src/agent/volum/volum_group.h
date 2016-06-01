@@ -26,6 +26,9 @@ public:
     ~VolumGroup();
 
     void SetGcIndex(int gc_index);
+    void SetOwner(const std::string& user) {
+        user_ = user;
+    }
 
     void AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum);
     void SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum);
@@ -52,6 +55,7 @@ private:
 
     std::string container_id_;
     int gc_index_;
+    std::string user_;
 
 };
 }
