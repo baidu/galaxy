@@ -14,6 +14,7 @@ DEFINE_string(d, "", "specify data_volums num");
 DEFINE_string(p, "", "specify port num");
 DEFINE_string(a, "", "specify packages num in data_package");
 DEFINE_string(s, "", "specify service num");
+DEFINE_string(o, "", "operation");
 
 DECLARE_string(flagfile);
 
@@ -23,7 +24,7 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      galaxy update -f <jobconfig> -i id\n"
                                  "      galaxy stop -i id\n"
                                  "      galaxy remove -i id\n"
-                                 "      galaxy list\n"
+                                 "      galaxy list [-o cpu,mem,volums]\n"
                                  "      galaxy show -i id\n"
                                  "      galaxy exec -i id -c cmd\n"
                                  "      galaxy json [-t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
@@ -35,7 +36,8 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      -d spicify data_volums num, default 1\n"
                                  "      -p specify port num, default 1\n"
                                  "      -a specify specify packages num in data_package, default 1\n"
-                                 "      -s specify specify service num, default 1\n";
+                                 "      -s specify specify service num, default 1\n"
+                                 "      -o specify operation [cpu,mem,volums].\n";
 
 int main(int argc, char** argv) {
     bool ok = true;
@@ -76,7 +78,7 @@ int main(int argc, char** argv) {
         ok = jobAction->RemoveJob(FLAGS_i);
 
     } else if (strcmp(argv[1], "list") == 0) {
-        ok = jobAction->ListJobs();
+        ok = jobAction->ListJobs(FLAGS_o);
     } else if (strcmp(argv[1], "stop") == 0) { 
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");
