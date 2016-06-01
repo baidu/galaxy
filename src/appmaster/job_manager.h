@@ -48,11 +48,15 @@ using ::baidu::galaxy::proto::kJobRunning;
 using ::baidu::galaxy::proto::kJobFinished; 
 using ::baidu::galaxy::proto::kJobDestroying;
 using ::baidu::galaxy::proto::kJobUpdating;
+using ::baidu::galaxy::proto::kJobBatchUpdate;
 using ::baidu::galaxy::proto::kFetch;
 using ::baidu::galaxy::proto::kUpdate;
 using ::baidu::galaxy::proto::kRemove;
 using ::baidu::galaxy::proto::kRemoveFinish;
 using ::baidu::galaxy::proto::kUpdateFinish;
+using ::baidu::galaxy::proto::kBatchUpdate;
+using ::baidu::galaxy::proto::kUpdateContinue;
+using ::baidu::galaxy::proto::kUpdateRollback;
 using ::baidu::galaxy::proto::kActionNull;
 using ::baidu::galaxy::proto::kActionReload;
 using ::baidu::galaxy::proto::kActionRebuild;
@@ -79,14 +83,16 @@ struct Job {
     JobStatus status_;
     User user_;
     std::map<PodId, PodInfo*> pods_;
+    std::map<PodId, PodInfo*> history_pods_;
     JobDescription desc_;
+    JobDescription last_desc_;
     JobId id_;
-    std::map<Version, JobDescription> job_descs_;
     std::set<PodId> deploying_pods_;
-    std::string curent_version_;
+    std::set<PodId> reloading_pods_;
     UpdateAction action_type_;
     int64_t create_time_;
     int64_t update_time_;
+    int64_t rollback_time_;
 };
 
 typedef boost::function<Status (Job* job, void* arg)> TransFunc;
@@ -101,6 +107,11 @@ public:
     Status Add(const JobId& job_id, const JobDescription& job_desc);
     Status Update(const JobId& job_id, const JobDescription& job_desc);
     Status Terminate(const JobId& jobid, const User& user, const std::string hostname);
+    Status BatchUpdate(const JobId& job_id, const JobDescription& job_desc);
+    Status ContinueUpdate(const JobId& job_id);
+    Status Rollback(const JobId& job_id);
+
+
     Status HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* request,
                      ::baidu::galaxy::proto::FetchTaskResponse* response);
     void ReloadJobInfo(const JobInfo& job_info);
@@ -141,6 +152,11 @@ private:
     Status DistroyPod(Job* job, void* arg);
     bool SaveToNexus(const Job* job);
     bool DeleteFromNexus(const JobId& job_id);
+    Status ContinueUpdateJob(Job* job, void* arg);
+    Status RollbackJob(Job* job, void* arg);
+    Status BatchUpdatePod(Job* job, void* arg);
+    void CheckBatchUpdate(Job* job);
+
 private:
     std::map<JobId, Job*> jobs_;
     // agent some custom settings eg mark agent offline
