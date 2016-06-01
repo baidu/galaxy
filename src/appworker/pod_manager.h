@@ -46,6 +46,7 @@ struct Pod {
     PodStage stage;
     PodEnv env;
     PodDescription desc;
+    int32_t fail_count;
 };
 
 class PodManager {

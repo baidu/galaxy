@@ -305,6 +305,7 @@ void AppWorkerImpl::FetchTask() {
     request->set_update_time(update_time_);
     request->set_status(pod.status);
     request->set_reload_status(pod.reload_status);
+    request->set_fail_count(pod.fail_count);
     LOG(INFO) << "pod status: " << proto::PodStatus_Name(pod.status);
 
     if (kPodStageReloading == pod.stage) {
@@ -363,7 +364,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
 
         // ignore expired actions
         if (!response->has_update_time()
-                || response->update_time() <= update_time_) {
+                || response->update_time() == update_time_) {
             LOG(WARNING) << "ignore expire action, current: " << update_time_;
             break;
         }
