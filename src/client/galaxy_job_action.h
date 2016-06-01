@@ -29,11 +29,15 @@ public:
 
 private:
     bool Init();
+    bool InitResman();
+    static void* ListContainers(void* param);
+    static void* ListJobs(void* param);
+    static void* ShowJob(void* param);
+    static void* ShowContainerGroup(void* param);
 private:
     ::baidu::galaxy::sdk::AppMaster* app_master_;
     ::baidu::galaxy::sdk::User user_;
     ::baidu::galaxy::sdk::ResourceManager* resman_;
-
 }; // end class JobAction
 
 } // end namespace client

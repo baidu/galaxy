@@ -149,6 +149,9 @@ std::string StringJobStatus(const ::baidu::galaxy::sdk::JobStatus& status) {
     case ::baidu::galaxy::sdk::kJobDestroying:
         result = "Destroying";
         break;
+    case ::baidu::galaxy::sdk::kJobUpdating:
+        result = "Updating";
+        break;
     default:
         result = "";
     }
@@ -503,7 +506,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     root.AddMember("name", "example", allocator);
     root.AddMember("type", "kJobService", allocator);
     //root.AddMember("version", "1.0.0", allocator);
-    root.AddMember("run_user", "galaxy", allocator);
+    //root.AddMember("run_user", "galaxy", allocator);
 
     //deploy节点
     rapidjson::Value deploy(rapidjson::kObjectType);
