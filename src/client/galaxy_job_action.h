@@ -23,7 +23,7 @@ public:
     bool UpdateJob(const std::string& json_file, const std::string& jobid);
     bool StopJob(const std::string& jobid);
     bool RemoveJob(const std::string& jobid);
-    bool ListJobs();
+    bool ListJobs(const std::string& soptions);
     bool ShowJob(const std::string& jobid);
     bool ExecuteCmd(const std::string& jobid, const std::string& cmd);
 
