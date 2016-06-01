@@ -1506,6 +1506,17 @@ std::string Scheduler::GetNewVersion() {
     return ss.str();
 }
 
+void Scheduler::MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota& quota) {
+    Requirement::Ptr require(new Requirement);
+    SetRequirement(require, meta.desc());
+    int64_t replica = meta.replica();
+    quota.set_replica(replica);
+    quota.set_millicore(require->CpuNeed() * replica);
+    quota.set_memory(require->MemoryNeed() * replica);
+    quota.set_disk(require->DiskNeed() * replica);
+    quota.set_ssd(require->SsdNeed() * replica);
+}
+
 } //namespace sched
 } //namespace galaxy
 } //namespace baidu

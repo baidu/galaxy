@@ -249,7 +249,7 @@ public:
     bool ChangeStatus(const ContainerGroupId& container_group_id,
                       const ContainerId& container_id,
                       ContainerStatus new_status);
-
+    void MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota& quota);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
