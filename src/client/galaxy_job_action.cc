@@ -209,9 +209,8 @@ void* JobAction::ListContainers(void* param) {
     if (!self->InitResman()) {
         return NULL;
     }
-    ::baidu::galaxy::sdk::ListContainerGroupsRequest request = container_params->request; 
     ::baidu::galaxy::sdk::ListContainerGroupsResponse response;
-    bool ret = self->resman_->ListContainerGroups(request, &response);
+    bool ret = self->resman_->ListContainerGroups(container_params->request, &response);
     if (ret) {
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             container_params->containers->insert(make_pair(response.containers[i].id, response.containers[i]));
@@ -229,9 +228,8 @@ void* JobAction::ListJobs(void* param) {
     if(!self->Init()) {
         return NULL;
     }
-    ::baidu::galaxy::sdk::ListJobsRequest request = job_params->request;
     ::baidu::galaxy::sdk::ListJobsResponse response;
-    bool ret = self->app_master_->ListJobs(request, &response);
+    bool ret = self->app_master_->ListJobs(job_params->request, &response);
     if (ret) {
         for (uint32_t i = 0; i < response.jobs.size(); ++i) {
             job_params->jobs->push_back(response.jobs[i]);
