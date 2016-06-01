@@ -240,6 +240,7 @@ message Deploy {
     optional uint32 max_per_host = 4;
     optional string tag = 5;
     repeated string pools = 6;
+    optional uint32 update_break_count = 7;
 }
 
 message Service {
