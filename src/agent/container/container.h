@@ -4,6 +4,7 @@
 #pragma once
 #include "protocol/galaxy.pb.h"
 #include "container_status.h"
+#include "container_property.h"
 #include "timer.h"
 
 #include <sys/types.h>
@@ -110,6 +111,7 @@ public:
     const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta();
+    boost::shared_ptr<ContainerProperty> Property();
     void KeepAlive();
 
 private:

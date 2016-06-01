@@ -68,3 +68,5 @@ test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_ut
 env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
+
+env.Program('aaa', ['./xx.cc'])

@@ -143,12 +143,6 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
     return 0;
 }
 
-boost::shared_ptr<google::protobuf::Message> VolumGroup::Report()
-{
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
-}
-
 boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp)
 {
     assert(NULL != dp.get());
@@ -172,6 +166,21 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
     }
 
     return volum;
+}
+
+const boost::shared_ptr<Volum> VolumGroup::WorkspaceVolum() const {
+    return workspace_volum_;
+}
+
+const int VolumGroup::DataVolumsSize() const {
+    return data_volum_.size();
+}
+
+const boost::shared_ptr<Volum> VolumGroup::DataVolum(int i) const {
+    assert(i >= 0);
+    assert(i < (int)data_volum_.size());
+    
+    return data_volum_[i];
 }
 
 // FIX: a single class
