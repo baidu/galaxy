@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("appworker");
+    google::SetStderrLogging(google::GLOG_INFO);
 
     signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
