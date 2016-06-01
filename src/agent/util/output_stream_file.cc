@@ -12,12 +12,13 @@ OutputStreamFile::OutputStreamFile(const std::string& path, const std::string& m
     file_(NULL),
     errno_(0) {
     file_ = fopen(path.c_str(), mode.c_str());
-    errno_ = errno;
+    if (NULL == file_) {
+        errno_ = errno;
+    }
 }
 OutputStreamFile::~OutputStreamFile() {
     if (NULL != file_) {
         fclose(file_);
-        errno_ = errno;
         file_ = NULL;
     }
 }
@@ -26,8 +27,8 @@ bool OutputStreamFile::IsOpen() {
     return NULL != file_;
 }
 
-void OutputStreamFile::GetLastError(baidu::galaxy::util::ErrorCode& ec) {
-    ec = ERRORCODE(errno_, "%s", strerror(errno_));
+baidu::galaxy::util::ErrorCode OutputStreamFile::GetLastError() {
+    return ERRORCODE(errno_, "%s", strerror(errno_));
 }
 
 baidu::galaxy::util::ErrorCode OutputStreamFile::Write(const void* data, size_t& len) {
@@ -35,14 +36,15 @@ baidu::galaxy::util::ErrorCode OutputStreamFile::Write(const void* data, size_t&
     assert(NULL != data);
     assert(len > 0);
     len = fwrite(data, 1, len, file_);
-    errno_ = errno;
 
     if (len == 0) {
+        errno_ = errno;
         return PERRORCODE(-1, errno_, "write failed");
     }
 
     return ERRORCODE_OK;
 }
+
 }
 }
 }

@@ -40,10 +40,11 @@ public:
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode  Destroy();
     int ExportEnv(std::map<std::string, std::string>& env);
-    boost::shared_ptr<google::protobuf::Message> Report();
-
     int MountRootfs();
-
+    
+    const boost::shared_ptr<Volum> WorkspaceVolum() const;
+    const int DataVolumsSize() const;
+    const boost::shared_ptr<Volum> DataVolum(int i) const;
 private:
     boost::shared_ptr<Volum> Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
 

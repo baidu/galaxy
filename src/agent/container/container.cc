@@ -21,6 +21,7 @@
 #include "boost/algorithm/string/replace.hpp"
 #include "collector/collector_engine.h"
 #include "cgroup/cgroup_collector.h"
+#include "agent/volum/volum.h"
 
 #include <glog/logging.h>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
@@ -533,6 +534,31 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta(
     ret->set_pid(process_->Pid());
     ret->mutable_container()->CopyFrom(desc_);
     return ret;
+}
+
+boost::shared_ptr<ContainerProperty> Container::Property() {
+    boost::shared_ptr<ContainerProperty> property(new ContainerProperty);
+    property->container_id_ = id_.SubId();
+    property->group_id_ = id_.GroupId();
+    property->created_time_ = created_time_;
+    property->pid_ = process_->Pid();
+    
+    const boost::shared_ptr<baidu::galaxy::volum::Volum> wv = volum_group_->WorkspaceVolum();
+    property->workspace_volum_.container_abs_path = wv->TargetPath();
+    property->workspace_volum_.phy_source_path = wv->SourcePath();
+    property->workspace_volum_.container_rel_path = wv->Description()->dest_path();
+    property->workspace_volum_.phy_gc_path = wv->SourceGcPath();
+    
+    for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
+        ContainerProperty::Volum cv;
+        const boost::shared_ptr<baidu::galaxy::volum::Volum> v = volum_group_->DataVolum(i);
+        cv.container_abs_path = v->TargetPath();
+        cv.phy_source_path = v->SourcePath();
+        cv.container_rel_path = v->Description()->dest_path();
+        cv.phy_gc_path = v->SourceGcPath();
+        property->data_volums_.push_back(cv);
+    }
+    return property;
 }
 
 const baidu::galaxy::proto::ContainerDescription& Container::Description()
