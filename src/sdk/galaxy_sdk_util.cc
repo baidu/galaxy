@@ -193,7 +193,8 @@ void FillJobDescription(const JobDescription& sdk_job,
         job->set_priority(::baidu::galaxy::proto::kJobBestEffort);
     }
     FillDeploy(sdk_job.deploy, job->mutable_deploy());
-    job->set_run_user(sdk_job.run_user);
+    //job->set_run_user(sdk_job.run_user);
+    job->set_run_user("galaxy");
     FillPodDescription(sdk_job.pod, job->mutable_pod());
 
 }
