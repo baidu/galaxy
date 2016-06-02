@@ -1483,6 +1483,7 @@ void Scheduler::ShowUserAlloc(const std::string& user_name, proto::Quota& alloc)
         replica_alloc +=  replica;
         cpu_alloc += container_group->require->CpuNeed() * replica;
         memory_alloc += container_group->require->MemoryNeed() * replica;
+        memory_alloc += container_group->require->TmpfsNeed() * replica;
         disk_alloc += container_group->require->DiskNeed() * replica;
         ssd_alloc += container_group->require->SsdNeed() * replica;  
     }
@@ -1512,7 +1513,7 @@ void Scheduler::MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota&
     int64_t replica = meta.replica();
     quota.set_replica(replica);
     quota.set_millicore(require->CpuNeed() * replica);
-    quota.set_memory(require->MemoryNeed() * replica);
+    quota.set_memory( (require->MemoryNeed() + require->TmpfsNeed()) * replica);
     quota.set_disk(require->DiskNeed() * replica);
     quota.set_ssd(require->SsdNeed() * replica);
 }
