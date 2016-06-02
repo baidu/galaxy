@@ -71,7 +71,7 @@ namespace md5 {
 std::string Md5(std::string dat);
 std::string Md5(const void* dat, size_t len);
 std::string Md5File(const char* filename);
-std::string Md5File(std::FILE* file);
+std::string Md5File(FILE* file);
 std::string Md5Sum6(std::string dat);
 std::string Md5Sum6(const void* dat, size_t len);
 
