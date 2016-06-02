@@ -1,4 +1,4 @@
-protoc = Builder(action='thirdparty/bin/protoc --proto_path=./src/protocol/ --cpp_out=./src/protocol/ $SOURCE') 
+protoc = Builder(action='thirdparty/bin/protoc --proto_path=./src/protocol/  --cpp_out=./src/protocol/ $SOURCE') 
 env_gen = Environment(BUILDERS={'Protoc':protoc})
 
 env_gen.Protoc(['src/protocol/galaxy.pb.h','src/protocol/galaxy.pb.cc'], 'src/protocol/galaxy.proto')

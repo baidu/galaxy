@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cgroup_collector.h"
+#include "protocol/agent.pb.h"
 #include "cgroup.h"
 #include "timer.h"
 #include <assert.h>
@@ -11,11 +12,12 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-CgroupCollector::CgroupCollector(boost::shared_ptr<Cgroup> cgroup) :
+CgroupCollector::CgroupCollector(Cgroup* cgroup) :
     enabled_(false),
     cycle_(-1),
     cgroup_(cgroup),
-    metrix_(new Metrix())
+    metrix_(new baidu::galaxy::proto::CgroupMetrix()),
+    last_time_(0L)
 {
     assert(NULL != cgroup);
 }
@@ -27,22 +29,23 @@ CgroupCollector::~CgroupCollector()
 
 baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
 {
-    Metrix metrix1;
-    Metrix metrix2;
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix1;
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix2;
     int64_t t1 = 0L;
     int64_t t2 = 0L;
-    baidu::galaxy::util::ErrorCode ec = cgroup_->Statistics(metrix1);
 
-    if (ec.Code() != 0) {
+    baidu::galaxy::util::ErrorCode ec = cgroup_->Collect(metrix1);
+
+    if (ec.Code() == 0) {
         t1 = baidu::common::timer::get_micros();
     } else {
         return ERRORCODE(-1, "%s", ec.Message().c_str());
     }
 
-    usleep(1000000);
-    ec = cgroup_->Statistics(metrix2);
+    usleep(1000);
+    ec = cgroup_->Collect(metrix2);
 
-    if (ec.Code() != 0) {
+    if (ec.Code() == 0) {
         t2 = baidu::common::timer::get_micros();
     } else {
         return ERRORCODE(-1, "%s", ec.Message().c_str());
@@ -50,6 +53,9 @@ baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
 
     // cal cpu
     boost::mutex::scoped_lock lock(mutex_);
+    metrix_.reset(new baidu::galaxy::proto::CgroupMetrix());
+    last_time_ = baidu::common::timer::get_micros();
+
     return ERRORCODE_OK;
 }
 
@@ -95,6 +101,12 @@ void CgroupCollector::SetName(const std::string& name)
     boost::mutex::scoped_lock lock(mutex_);
     name_ = name;
 }
+
+boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> CgroupCollector::Statistics() {
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> ret;
+    return ret;
+}
+
 }
 }
 }

@@ -48,3 +48,16 @@ service Agent {
     rpc Query(QueryRequest) returns(QueryResponse);
 }
 
+
+// internal used
+
+message ContainerMetrix {
+    optional int64 time = 1;
+    optional int64 cpu_used_in_millicore = 2;
+    optional int64 memory_used_in_byte = 3;
+}
+
+message CgroupMetrix {
+    optional int64 cpu_used_in_millicore = 2;
+    optional int64 memory_used_in_byte = 3;
+}

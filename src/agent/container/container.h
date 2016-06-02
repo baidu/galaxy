@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #pragma once
 #include "protocol/galaxy.pb.h"
+#include "protocol/agent.pb.h"
 #include "container_status.h"
 #include "container_property.h"
 #include "timer.h"
@@ -20,10 +21,6 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 class Cgroup;
-}
-
-namespace collector {
-class Collector;
 }
 
 namespace volum {
@@ -111,6 +108,7 @@ public:
     const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta();
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> ContainerMetrix();
     boost::shared_ptr<ContainerProperty> Property();
     void KeepAlive();
 
@@ -133,7 +131,6 @@ private:
     boost::shared_ptr<Process> process_;
     ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
-    std::vector<boost::shared_ptr<baidu::galaxy::collector::Collector> > collectors_;
     int64_t created_time_;
 
 };

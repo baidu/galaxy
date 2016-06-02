@@ -33,8 +33,8 @@ bool InputStreamFile::Eof() {
     return 0 != feof(file_);
 }
 
-void InputStreamFile::GetLastError(baidu::galaxy::util::ErrorCode& ec) {
-    ec = ERRORCODE(errno_, "%s", strerror(errno_));
+baidu::galaxy::util::ErrorCode InputStreamFile::GetLastError() {
+    return ERRORCODE(errno_, "%s", strerror(errno_));
 }
 
 baidu::galaxy::util::ErrorCode InputStreamFile::ReadLine(std::string& line) {

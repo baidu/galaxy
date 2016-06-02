@@ -7,7 +7,10 @@
 #include "subsystem.h"
 #include "freezer_subsystem.h"
 #include "protocol/galaxy.pb.h"
+#include "protocol/agent.pb.h"
 #include "subsystem.h"
+#include "collector/collector_engine.h"
+#include "cgroup_collector.h"
 #include <glog/logging.h>
 
 #include <unistd.h>
@@ -16,9 +19,9 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
+
 Cgroup::Cgroup(const boost::shared_ptr<SubsystemFactory> factory) :
-    factory_(factory)
-{
+    factory_(factory) {
 }
 
 Cgroup::~Cgroup()
@@ -88,12 +91,22 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
         return ERRORCODE(-1, "");
     }
 
+
+    collector_.reset(new CgroupCollector(this));
+    collector_->SetCycle(5);
+    collector_->SetName(container_id_ + "_cgroup");
+    collector_->Enable(true);
+    baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(collector_);
     return ERRORCODE_OK;
 }
 
 // Fixme: freeze first, and than kill
 baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 {
+    if (collector_.get() != NULL) {
+        collector_->Enable(false);
+    }
+
     if (subsystem_.empty() && NULL == freezer_.get()) {
         return ERRORCODE_OK;
     }
@@ -204,19 +217,25 @@ std::string Cgroup::Id()
     return cgroup_->id();
 }
 
-baidu::galaxy::util::ErrorCode Cgroup::Statistics(Metrix& matrix)
-{
+
+baidu::galaxy::util::ErrorCode Cgroup::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix>& metrix) {
+    metrix.reset(new baidu::galaxy::proto::CgroupMetrix);
     for (size_t i = 0; i < subsystem_.size(); i++) {
-        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(matrix);
+        baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(metrix);
 
         if (ec.Code() != 0) {
-            return ERRORCODE(-1, "collect %s failed: %s",
-                    subsystem_[i]->Name().c_str(),
-                    ec.Message().c_str());
+            return ERRORCODE(-1, "collect %s failed: %s", 
+                        subsystem_[i]->Name().c_str(),
+                        ec.Message().c_str());
         }
     }
-
     return ERRORCODE_OK;
+}
+
+
+boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> Cgroup::Statistics() {
+    return collector_->Statistics();
+    
 }
 
 }

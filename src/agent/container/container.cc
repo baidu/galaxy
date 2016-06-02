@@ -6,7 +6,6 @@
 
 #include "cgroup/subsystem_factory.h"
 #include "cgroup/cgroup.h"
-#include "cgroup/cgroup_collector.h"
 #include "protocol/galaxy.pb.h"
 #include "volum/volum_group.h"
 #include "util/user.h"
@@ -19,8 +18,6 @@
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/algorithm/string/replace.hpp"
-#include "collector/collector_engine.h"
-#include "cgroup/cgroup_collector.h"
 #include "agent/volum/volum.h"
 
 #include <glog/logging.h>
@@ -93,13 +90,6 @@ int Container::Construct()
         ec = status_.EnterReady();
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
-        }
-
-        // register collector
-        for (size_t i = 0; i < cgroup_.size(); i++) {
-            boost::shared_ptr<baidu::galaxy::collector::Collector> c(new baidu::galaxy::cgroup::CgroupCollector(cgroup_[i]));
-            baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(c);
-            collectors_.push_back(c);
         }
     }
 
@@ -569,6 +559,24 @@ boost::shared_ptr<ContainerProperty> Container::Property() {
 const baidu::galaxy::proto::ContainerDescription& Container::Description()
 {
     return desc_;
+}
+
+
+boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMetrix() {
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> cm(new baidu::galaxy::proto::ContainerMetrix);
+    int64_t memory_used_in_byte = 0;
+    int64_t cpu_used_in_millicore = 0;
+    for (size_t i = 0; i < cgroup_.size(); i++) {
+        boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> m = cgroup_[i]->Statistics();
+        if (NULL != cm.get()) {
+            memory_used_in_byte += m->memory_used_in_byte();
+            cpu_used_in_millicore + m->cpu_used_in_millicore();
+        }
+    }
+    cm->set_memory_used_in_byte(memory_used_in_byte);
+    cm->set_cpu_used_in_millicore(cpu_used_in_millicore);
+    cm->set_time(baidu::common::timer::get_micros());
+    return cm;
 }
 
 } //namespace container

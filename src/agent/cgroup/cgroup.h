@@ -15,12 +15,15 @@ namespace baidu {
 namespace galaxy {
 namespace proto {
 class Cgroup;
+class CgroupMetrix;
 };
+
+
 namespace cgroup {
 class FreezerSubsystem;
 class Subsystem;
 class SubsystemFactory;
-class Metrix;
+class CgroupCollector;
 
 class Cgroup {
 public:
@@ -33,9 +36,9 @@ public:
     baidu::galaxy::util::ErrorCode Destroy();
     void ExportEnv(std::map<std::string, std::string>& evn);
     std::string Id();
-
-    baidu::galaxy::util::ErrorCode Statistics(Metrix& matrix);
-
+    
+    baidu::galaxy::util::ErrorCode Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix>& metrix); 
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> Statistics(); // call by container
 private:
     std::vector<boost::shared_ptr<Subsystem> > subsystem_;
     boost::shared_ptr<FreezerSubsystem> freezer_;
@@ -43,6 +46,7 @@ private:
     std::string container_id_;
     boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup_;
     const boost::shared_ptr<SubsystemFactory> factory_;
+    boost::shared_ptr<CgroupCollector> collector_;
 };
 }
 }

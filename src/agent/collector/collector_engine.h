@@ -13,7 +13,7 @@
 
 #include <stdint.h>
 
-#include <vector>
+#include <list>
 
 
 namespace baidu {
@@ -25,7 +25,7 @@ public:
     ~CollectorEngine();
     static boost::shared_ptr<CollectorEngine> GetInstance();
     baidu::galaxy::util::ErrorCode Register(boost::shared_ptr<Collector> collector);
-    void Unregister(boost::shared_ptr<Collector> collector);
+    //void Unregister(boost::shared_ptr<Collector> collector);
     int Setup();
     void TearDown();
 
@@ -71,6 +71,14 @@ private:
 
         }
 
+        bool Enabled() {
+            return collector_->Enabled();
+        }
+
+        std::string Name() const {
+            return collector_->Name();
+        }
+
         boost::shared_ptr<baidu::galaxy::collector::Collector> GetCollector() {
             return collector_;
         }
@@ -84,7 +92,7 @@ private:
 
     void CollectRoutine(boost::shared_ptr<RuntimeCollector> rc);
     void CollectMainThreadRoutine();
-    std::vector<boost::shared_ptr<RuntimeCollector> > collectors_;
+    std::list<boost::shared_ptr<RuntimeCollector> > collectors_;
     boost::mutex mutex_;
     bool running_;
     baidu::common::ThreadPool collector_pool_;
