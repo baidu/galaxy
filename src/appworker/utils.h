@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <string>
+#include <cstring>
 #include <vector>
 
 #include <boost/function.hpp>
@@ -61,13 +62,29 @@ bool Remove(const std::string& path);
 bool Chown(const std::string& path, uid_t uid, gid_t gid);
 bool SymbolLink(const std::string& old_path, const std::string& new_path);
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number);
-bool GetFileMd5(const std::string& path, std::string& md5);
 bool Write(const std::string& path, const std::string& content);
 
 }   // ending namespace file
 
-}   // ending namespace galaxy
-}   // ending namespace baidu
+namespace md5 {
+
+std::string Md5(std::string dat);
+std::string Md5(const void* dat, size_t len);
+std::string Md5File(const char* filename);
+std::string Md5File(std::FILE* file);
+std::string Md5Sum6(std::string dat);
+std::string Md5Sum6(const void* dat, size_t len);
+
+} // ending namespace md5
+
+namespace net {
+
+bool IsPortOpen(int32_t port);
+
+} // ending namespace net
+
+} // ending namespace galaxy
+} // ending namespace baidu
 
 
 #endif // BAIDU_GALAXY_APPWORKER_UTILS_H
