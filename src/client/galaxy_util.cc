@@ -152,6 +152,9 @@ std::string StringJobStatus(const ::baidu::galaxy::sdk::JobStatus& status) {
     case ::baidu::galaxy::sdk::kJobUpdating:
         result = "Updating";
         break;
+    case ::baidu::galaxy::sdk::kJobBatchUpdate:
+        result = "BatchUpdate";
+        break;
     default:
         result = "";
     }

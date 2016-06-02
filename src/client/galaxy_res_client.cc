@@ -14,6 +14,11 @@ DEFINE_string(t, "", "specify agent tag or token");
 DEFINE_string(u, "", "username");
 DEFINE_string(o, "", "operation");
 DEFINE_string(a, "", "authority, split by ,");
+DEFINE_int32(c, 0, "specify millicores");
+DEFINE_int32(r, 0, "specify replica");
+DEFINE_string(d, "", "specify disk size");
+DEFINE_string(s, "", "specify ssd size");
+DEFINE_string(m, "", "specify memory size");
 
 DECLARE_string(flagfile);
 
@@ -23,7 +28,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client create_container -f <jobconfig>\n"
                                  "      galaxy_res_client update_container -f <jobconfig> -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
-                                 "      galaxy_res_client list_containers\n"
+                                 "      galaxy_res_client list_containers [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client show_container -i id\n\n"
                                  "  agent usage:\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
@@ -52,6 +57,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]\n" 
                                  "                                   -a [create_container,remove_container,update_container,\n"
                                  "                                   list_containers,submit_job,remove_job,update_job,list_jobs] \n"
+                                 "      galaxy_res_client assign_quota -u user -c millicores -d disk_size -s ssd_size -m memory_size -r replica\n"
                                  "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -i specify container id.\n"
@@ -60,7 +66,12 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      -u specity user.\n"
                                  "      -t specify agent tag or token.\n"
                                  "      -o specify operation [cpu,mem,volums].\n"
-                                 "      -a specify authority split by ,\n";
+                                 "      -a specify authority split by ,\n"
+                                 "      -c specify millicores, such as 1000\n"
+                                 "      -r specify replica, such as 100\n"
+                                 "      -d specify disk size, such as 1G\n"
+                                 "      -s specify ssd size, such as 1G\n"
+                                 "      -m specify memory size, such as 1G\n";
 
 
 int main(int argc, char** argv) {
@@ -101,7 +112,7 @@ int main(int argc, char** argv) {
         ok = resAction->RemoveContainerGroup(FLAGS_i);
 
     } else if (strcmp(argv[1], "list_containers") == 0) {
-        ok = resAction->ListContainerGroups();
+        ok = resAction->ListContainerGroups(FLAGS_o);
     } else if (strcmp(argv[1], "show_container") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");
@@ -231,6 +242,12 @@ int main(int argc, char** argv) {
 
         ok =  resAction->GrantUser(FLAGS_u, FLAGS_t, FLAGS_p, FLAGS_o, FLAGS_a);
 
+    } else if (strcmp(argv[1], "assign_quota") == 0) {
+        if (FLAGS_s.empty() || FLAGS_d.empty() || FLAGS_m.empty() || FLAGS_u.empty()) {
+            fprintf(stderr, "-u, -s, -d, -m and -c are needed\n");
+            return -1;
+        }
+        ok = resAction->AssignQuota(FLAGS_u, FLAGS_c, FLAGS_m, FLAGS_d, FLAGS_s, FLAGS_r);
     } else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;
