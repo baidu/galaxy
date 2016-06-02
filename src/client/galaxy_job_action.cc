@@ -44,9 +44,6 @@ bool JobAction::InitResman() {
 }
 
 bool JobAction::Init() {
-    //用户名和token验证
-    //
-
     struct timeval t_start;
     gettimeofday(&t_start, NULL);
 
@@ -55,12 +52,6 @@ bool JobAction::Init() {
     if (app_master_ == NULL) {
         return false;
     }
-
-    /*struct timeval t_finish;
-    gettimeofday(&t_finish, NULL);
-    double duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-    printf("init duration is %lf\n", duration);*/
-
     return true;
 }
 
@@ -74,10 +65,15 @@ bool JobAction::SubmitJob(const std::string& json_file) {
         return false;
     }
     
-    baidu::galaxy::sdk::SubmitJobRequest request;
-    baidu::galaxy::sdk::SubmitJobResponse response;
+    ::baidu::galaxy::sdk::SubmitJobRequest request;
+    ::baidu::galaxy::sdk::SubmitJobResponse response;
     request.user = user_;
     if (!GetHostname(&request.hostname)) {
+        return false;
+    }
+
+    if (json_file.empty()) {
+        fprintf(stderr, "json file is needed\n");
         return false;
     }
 
@@ -96,9 +92,10 @@ bool JobAction::SubmitJob(const std::string& json_file) {
     return ret;
 }
 
-bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid) {
-    if (json_file.empty() || jobid.empty()) {
-        fprintf(stderr, "json_file and jobid are needed\n");
+bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid, 
+                            const std::string& opration, uint32_t update_break_count) {
+    if (jobid.empty()) {
+        fprintf(stderr, "jobid is needed\n");
         return false;
     }
     
@@ -106,16 +103,37 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
         return false;
     }
 
-    baidu::galaxy::sdk::UpdateJobRequest request;
-    baidu::galaxy::sdk::UpdateJobResponse response;
+    ::baidu::galaxy::sdk::UpdateJobRequest request;
+    ::baidu::galaxy::sdk::UpdateJobResponse response;
     request.jobid = jobid;
     request.user = user_;
     if (!GetHostname(&request.hostname)) {
         return false;
     }
 
-    int ok = BuildJobFromConfig(json_file, &request.job);
-    if (ok != 0) {
+    if (opration.compare("start") == 0 && update_break_count >= 0) {
+        fprintf(stderr, "update start\n");
+        if (json_file.empty() || !BuildJobFromConfig(json_file, &request.job)) {
+            fprintf(stderr, "json_file error\n");
+            return false;
+        }
+        request.oprate = baidu::galaxy::sdk::kUpdateJobStart;
+        request.job.deploy.update_break_count = update_break_count;
+    } else if (opration.compare("continue") == 0) {
+        fprintf(stderr, "update continue\n");
+        request.oprate = baidu::galaxy::sdk::kUpdateJobContinue;
+    } else if (opration.compare("rollback") == 0) {
+        fprintf(stderr, "update rollback\n");
+        request.oprate = baidu::galaxy::sdk::kUpdateJobRollback;
+    } else if (opration.compare("default") == 0 || opration.empty()) {
+        fprintf(stderr, "update default\n");
+        if (json_file.empty() || !BuildJobFromConfig(json_file, &request.job)) {
+            fprintf(stderr, "json_file error\n");
+            return false;
+        }
+        request.oprate = baidu::galaxy::sdk::kUpdateJobDefault;
+    } else {
+        fprintf(stderr, "update operation must be start, continue, rollback or default\n");
         return false;
     }
 
@@ -140,8 +158,8 @@ bool JobAction::StopJob(const std::string& jobid) {
         return false;
     }
 
-    baidu::galaxy::sdk::StopJobRequest request;
-    baidu::galaxy::sdk::StopJobResponse response;
+    ::baidu::galaxy::sdk::StopJobRequest request;
+    ::baidu::galaxy::sdk::StopJobResponse response;
     request.jobid = jobid;
     request.user = user_;
     
@@ -170,8 +188,8 @@ bool JobAction::RemoveJob(const std::string& jobid) {
         return false;
     }
 
-    baidu::galaxy::sdk::RemoveJobRequest request;
-    baidu::galaxy::sdk::RemoveJobResponse response;
+    ::baidu::galaxy::sdk::RemoveJobRequest request;
+    ::baidu::galaxy::sdk::RemoveJobResponse response;
     request.jobid = jobid;
     request.user = user_;
     
@@ -239,7 +257,9 @@ void* JobAction::ListJobs(void* param) {
     return NULL;
 }
 
-bool JobAction::ListJobs() {
+bool JobAction::ListJobs(const std::string& soptions) {
+    std::vector<std::string> options;
+    ::baidu::common::SplitString(soptions, ",", &options);
     
     ::baidu::galaxy::sdk::ListContainerGroupsRequest resman_request;
     resman_request.user = user_;
@@ -275,11 +295,36 @@ bool JobAction::ListJobs() {
         return false;
     }
  
-    baidu::common::TPrinter tp_jobs(12);
-    tp_jobs.AddRow(12, "", "id", "name", "type","status", "stat(r/p/dep/die/f)", "replica", 
-                    "cpu(a/u)", "memory(a/u)", "volums(med/a/u)", "create", "update");
+    std::string array_headers[7] = {"", "id", "name", "type","status", "r/p/d/die/f", "repli"};
+    std::vector<std::string> headers(array_headers, array_headers + 7);
+
+    if (find(options.begin(), options.end(), "cpu") != options.end()) {
+        headers.push_back("cpu(a/u)");
+    }
+
+    if (find(options.begin(), options.end(), "mem") != options.end()) {
+        headers.push_back("memory(a/u)");
+    }
+
+    if (find(options.begin(), options.end(), "volums") != options.end()) {
+        headers.push_back("volums(med/a/u)");
+    }
+
+    if (options.size() == 0) {
+        headers.push_back("cpu(a/u)");
+        headers.push_back("memory(a/u)");
+        headers.push_back("volums(med/a/u)");
+    }
+
+    headers.push_back("create_time");
+    headers.push_back("update_time");
+
+    baidu::common::TPrinter tp_jobs(headers.size());
+    tp_jobs.AddRow(headers);
+
     std::vector<std::string> values;
     for (uint32_t i = 0; i < jobs.size(); ++i) {
+        values.clear();
         std::string sstat = baidu::common::NumToString(jobs[i].running_num) + "/" +
                             baidu::common::NumToString(jobs[i].pending_num) + "/" +
                             baidu::common::NumToString(jobs[i].deploying_num) + "/" +
@@ -292,77 +337,116 @@ bool JobAction::ListJobs() {
         std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>::iterator it 
                                         = containers.find(jobs[i].jobid);
         if (it != containers.end()) {
-            scpu = ::baidu::common::NumToString(it->second.cpu.assigned / 1000.0) + "/"
-                   + ::baidu::common::NumToString(it->second.cpu.used / 1000.0);
-            smem = ::baidu::common::HumanReadableString(it->second.memory.assigned) + "/"
-                   + ::baidu::common::HumanReadableString(it->second.memory.used);
-            for (size_t j = 0; j < it->second.volums.size(); ++j) {
-                std::string svolums;
-                svolums = StringVolumMedium(it->second.volums[j].medium) + "/"
-                          + ::baidu::common::HumanReadableString(it->second.volums[j].volum.assigned) + "/"
-                          + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
-                if (j == 0) {
-                    tp_jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
-                                        jobs[i].jobid.c_str(),
-                                        jobs[i].desc.name.c_str(),
-                                        StringJobType(jobs[i].desc.type).c_str(),
-                                        StringJobStatus(jobs[i].status).c_str(),
-                                        sstat.c_str(),
-                                        ::baidu::common::NumToString(jobs[i].desc.deploy.replica).c_str(),
-                                        scpu.c_str(),
-                                        smem.c_str(),
-                                        svolums.c_str(),
-                                        FormatDate(jobs[i].create_time).c_str(),
-                                        FormatDate(jobs[i].update_time).c_str()
-                                   );
-
-                } else {
-                    tp_jobs.AddRow(12, "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    "",
-                                    svolums.c_str(),
-                                    "",
-                                    ""
-                                );
-                } 
+            if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
+                scpu = ::baidu::common::NumToString(it->second.cpu.assigned / 1000.0) + "/"
+                       + ::baidu::common::NumToString(it->second.cpu.used / 1000.0);
             }
-            if (it->second.volums.size() == 0) {
-                tp_jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
-                                    jobs[i].jobid.c_str(),
-                                    jobs[i].desc.name.c_str(),
-                                    StringJobType(jobs[i].desc.type).c_str(),
-                                    StringJobStatus(jobs[i].status).c_str(),
-                                    sstat.c_str(),
-                                    ::baidu::common::NumToString(jobs[i].desc.deploy.replica).c_str(),
-                                    scpu.c_str(),
-                                    smem.c_str(),
-                                    "",
-                                    FormatDate(jobs[i].create_time).c_str(),
-                                    FormatDate(jobs[i].update_time).c_str()
-                               );
-
+            if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
+                smem = ::baidu::common::HumanReadableString(it->second.memory.assigned) + "/"
+                       + ::baidu::common::HumanReadableString(it->second.memory.used);
+            }
+            if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
+                for (size_t j = 0; j < it->second.volums.size(); ++j) {
+                    values.clear();
+                    std::string svolums;
+                    svolums = StringVolumMedium(it->second.volums[j].medium) + "/"
+                              + ::baidu::common::HumanReadableString(it->second.volums[j].volum.assigned) + "/"
+                              + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
+                    if (j == 0) {
+                        values.push_back(::baidu::common::NumToString(i));
+                        values.push_back(jobs[i].jobid);
+                        values.push_back(jobs[i].desc.name);
+                        values.push_back(StringJobType(jobs[i].desc.type));
+                        values.push_back(StringJobStatus(jobs[i].status));
+                        values.push_back(sstat);
+                        values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
+                        if (!scpu.empty()) {
+                            values.push_back(scpu);
+                        }
+                        if (!smem.empty()) {
+                            values.push_back(smem);
+                        }
+                        values.push_back(svolums);
+                        values.push_back(FormatDate(jobs[i].create_time));
+                        values.push_back(FormatDate(jobs[i].update_time));
+                    } else {
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        if (!scpu.empty()) {
+                            values.push_back("");
+                        }
+                        if (!smem.empty()) {
+                            values.push_back("");
+                        }
+                        values.push_back(svolums);
+                        values.push_back("");
+                        values.push_back("");
+                    } 
+                    tp_jobs.AddRow(values);
+                }
+                if (it->second.volums.size() == 0) {
+                    values.push_back(::baidu::common::NumToString(i));
+                    values.push_back(jobs[i].jobid);
+                    values.push_back(jobs[i].desc.name);
+                    values.push_back(StringJobType(jobs[i].desc.type));
+                    values.push_back(StringJobStatus(jobs[i].status));
+                    values.push_back(sstat);
+                    values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
+                    if (!scpu.empty()) {
+                        values.push_back(scpu);
+                    }
+                    if (!smem.empty()) {
+                        values.push_back(smem);
+                    }
+                    values.push_back("");
+                    values.push_back(FormatDate(jobs[i].create_time));
+                    values.push_back(FormatDate(jobs[i].update_time));
+                    tp_jobs.AddRow(values);
+                }
+            } 
+            if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
+                values.push_back(::baidu::common::NumToString(i));
+                values.push_back(jobs[i].jobid);
+                values.push_back(jobs[i].desc.name);
+                values.push_back(StringJobType(jobs[i].desc.type));
+                values.push_back(StringJobStatus(jobs[i].status));
+                values.push_back(sstat);
+                values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
+                if (!scpu.empty()) {
+                    values.push_back(scpu);
+                }
+                if (!smem.empty()) {
+                    values.push_back(smem);
+                }
+                values.push_back(FormatDate(jobs[i].create_time));
+                values.push_back(FormatDate(jobs[i].update_time));
+                tp_jobs.AddRow(values);
             }
         } else {
-            tp_jobs.AddRow(12, ::baidu::common::NumToString(i).c_str(),
-                               jobs[i].jobid.c_str(),
-                               jobs[i].desc.name.c_str(),
-                               StringJobType(jobs[i].desc.type).c_str(),
-                               StringJobStatus(jobs[i].status).c_str(),
-                               sstat.c_str(),
-                               ::baidu::common::NumToString(jobs[i].desc.deploy.replica).c_str(),
-                               "",
-                               "",
-                               "",
-                               FormatDate(jobs[i].create_time).c_str(),
-                               FormatDate(jobs[i].update_time).c_str()
-                           );
-
+            values.push_back(::baidu::common::NumToString(i));
+            values.push_back(jobs[i].jobid);
+            values.push_back(jobs[i].desc.name);
+            values.push_back(StringJobType(jobs[i].desc.type));
+            values.push_back(StringJobStatus(jobs[i].status));
+            values.push_back(sstat);
+            values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
+            if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
+                values.push_back("");
+            }
+            if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
+                values.push_back("");
+            }
+            if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
+                values.push_back("");
+            }
+            values.push_back(FormatDate(jobs[i].create_time));
+            values.push_back(FormatDate(jobs[i].update_time));
+            tp_jobs.AddRow(values);
         }
     }
     printf("%s\n", tp_jobs.ToString().c_str());
