@@ -254,6 +254,12 @@ message Service {
     optional bool use_bns = 3;
 }
 
+message ServiceInfo {
+    optional string name = 1;
+    optional string port = 2;
+    optional Status status = 3;
+}
+
 message TaskDescription {
     // set by user or by
     optional string id = 1;

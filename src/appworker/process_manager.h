@@ -29,13 +29,13 @@ struct ProcessContext {
     std::string process_id;
     std::string cmd;
     std::string work_dir;
-    bool is_deploy;
     virtual ~ProcessContext() {};
 };
 
 struct DownloadProcessContext : ProcessContext {
     std::string src_path;
     std::string dst_path;
+    std::string package;
     std::string version;
 };
 

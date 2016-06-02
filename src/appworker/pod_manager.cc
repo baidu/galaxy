@@ -143,6 +143,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.status = pod_.status;
     pod.reload_status = pod_.reload_status;
     pod.stage = pod_.stage;
+    pod.fail_count = pod_.fail_count;
 
     return 0;
 }
@@ -168,17 +169,29 @@ int PodManager::DoCreatePod() {
     pod_.pod_id = pod_.env.pod_id;
     pod_.status = proto::kPodReady;
     pod_.stage = kPodStageCreating;
+    pod_.fail_count = 0;
     LOG(INFO) << "create pod, task size: " << tasks_size;
 
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         TaskEnv env;
+        env.user = pod_.env.user;
         env.job_id = pod_.env.job_id;
         env.pod_id = pod_.env.pod_id;
         env.task_id = task_id;
         env.cgroup_subsystems = pod_.env.cgroup_subsystems;
         env.cgroup_paths = pod_.env.task_cgroup_paths[i];
         env.ports = pod_.env.task_ports[i];
+
+        if (pod_.desc.has_workspace_volum()
+                && pod_.desc.workspace_volum().has_dest_path()) {
+            env.workspace = pod_.desc.workspace_volum().dest_path();
+        } else {
+            env.workspace = "/";
+        }
+
+        LOG(WARNING) << "task workspace: " << env.workspace;
+
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
 
         if (0 != ret) {
@@ -432,6 +445,8 @@ void PodManager::RunningPodCheck() {
     int tasks_size = pod_.desc.tasks().size();
     TaskStatus task_status = proto::kTaskFinished;
 
+    int32_t fail_count = 0;
+
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         Task task;
@@ -448,6 +463,8 @@ void PodManager::RunningPodCheck() {
         if (task.status < task_status) {
             task_status = task.status;
         }
+
+        fail_count += task.fail_retry_times;
     }
 
     if (proto::kTaskRunning != task_status) {
@@ -460,6 +477,8 @@ void PodManager::RunningPodCheck() {
         }
     }
 
+    pod_.fail_count = fail_count;
+    LOG(INFO) << "++++++ total fail times: " << fail_count;
     return;
 }
 
