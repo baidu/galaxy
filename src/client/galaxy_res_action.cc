@@ -1255,7 +1255,7 @@ bool ResAction::Status() {
         other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
         other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
                         ::baidu::common::NumToString(response.total_containers).c_str(),
-                        ::baidu::common::NumToString(response.in_safe_mode).c_str());
+                        StringBool(response.in_safe_mode).c_str());
         printf("%s\n", other.ToString().c_str());
 
     } else {
