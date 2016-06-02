@@ -419,10 +419,6 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     }
     deploy->set_update_break_count(sdk_deploy.update_break_count);
 
-    if (sdk_deploy.tag.empty()) {
-        fprintf(stderr, "deploy tag must not be empty\n");
-        return false;
-    }
     deploy->set_tag(sdk_deploy.tag);
 
     bool ok = true;
