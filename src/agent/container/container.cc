@@ -567,8 +567,8 @@ const baidu::galaxy::proto::ContainerDescription& Container::Description()
 
 boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMetrix() {
     boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> cm(new baidu::galaxy::proto::ContainerMetrix);
-    int64_t memory_used_in_byte = 0;
-    int64_t cpu_used_in_millicore = 0;
+    int64_t memory_used_in_byte = 0L;
+    int64_t cpu_used_in_millicore = 0L;
     for (size_t i = 0; i < cgroup_.size(); i++) {
         boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> m = cgroup_[i]->Statistics();
         if (NULL != cm.get()) {

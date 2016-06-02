@@ -12,6 +12,7 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
+const static long CPU_CORES = sysconf(_SC_NPROCESSORS_CONF);
 CgroupCollector::CgroupCollector(Cgroup* cgroup) :
     enabled_(false),
     cycle_(-1),
@@ -57,6 +58,20 @@ baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
     metrix_.reset(new baidu::galaxy::proto::CgroupMetrix());
     last_time_ = baidu::common::timer::get_micros();
     metrix_->set_memory_used_in_byte(metrix2->memory_used_in_byte());
+
+    if (metrix1->has_container_cpu_time() && metrix1->has_system_cpu_time()
+                && metrix2->has_container_cpu_time() && metrix2->has_system_cpu_time()) {
+        double delta1 = (double)(metrix2->container_cpu_time() - metrix1->container_cpu_time());
+        double delta2 = (double)(metrix2->system_cpu_time() - metrix1->system_cpu_time());
+        //std::cerr << metrix2->container_cpu_time() << " " << metrix2->system_cpu_time() << std::endl;
+
+        //std::cerr << delta1 << " " << delta2 << std::endl;
+
+        if (delta2 > 0.01 && delta1 > 0.01) {
+            int64_t mcore = (int64_t)(1000.0 * delta1/delta2 * CPU_CORES); 
+            metrix_->set_cpu_used_in_millicore(mcore);
+        }
+    }
 
     return ERRORCODE_OK;
 }

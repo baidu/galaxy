@@ -36,15 +36,15 @@ baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(boost::shared_ptr<baidu:
     path.append("memory.usage_in_bytes");
 
     baidu::galaxy::file::InputStreamFile in(path.string());
-    baidu::galaxy::util::ErrorCode ec = in.GetLastError();
-    if (ec.Code() != 0) {
+    if (!in.IsOpen()) {
+        baidu::galaxy::util::ErrorCode ec = in.GetLastError();
         return ERRORCODE(-1, "open file(%s) failed: %s",
                     path.string().c_str(),
                     ec.Message().c_str());
     }
 
     std::string data;
-    ec = in.ReadLine(data);
+    baidu::galaxy::util::ErrorCode ec = in.ReadLine(data);
     if (ec.Code() != 0) {
         return ERRORCODE(-1, "read failed: %s", ec.Message().c_str());
     }
