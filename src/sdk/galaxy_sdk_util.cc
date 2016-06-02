@@ -412,13 +412,7 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
         return false;
     }
     deploy->set_max_per_host(sdk_deploy.max_per_host);
-
-    if (sdk_deploy.update_break_count < 0 || sdk_deploy.update_break_count >= sdk_deploy.replica) {
-        fprintf(stderr, "deploy update_break_count must be greater than 0 and less than replica\n");
-        return false;
-    }
-    deploy->set_update_break_count(sdk_deploy.update_break_count);
-
+    
     deploy->set_tag(sdk_deploy.tag);
 
     bool ok = true;
