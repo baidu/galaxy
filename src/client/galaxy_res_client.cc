@@ -28,7 +28,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client create_container -f <jobconfig>\n"
                                  "      galaxy_res_client update_container -f <jobconfig> -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
-                                 "      galaxy_res_client list_containers\n"
+                                 "      galaxy_res_client list_containers [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client show_container -i id\n\n"
                                  "  agent usage:\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
         ok = resAction->RemoveContainerGroup(FLAGS_i);
 
     } else if (strcmp(argv[1], "list_containers") == 0) {
-        ok = resAction->ListContainerGroups();
+        ok = resAction->ListContainerGroups(FLAGS_o);
     } else if (strcmp(argv[1], "show_container") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");

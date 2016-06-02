@@ -21,7 +21,7 @@ public:
     bool CreateContainerGroup(const std::string& json_file);
     bool UpdateContainerGroup(const std::string& json_file, const std::string& id);
     bool RemoveContainerGroup(const std::string& id);
-    bool ListContainerGroups();
+    bool ListContainerGroups(const std::string& soptions);
     bool ShowContainerGroup(const std::string& id);
     bool AddAgent(const std::string& pool, const std::string& endpoint);
     bool RemoveAgent(const std::string& endpoint);

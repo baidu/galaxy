@@ -186,10 +186,13 @@ bool ResAction::RemoveContainerGroup(const std::string& id) {
     return ret;
 }
 
-bool ResAction::ListContainerGroups() {
+bool ResAction::ListContainerGroups(const std::string& soptions) {
     if(!this->Init()) {
         return false;
     }
+
+    std::vector<std::string> options;
+    ::baidu::common::SplitString(soptions, ",", &options);
 
     ::baidu::galaxy::sdk::ListContainerGroupsRequest request;
     ::baidu::galaxy::sdk::ListContainerGroupsResponse response;
@@ -197,60 +200,116 @@ bool ResAction::ListContainerGroups() {
 
     bool ret = resman_->ListContainerGroups(request, &response);
     if (ret) {
-        ::baidu::common::TPrinter containers(9);
-        containers.AddRow(9, "", "id", "replica", "stat(r/a/p)", "cpu(a/u)", "mem(a/u)", "volums(med/a/u)", "create", "update");
+        std::string array_headers[4] = {"", "id", "replica", "stat(r/a/p)"};
+        std::vector<std::string> headers(array_headers, array_headers + 4);
+        if (find(options.begin(), options.end(), "cpu") != options.end()) {
+            headers.push_back("cpu(a/u)");
+        }
+        if (find(options.begin(), options.end(), "mem") != options.end()) {
+            headers.push_back("mem(a/u)");
+        }
+        if (find(options.begin(), options.end(), "volums") != options.end()) {
+            headers.push_back("volums(med/a/u)");
+        }
+        if (options.size() == 0) {
+            headers.push_back("cpu(a/u)");
+            headers.push_back("mem(a/u)");
+            headers.push_back("volums(med/a/u)");
+        }
+        headers.push_back("create_time");
+        headers.push_back("update_time");
+        ::baidu::common::TPrinter containers(headers.size());
+        containers.AddRow(headers);
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             std::string sstatus = ::baidu::common::NumToString(response.containers[i].ready) + "/" 
                                   +::baidu::common::NumToString(response.containers[i].allocating) + "/" +
                                   ::baidu::common::NumToString(response.containers[i].pending);
 
-            std::string scpu = ::baidu::common::NumToString(response.containers[i].cpu.assigned / 1000.0) + "/" +
-                               ::baidu::common::NumToString(response.containers[i].cpu.used / 1000.0);
+            std::string scpu;
+            if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
+                    scpu = ::baidu::common::NumToString(response.containers[i].cpu.assigned / 1000.0) + "/" +
+                           ::baidu::common::NumToString(response.containers[i].cpu.used / 1000.0);
+            }
 
-            std::string smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
-                                ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+            std::string smem;
+            if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
+                smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
+                       ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+            }
 
-            for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
-                std::string svolums;
-                svolums = StringVolumMedium(response.containers[i].volums[j].medium) + "/"
-                          + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
-                          + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used);
-                          //+ response.containers[i].volums[j].device_path;
-                if (j == 0) {
-                    containers.AddRow(9, baidu::common::NumToString(i).c_str(),
-                                         response.containers[i].id.c_str(),
-                                         ::baidu::common::NumToString(response.containers[i].replica).c_str(),
-                                         sstatus.c_str(),
-                                         scpu.c_str(),
-                                         smem.c_str(),
-                                         svolums.c_str(),
-                                         FormatDate(response.containers[i].submit_time).c_str(),
-                                         FormatDate(response.containers[i].update_time).c_str()
-                                     );
-                } else {
-                    containers.AddRow(9, "",
-                                         "",
-                                         "",
-                                         "",
-                                         "",
-                                         "",
-                                         svolums.c_str(),
-                                         "",
-                                         ""
-                                     );
+            std::vector<std::string> values;
+            if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
+                for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
+                    values.clear();
+                    std::string svolums;
+                    svolums = StringVolumMedium(response.containers[i].volums[j].medium) + "/"
+                              + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
+                              + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used);
+                            //+ response.containers[i].volums[j].device_path;
+                    if (j == 0) {
+                        values.push_back(baidu::common::NumToString(i));
+                        values.push_back(response.containers[i].id);
+                        values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                        values.push_back(sstatus);
+                        if (!scpu.empty()) {
+                            values.push_back(scpu);
+                        }
+                        if (!smem.empty()) {
+                            values.push_back(smem);
+                        };
+                        values.push_back(svolums);
+                        values.push_back(FormatDate(response.containers[i].submit_time));
+                        values.push_back(FormatDate(response.containers[i].submit_time));
+                    } else {
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        if (!scpu.empty()) {
+                            values.push_back("");
+                        }
+                        if (!smem.empty()) {
+                            values.push_back("");
+                        };
+                        values.push_back(svolums);
+                        values.push_back("");
+                        values.push_back("");
+                    }
+                    containers.AddRow(values);
+                }
+
+                if (response.containers[i].volums.size() == 0) {
+                    values.push_back(baidu::common::NumToString(i));
+                    values.push_back(response.containers[i].id);
+                    values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                    values.push_back(sstatus);
+                    if (!scpu.empty()) {
+                        values.push_back(scpu);
+                    }
+                    if (!smem.empty()) {
+                        values.push_back(smem);
+                    };
+                    values.push_back("");
+                    values.push_back(FormatDate(response.containers[i].submit_time));
+                    values.push_back(FormatDate(response.containers[i].submit_time));
+                    containers.AddRow(values);
                 }
             }
-            if (response.containers[i].volums.size() == 0) {
-                containers.AddRow(9, baidu::common::NumToString(i).c_str(),
-                                     response.containers[i].id.c_str(),
-                                     ::baidu::common::NumToString(response.containers[i].replica).c_str(),
-                                     sstatus.c_str(),
-                                     scpu.c_str(),
-                                     smem.c_str(),
-                                     "",
-                                     FormatDate(response.containers[i].submit_time).c_str(),
-                                     FormatDate(response.containers[i].update_time).c_str()
-                                 );
+
+            if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
+                values.push_back(baidu::common::NumToString(i));
+                values.push_back(response.containers[i].id);
+                values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                values.push_back(sstatus);
+                if (!scpu.empty()) {
+                    values.push_back(scpu);
+                }
+                if (!smem.empty()) {
+                    values.push_back(smem);
+                };
+                values.push_back(FormatDate(response.containers[i].submit_time));
+                values.push_back(FormatDate(response.containers[i].submit_time));
+                containers.AddRow(values);
             }
         }
         printf("%s\n", containers.ToString().c_str());
@@ -1381,7 +1440,7 @@ bool ResAction::ShowUser(const std::string& user) {
     ::baidu::galaxy::sdk::ShowUserResponse response;
     request.admin = user_;
     request.user.user = user;
-    //request.user.token = token;
+    request.user.token = "default";
 
     bool ret = resman_->ShowUser(request, &response);
     
@@ -1435,7 +1494,7 @@ bool ResAction::ShowUser(const std::string& user) {
         printf("%s\n", assign.ToString().c_str());
 
     } else {
-        printf("List users failed for reason %s:%s\n",
+        printf("Show users failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
