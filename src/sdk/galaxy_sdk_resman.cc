@@ -1152,7 +1152,7 @@ bool ResourceManagerImpl::ShowUser(const ShowUserRequest& request, ShowUserRespo
         return false;
     }
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
