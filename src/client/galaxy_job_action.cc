@@ -42,7 +42,6 @@ bool JobAction::InitResman() {
 }
 
 bool JobAction::Init() {
-    struct timeval t_start;
     std::string path = FLAGS_nexus_root + FLAGS_appmaster_path;
     app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(FLAGS_nexus_addr, path); 
     if (app_master_ == NULL) {
