@@ -509,6 +509,13 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     container_group_meta.set_status(proto::kContainerGroupNormal);
     container_group_meta.set_submit_time(common::timer::get_micros());
     container_group_meta.mutable_desc()->CopyFrom(request->desc());
+    std::string fail_reason;
+    if (!HasQuotaToCreate(user, container_group_meta, fail_reason)) {
+        response->mutable_error_code()->set_status(proto::kCreateContainerGroupFail);
+        response->mutable_error_code()->set_reason("no quota to create:" + fail_reason);
+        done->Run();
+        return;
+    }
     std::string container_group_id = scheduler_->Submit(request->name(), 
                                                         request->desc(), 
                                                         request->replica(), 
@@ -631,8 +638,15 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
         replica_changed = true;
     }
     if (!CheckUserAuth(new_meta.desc(), request->user().user(), users_can_create_, invalid_pool)) {
-        response->mutable_error_code()->set_status(proto::kCreateContainerGroupFail);
+        response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
         response->mutable_error_code()->set_reason("no create permission on pool: " + invalid_pool);
+        done->Run();
+        return;
+    }
+    std::string fail_reason;
+    if (!HasQuotaToUpdate(request->user().user(), old_meta, new_meta, fail_reason)) {
+        response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+        response->mutable_error_code()->set_reason("no quota to update:" + fail_reason);
         done->Run();
         return;
     }
@@ -746,6 +760,7 @@ void ResManImpl::AddAgent(::google::protobuf::RpcController* controller,
         {
             MutexLock lock(&mu_);
             agents_[agent_meta.endpoint()] = agent_meta;
+            pools_[agent_meta.pool()].insert(agent_meta.endpoint());
         }
         response->mutable_error_code()->set_status(proto::kOk);
     }
@@ -1477,6 +1492,91 @@ void ResManImpl::Preempt(::google::protobuf::RpcController* controller,
         response->mutable_error_code()->set_status(proto::kOk);
     }
     done->Run();
+}
+
+bool ResManImpl::HasQuotaToCreate(const std::string& user,
+                                  const proto::ContainerGroupMeta& meta,
+                                  std::string& fail_reason) {
+    proto::Quota quota_used;
+    proto::Quota quota_added;
+    proto::Quota quota_total;
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::UserMeta>::const_iterator user_it;
+        user_it = users_.find(user);
+        if (user_it == users_.end()) {
+            fail_reason = "no such user: " + user;
+            LOG(WARNING) << "no such user: " << user;
+            return false;
+        }
+        quota_total = user_it->second.quota();
+    }
+    scheduler_->ShowUserAlloc(user, quota_used);
+    scheduler_->MetaToQuota(meta, quota_added);
+    if (quota_used.millicore() + quota_added.millicore() > quota_total.millicore()) {
+        fail_reason = "no cpu quota";
+        return false;
+    } else if (quota_used.memory() + quota_added.memory() > quota_total.memory()) {
+        fail_reason = "no memory quota";
+        return false;
+    } else if (quota_used.disk() + quota_added.disk() > quota_total.disk()) {
+        fail_reason = "no disk quota";
+        return false;
+    } else if (quota_used.ssd() + quota_added.ssd() > quota_total.ssd()) {
+        fail_reason = "no ssd quota";
+        return false;
+    } else if (quota_used.replica() + quota_added.replica() > quota_total.replica()) {
+        fail_reason = "no replica quota";
+        return false;
+    }
+    return true;
+}
+
+bool ResManImpl::HasQuotaToUpdate(const std::string& user,
+                                  const proto::ContainerGroupMeta& old_meta,
+                                  const proto::ContainerGroupMeta& new_meta,
+                                  std::string& fail_reason) {
+    proto::Quota quota_used;
+    proto::Quota quota_removed;
+    proto::Quota quota_added;
+    proto::Quota quota_total;
+    {
+        MutexLock lock(&mu_);
+        std::map<std::string, proto::UserMeta>::const_iterator user_it;
+        user_it = users_.find(user);
+        if (user_it == users_.end()) {
+            fail_reason = "no such user: " + user;
+            LOG(WARNING) << "no such user: " << user;
+            return false;
+        }
+        quota_total = user_it->second.quota();
+    }
+    scheduler_->ShowUserAlloc(user, quota_used);
+    scheduler_->MetaToQuota(old_meta, quota_removed);
+    scheduler_->MetaToQuota(new_meta, quota_added);
+
+    if (quota_used.millicore() + quota_added.millicore()
+        - quota_removed.millicore()> quota_total.millicore()) {
+        fail_reason = "no cpu quota";
+        return false;
+    } else if (quota_used.memory() + quota_added.memory() 
+               - quota_removed.memory() > quota_total.memory()) {
+        fail_reason = "no memory quota";
+        return false;
+    } else if (quota_used.disk() + quota_added.disk() 
+               - quota_removed.disk() > quota_total.disk()) {
+        fail_reason = "no disk quota";
+        return false;
+    } else if (quota_used.ssd() + quota_added.ssd() 
+               - quota_removed.ssd() > quota_total.ssd()) {
+        fail_reason = "no ssd quota";
+        return false;
+    } else if (quota_used.replica() + quota_added.replica() 
+               - quota_removed.replica() > quota_total.replica()) {
+        fail_reason = "no replica quota";
+        return false;
+    }
+    return true;
 }
 
 } //namespace galaxy
