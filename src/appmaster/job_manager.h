@@ -29,6 +29,7 @@ using ::baidu::galaxy::proto::JobDescription;
 using ::baidu::galaxy::proto::JobEvent;
 using ::baidu::galaxy::proto::UpdateAction;
 using ::baidu::galaxy::proto::Status;
+using ::baidu::galaxy::proto::PodStatus;
 using ::baidu::galaxy::proto::PodDescription;
 using ::baidu::galaxy::proto::kOk;
 using ::baidu::galaxy::proto::kError;
@@ -156,6 +157,14 @@ private:
     Status RollbackJob(Job* job, void* arg);
     Status BatchUpdatePod(Job* job, void* arg);
     void CheckBatchUpdate(Job* job);
+    Status TryRebuild(Job* job, PodInfo* podinfo);
+    Status TryReload(Job* job, PodInfo* pod);
+    void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
+                            PodStatus reload_status);
+    bool JobManager::ReachBreakoint(Job* job);
+    void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
+                                PodInfo* podinfo,
+                                Job* job);
 
 private:
     std::map<JobId, Job*> jobs_;

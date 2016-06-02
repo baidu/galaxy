@@ -277,17 +277,29 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
             response->mutable_error_code()->set_reason("appmaster continue update job error");
+            LOG(INFO) << response->DebugString();
             done->Run();
             return;
         }
+        response->mutable_error_code()->set_status(status);
+        response->mutable_error_code()->set_reason("continue job ok");
+        LOG(INFO) << response->DebugString();
+        done->Run();
+        return;
     } else if (request->has_oprate() && request->oprate() == kUpdateJobRollback) {
         Status status = job_manager_.Rollback(request->jobid());
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
             response->mutable_error_code()->set_reason("appmaster rollback update job error");
+            LOG(INFO) << response->DebugString();
             done->Run();
             return;
         }
+        response->mutable_error_code()->set_status(status);
+        response->mutable_error_code()->set_reason("rollback job ok");
+        LOG(INFO) << response->DebugString();
+        done->Run();
+        return;
     }
     
     MutexLock lock(&resman_mutex_);
@@ -304,8 +316,12 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     boost::function<void (const proto::UpdateContainerGroupRequest*,
                           proto::UpdateContainerGroupResponse*, 
                           bool, int)> call_back;
+    std::string operate = "";
+    if (request->has_oprate() && request->oprate() == kUpdateJobStart) {
+        operate = UpdateJobOprate_Name(request->oprate());
+    }
     call_back = boost::bind(&AppMasterImpl::UpdateContainerGroupCallBack, this,
-                            job_desc, response, done, UpdateJobOprate_Name(request->oprate()),
+                            job_desc, response, done, operate,
                             _1, _2, _3, _4);
     ResMan_Stub* resman_;
     rpc_client_.GetStub(resman_endpoint_, &resman_);
