@@ -93,7 +93,7 @@ bool JobAction::SubmitJob(const std::string& json_file) {
 }
 
 bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid, 
-                            const std::string& opration, uint32_t update_break_count) {
+                            const std::string& operation, uint32_t update_break_count) {
     if (jobid.empty()) {
         fprintf(stderr, "jobid is needed\n");
         return false;
@@ -111,24 +111,25 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
         return false;
     }
 
-    if (opration.compare("start") == 0 && update_break_count >= 0) {
-        fprintf(stderr, "update start\n");
-        if (json_file.empty() || !BuildJobFromConfig(json_file, &request.job)) {
+    if (operation.compare("start") == 0 && update_break_count >= 0) {
+        fprintf(stderr, "breakpoint update start\n");
+        if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
             fprintf(stderr, "json_file error\n");
+            fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
             return false;
         }
         request.oprate = baidu::galaxy::sdk::kUpdateJobStart;
         request.job.deploy.update_break_count = update_break_count;
-    } else if (opration.compare("continue") == 0) {
-        fprintf(stderr, "update continue\n");
+    } else if (operation.compare("continue") == 0) {
+        fprintf(stderr, "breakpoint update continue\n");
         request.oprate = baidu::galaxy::sdk::kUpdateJobContinue;
-    } else if (opration.compare("rollback") == 0) {
-        fprintf(stderr, "update rollback\n");
+    } else if (operation.compare("rollback") == 0) {
+        fprintf(stderr, "breakpoint update rollback\n");
         request.oprate = baidu::galaxy::sdk::kUpdateJobRollback;
-    } else if (opration.compare("default") == 0 || opration.empty()) {
-        fprintf(stderr, "update default\n");
-        if (json_file.empty() || !BuildJobFromConfig(json_file, &request.job)) {
-            fprintf(stderr, "json_file error\n");
+    } else if (operation.compare("default") == 0 || operation.empty()) {
+        fprintf(stderr, "batch update default\n");
+        if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
+            fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
             return false;
         }
         request.oprate = baidu::galaxy::sdk::kUpdateJobDefault;
