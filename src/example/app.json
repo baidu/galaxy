@@ -1,40 +1,30 @@
 {
-    "name": "int-bogus_2.0.14.127884",
+    "name": "example",
     "type": "kJobService",
-    "version": "2.0.14.127884",
     "deploy": {
-         "replica": 10, 
-         "step": 2,
-         "interval": 3,
-         "max_per_host": 1,
-         "tag": "int-bogus",
-         "pools": "linkbase,docjoin,ubm"
-     }, 
+        "replica": 1,
+        "step": 1,
+        "interval": 1,
+        "max_per_host": 1,
+        "tag": "example",
+        "pools": "example1,test"
+    },
     "pod": {
         "workspace_volum": {
-            "size": "15M",
+            "size": "300M",
             "type": "kEmptyDir",
             "medium": "kDisk",
-            "dest_path": "/home/disk",
+            "dest_path": "/home/work",
             "readonly": false,
             "exclusive": false,
             "use_symlink": true
         },
         "data_volums": [
             {
-                "size": "15K",
+                "size": "800M",
                 "type": "kEmptyDir",
                 "medium": "kDisk",
-                "dest_path": "/home/disk",
-                "readonly": false,
-                "exclusive": false,
-                "use_symlink": true
-            },
-            {
-                "size": "10K",
-                "type": "kEmptyDir",
-                "medium": "kDisk",
-                "dest_path": "/home/disk",
+                "dest_path": "/home/data/0",
                 "readonly": false,
                 "exclusive": false,
                 "use_symlink": true
@@ -43,70 +33,55 @@
         "tasks": [
             {
                 "cpu": {
-                    "millicores": 6000,
+                    "millicores": 1000,
                     "excess": false
                 },
                 "mem": {
-                    "size": "13M",
-                    "excess":false
+                    "size": "800M",
+                    "excess": false
                 },
                 "tcp": {
-                    "recv_bps_quota": "15M",
-                    "recv_bps_excess": true,
-                    "send_bps_quota": "15M",
-                    "send_bps_excess": true
+                    "recv_bps_quota": "30M",
+                    "recv_bps_excess": false,
+                    "send_bps_quota": "30M",
+                    "send_bps_excess": false
                 },
                 "blkio": {
-                    "weight": 2
+                    "weight": 500
                 },
                 "ports": [
                     {
-                        "name": "linkbase0",
-                        "port": "123"
-                    },
-                    {
-                        "name": "linkbase1",
-                        "port": "dynamic"
+                        "name": "port00",
+                        "port": "12300"
                     }
                 ],
                 "exec_package": {
-                    "start_cmd": "sh -x start.sh",
-                    "stop_cmd": "sh -x stop.sh",
+                    "start_cmd": "sh_start.sh",
+                    "stop_cmd": "sh app_stop.sh",
                     "package": {
-                        "source_path": "exec_package source_path",
-                        "dest_path": "exec_package dest_path",
-                        "version": "exec_package 1.0.1"
-                        
-                    }                   
+                        "source_path": "ftp://***.baidu.com/home/users/***/exec/0/linkbase.tar.gz",
+                        "dest_path": "/home/spider/0",
+                        "version": "1.0.0"
+                    }
                 },
                 "data_package": {
                     "reload_cmd": "sh -x reload.sh",
                     "packages": [
                         {
-                            "source_path": "data_package0 source_path",
-                            "dest_path": "data_package0 dest_path",
-                            "version": "data_package0 1.0.1"
-                        },
-                        {
-                            "source_path": "data_package1 source_path",
-                            "dest_path": "data_package1 dest_path",
-                            "version": "data_package1 1.0.1"
+                            "source_path": "ftp://***.baidu.com/home/users/***/data/00/linkbase.dict.tar.gz",
+                            "dest_path": "/home/spider/00/dict",
+                            "version": "1.0.0"
                         }
                     ]
                 },
                 "services": [
                     {
-                        "service_name": "service0",
-                        "port_name": "linkbase0",
-                        "use_bns": false
-                    },
-                    {
-                        "service_name": "service0",
-                        "port_name": "linkbase1",
-                        "use_bns": false
+                        "service_name": "service00",
+                        "port_name": "port00",
+                        "user_bns": false
                     }
                 ]
             }
         ]
-    }    
+    }
 }

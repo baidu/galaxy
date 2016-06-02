@@ -5,10 +5,7 @@
 #ifndef BAIDU_GALAXY_SDK_UTIL_H
 #define BAIDU_GALAXY_SDK_UTIL_H
 
-#include "protocol/appmaster.pb.h"
-#include "protocol/resman.pb.h"
 #include "protocol/galaxy.pb.h"
-#include "ins_sdk.h"
 #include "galaxy_sdk.h"
 
 namespace baidu {

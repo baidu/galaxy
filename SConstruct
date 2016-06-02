@@ -30,7 +30,7 @@ env.StaticLibrary('galaxy_sdk', Glob('src/sdk/*.cc'))
 
 env.Program('galaxy_res_client', Glob('src/client/galaxy_res_*.cc')
             + ['src/client/galaxy_util.cc', 'src/client/galaxy_parse.cc', 'src/sdk/galaxy_sdk_resman.cc',
-            'src/sdk/galaxy_sdk_util.cc', 'src/sdk/sdk_flags.cc',
+            'src/sdk/galaxy_sdk_util.cc',
             'src/protocol/resman.pb.cc', 'src/protocol/galaxy.pb.cc'])
 
 env.Program('galaxy_client', Glob('src/client/galaxy_job_*.cc') + Glob('src/sdk/*.cc')
@@ -64,5 +64,5 @@ test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_ut
 env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
-env.Program('test_utils', ['src/example/test_utils.cc', 'src/appworker/utils.cc'])
+env.Program('test_appworker_utils', ['src/example/test_appworker_utils.cc', 'src/appworker/utils.cc'])
 

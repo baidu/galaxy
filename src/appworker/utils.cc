@@ -839,13 +839,13 @@ static char hb2hex(unsigned char hb) {
 }
 
 std::string Md5File(const char* filename) {
-    std::FILE* file = std::fopen(filename, "rb");
+    FILE* file = std::fopen(filename, "rb");
     std::string res = Md5File(file);
     std::fclose(file);
     return res;
 }
 
-std::string Md5File(std::FILE* file) {
+std::string Md5File(FILE* file) {
     MD5_CTX c;
     MD5_Init(&c);
 
@@ -915,7 +915,8 @@ namespace net {
 bool IsPortOpen(int32_t port) {
     bool ret = false;
 
-    char *hostname = "localhost";
+    std::string hostname = "localhost";
+
     int sockfd;
     struct sockaddr_in serv_addr;
     struct hostent *server;
@@ -927,7 +928,7 @@ bool IsPortOpen(int32_t port) {
             break;
         }
 
-        server = gethostbyname(hostname);
+        server = gethostbyname(hostname.c_str());
 
         if (server == NULL) {
             LOG(WARNING) << "find host fail, host: " << hostname;
