@@ -20,10 +20,11 @@ public:
     JobAction();
     ~JobAction();
     bool SubmitJob(const std::string& json_file);
-    bool UpdateJob(const std::string& json_file, const std::string& jobid);
+    bool UpdateJob(const std::string& json_file, const std::string& jobid, 
+                        const std::string& opration, uint32_t update_break_count);
     bool StopJob(const std::string& jobid);
     bool RemoveJob(const std::string& jobid);
-    bool ListJobs();
+    bool ListJobs(const std::string& soptions);
     bool ShowJob(const std::string& jobid);
     bool ExecuteCmd(const std::string& jobid, const std::string& cmd);
 
