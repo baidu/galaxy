@@ -125,7 +125,7 @@ message FetchTaskRequest {
     optional int32 fail_count = 6;
     optional int64 update_time = 7;
     optional PodStatus reload_status = 8;
-    repeated Service services = 9;
+    repeated ServiceInfo services = 9;
 }
 
 message FetchTaskResponse {
