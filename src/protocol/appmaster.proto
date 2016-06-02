@@ -82,6 +82,7 @@ message PodInfo {
     optional int32 fail_count = 8; 
     optional int64 heartbeat_time = 9;
     optional int64 last_normal_time = 10;
+    optional int64 send_rebuild_time = 11;
 }
 
 message JobInfo {
