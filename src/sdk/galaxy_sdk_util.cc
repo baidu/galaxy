@@ -408,7 +408,7 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     deploy->set_interval(sdk_deploy.interval);
 
     if (sdk_deploy.max_per_host <= 0 || sdk_deploy.max_per_host >= 30) {
-        fprintf(stderr, "deploy interval must be greater than 0 and less than 30\n");
+        fprintf(stderr, "deploy max_per_host must be greater than 0 and less than 30\n");
         return false;
     }
     deploy->set_max_per_host(sdk_deploy.max_per_host);
@@ -419,10 +419,6 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     }
     deploy->set_update_break_count(sdk_deploy.update_break_count);
 
-    if (sdk_deploy.tag.empty()) {
-        fprintf(stderr, "deploy tag must not be empty\n");
-        return false;
-    }
     deploy->set_tag(sdk_deploy.tag);
 
     bool ok = true;
