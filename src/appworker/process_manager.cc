@@ -56,16 +56,17 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             processes_.erase(it);
         }
     }
+
     LOG(INFO)
             << "create process, "
-            << "command: " << context->cmd << ", "
+            << "process_id: " << context->process_id << ", "
             << "dir: " << context->work_dir;
 
     // 2. prepare std fds for child
     int stdin_fd = -1;
     int stdout_fd = -1;
     int stderr_fd = -1;
-    std::string work_dir = context->work_dir + "/GALAXY/" + context->process_id;
+    std::string work_dir = context->work_dir;
 
     if (!process::PrepareStdFds(work_dir, context->process_id,
                                 &stdout_fd, &stderr_fd)) {
@@ -114,6 +115,7 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             std::string path = *c_it + "/tasks";
             fprintf(stdout, "attach pid to cgroup, pid: %d, cgroup: %s\n",
                     my_pid, path.c_str());
+            fflush(stdout);
             std::string content = boost::lexical_cast<std::string>(my_pid);
             bool ok = file::Write(path, content);
 
@@ -125,14 +127,49 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             }
         }
 
-        // 4.prepare argv
+        std::string cmd = context->cmd;
+        // 4.prepare cmd, different with deply and run
+        const DownloadProcessContext* download_context = \
+                dynamic_cast<const DownloadProcessContext*>(context);
+
+        if (NULL != download_context) {
+            cmd = "mkdir -p " + download_context->dst_path
+                  + " && tar -xzf " +download_context->package
+                  + " -C " + download_context->dst_path;
+
+            // if package exist
+            if (file::IsExists(download_context->package)) {
+                fprintf(stdout, "package not changed, package: %s, version: %s\n",
+                        download_context->package.c_str(),
+                        download_context->version.c_str());
+                fflush(stdout);
+            } else {
+                fprintf(stdout, "package has changed, package: %s, version: %s\n",
+                        download_context->package.c_str(),
+                        download_context->version.c_str());
+                fflush(stdout);
+                cmd = "wget -O " + download_context->package
+                      + " " + download_context->src_path + " && " + cmd;
+            }
+        }
+
+        fprintf(stdout, "cmd: %s, user: %s\n", cmd.c_str(), env.user.c_str());
+        fflush(stdout);
+
+        // set user
+        if (!user::Su(env.user)) {
+            assert(0);
+        }
+
+        // 5.prepare argv
         char* argv[] = {
             const_cast<char*>("sh"),
             const_cast<char*>("-c"),
-            const_cast<char*>(context->cmd.c_str()),
+            const_cast<char*>(cmd.c_str()),
             NULL
         };
-        // 5.prepare envs
+
+        // 6.prepare envs
         char* envs[env.envs.size() + 1];
         envs[env.envs.size()] = NULL;
 
@@ -140,29 +177,10 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             envs[i] = const_cast<char*>(env.envs[i].c_str());
         }
 
-        // 6.different with deploy and main process
-        const DownloadProcessContext* download_context = \
-                dynamic_cast<const DownloadProcessContext*>(context);
-
-        if (NULL != download_context) {
-            // do deploy, if file no change then exit
-            fprintf(stdout, "execve deploy process\n");
-            std::string md5;
-
-            if (file::IsExists(download_context->dst_path)
-                    && file::GetFileMd5(download_context->dst_path, md5)
-                    && md5 == download_context->version) {
-                // data not change
-                fprintf(stdout, "data not change, md5: %s", md5.c_str());
-                fflush(stdout);
-                exit(0);
-            }
-        }
-
         // 7.do exec
         ::execve("/bin/sh", argv, envs);
         fprintf(stdout, "execve %s err[%d: %s]\n",
-                context->cmd.c_str(), errno, strerror(errno));
+                cmd.c_str(), errno, strerror(errno));
         fflush(stdout);
         assert(0);
     }
@@ -181,6 +199,9 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
     process->status = proto::kProcessRunning;
     {
         MutexLock scope_lock(&mutex_);
+        LOG(INFO)
+                << "process created, process_id:  " << context->process_id << ", "
+                << "pid: " << process->pid;
         processes_.insert(std::make_pair(context->process_id, process));
     }
 

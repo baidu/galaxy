@@ -21,6 +21,9 @@ using ::baidu::galaxy::proto::Status;
 using ::baidu::galaxy::proto::ErrorCode;
 using ::baidu::galaxy::proto::Cgroup;
 using ::baidu::galaxy::proto::JobDescription;
+using ::baidu::galaxy::proto::kUpdateJobContinue;
+using ::baidu::galaxy::proto::kUpdateJobStart;
+using ::baidu::galaxy::proto::kUpdateJobRollback;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
@@ -76,6 +79,7 @@ private:
     void UpdateContainerGroupCallBack(JobDescription job_desc, 
                                      proto::UpdateJobResponse* update_response,
                                      ::google::protobuf::Closure* done,
+                                     std::string oprate,
                                      const proto::UpdateContainerGroupRequest* request,
                                      proto::UpdateContainerGroupResponse* response,
                                      bool failed, int err);
