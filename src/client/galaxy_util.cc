@@ -517,7 +517,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     deploy.AddMember("step", 1, allocator);
     deploy.AddMember("interval", 1, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
-    deploy.AddMember("tag", "example", allocator);
+    deploy.AddMember("tag", "", allocator);
     deploy.AddMember("pools", "example1,test", allocator);
 
     root.AddMember("deploy", deploy, allocator);
