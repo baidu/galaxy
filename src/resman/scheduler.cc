@@ -1483,6 +1483,7 @@ void Scheduler::ShowUserAlloc(const std::string& user_name, proto::Quota& alloc)
         replica_alloc +=  replica;
         cpu_alloc += container_group->require->CpuNeed() * replica;
         memory_alloc += container_group->require->MemoryNeed() * replica;
+        memory_alloc += container_group->require->TmpfsNeed() * replica;
         disk_alloc += container_group->require->DiskNeed() * replica;
         ssd_alloc += container_group->require->SsdNeed() * replica;  
     }
@@ -1504,6 +1505,17 @@ std::string Scheduler::GetNewVersion() {
     ::strftime(time_buf, 32, "%Y%m%d_%H:%M:%S", &t);
     ss << "ver_" << time_buf << "_" << random();
     return ss.str();
+}
+
+void Scheduler::MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota& quota) {
+    Requirement::Ptr require(new Requirement);
+    SetRequirement(require, meta.desc());
+    int64_t replica = meta.replica();
+    quota.set_replica(replica);
+    quota.set_millicore(require->CpuNeed() * replica);
+    quota.set_memory( (require->MemoryNeed() + require->TmpfsNeed()) * replica);
+    quota.set_disk(require->DiskNeed() * replica);
+    quota.set_ssd(require->SsdNeed() * replica);
 }
 
 } //namespace sched

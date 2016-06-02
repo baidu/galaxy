@@ -89,6 +89,15 @@ struct Requirement {
         }
         return total;
     }
+    int64_t TmpfsNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kTmpfs) {
+                total += volums[i].size();
+            }
+        }
+        return total;   
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
@@ -249,7 +258,7 @@ public:
     bool ChangeStatus(const ContainerGroupId& container_group_id,
                       const ContainerId& container_id,
                       ContainerStatus new_status);
-
+    void MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota& quota);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
