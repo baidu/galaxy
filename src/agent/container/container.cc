@@ -504,7 +504,11 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     ret->set_created_time(0);
     ret->set_status(status_.Status());
     ret->set_cpu_used(0);
-    ret->set_memory_used(0);
+
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> metrix = ContainerMetrix();
+    if (metrix->has_memory_used_in_byte()) {
+        ret->set_memory_used(metrix->memory_used_in_byte());
+    }
 
     baidu::galaxy::proto::ContainerDescription* cd = ret->mutable_container_desc();
     if (full_info) {
@@ -560,7 +564,6 @@ const baidu::galaxy::proto::ContainerDescription& Container::Description()
 {
     return desc_;
 }
-
 
 boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMetrix() {
     boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> cm(new baidu::galaxy::proto::ContainerMetrix);

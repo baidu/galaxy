@@ -37,7 +37,7 @@ public:
     void ExportEnv(std::map<std::string, std::string>& evn);
     std::string Id();
     
-    baidu::galaxy::util::ErrorCode Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix>& metrix); 
+    baidu::galaxy::util::ErrorCode Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix); 
     boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> Statistics(); // call by container
 private:
     std::vector<boost::shared_ptr<Subsystem> > subsystem_;

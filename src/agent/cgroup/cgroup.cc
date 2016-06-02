@@ -218,8 +218,8 @@ std::string Cgroup::Id()
 }
 
 
-baidu::galaxy::util::ErrorCode Cgroup::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix>& metrix) {
-    metrix.reset(new baidu::galaxy::proto::CgroupMetrix);
+baidu::galaxy::util::ErrorCode Cgroup::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix) {
+    assert(NULL != metrix);
     for (size_t i = 0; i < subsystem_.size(); i++) {
         baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(metrix);
 
