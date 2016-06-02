@@ -1,38 +1,76 @@
 // Copyright (c) 2016, Baidu.com, Inc. All Rights Reserved
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include "galaxy_sdk_util.h"
 #include "rpc/rpc_client.h"
 #include "ins_sdk.h"
 #include <gflags/gflags.h>
+#include "protocol/resman.pb.h"
+#include "protocol/galaxy.pb.h"
 #include "galaxy_sdk_resman.h"
-
-//nexus
-DECLARE_string(nexus_addr);
-DECLARE_string(nexus_root);
-DECLARE_string(resman_path);
-DECLARE_string(appmaster_path);
 
 namespace baidu {
 namespace galaxy {
 namespace sdk {
 
-ResourceManager::ResourceManager() : rpc_client_(NULL),
- 									 res_stub_(NULL) {
-	rpc_client_ = new ::baidu::galaxy::RpcClient();
-    full_key_ = FLAGS_nexus_root + FLAGS_resman_path;
-    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
-}
-
-ResourceManager::~ResourceManager() {
-	delete rpc_client_;
-    if (NULL != res_stub_) {
-        delete res_stub_;
+class ResourceManagerImpl : public ResourceManager {
+public:
+    ResourceManagerImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
+ 							res_stub_(NULL) {
+	    rpc_client_ = new ::baidu::galaxy::RpcClient();
+        full_key_ = path;
+        nexus_ = new ::galaxy::ins::sdk::InsSDK(nexus_addr);
     }
-    delete nexus_;
-}
 
-bool ResourceManager::GetStub() {
+    virtual ~ResourceManagerImpl() {
+        delete rpc_client_;
+        if (NULL != res_stub_) {
+            delete res_stub_;
+        }
+        delete nexus_;
+    }
+
+    bool GetStub();
+    bool Login(const std::string& user, const std::string& password);
+    bool EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response);
+    bool LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response);
+    bool Status(const StatusRequest& request, StatusResponse* response);
+    bool CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response);
+    bool RemoveContainerGroup(const RemoveContainerGroupRequest& request, RemoveContainerGroupResponse* response);
+    bool UpdateContainerGroup(const UpdateContainerGroupRequest& request, UpdateContainerGroupResponse* response);
+    bool ListContainerGroups(const ListContainerGroupsRequest& request, ListContainerGroupsResponse* response);
+    bool ShowContainerGroup(const ShowContainerGroupRequest& request, ShowContainerGroupResponse* response);
+    bool AddAgent(const AddAgentRequest& request, AddAgentResponse* response);
+    bool RemoveAgent(const RemoveAgentRequest& request, RemoveAgentResponse* response);
+    bool ShowAgent(const ShowAgentRequest& request, ShowAgentResponse* response);
+    bool OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response);
+    bool OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response);
+    bool ListAgents(const ListAgentsRequest& request, ListAgentsResponse* response);
+    bool CreateTag(const CreateTagRequest& request, CreateTagResponse* response);
+    bool ListTags(const ListTagsRequest& request, ListTagsResponse* response);
+    bool ListAgentsByTag(const ListAgentsByTagRequest& request, ListAgentsByTagResponse* response);
+    bool GetTagsByAgent(const GetTagsByAgentRequest& request, GetTagsByAgentResponse* response);
+    bool AddAgentToPool(const AddAgentToPoolRequest& request, AddAgentToPoolResponse* response);
+    bool RemoveAgentFromPool(const RemoveAgentFromPoolRequest& request, RemoveAgentFromPoolResponse* response);
+    bool ListAgentsByPool(const ListAgentsByPoolRequest& request, ListAgentsByPoolResponse* response);
+    bool GetPoolByAgent(const GetPoolByAgentRequest& request, GetPoolByAgentResponse* response);
+    bool AddUser(const AddUserRequest& request, AddUserResponse* response);
+    bool RemoveUser(const RemoveUserRequest& request, RemoveUserResponse* response);
+    bool ListUsers(const ListUsersRequest& request, ListUsersResponse* response);
+    bool ShowUser(const ShowUserRequest& request, ShowUserResponse* response);
+    bool GrantUser(const GrantUserRequest& request, GrantUserResponse* response);
+    bool AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response);
+    bool Preempt(const PreemptRequest& request, PreemptResponse* response);
+
+private:
+    ::galaxy::ins::sdk::InsSDK* nexus_;
+    ::baidu::galaxy::RpcClient* rpc_client_;
+    ::baidu::galaxy::proto::ResMan_Stub* res_stub_;
+    std::string full_key_;
+};
+
+bool ResourceManagerImpl::GetStub() {
     std::string endpoint;
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Get(full_key_, &endpoint, &err);
@@ -48,11 +86,11 @@ bool ResourceManager::GetStub() {
     return true;
 }
 
-bool ResourceManager::Login(const std::string& user, const std::string& password) {
+bool ResourceManagerImpl::Login(const std::string& user, const std::string& password) {
 	return false;
 }
 
-bool ResourceManager::EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response) {
+bool ResourceManagerImpl::EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response) {
     
     ::baidu::galaxy::proto::EnterSafeModeRequest pb_request;
     ::baidu::galaxy::proto::EnterSafeModeResponse pb_response;
@@ -76,7 +114,7 @@ bool ResourceManager::EnterSafeMode(const EnterSafeModeRequest& request, EnterSa
     return true;
 }
 
-bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response) {
+bool ResourceManagerImpl::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response) {
     ::baidu::galaxy::proto::LeaveSafeModeRequest pb_request;
     ::baidu::galaxy::proto::LeaveSafeModeResponse pb_response;
     
@@ -98,7 +136,7 @@ bool ResourceManager::LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSa
     return true;
 }
 
-bool ResourceManager::Status(const StatusRequest& request, StatusResponse* response) {
+bool ResourceManagerImpl::Status(const StatusRequest& request, StatusResponse* response) {
     ::baidu::galaxy::proto::StatusRequest pb_request;
     ::baidu::galaxy::proto::StatusResponse pb_response;
 
@@ -154,7 +192,7 @@ bool ResourceManager::Status(const StatusRequest& request, StatusResponse* respo
     return true;
 }
 
-bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response) {
+bool ResourceManagerImpl::CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response) {
     ::baidu::galaxy::proto::CreateContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::CreateContainerGroupResponse pb_response;
     
@@ -180,7 +218,7 @@ bool ResourceManager::CreateContainerGroup(const CreateContainerGroupRequest& re
     return true;
 }
 
-bool ResourceManager::RemoveContainerGroup(const RemoveContainerGroupRequest& request, RemoveContainerGroupResponse* response) {
+bool ResourceManagerImpl::RemoveContainerGroup(const RemoveContainerGroupRequest& request, RemoveContainerGroupResponse* response) {
     ::baidu::galaxy::proto::RemoveContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::RemoveContainerGroupResponse pb_response;
     
@@ -204,7 +242,7 @@ bool ResourceManager::RemoveContainerGroup(const RemoveContainerGroupRequest& re
     return true;
 }
 
-bool ResourceManager::UpdateContainerGroup(const UpdateContainerGroupRequest& request, UpdateContainerGroupResponse* response) {
+bool ResourceManagerImpl::UpdateContainerGroup(const UpdateContainerGroupRequest& request, UpdateContainerGroupResponse* response) {
     ::baidu::galaxy::proto::UpdateContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::UpdateContainerGroupResponse pb_response;
 
@@ -229,7 +267,7 @@ bool ResourceManager::UpdateContainerGroup(const UpdateContainerGroupRequest& re
     return true;
 }
 
-bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& request, ListContainerGroupsResponse* response) {
+bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& request, ListContainerGroupsResponse* response) {
     ::baidu::galaxy::proto::ListContainerGroupsRequest pb_request;
     ::baidu::galaxy::proto::ListContainerGroupsResponse pb_response;
 
@@ -280,7 +318,7 @@ bool ResourceManager::ListContainerGroups(const ListContainerGroupsRequest& requ
     return true;
 }
 
-bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& request, ShowContainerGroupResponse* response) {
+bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& request, ShowContainerGroupResponse* response) {
     
     ::baidu::galaxy::proto::ShowContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::ShowContainerGroupResponse pb_response;
@@ -386,7 +424,7 @@ bool ResourceManager::ShowContainerGroup(const ShowContainerGroupRequest& reques
     return true;
 }
 
-bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse* response) {
+bool ResourceManagerImpl::AddAgent(const AddAgentRequest& request, AddAgentResponse* response) {
     ::baidu::galaxy::proto::AddAgentRequest pb_request;
     ::baidu::galaxy::proto::AddAgentResponse pb_response;
 
@@ -410,12 +448,11 @@ bool ResourceManager::AddAgent(const AddAgentRequest& request, AddAgentResponse*
     return true;
 }
 
-bool ResourceManager::ShowAgent(const ShowAgentRequest& request, ShowAgentResponse* response) {
+bool ResourceManagerImpl::ShowAgent(const ShowAgentRequest& request, ShowAgentResponse* response) {
     ::baidu::galaxy::proto::ShowAgentRequest pb_request;
     ::baidu::galaxy::proto::ShowAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
     pb_request.set_endpoint(request.endpoint);
-    fprintf(stderr, "endpoint:%s\n", request.endpoint.c_str());
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowAgent,
                                         &pb_request, &pb_response, 5, 1);
@@ -462,7 +499,7 @@ bool ResourceManager::ShowAgent(const ShowAgentRequest& request, ShowAgentRespon
 
 }
 
-bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgentResponse* response) {
+bool ResourceManagerImpl::RemoveAgent(const RemoveAgentRequest& request, RemoveAgentResponse* response) {
     ::baidu::galaxy::proto::RemoveAgentRequest pb_request;
     ::baidu::galaxy::proto::RemoveAgentResponse pb_response;
 
@@ -484,7 +521,7 @@ bool ResourceManager::RemoveAgent(const RemoveAgentRequest& request, RemoveAgent
     return true;
 }
 
-bool ResourceManager::OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response) {
+bool ResourceManagerImpl::OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response) {
     ::baidu::galaxy::proto::OnlineAgentRequest pb_request;
     ::baidu::galaxy::proto::OnlineAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -506,7 +543,7 @@ bool ResourceManager::OnlineAgent(const OnlineAgentRequest& request, OnlineAgent
     return true;
 }
 
-bool ResourceManager::OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response) {
+bool ResourceManagerImpl::OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response) {
     ::baidu::galaxy::proto::OfflineAgentRequest pb_request;
     ::baidu::galaxy::proto::OfflineAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -527,7 +564,7 @@ bool ResourceManager::OfflineAgent(const OfflineAgentRequest& request, OfflineAg
     return true;
 }
 
-bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsResponse* response) {
+bool ResourceManagerImpl::ListAgents(const ListAgentsRequest& request, ListAgentsResponse* response) {
     ::baidu::galaxy::proto::ListAgentsRequest pb_request;
     ::baidu::galaxy::proto::ListAgentsResponse pb_response;
 
@@ -580,7 +617,7 @@ bool ResourceManager::ListAgents(const ListAgentsRequest& request, ListAgentsRes
     return true;
 }
 
-bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagResponse* response) {
+bool ResourceManagerImpl::CreateTag(const CreateTagRequest& request, CreateTagResponse* response) {
     ::baidu::galaxy::proto::CreateTagRequest pb_request;
     ::baidu::galaxy::proto::CreateTagResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -606,7 +643,7 @@ bool ResourceManager::CreateTag(const CreateTagRequest& request, CreateTagRespon
     return true;
 }
 
-bool ResourceManager::ListTags(const ListTagsRequest& request, ListTagsResponse* response) {
+bool ResourceManagerImpl::ListTags(const ListTagsRequest& request, ListTagsResponse* response) {
     ::baidu::galaxy::proto::ListTagsRequest  pb_request;
     ::baidu::galaxy::proto::ListTagsResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -631,7 +668,7 @@ bool ResourceManager::ListTags(const ListTagsRequest& request, ListTagsResponse*
     return true;
 }
 
-bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, ListAgentsByTagResponse* response) {
+bool ResourceManagerImpl::ListAgentsByTag(const ListAgentsByTagRequest& request, ListAgentsByTagResponse* response) {
     ::baidu::galaxy::proto::ListAgentsByTagRequest  pb_request;
     ::baidu::galaxy::proto::ListAgentsByTagResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -683,7 +720,7 @@ bool ResourceManager::ListAgentsByTag(const ListAgentsByTagRequest& request, Lis
     return true;
 }
 
-bool ResourceManager::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTagsByAgentResponse* response) {
+bool ResourceManagerImpl::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTagsByAgentResponse* response) {
     ::baidu::galaxy::proto::GetTagsByAgentRequest pb_request;
     ::baidu::galaxy::proto::GetTagsByAgentResponse pb_response;
     
@@ -711,7 +748,7 @@ bool ResourceManager::GetTagsByAgent(const GetTagsByAgentRequest& request, GetTa
     return true;
 }
 
-bool ResourceManager::AddAgentToPool(const AddAgentToPoolRequest& request, AddAgentToPoolResponse* response) {
+bool ResourceManagerImpl::AddAgentToPool(const AddAgentToPoolRequest& request, AddAgentToPoolResponse* response) {
     ::baidu::galaxy::proto::AddAgentToPoolRequest pb_request;
     ::baidu::galaxy::proto::AddAgentToPoolResponse pb_response;
 
@@ -736,7 +773,7 @@ bool ResourceManager::AddAgentToPool(const AddAgentToPoolRequest& request, AddAg
     return true;
 }
 
-bool ResourceManager::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& request, RemoveAgentFromPoolResponse* response) {
+bool ResourceManagerImpl::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& request, RemoveAgentFromPoolResponse* response) {
     ::baidu::galaxy::proto::RemoveAgentFromPoolRequest pb_request;
     ::baidu::galaxy::proto::RemoveAgentFromPoolResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -759,7 +796,7 @@ bool ResourceManager::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& requ
     return true;
 }
 
-bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, ListAgentsByPoolResponse* response) {
+bool ResourceManagerImpl::ListAgentsByPool(const ListAgentsByPoolRequest& request, ListAgentsByPoolResponse* response) {
     ::baidu::galaxy::proto::ListAgentsByPoolRequest pb_request;
     ::baidu::galaxy::proto::ListAgentsByPoolResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -812,7 +849,7 @@ bool ResourceManager::ListAgentsByPool(const ListAgentsByPoolRequest& request, L
     return true;
 }
 
-bool ResourceManager::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPoolByAgentResponse* response) {
+bool ResourceManagerImpl::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPoolByAgentResponse* response) {
     ::baidu::galaxy::proto::GetPoolByAgentRequest pb_request;
     ::baidu::galaxy::proto::GetPoolByAgentResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -836,7 +873,7 @@ bool ResourceManager::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPo
     return true;
 }
 
-bool ResourceManager::AddUser(const AddUserRequest& request, AddUserResponse* response) {
+bool ResourceManagerImpl::AddUser(const AddUserRequest& request, AddUserResponse* response) {
     ::baidu::galaxy::proto::AddUserRequest pb_request;
     ::baidu::galaxy::proto::AddUserResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -860,7 +897,7 @@ bool ResourceManager::AddUser(const AddUserRequest& request, AddUserResponse* re
     return true;
 }
 
-bool ResourceManager::RemoveUser(const RemoveUserRequest& request, RemoveUserResponse* response) {
+bool ResourceManagerImpl::RemoveUser(const RemoveUserRequest& request, RemoveUserResponse* response) {
     ::baidu::galaxy::proto::RemoveUserRequest pb_request;
     ::baidu::galaxy::proto::RemoveUserResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -884,7 +921,7 @@ bool ResourceManager::RemoveUser(const RemoveUserRequest& request, RemoveUserRes
     return true;
 }
 
-bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersResponse* response) {
+bool ResourceManagerImpl::ListUsers(const ListUsersRequest& request, ListUsersResponse* response) {
     ::baidu::galaxy::proto::ListUsersRequest pb_request;
     ::baidu::galaxy::proto::ListUsersResponse pb_response;
 
@@ -911,7 +948,7 @@ bool ResourceManager::ListUsers(const ListUsersRequest& request, ListUsersRespon
     return true;
 }
 
-bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse* response) {
+bool ResourceManagerImpl::ShowUser(const ShowUserRequest& request, ShowUserResponse* response) {
     ::baidu::galaxy::proto::ShowUserRequest pb_request;
     ::baidu::galaxy::proto::ShowUserResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -957,7 +994,7 @@ bool ResourceManager::ShowUser(const ShowUserRequest& request, ShowUserResponse*
     return true;
 }
 
-bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserResponse* response) {
+bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserResponse* response) {
     ::baidu::galaxy::proto::GrantUserRequest pb_request;
     ::baidu::galaxy::proto::GrantUserResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -981,7 +1018,7 @@ bool ResourceManager::GrantUser(const GrantUserRequest& request, GrantUserRespon
     return true;
 }
 
-bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response) {
+bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response) {
     ::baidu::galaxy::proto::AssignQuotaRequest pb_request;
     ::baidu::galaxy::proto::AssignQuotaResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -1011,7 +1048,7 @@ bool ResourceManager::AssignQuota(const AssignQuotaRequest& request, AssignQuota
     return true;
 }
 
-bool ResourceManager::Preempt(const PreemptRequest& request, PreemptResponse* response) {
+bool ResourceManagerImpl::Preempt(const PreemptRequest& request, PreemptResponse* response) {
     ::baidu::galaxy::proto::PreemptRequest pb_request;
     ::baidu::galaxy::proto::PreemptResponse pb_response;
     FillUser(request.user, pb_request.mutable_user());
@@ -1030,6 +1067,15 @@ bool ResourceManager::Preempt(const PreemptRequest& request, PreemptResponse* re
         return false;
     }
     return true;
+}
+
+ResourceManager* ResourceManager::ConnectResourceManager(const std::string& nexus_addr, const std::string& path) {
+    ResourceManagerImpl* resman = new ResourceManagerImpl(nexus_addr, path);
+    if (!resman->GetStub()) {
+        delete resman;
+        return NULL;
+    }
+    return resman;
 }
 
 } //namespace sdk

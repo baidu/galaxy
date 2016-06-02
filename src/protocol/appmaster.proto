@@ -12,12 +12,19 @@ message SubmitJobResponse {
     optional ErrorCode error_code = 1;
     optional string jobid = 2;
 }
+
+enum UpdateJobOprate {
+    kUpdateJobStart = 1;
+    kUpdateJobContinue = 2;
+    kUpdateJobRollback = 3;
+}
 message UpdateJobRequest {
     optional User user = 1;
     optional string jobid = 2;
     optional string hostname = 3;
     optional uint32 interval = 4;
-    optional JobDescription job = 5; 
+    optional JobDescription job = 5;
+    optional UpdateJobOprate oprate = 6;
 }
 message UpdateJobResponse {
     optional ErrorCode error_code = 1;
@@ -74,6 +81,7 @@ message PodInfo {
     optional int64 update_time = 7;
     optional int32 fail_count = 8; 
     optional int64 heartbeat_time = 9;
+    optional int64 last_normal_time = 10;
 }
 
 message JobInfo {
@@ -84,9 +92,10 @@ message JobInfo {
     optional string version = 7;
     optional int64 create_time = 8;
     optional int64 update_time = 9;
-    repeated JobDescription descs = 10;
+    optional JobDescription last_desc = 10;
     optional User user = 11;
     optional UpdateAction action = 12;
+    optional string last_version = 13;
 }
 
 message ShowJobResponse {
@@ -115,12 +124,14 @@ message FetchTaskRequest {
     optional int32 fail_count = 6;
     optional int64 update_time = 7;
     optional PodStatus reload_status = 8;
+    repeated Service services = 9;
 }
 
 message FetchTaskResponse {
     optional ErrorCode error_code = 1;
     optional PodDescription pod = 2;
     optional int64 update_time = 3;
+    repeated ServiceInfo services = 4;
 }
 
 
