@@ -20,6 +20,7 @@
 DECLARE_string(nexus_addr);
 DECLARE_string(nexus_root_path);
 DECLARE_string(appmaster_nexus_path);
+DECLARE_string(tag);
 DECLARE_string(appworker_exit_file);
 DECLARE_string(appworker_user_env);
 DECLARE_string(appworker_agent_hostname_env);
@@ -307,6 +308,19 @@ void AppWorkerImpl::FetchTask() {
     request->set_reload_status(pod.reload_status);
     request->set_fail_count(pod.fail_count);
     LOG(INFO) << "pod status: " << proto::PodStatus_Name(pod.status);
+    LOG(INFO) << "fail count: " << pod.fail_count;
+
+    // copy services status
+    for (unsigned i = 0; i < pod.services.size(); ++i) {
+        request->add_services()->CopyFrom(pod.services[i]);
+    }
+
+    for (int j = 0; j < request->services().size(); ++j) {
+        LOG(INFO)
+                << "service: " << request->services(j).name() << ", "
+                << "port: " << request->services(j).port() << ", "
+                << "status: " << proto::Status_Name(request->services(j).status());
+    }
 
     if (kPodStageReloading == pod.stage) {
         LOG(INFO) << "pod reload_status: " << proto::PodStatus_Name(pod.reload_status);
