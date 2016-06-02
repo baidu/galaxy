@@ -1564,7 +1564,7 @@ bool ResManImpl::HasQuotaToUpdate(const std::string& user,
         fail_reason = "no memory quota";
         return false;
     } else if (quota_used.disk() + quota_added.disk() 
-               - quota_removed.memory() > quota_total.disk()) {
+               - quota_removed.disk() > quota_total.disk()) {
         fail_reason = "no disk quota";
         return false;
     } else if (quota_used.ssd() + quota_added.ssd() 
