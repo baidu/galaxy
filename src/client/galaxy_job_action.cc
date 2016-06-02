@@ -44,9 +44,6 @@ bool JobAction::InitResman() {
 }
 
 bool JobAction::Init() {
-    //用户名和token验证
-    //
-
     struct timeval t_start;
     gettimeofday(&t_start, NULL);
 
@@ -55,12 +52,6 @@ bool JobAction::Init() {
     if (app_master_ == NULL) {
         return false;
     }
-
-    /*struct timeval t_finish;
-    gettimeofday(&t_finish, NULL);
-    double duration = (t_finish.tv_sec - t_start.tv_sec)*1000000.0 + (t_finish.tv_usec - t_start.tv_usec);
-    printf("init duration is %lf\n", duration);*/
-
     return true;
 }
 
@@ -74,10 +65,15 @@ bool JobAction::SubmitJob(const std::string& json_file) {
         return false;
     }
     
-    baidu::galaxy::sdk::SubmitJobRequest request;
-    baidu::galaxy::sdk::SubmitJobResponse response;
+    ::baidu::galaxy::sdk::SubmitJobRequest request;
+    ::baidu::galaxy::sdk::SubmitJobResponse response;
     request.user = user_;
     if (!GetHostname(&request.hostname)) {
+        return false;
+    }
+
+    if (json_file.empty()) {
+        fprintf(stderr, "json file is needed\n");
         return false;
     }
 
@@ -96,9 +92,10 @@ bool JobAction::SubmitJob(const std::string& json_file) {
     return ret;
 }
 
-bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid) {
-    if (json_file.empty() || jobid.empty()) {
-        fprintf(stderr, "json_file and jobid are needed\n");
+bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid, 
+                            const std::string& opration, uint32_t update_break_count) {
+    if (jobid.empty()) {
+        fprintf(stderr, "jobid is needed\n");
         return false;
     }
     
@@ -106,16 +103,37 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
         return false;
     }
 
-    baidu::galaxy::sdk::UpdateJobRequest request;
-    baidu::galaxy::sdk::UpdateJobResponse response;
+    ::baidu::galaxy::sdk::UpdateJobRequest request;
+    ::baidu::galaxy::sdk::UpdateJobResponse response;
     request.jobid = jobid;
     request.user = user_;
     if (!GetHostname(&request.hostname)) {
         return false;
     }
 
-    int ok = BuildJobFromConfig(json_file, &request.job);
-    if (ok != 0) {
+    if (opration.compare("start") == 0 && update_break_count >= 0) {
+        fprintf(stderr, "update start\n");
+        if (json_file.empty() || !BuildJobFromConfig(json_file, &request.job)) {
+            fprintf(stderr, "json_file error\n");
+            return false;
+        }
+        request.oprate = baidu::galaxy::sdk::kUpdateJobStart;
+        request.job.deploy.update_break_count = update_break_count;
+    } else if (opration.compare("continue") == 0) {
+        fprintf(stderr, "update continue\n");
+        request.oprate = baidu::galaxy::sdk::kUpdateJobContinue;
+    } else if (opration.compare("rollback") == 0) {
+        fprintf(stderr, "update rollback\n");
+        request.oprate = baidu::galaxy::sdk::kUpdateJobRollback;
+    } else if (opration.compare("default") == 0 || opration.empty()) {
+        fprintf(stderr, "update default\n");
+        if (json_file.empty() || !BuildJobFromConfig(json_file, &request.job)) {
+            fprintf(stderr, "json_file error\n");
+            return false;
+        }
+        request.oprate = baidu::galaxy::sdk::kUpdateJobDefault;
+    } else {
+        fprintf(stderr, "update operation must be start, continue, rollback or default\n");
         return false;
     }
 
@@ -140,8 +158,8 @@ bool JobAction::StopJob(const std::string& jobid) {
         return false;
     }
 
-    baidu::galaxy::sdk::StopJobRequest request;
-    baidu::galaxy::sdk::StopJobResponse response;
+    ::baidu::galaxy::sdk::StopJobRequest request;
+    ::baidu::galaxy::sdk::StopJobResponse response;
     request.jobid = jobid;
     request.user = user_;
     
@@ -170,8 +188,8 @@ bool JobAction::RemoveJob(const std::string& jobid) {
         return false;
     }
 
-    baidu::galaxy::sdk::RemoveJobRequest request;
-    baidu::galaxy::sdk::RemoveJobResponse response;
+    ::baidu::galaxy::sdk::RemoveJobRequest request;
+    ::baidu::galaxy::sdk::RemoveJobResponse response;
     request.jobid = jobid;
     request.user = user_;
     

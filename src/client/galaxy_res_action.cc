@@ -29,8 +29,6 @@ ResAction::~ResAction() {
 }
 
 bool ResAction::Init() {
-    //用户名和token验证
-    //
     std::string path = FLAGS_nexus_root + FLAGS_resman_path;
     resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager(FLAGS_nexus_addr, path);
     if (resman_ == NULL) {
@@ -138,7 +136,6 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
 
     for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
-        cgroup.id = ::baidu::common::NumToString(i);
         cgroup.cpu = job.pod.tasks[i].cpu;
         cgroup.memory = job.pod.tasks[i].memory;
         cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
@@ -1417,7 +1414,7 @@ bool ResAction::ShowUser(const std::string& user) {
 
         printf("quota infomation\n");
         ::baidu::common::TPrinter quota(5);
-        quota.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
+        quota.AddRow(5, "cpu", "memory", "disk", "ssd", "replica");
         quota.AddRow(5, ::baidu::common::NumToString(response.quota.millicore / 1000.0).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.memory).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.disk).c_str(),
@@ -1426,9 +1423,9 @@ bool ResAction::ShowUser(const std::string& user) {
                     );
         printf("%s\n", quota.ToString().c_str());
 
-        printf("assignd infomation\n");
+        printf("jobs assigned quota infomation\n");
         ::baidu::common::TPrinter assign(5);
-        assign.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
+        assign.AddRow(5, "cpu", "memory", "disk", "ssd", "replica");
         assign.AddRow(5, ::baidu::common::NumToString(response.assigned.millicore / 1000.0).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.memory).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.disk).c_str(),
@@ -1519,32 +1516,37 @@ bool ResAction::GrantUser(const std::string& user,
 }
 
 bool ResAction::AssignQuota(const std::string& user,
-                 const std::string& token,
                  uint32_t millicores,
                  const std::string& memory,
                  const std::string& disk,
                  const std::string& ssd,
-                 int replica
+                 uint32_t replica
                  ) {
 
-    if (user.empty() || token.empty()) {
+    if (user.empty()) {
         return false;
     }
     if(!this->Init()) {
         return false;
     }
+    
+    if (millicores <= 0 || replica <= 0) {
+        printf("millicores or replica must larger than 0\n");
+        return false;
+    }
+
     ::baidu::galaxy::sdk::Quota quota;
     quota.millicore = millicores;
     quota.replica = replica;
-    if (UnitStringToByte(memory, &quota.memory)) {
+    if (UnitStringToByte(memory, &quota.memory) != 0) {
         return false;
     }
 
-    if (UnitStringToByte(disk, &quota.disk)) {
+    if (UnitStringToByte(disk, &quota.disk) != 0) {
         return false;
     }
 
-    if (UnitStringToByte(ssd, &quota.ssd)) {
+    if (UnitStringToByte(ssd, &quota.ssd) != 0) {
         return false;
     }
 
@@ -1552,7 +1554,6 @@ bool ResAction::AssignQuota(const std::string& user,
     ::baidu::galaxy::sdk::AssignQuotaResponse response;
     request.admin = user_;
     request.user.user  = user;
-    request.user.token = token;
     request.quota = quota;
 
     bool ret = resman_->AssignQuota(request, &response);

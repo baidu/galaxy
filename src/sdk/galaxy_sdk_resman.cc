@@ -32,7 +32,6 @@ public:
     }
 
     bool GetStub();
-    bool Login(const std::string& user, const std::string& password);
     bool EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response);
     bool LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response);
     bool Status(const StatusRequest& request, StatusResponse* response);
@@ -86,16 +85,14 @@ bool ResourceManagerImpl::GetStub() {
     return true;
 }
 
-bool ResourceManagerImpl::Login(const std::string& user, const std::string& password) {
-	return false;
-}
-
 bool ResourceManagerImpl::EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response) {
     
     ::baidu::galaxy::proto::EnterSafeModeRequest pb_request;
     ::baidu::galaxy::proto::EnterSafeModeResponse pb_response;
     
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::EnterSafeMode, 
@@ -118,7 +115,9 @@ bool ResourceManagerImpl::LeaveSafeMode(const LeaveSafeModeRequest& request, Lea
     ::baidu::galaxy::proto::LeaveSafeModeRequest pb_request;
     ::baidu::galaxy::proto::LeaveSafeModeResponse pb_response;
     
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::LeaveSafeMode, 
@@ -140,7 +139,10 @@ bool ResourceManagerImpl::Status(const StatusRequest& request, StatusResponse* r
     ::baidu::galaxy::proto::StatusRequest pb_request;
     ::baidu::galaxy::proto::StatusResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::Status, 
                                         &pb_request, &pb_response, 5, 1);
@@ -195,11 +197,27 @@ bool ResourceManagerImpl::Status(const StatusRequest& request, StatusResponse* r
 bool ResourceManagerImpl::CreateContainerGroup(const CreateContainerGroupRequest& request, CreateContainerGroupResponse* response) {
     ::baidu::galaxy::proto::CreateContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::CreateContainerGroupResponse pb_response;
+   
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
     
-    FillUser(request.user, pb_request.mutable_user());
+    if (request.replica <= 0 || request.replica >= 10000) {
+        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+        return false;
+    }
     pb_request.set_replica(request.replica);
+    
+    if (request.name.empty()) {
+        fprintf(stderr, "name must not be empty\n");
+        return false;
+    }
     pb_request.set_name(request.name);
-    FillContainerDescription(request.desc, pb_request.mutable_desc());
+
+    if (!FillContainerDescription(request.desc, pb_request.mutable_desc())) {
+        return false;
+    }
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                             &::baidu::galaxy::proto::ResMan_Stub::CreateContainerGroup, 
                                             &pb_request, &pb_response, 5, 1);
@@ -222,7 +240,14 @@ bool ResourceManagerImpl::RemoveContainerGroup(const RemoveContainerGroupRequest
     ::baidu::galaxy::proto::RemoveContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::RemoveContainerGroupResponse pb_response;
     
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.id.empty()) {
+        fprintf(stderr, "container id is needed\n");
+        return false;
+    }
     pb_request.set_id(request.id);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
@@ -242,15 +267,36 @@ bool ResourceManagerImpl::RemoveContainerGroup(const RemoveContainerGroupRequest
     return true;
 }
 
-bool ResourceManagerImpl::UpdateContainerGroup(const UpdateContainerGroupRequest& request, UpdateContainerGroupResponse* response) {
+bool ResourceManagerImpl::UpdateContainerGroup(const UpdateContainerGroupRequest& request, 
+                                                UpdateContainerGroupResponse* response) {
     ::baidu::galaxy::proto::UpdateContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::UpdateContainerGroupResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.replica <= 0 || request.replica >= 10000) {
+        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+        return false;
+    }
     pb_request.set_replica(request.replica);
+    
+    if (request.id.empty()) {
+        fprintf(stderr, "container id is needed\n");
+    }
     pb_request.set_id(request.id);
+
+    if (request.interval < 0 || request.interval > 3600) {
+        fprintf(stderr, "deploy interval must be greater than or equal to 0 and less than 3600\n");
+        return false;
+    }
     pb_request.set_interval(request.interval);
-    FillContainerDescription(request.desc, pb_request.mutable_desc());
+
+    if (!FillContainerDescription(request.desc, pb_request.mutable_desc())) {
+        return false;
+    }
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::UpdateContainerGroup, 
                                         &pb_request, &pb_response, 5, 1);
@@ -271,7 +317,9 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
     ::baidu::galaxy::proto::ListContainerGroupsRequest pb_request;
     ::baidu::galaxy::proto::ListContainerGroupsResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListContainerGroups, 
                                         &pb_request, &pb_response, 5, 1);
@@ -323,8 +371,16 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
     ::baidu::galaxy::proto::ShowContainerGroupRequest pb_request;
     ::baidu::galaxy::proto::ShowContainerGroupResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.id.empty()) {
+        fprintf(stderr, "container id is needed\n");
+        return false;
+    }
     pb_request.set_id(request.id);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowContainerGroup, 
                                         &pb_request, &pb_response, 5, 1);
@@ -428,9 +484,22 @@ bool ResourceManagerImpl::AddAgent(const AddAgentRequest& request, AddAgentRespo
     ::baidu::galaxy::proto::AddAgentRequest pb_request;
     ::baidu::galaxy::proto::AddAgentResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    } 
     pb_request.set_endpoint(request.endpoint);
+
+    if (request.pool.empty()) {
+        fprintf(stderr, "pool is needed\n");
+        return false;
+    }
     pb_request.set_pool(request.pool);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::AddAgent, 
                                         &pb_request, &pb_response, 5, 1);
@@ -451,8 +520,16 @@ bool ResourceManagerImpl::AddAgent(const AddAgentRequest& request, AddAgentRespo
 bool ResourceManagerImpl::ShowAgent(const ShowAgentRequest& request, ShowAgentResponse* response) {
     ::baidu::galaxy::proto::ShowAgentRequest pb_request;
     ::baidu::galaxy::proto::ShowAgentResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    } 
     pb_request.set_endpoint(request.endpoint);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowAgent,
                                         &pb_request, &pb_response, 5, 1);
@@ -503,7 +580,14 @@ bool ResourceManagerImpl::RemoveAgent(const RemoveAgentRequest& request, RemoveA
     ::baidu::galaxy::proto::RemoveAgentRequest pb_request;
     ::baidu::galaxy::proto::RemoveAgentResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    } 
     pb_request.set_endpoint(request.endpoint);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveAgent, 
@@ -524,8 +608,17 @@ bool ResourceManagerImpl::RemoveAgent(const RemoveAgentRequest& request, RemoveA
 bool ResourceManagerImpl::OnlineAgent(const OnlineAgentRequest& request, OnlineAgentResponse* response) {
     ::baidu::galaxy::proto::OnlineAgentRequest pb_request;
     ::baidu::galaxy::proto::OnlineAgentResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    } 
     pb_request.set_endpoint(request.endpoint);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::OnlineAgent, 
                                         &pb_request, &pb_response, 5, 1);
@@ -546,7 +639,15 @@ bool ResourceManagerImpl::OnlineAgent(const OnlineAgentRequest& request, OnlineA
 bool ResourceManagerImpl::OfflineAgent(const OfflineAgentRequest& request, OfflineAgentResponse* response) {
     ::baidu::galaxy::proto::OfflineAgentRequest pb_request;
     ::baidu::galaxy::proto::OfflineAgentResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    }
     pb_request.set_endpoint(request.endpoint);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::OfflineAgent, 
@@ -568,7 +669,9 @@ bool ResourceManagerImpl::ListAgents(const ListAgentsRequest& request, ListAgent
     ::baidu::galaxy::proto::ListAgentsRequest pb_request;
     ::baidu::galaxy::proto::ListAgentsResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgents, 
                                         &pb_request, &pb_response, 5, 1);
@@ -620,13 +723,32 @@ bool ResourceManagerImpl::ListAgents(const ListAgentsRequest& request, ListAgent
 bool ResourceManagerImpl::CreateTag(const CreateTagRequest& request, CreateTagResponse* response) {
     ::baidu::galaxy::proto::CreateTagRequest pb_request;
     ::baidu::galaxy::proto::CreateTagResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.tag.empty()) {
+        fprintf(stderr, "tag is needed\n");
+        return false;
+    }
     pb_request.set_tag(request.tag);
+
+    bool ok = true;
     for(size_t i = 0; i < request.endpoint.size(); ++i) {
+        if (request.endpoint[i].empty()) {
+            ok =  false;
+            break;
+        }
         pb_request.add_endpoint(request.endpoint[i]);
     }
+
+    if (!ok) {
+        fprintf(stderr, "endpoint cannot be empty\n");
+        return false;
+    }
     
-    bool ok = rpc_client_->SendRequest(res_stub_, 
+    ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::CreateTag, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
@@ -646,7 +768,10 @@ bool ResourceManagerImpl::CreateTag(const CreateTagRequest& request, CreateTagRe
 bool ResourceManagerImpl::ListTags(const ListTagsRequest& request, ListTagsResponse* response) {
     ::baidu::galaxy::proto::ListTagsRequest  pb_request;
     ::baidu::galaxy::proto::ListTagsResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListTags, 
                                         &pb_request, &pb_response, 5, 1);
@@ -671,8 +796,17 @@ bool ResourceManagerImpl::ListTags(const ListTagsRequest& request, ListTagsRespo
 bool ResourceManagerImpl::ListAgentsByTag(const ListAgentsByTagRequest& request, ListAgentsByTagResponse* response) {
     ::baidu::galaxy::proto::ListAgentsByTagRequest  pb_request;
     ::baidu::galaxy::proto::ListAgentsByTagResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.tag.empty()) {
+        fprintf(stderr, "tag is needed\n");
+        return false;
+    }
     pb_request.set_tag(request.tag);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByTag, 
                                         &pb_request, &pb_response, 5, 1);
@@ -724,7 +858,14 @@ bool ResourceManagerImpl::GetTagsByAgent(const GetTagsByAgentRequest& request, G
     ::baidu::galaxy::proto::GetTagsByAgentRequest pb_request;
     ::baidu::galaxy::proto::GetTagsByAgentResponse pb_response;
     
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    }
     pb_request.set_endpoint(request.endpoint);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
@@ -752,8 +893,21 @@ bool ResourceManagerImpl::AddAgentToPool(const AddAgentToPoolRequest& request, A
     ::baidu::galaxy::proto::AddAgentToPoolRequest pb_request;
     ::baidu::galaxy::proto::AddAgentToPoolResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    }
     pb_request.set_endpoint(request.endpoint);
+    
+    if (request.pool.empty()) {
+        fprintf(stderr, "pool is needed\n");
+        return false;
+    }
+
     pb_request.set_pool(request.pool);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
@@ -776,8 +930,16 @@ bool ResourceManagerImpl::AddAgentToPool(const AddAgentToPoolRequest& request, A
 bool ResourceManagerImpl::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& request, RemoveAgentFromPoolResponse* response) {
     ::baidu::galaxy::proto::RemoveAgentFromPoolRequest pb_request;
     ::baidu::galaxy::proto::RemoveAgentFromPoolResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    }
     pb_request.set_endpoint(request.endpoint);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveAgentFromPool, 
                                         &pb_request, &pb_response, 5, 1);
@@ -799,15 +961,22 @@ bool ResourceManagerImpl::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& 
 bool ResourceManagerImpl::ListAgentsByPool(const ListAgentsByPoolRequest& request, ListAgentsByPoolResponse* response) {
     ::baidu::galaxy::proto::ListAgentsByPoolRequest pb_request;
     ::baidu::galaxy::proto::ListAgentsByPoolResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.pool.empty()) {
+        fprintf(stderr, "pool is needed\n");
+        return false;
+    }
     pb_request.set_pool(request.pool);
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByPool, 
                                         &pb_request, &pb_response, 5, 1);
     if (!ok) {
         response->error_code.reason = "ResourceManager Rpc SendRequest failed";
         return false;
-    
     }
 
     response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
@@ -852,7 +1021,15 @@ bool ResourceManagerImpl::ListAgentsByPool(const ListAgentsByPoolRequest& reques
 bool ResourceManagerImpl::GetPoolByAgent(const GetPoolByAgentRequest& request, GetPoolByAgentResponse* response) {
     ::baidu::galaxy::proto::GetPoolByAgentRequest pb_request;
     ::baidu::galaxy::proto::GetPoolByAgentResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint is needed\n");
+        return false;
+    }
     pb_request.set_endpoint(request.endpoint);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::GetPoolByAgent, 
@@ -876,8 +1053,16 @@ bool ResourceManagerImpl::GetPoolByAgent(const GetPoolByAgentRequest& request, G
 bool ResourceManagerImpl::AddUser(const AddUserRequest& request, AddUserResponse* response) {
     ::baidu::galaxy::proto::AddUserRequest pb_request;
     ::baidu::galaxy::proto::AddUserResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    FillUser(request.admin, pb_request.mutable_admin());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        fprintf(stderr, "user error\n");
+        return false;
+    }
+
+    if (FillUser(request.admin, pb_request.mutable_admin())) {
+        fprintf(stderr, "admin error\n");
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::AddUser, 
@@ -900,8 +1085,16 @@ bool ResourceManagerImpl::AddUser(const AddUserRequest& request, AddUserResponse
 bool ResourceManagerImpl::RemoveUser(const RemoveUserRequest& request, RemoveUserResponse* response) {
     ::baidu::galaxy::proto::RemoveUserRequest pb_request;
     ::baidu::galaxy::proto::RemoveUserResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    FillUser(request.admin, pb_request.mutable_admin());
+
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        fprintf(stderr, "user error\n");
+        return false;
+    }
+
+    if (FillUser(request.admin, pb_request.mutable_admin())) {
+        fprintf(stderr, "admin error\n");
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveUser, 
@@ -925,7 +1118,9 @@ bool ResourceManagerImpl::ListUsers(const ListUsersRequest& request, ListUsersRe
     ::baidu::galaxy::proto::ListUsersRequest pb_request;
     ::baidu::galaxy::proto::ListUsersResponse pb_response;
 
-    FillUser(request.user, pb_request.mutable_user());
+    if(!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListUsers, 
@@ -951,8 +1146,16 @@ bool ResourceManagerImpl::ListUsers(const ListUsersRequest& request, ListUsersRe
 bool ResourceManagerImpl::ShowUser(const ShowUserRequest& request, ShowUserResponse* response) {
     ::baidu::galaxy::proto::ShowUserRequest pb_request;
     ::baidu::galaxy::proto::ShowUserResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    FillUser(request.admin, pb_request.mutable_admin());
+
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        fprintf(stderr, "user error\n");
+        return false;
+    }
+
+    if (FillUser(request.admin, pb_request.mutable_admin())) {
+        fprintf(stderr, "admin error\n");
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowUser, 
@@ -997,9 +1200,20 @@ bool ResourceManagerImpl::ShowUser(const ShowUserRequest& request, ShowUserRespo
 bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserResponse* response) {
     ::baidu::galaxy::proto::GrantUserRequest pb_request;
     ::baidu::galaxy::proto::GrantUserResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    FillUser(request.admin, pb_request.mutable_admin());
-    FillGrant(request.grant, pb_request.mutable_grant());
+
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        fprintf(stderr, "user error\n");
+        return false;
+    }
+
+    if (FillUser(request.admin, pb_request.mutable_admin())) {
+        fprintf(stderr, "admin error\n");
+        return false;
+    }
+
+    if (!FillGrant(request.grant, pb_request.mutable_grant())) {
+        return false;
+    }
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::GrantUser, 
@@ -1021,13 +1235,47 @@ bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserRe
 bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request, AssignQuotaResponse* response) {
     ::baidu::galaxy::proto::AssignQuotaRequest pb_request;
     ::baidu::galaxy::proto::AssignQuotaResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    FillUser(request.admin, pb_request.mutable_admin());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        fprintf(stderr, "user error\n");
+        return false;
+    }
+
+    if (FillUser(request.admin, pb_request.mutable_admin())) {
+        fprintf(stderr, "admin error\n");
+        return false;
+    }
+
     ::baidu::galaxy::proto::Quota* quota = pb_request.mutable_quota();
+
+    if (request.quota.millicore <= 0) {
+        fprintf(stderr, "cpu millicores must be greater than 0\n");
+        return false;
+    }
     quota->set_millicore(request.quota.millicore);
+    
+    if (request.quota.memory <= 0) {
+        fprintf(stderr, "memory size must be greater than 0\n");
+        return false;
+    }
     quota->set_memory(request.quota.memory);
+
+    if (request.quota.disk <= 0) {
+        fprintf(stderr, "disk size must be greater than 0\n");
+        return false;
+    }
     quota->set_disk(request.quota.disk);
+
+    if (request.quota.ssd <= 0) {
+        fprintf(stderr, "ssd size must be greater than 0\n");
+        return false;
+    }
     quota->set_ssd(request.quota.ssd);
+
+    if (request.quota.replica <= 0 || request.quota.replica >= 10000) {
+        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+        return false;
+    }
     quota->set_replica(request.quota.replica);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
@@ -1051,9 +1299,23 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request, AssignQ
 bool ResourceManagerImpl::Preempt(const PreemptRequest& request, PreemptResponse* response) {
     ::baidu::galaxy::proto::PreemptRequest pb_request;
     ::baidu::galaxy::proto::PreemptResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.container_group_id.empty()) {
+        fprintf(stderr, "container_group_id must not be empty\n");
+        return false;
+    }
     pb_request.set_container_group_id(request.container_group_id);
+
+    if (request.endpoint.empty()) {
+        fprintf(stderr, "endpoint must not be empty\n");
+        return false;
+    }
     pb_request.set_endpoint(request.endpoint);
+
     bool ok = rpc_client_->SendRequest(res_stub_,
                                         &::baidu::galaxy::proto::ResMan_Stub::Preempt,
                                         &pb_request, &pb_response, 5, 1);
