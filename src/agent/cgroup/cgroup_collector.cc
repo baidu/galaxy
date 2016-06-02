@@ -29,10 +29,8 @@ CgroupCollector::~CgroupCollector()
 
 baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
 {
-    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix1;
-    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix2;
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix1(new baidu::galaxy::proto::CgroupMetrix);
     int64_t t1 = 0L;
-    int64_t t2 = 0L;
 
     baidu::galaxy::util::ErrorCode ec = cgroup_->Collect(metrix1);
 
@@ -43,6 +41,9 @@ baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
     }
 
     usleep(1000);
+
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix2(new baidu::galaxy::proto::CgroupMetrix);
+    int64_t t2 = 0L;
     ec = cgroup_->Collect(metrix2);
 
     if (ec.Code() == 0) {
@@ -55,6 +56,7 @@ baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
     boost::mutex::scoped_lock lock(mutex_);
     metrix_.reset(new baidu::galaxy::proto::CgroupMetrix());
     last_time_ = baidu::common::timer::get_micros();
+    metrix_->set_memory_used_in_byte(metrix2->memory_used_in_byte());
 
     return ERRORCODE_OK;
 }
@@ -103,8 +105,8 @@ void CgroupCollector::SetName(const std::string& name)
 }
 
 boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> CgroupCollector::Statistics() {
-    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> ret;
-    return ret;
+    boost::mutex::scoped_lock lock(mutex_);
+    return metrix_;
 }
 
 }
