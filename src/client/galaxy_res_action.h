@@ -45,12 +45,11 @@ public:
                    const std::string& pool, const std::string& opration, 
                    const std::string& authority);
     bool AssignQuota(const std::string& user,
-                     const std::string& token,
                      uint32_t millicores,
                      const std::string& memory,
                      const std::string& disk,
                      const std::string& ssd,
-                     int replica
+                     uint32_t replica
                   );
     bool Preempt(const std::string& container_group_id, const std::string& endpoint);
 
