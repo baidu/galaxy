@@ -14,6 +14,7 @@ DEFINE_string(appmaster_nexus_path, "appmaster", "appmaster path on nexus");
 DEFINE_int32(appworker_fetch_task_timeout, 10000, "appworker fetch task timeout");
 DEFINE_int32(appworker_fetch_task_interval, 2000, "appworker fetch task interval");
 DEFINE_int32(appworker_background_thread_pool_size, 5, "appworker background trehad pool size");
+DEFINE_string(tag, "", "appworker tag, show appworker detail in command line ");
 DEFINE_string(appworker_agent_hostname_env, "BAIDU_GALAXY_AGENT_HOSTNAME", "agent hostname env name");
 DEFINE_string(appworker_agent_ip_env, "BAIDU_GALAXY_AGENT_IP", "agent ip env name");
 DEFINE_string(appworker_agent_port_env, "BAIDU_GALAXY_AGENT_PORT", "agent port env name");
