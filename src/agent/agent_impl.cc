@@ -208,7 +208,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
     std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > cis;
     cm_->ListContainers(cis, full_report);
-    std::cerr << "container size: " << cis.size();
+//    std::cerr << "container size: " << cis.size();
 
     for (size_t i = 0; i < cis.size(); i++) {
         ai->add_container_info()->CopyFrom(*(cis[i]));
