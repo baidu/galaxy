@@ -27,7 +27,6 @@ int main(int argc, char* argv[]) {
     baidu::galaxy::SetupLog("appworker");
     google::SetStderrLogging(google::GLOG_INFO);
 
-    signal(SIGINT, SignalIntHandler);
     signal(SIGTERM, SignalIntHandler);
 
     baidu::galaxy::AppWorkerImpl* appworker_impl = new baidu::galaxy::AppWorkerImpl();

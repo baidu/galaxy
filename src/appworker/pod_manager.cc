@@ -107,11 +107,6 @@ int PodManager::RebuildPod() {
 int PodManager::ReloadPod() {
     MutexLock lock(&mutex_);
 
-    if (pod_.stage == kPodStageReloading) {
-        LOG(WARNING) << "pod in reloading, ignore reload action";
-        return -1;
-    }
-
     int tasks_size = pod_.desc.tasks().size();
 
     if (tasks_size != (int)(pod_.env.task_ids.size())) {
@@ -123,8 +118,6 @@ int PodManager::ReloadPod() {
         return -1;
     }
 
-    pod_.stage = kPodStageReloading;
-
     if (0 != DoReloadDeployPod()) {
         pod_.reload_status = proto::kPodFailed;
         return -1;
@@ -132,7 +125,7 @@ int PodManager::ReloadPod() {
 
     pod_.reload_status = proto::kPodDeploying;
 
-    // 3.add change pod reload status loop
+    // add change pod reload status loop
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodReloadStatus, this)
@@ -232,6 +225,7 @@ int PodManager::DoCreatePod() {
             ServiceInfo service_info;
             service_info.set_name(service.service_name());
             service_info.set_port(p_it->second);
+            service_info.set_ip(pod_.env.ip);
             service_info.set_status(proto::kError);
             pod_.services.push_back(service_info);
             LOG(INFO)
@@ -543,7 +537,7 @@ void PodManager::StoppingPodCheck() {
         pod_.status = proto::kPodTerminated;
 
         if (kPodStageRebuilding == pod_.stage) {
-            LOG(WARNING) << "rebuilding stage, pod status change to kPodPending";
+            LOG(WARNING) << "pod in rebuiding stage, pod status change to kPodPending";
             DoClearPod();
             pod_.stage = kPodStageCreating;
             pod_.status = proto::kPodPending;
