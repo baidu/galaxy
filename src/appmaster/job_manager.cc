@@ -589,7 +589,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
         job->history_pods_[podinfo->podid()] = podinfo;
         rlt_code = kTerminate;
     } else if (podinfo != NULL && podinfo->status() == kPodFailed) {
-        if ((::baidu::common::timer::get_micros() - podinfo->last_normal_time()) / 100000 > 
+        if ((::baidu::common::timer::get_micros() - podinfo->last_normal_time()) / 1000000 > 
             FLAGS_master_fail_last_threshold) {
             rlt_code = kRebuild;
         } else {
