@@ -7,6 +7,7 @@
 #include "boost/thread/mutex.hpp"
 #include "protocol/resman.pb.h"
 #include "cgroup/subsystem_factory.h"
+#include "collector/collector_engine.h"
 #include "util/path_tree.h"
 
 #include <string>
@@ -85,13 +86,13 @@ void AgentImpl::Setup()
 
     cm_->Setup();
 
-    LOG(INFO) << "resource manager load resource successfully: " << rm_->ToString();
-
     if (!rm_watcher_->Init(boost::bind(&AgentImpl::HandleMasterChange, this, _1))) {
         LOG(FATAL) << "init res manager watch failed, agent will exit ...";
         exit(1);
     }
     LOG(INFO) << "init resource manager watcher successfully";
+
+    baidu::galaxy::collector::CollectorEngine::GetInstance()->Setup();
 
     heartbeat_pool_.AddTask(boost::bind(&AgentImpl::KeepAlive, this, FLAGS_keepalive_interval));
     LOG(INFO) << "start keep alive thread, interval is " << FLAGS_keepalive_interval << "ms";
@@ -207,7 +208,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
     std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > cis;
     cm_->ListContainers(cis, full_report);
-    std::cerr << "container size: " << cis.size();
+//    std::cerr << "container size: " << cis.size();
 
     for (size_t i = 0; i < cis.size(); i++) {
         ai->add_container_info()->CopyFrom(*(cis[i]));

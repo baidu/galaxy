@@ -6,6 +6,7 @@
 #include "container_manager.h"
 #include "util/path_tree.h"
 #include "thread.h"
+#include "util/output_stream_file.h"
 
 #include "boost/bind.hpp"
 #include <glog/logging.h>
@@ -66,7 +67,8 @@ void ContainerManager::KeepAliveRoutine() {
 int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
 {
     // enter creating stage, every time only one thread does creating
-    baidu::galaxy::util::ErrorCode ec = stage_.EnterCreatingStage(id.SubId());
+    ScopedCreatingStage lock_stage(stage_, id.SubId());
+    baidu::galaxy::util::ErrorCode ec = lock_stage.GetLastError();
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << "container " << id.CompactId() << " has been in creating stage already: " << ec.Message();
         return 0;
@@ -77,7 +79,7 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
         return -1;
     }
 
-    // judge container is exist or not
+    // judge container exist or not
     {
         boost::mutex::scoped_lock lock(mutex_);
         std::map<ContainerId, boost::shared_ptr<Container> >::const_iterator iter
@@ -85,7 +87,6 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
 
         if (work_containers_.end() != iter) {
             LOG(INFO) << "container " << id.CompactId() << " has already been created";
-            stage_.LeaveCreatingStage(id.SubId());
             return 0;
         }
     }
@@ -97,7 +98,6 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                      << id.CompactId() << ", detail reason is: "
                      << ec.Message();
 
-        stage_.LeaveCreatingStage(id.SubId());
         return -1;
     } else {
         LOG(INFO) << "succeed in allocating resource for " << id.CompactId();
@@ -113,15 +113,16 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                        << id.CompactId() << ", detail reason is: "
                        << ec.Message();
         }
-    } 
-    stage_.LeaveCreatingStage(id.SubId());
+    }
+
     return ret;
 }
 
 int ContainerManager::ReleaseContainer(const ContainerId& id)
 {
     // enter destroying stage, only one thread do releasing at a moment
-    baidu::galaxy::util::ErrorCode ec = stage_.EnterDestroyingStage(id.SubId());
+    ScopedDestroyingStage lock_stage(stage_, id.SubId());
+    baidu::galaxy::util::ErrorCode ec = lock_stage.GetLastError();
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(INFO) << "container " << id.CompactId()
                   << " has been in destroying stage: " << ec.Message();
@@ -141,7 +142,6 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         iter = work_containers_.find(id);
 
         if (work_containers_.end() == iter) {
-            stage_.LeaveDestroyingStage(id.SubId());
             LOG(WARNING) << "container " << id.CompactId() << " do not exist";
             return 0;
         }
@@ -170,9 +170,6 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
             LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
     }
-    stage_.LeaveDestroyingStage(id.SubId());
-
-    LOG(INFO) << id.CompactId() << " leave destroying stage";
     return ret;
 }
 
@@ -182,9 +179,11 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
 
     boost::shared_ptr<baidu::galaxy::container::Container>
     container(new baidu::galaxy::container::Container(id, desc));
-
+    
     if (0 != container->Construct()) {
         LOG(WARNING) << "fail in constructing container " << id.CompactId();
+
+        container->Destroy();
         return -1;
     }
 
@@ -198,10 +197,44 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
     {
         boost::mutex::scoped_lock lock(mutex_);
         work_containers_[id] = container;
-        LOG(INFO) << "succeed in constructing container " << id.CompactId();
     }
 
+    DumpProperty(container);            
+    LOG(INFO) << "succeed in constructing container " << id.CompactId();
     return 0;
+}
+
+
+void ContainerManager::DumpProperty(boost::shared_ptr<Container> container) {
+    boost::shared_ptr<ContainerProperty> property = container->Property();
+    std::string path = baidu::galaxy::path::ContainerPropertyPath(container->Id().SubId());
+    baidu::galaxy::file::OutputStreamFile of(path, "w");
+    baidu::galaxy::util::ErrorCode ec = of.GetLastError();
+    if (ec.Code() != 0) {
+        LOG(WARNING) << container->Id().CompactId() <<  " save property failed: " << ec.Message();
+    } else {
+        std::string str = property->ToString();
+        size_t size = str.size();
+        ec = of.Write(str.c_str(), size);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << container->Id().CompactId() <<  " save property failed: " << ec.Message();
+        }
+    }
+
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta = container->ContainerMeta();
+    path = baidu::galaxy::path::ContainerMetaPath(container->Id().SubId());
+    baidu::galaxy::file::OutputStreamFile of2(path, "w");
+    ec = of2.GetLastError();
+    if (ec.Code() != 0) {
+        LOG(WARNING) << container->Id().CompactId() <<  " save property failed: " << ec.Message();
+    } else {
+        std::string str = meta->DebugString();
+        size_t size = str.size();
+        ec = of2.Write(str.c_str(), size);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << container->Id().CompactId() <<  " save property failed: " << ec.Message();
+        }
+    }
 }
 
 void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo)

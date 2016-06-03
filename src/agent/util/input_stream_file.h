@@ -18,7 +18,7 @@ public:
 
     bool IsOpen();
     bool Eof();
-    void GetLastError(baidu::galaxy::util::ErrorCode& ec);
+    baidu::galaxy::util::ErrorCode GetLastError();
     baidu::galaxy::util::ErrorCode ReadLine(std::string& line);
     baidu::galaxy::util::ErrorCode Read(void* buf, size_t& size);
 

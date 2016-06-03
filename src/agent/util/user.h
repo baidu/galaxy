@@ -15,6 +15,8 @@ namespace galaxy {
 namespace user {
 baidu::galaxy::util::ErrorCode GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid);
 baidu::galaxy::util::ErrorCode Su(const std::string& user_name);
+
+baidu::galaxy::util::ErrorCode Chown(const std::string& path, const std::string& user);
 }
 }
 }
