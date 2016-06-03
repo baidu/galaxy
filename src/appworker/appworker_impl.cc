@@ -41,6 +41,7 @@ AppWorkerImpl::AppWorkerImpl() :
         mutex_(),
         start_time_(0),
         update_time_(0),
+        update_status_(proto::kSuspend),
         quit_(false),
         nexus_(NULL),
         appmaster_stub_(NULL),
@@ -110,7 +111,7 @@ void AppWorkerImpl::PrepareEnvs() {
         exit(-1);
     }
 
-    std::string ip = std::string(c_ip);
+    ip_ = std::string(c_ip);
     // 5.port
     char* c_port = getenv(FLAGS_appworker_agent_port_env.c_str());
 
@@ -120,7 +121,7 @@ void AppWorkerImpl::PrepareEnvs() {
     }
 
     std::string port = std::string(c_port);
-    endpoint_ = ip + ":" + port;
+    endpoint_ = ip_ + ":" + port;
     // 6.task_ids
     char* c_task_ids = getenv(FLAGS_appworker_task_ids_env.c_str());
 
@@ -215,6 +216,7 @@ void AppWorkerImpl::PrepareEnvs() {
 
     PodEnv env;
     env.user = user;
+    env.ip = ip_;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
     env.task_ids = task_ids;
@@ -330,6 +332,7 @@ void AppWorkerImpl::FetchTask() {
     for (int j = 0; j < request->services().size(); ++j) {
         LOG(INFO)
                 << "service: " << request->services(j).name() << ", "
+                << "ip: " << request->services(j).ip() << ", "
                 << "port: " << request->services(j).port() << ", "
                 << "status: " << proto::Status_Name(request->services(j).status());
     }
@@ -388,35 +391,57 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
 
-        // ignore expired actions
-        if (!response->has_update_time()
-                || response->update_time() == update_time_) {
-            LOG(WARNING) << "ignore expire action, current: " << update_time_;
-            break;
+        // ignore expired action
+        if (error_code.status() == update_status_
+                && response->update_time() == update_time_) {
+            LOG(WARNING)
+                    << "ignore expire action, current "
+                    << "update_time: " << update_time_ << ", "
+                    << "update_status: " << proto::Status_Name(update_status_);
         }
 
-        update_time_ = response->update_time();
-        LOG(INFO) << "update_time updated";
+        update_status_ = error_code.status();
+        LOG(INFO) << "update_status updated";
 
-        if (!response->has_pod()) {
-            LOG(WARNING) << "ignore empty pod description";
-            break;
-        }
+        if (response->update_time() == update_time_) {
+            LOG(INFO) << "update_time not updated";
 
-        LOG(INFO) << "fetch task: " << proto::Status_Name(error_code.status());
-        pod_manager_.SetPodDescription(response->pod());
+            switch (error_code.status()) {
+            case proto::kRebuild: {
+                Pod pod;
+                pod_manager_.QueryPod(pod);
+                if (proto::kPodFailed == pod.status) {
+                    LOG(WARNING) << "inplace rebuild failed pod";
+                    pod_manager_.RebuildPod();
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        } else {
+            update_time_ = response->update_time();
+            LOG(INFO) << "update_time updated";
 
-        switch (error_code.status()) {
-        case proto::kReload:
-            pod_manager_.ReloadPod();
-            break;
+            if (!response->has_pod()) {
+                LOG(WARNING) << "ignore empty pod description";
+                break;
+            }
 
-        case proto::kRebuild:
-            pod_manager_.RebuildPod();
-            break;
+            pod_manager_.SetPodDescription(response->pod());
 
-        default:
-            break;
+            switch (error_code.status()) {
+            case proto::kReload:
+                pod_manager_.ReloadPod();
+                break;
+
+            case proto::kRebuild:
+                pod_manager_.RebuildPod();
+                break;
+
+            default:
+                break;
+            }
         }
     } while (0);
 

@@ -8,7 +8,7 @@ TEST(TestUtils, Md5File) {
 
     std::string md5 = baidu::galaxy::md5::Md5File(".test.txt");
     EXPECT_EQ("3749f52bb326ae96782b42dc0a97b4c1", md5);
-    //remove(".test.txt");
+    remove(".test.txt");
 }
 
 TEST(TestUtils, IsPortOpen) {
