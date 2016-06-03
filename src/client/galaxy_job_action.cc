@@ -366,13 +366,11 @@ bool JobAction::ListJobs(const std::string& soptions) {
                         values.push_back(FormatDate(jobs[i].create_time));
                         values.push_back(FormatDate(jobs[i].update_time));
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -771,14 +769,10 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                     values.push_back(FormatDate(pods[resman_response.containers[i].id].start_time));
                     values.push_back(FormatDate(pods[resman_response.containers[i].id].update_time));     
                 } else {
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
+                    int base_size = sizeof(array_headers) / sizeof(std::string);
+                    for (int base_it = 0; base_it < base_size; ++base_it) {
+                        values.push_back("");
+                    }
                     if (!scpu.empty()) {
                         values.push_back("");
                     }
@@ -836,7 +830,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
     }
     printf("%s\n", tp_pods.ToString().c_str());
 
-    printf("service info infomation\n");
+    printf("services infomation\n");
     ::baidu::common::TPrinter services(5);
     services.AddRow(5, "", "podid", "name", "port", "status");
 
