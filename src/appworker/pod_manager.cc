@@ -225,6 +225,7 @@ int PodManager::DoCreatePod() {
             ServiceInfo service_info;
             service_info.set_name(service.service_name());
             service_info.set_port(p_it->second);
+            service_info.set_ip(pod_.env.ip);
             service_info.set_status(proto::kError);
             pod_.services.push_back(service_info);
             LOG(INFO)
