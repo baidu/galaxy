@@ -317,6 +317,13 @@ bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* resp
         pod.start_time = pb_response.job().pods(i).start_time();
         pod.update_time = pb_response.job().pods(i).update_time();
         pod.fail_count = pb_response.job().pods(i).fail_count();
+        for (int32_t j = 0; j < pb_response.job().pods(i).services().size(); ++j) {
+            ServiceInfo service;
+            service.name = pb_response.job().pods(i).services(j).name();
+            service.port = pb_response.job().pods(i).services(j).port();
+            service.status = (Status)pb_response.job().pods(i).services(j).status();
+            pod.services.push_back(service);
+        }
         response->job.pods.push_back(pod);
     }
 

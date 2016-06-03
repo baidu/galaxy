@@ -723,7 +723,6 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
     headers.push_back("create_time");
     headers.push_back("update_time");
 
-
     ::baidu::common::TPrinter tp_pods(headers.size());
     tp_pods.AddRow(headers);
     for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
@@ -836,6 +835,34 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
         }
     }
     printf("%s\n", tp_pods.ToString().c_str());
+
+    printf("service info infomation\n");
+    ::baidu::common::TPrinter services(5);
+    services.AddRow(5, "", "podid", "name", "port", "status");
+
+    for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
+        size_t pos = resman_response.containers[i].id.rfind("."); 
+        std::string podid(resman_response.containers[i].id, pos + 1, resman_response.containers[i].id.size()- (pos + 1));
+        for (uint32_t j = 0; j < pods[resman_response.containers[i].id].services.size(); ++j) {
+            if (j == 0) {
+                services.AddRow(5, ::baidu::common::NumToString(i).c_str(),
+                                    podid.c_str(),
+                                    pods[resman_response.containers[i].id].services[j].name.c_str(),
+                                    pods[resman_response.containers[i].id].services[j].port.c_str(),
+                                    StringStatus(pods[resman_response.containers[i].id].services[j].status).c_str()
+                               );
+            } else {
+                services.AddRow(5, "",
+                                   "",
+                                   pods[resman_response.containers[i].id].services[j].name.c_str(),
+                                   pods[resman_response.containers[i].id].services[j].port.c_str(),
+                                   StringStatus(pods[resman_response.containers[i].id].services[j].status).c_str()
+                               ); 
+            }
+        }
+    }
+    printf("%s\n", services.ToString().c_str());
+
     return true;
 }
 
