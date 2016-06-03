@@ -495,6 +495,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     CHECK_USER()
     std::string user = request->user().user();
     LOG(INFO) << "user:" << user << " create container group";
+    LOG(INFO) << request->DebugString();
     std::string invalid_pool;
     if (!CheckUserAuth(request->desc(), user, users_can_create_, invalid_pool)) {
         response->mutable_error_code()->set_status(proto::kCreateContainerGroupFail);
@@ -599,7 +600,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     CHECK_USER()
     LOG(INFO) << "user:" << request->user().user()
               << " update container group: " << request->id();
-    VLOG(10) << request->DebugString();
+    LOG(INFO) << request->DebugString();
     proto::ContainerGroupMeta new_meta;
     proto::ContainerGroupMeta old_meta;
     bool replica_changed = false;
@@ -625,6 +626,13 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     if (!CheckUserAuth(old_meta.desc(), request->user().user(), users_can_update_, invalid_pool)) {
         response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
         response->mutable_error_code()->set_reason("no update permission on pool: " + invalid_pool);
+        done->Run();
+        return;
+    }
+    if (old_meta.user_name() != request->user().user()) {
+        response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+        response->mutable_error_code()->set_reason(
+            "user mismatch:" + old_meta.user_name() + " , " + request->user().user());
         done->Run();
         return;
     }
