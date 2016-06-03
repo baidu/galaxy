@@ -175,6 +175,7 @@ void JobManager::CheckClear(Job* job) {
         job->history_pods_.erase(it->first);
         delete podinfo;
     }
+
     JobId id = job->id_;
     std::map<JobId, Job*>::iterator job_it = jobs_.find(id);
     if (job_it != jobs_.end()) {
@@ -217,6 +218,7 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
             LOG(INFO) << "pod[" << pod->podid() << " heartbeat[" << 
                 pod->heartbeat_time() << "] now[" <<  ::baidu::common::timer::get_micros()
                 <<"] dead & remove. " << __FUNCTION__;
+            DestroyService(pod->services());
             delete pod;
         }
         return;
@@ -575,8 +577,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
             << " endpoint: " << request->endpoint()
             << " END DEBUG";
             podinfo = CreatePod(job, request->podid(), request->endpoint());
-            podinfo->set_status(request->status());
-            podinfo->set_start_time(request->start_time());
+            RefreshPod(request, podinfo, job);   
             rlt_code = kOk;
         } else { 
             podinfo = CreatePod(job, request->podid(), request->endpoint());
@@ -586,6 +587,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
     }
     if (podinfo != NULL && podinfo->status() == kPodFinished) {
         job->pods_.erase(podinfo->podid());
+        DestroyService(podinfo->services());
         job->history_pods_[podinfo->podid()] = podinfo;
         rlt_code = kTerminate;
     } else if (podinfo != NULL && podinfo->status() == kPodFailed) {
@@ -654,6 +656,77 @@ bool JobManager::ReachBreakpoint(Job* job) {
     }
 }
 
+bool JobManager::IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest) {
+    if (src.name() != dest.name()) {
+        return false;
+    }
+    if (src.port() != dest.port()) {
+        return false;
+    }
+    if (src.status() != dest.status()) {
+        return false;
+    }
+    if (src.ip() != dest.ip()) {
+        return false;
+    }
+    return true;
+}
+
+void JobManager::RefreshService(ServiceList src, ServiceList dest) {
+    for (int i = 0; i < src.size(); i++) {
+        ServiceInfo src_serv = src.Get(i);
+        ServiceInfo dest_serv;
+        bool need_refresh_naming = false;
+        for (int j = 0; j < dest.size(); j++) {
+            dest_serv = dest.Get(j);
+            if (src_serv.name() != dest_serv.name()) {
+                continue;
+            } else if (!IsSerivceSame(src_serv, dest_serv)) {
+                need_refresh_naming = true;
+            }
+        }
+        if (src_serv.name() != dest_serv.name()) {
+            dest_serv = *(dest.Add());
+            LOG(INFO) << " add service : " << src_serv.name();
+            need_refresh_naming = true;
+        }
+        if (need_refresh_naming) {
+            dest_serv.CopyFrom(src_serv);
+            LOG(INFO) << "refresh service : "
+            << " name : " << src_serv.name()
+            << " ip : " << src_serv.ip()
+            << " port : " << src_serv.port()
+            << " status : " << src_serv.status();
+            //todo
+        }
+    }
+
+    for (int i = 0; i < dest.size(); i++) {
+        ServiceInfo src_serv = dest.Get(i);
+        ServiceInfo dest_serv;
+        for (int j = 0; j < src.size(); j++) {
+            dest_serv = src.Get(j);
+            if (src_serv.name() == dest_serv.name()) {
+                break;
+            }
+        }
+        if (src_serv.name() != dest_serv.name()) {
+            dest.DeleteSubrange(i, 1);
+            //todo
+        }
+    }
+    return;
+}
+
+void JobManager::DestroyService(ServiceList services) {
+    for (int i = 0; i < services.size(); i++) {
+        ServiceInfo serv = services.Get(i);
+        //todo
+    }
+    services.Clear();
+    return;
+}
+
 void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
                             PodInfo* podinfo,
                             Job* job) {
@@ -664,6 +737,13 @@ void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
     }
     podinfo->set_status(request->status());
     ReduceUpdateList(job, podinfo->podid(), request->status(), request->reload_status());
+    if (request->services().size() != 0) {
+        LOG(INFO) << "DEBUG servie msg : "
+        << request->DebugString();
+        RefreshService(request->services(), podinfo->services());
+    } else {
+        DestroyService(podinfo->services());
+    }
     LOG(INFO) << "DEBUG: PodHeartBeat "
             << "refresh pod id : " << request->podid() << " status :"
             << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()

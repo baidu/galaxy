@@ -84,6 +84,7 @@ message PodInfo {
     optional int64 heartbeat_time = 9;
     optional int64 last_normal_time = 10;
     optional int64 send_rebuild_time = 11;
+    repeated ServiceInfo services = 12;
 }
 
 message JobInfo {

@@ -317,15 +317,11 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
                           proto::UpdateContainerGroupResponse*, 
                           bool, int)> call_back;
     std::string operate = "";
-    if (request->has_oprate() && request->oprate() == kUpdateJobStart) {
-        operate = UpdateJobOprate_Name(request->oprate());
+    if (request->has_operate() && request->operate() == kUpdateJobStart) {
+        operate = UpdateJobOperate_Name(request->operate());
     }
     call_back = boost::bind(&AppMasterImpl::UpdateContainerGroupCallBack, this,
-<<<<<<< HEAD
                             job_desc, response, done, operate,
-=======
-                            job_desc, response, done, UpdateJobOperate_Name(request->operate()),
->>>>>>> baidu_galaxy3
                             _1, _2, _3, _4);
     ResMan_Stub* resman_;
     rpc_client_.GetStub(resman_endpoint_, &resman_);

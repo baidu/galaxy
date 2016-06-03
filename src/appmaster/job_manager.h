@@ -73,12 +73,15 @@ using ::baidu::galaxy::proto::kPodStopping;
 using ::baidu::galaxy::proto::kPodTerminated;
 using ::baidu::galaxy::proto::ResMan_Stub;
 using ::baidu::galaxy::proto::User;
+using ::baidu::galaxy::proto::ServiceInfo;
 
 typedef std::string JobId;
 typedef std::string Version;
 typedef std::string PodId;
+typedef std::string ServiceName;
 typedef baidu::galaxy::proto::JobOverview JobOverview;
 typedef ::google::protobuf::RepeatedPtrField<JobOverview> JobOverviewList;
+typedef ::google::protobuf::RepeatedPtrField<ServiceInfo> ServiceList;
 
 struct Job {
     JobStatus status_;
@@ -165,6 +168,10 @@ private:
     void RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
                                 PodInfo* podinfo,
                                 Job* job);
+
+    bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
+    void RefreshService(ServiceList src, ServiceList dest);
+    void DestroyService(ServiceList services);
 
 private:
     std::map<JobId, Job*> jobs_;
