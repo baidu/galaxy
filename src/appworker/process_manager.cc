@@ -289,7 +289,7 @@ void ProcessManager::LoopWaitProcesses() {
                 }
             }
 
-            LOG(WARNING)
+            LOG(INFO)
                     << "process: " << it->second->process_id << ", "
                     << "pid: " << pid << ", "
                     << "exit code: " << it->second->exit_code;

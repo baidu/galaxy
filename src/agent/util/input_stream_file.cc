@@ -13,13 +13,14 @@ InputStreamFile::InputStreamFile(const std::string& path) :
     path_(path),
     file_(NULL) {
     file_ = fopen(path.c_str(), "r");
-    errno_ = errno;
+    if (NULL == file_) {
+        errno_ = errno;
+    }
 }
 
 InputStreamFile::~InputStreamFile() {
     if (NULL != file_) {
         fclose(file_);
-        errno_ = errno;
     }
 }
 
@@ -32,8 +33,8 @@ bool InputStreamFile::Eof() {
     return 0 != feof(file_);
 }
 
-void InputStreamFile::GetLastError(baidu::galaxy::util::ErrorCode& ec) {
-    ec = ERRORCODE(errno_, "%s", strerror(errno_));
+baidu::galaxy::util::ErrorCode InputStreamFile::GetLastError() {
+    return ERRORCODE(errno_, "%s", strerror(errno_));
 }
 
 baidu::galaxy::util::ErrorCode InputStreamFile::ReadLine(std::string& line) {
@@ -41,7 +42,6 @@ baidu::galaxy::util::ErrorCode InputStreamFile::ReadLine(std::string& line) {
     size_t size;
     char* buf = NULL;
     ssize_t rsize = getline(&buf, &size, file_);
-    errno_ = errno;
 
     if (rsize == -1 && !feof(file_)) {
         return PERRORCODE(-1, errno_, "get line failed");

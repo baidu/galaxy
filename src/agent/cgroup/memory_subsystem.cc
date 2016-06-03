@@ -4,9 +4,12 @@
 #include "memory_subsystem.h"
 #include "agent/util/path_tree.h"
 #include "protocol/galaxy.pb.h"
+#include "protocol/agent.pb.h"
+#include "util/input_stream_file.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <iostream>
 
 namespace baidu {
 namespace galaxy {
@@ -25,20 +28,28 @@ std::string MemorySubsystem::Name()
     return "memory";
 }
 
-baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(Metrix& metrix)
-{
+
+baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix) {
+    assert(NULL != metrix.get());
+
     boost::filesystem::path path(Path());
     path.append("memory.usage_in_bytes");
-    FILE* file = fopen(path.string().c_str(), "r");
 
-    if (NULL == file) {
-        return PERRORCODE(-1, errno, "open file %s failed", path.string().c_str());
+    baidu::galaxy::file::InputStreamFile in(path.string());
+    if (!in.IsOpen()) {
+        baidu::galaxy::util::ErrorCode ec = in.GetLastError();
+        return ERRORCODE(-1, "open file(%s) failed: %s",
+                    path.string().c_str(),
+                    ec.Message().c_str());
     }
 
-    char buf[64] = {0};
-    fread(buf, sizeof buf, 1, file);
-    fclose(file);
-    metrix.memory_used_in_byte = ::atol(buf);
+    std::string data;
+    baidu::galaxy::util::ErrorCode ec = in.ReadLine(data);
+    if (ec.Code() != 0) {
+        return ERRORCODE(-1, "read failed: %s", ec.Message().c_str());
+    }
+
+    metrix->set_memory_used_in_byte(::atol(data.c_str()));
     return ERRORCODE_OK;
 }
 
@@ -100,6 +111,8 @@ boost::shared_ptr<Subsystem> MemorySubsystem::Clone()
     boost::shared_ptr<Subsystem> ret(new MemorySubsystem());
     return ret;
 }
+
+
 
 } //namespace cgroup
 } //namespace galaxy

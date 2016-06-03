@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "cgroup_collector.h"
+#include "protocol/agent.pb.h"
 #include "cgroup.h"
 #include "timer.h"
 #include <assert.h>
@@ -11,11 +12,13 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-CgroupCollector::CgroupCollector(boost::shared_ptr<Cgroup> cgroup) :
+const static long CPU_CORES = sysconf(_SC_NPROCESSORS_CONF);
+CgroupCollector::CgroupCollector(Cgroup* cgroup) :
     enabled_(false),
     cycle_(-1),
     cgroup_(cgroup),
-    metrix_(new Metrix())
+    metrix_(new baidu::galaxy::proto::CgroupMetrix()),
+    last_time_(0L)
 {
     assert(NULL != cgroup);
 }
@@ -27,22 +30,24 @@ CgroupCollector::~CgroupCollector()
 
 baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
 {
-    Metrix metrix1;
-    Metrix metrix2;
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix1(new baidu::galaxy::proto::CgroupMetrix);
     int64_t t1 = 0L;
-    int64_t t2 = 0L;
-    baidu::galaxy::util::ErrorCode ec = cgroup_->Statistics(metrix1);
 
-    if (ec.Code() != 0) {
+    baidu::galaxy::util::ErrorCode ec = cgroup_->Collect(metrix1);
+
+    if (ec.Code() == 0) {
         t1 = baidu::common::timer::get_micros();
     } else {
         return ERRORCODE(-1, "%s", ec.Message().c_str());
     }
 
-    usleep(1000000);
-    ec = cgroup_->Statistics(metrix2);
+    ::usleep(1000000);
 
-    if (ec.Code() != 0) {
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix2(new baidu::galaxy::proto::CgroupMetrix);
+    int64_t t2 = 0L;
+    ec = cgroup_->Collect(metrix2);
+
+    if (ec.Code() == 0) {
         t2 = baidu::common::timer::get_micros();
     } else {
         return ERRORCODE(-1, "%s", ec.Message().c_str());
@@ -50,6 +55,21 @@ baidu::galaxy::util::ErrorCode CgroupCollector::Collect()
 
     // cal cpu
     boost::mutex::scoped_lock lock(mutex_);
+    metrix_.reset(new baidu::galaxy::proto::CgroupMetrix());
+    last_time_ = baidu::common::timer::get_micros();
+    metrix_->set_memory_used_in_byte(metrix2->memory_used_in_byte());
+
+    if (metrix1->has_container_cpu_time() && metrix1->has_system_cpu_time()
+                && metrix2->has_container_cpu_time() && metrix2->has_system_cpu_time()) {
+        double delta1 = (double)(metrix2->container_cpu_time() - metrix1->container_cpu_time());
+        double delta2 = (double)(metrix2->system_cpu_time() - metrix1->system_cpu_time());
+
+        if (delta2 > 0.01 && delta1 > 0.01) {
+            int64_t mcore = (int64_t)(1000.0 * delta1/delta2 * CPU_CORES); 
+            metrix_->set_cpu_used_in_millicore(mcore);
+        }
+    }
+
     return ERRORCODE_OK;
 }
 
@@ -95,6 +115,14 @@ void CgroupCollector::SetName(const std::string& name)
     boost::mutex::scoped_lock lock(mutex_);
     name_ = name;
 }
+
+boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> CgroupCollector::Statistics() {
+    boost::mutex::scoped_lock lock(mutex_);
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> ret(new baidu::galaxy::proto::CgroupMetrix);
+    ret->CopyFrom(*metrix_);
+    return ret;
+}
+
 }
 }
 }
