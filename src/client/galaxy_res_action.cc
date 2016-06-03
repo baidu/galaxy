@@ -259,10 +259,11 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
                         values.push_back(FormatDate(response.containers[i].submit_time));
                         values.push_back(FormatDate(response.containers[i].submit_time));
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -401,11 +402,11 @@ bool ResAction::ShowAgent(const std::string& endpoint, const std::string& soptio
                         values.push_back(svolums);
 
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -742,12 +743,11 @@ bool ResAction::ListAgents(const std::string& soptions) {
                         }
                         values.push_back(svolums);
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -890,12 +890,11 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
                         }
                         values.push_back(svolums);
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -1039,12 +1038,11 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
                         }
                         values.push_back(svolums);
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
