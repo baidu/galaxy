@@ -86,7 +86,8 @@ baidu::galaxy::util::ErrorCode BindVolum::Destroy()
     if (0 != ec.value()) {
         return ERRORCODE(-1, "failed in renaming %s -> %s: %s",
                 source_path.string().c_str(),
-                gc_source_path.string().c_str());
+                gc_source_path.string().c_str(),
+                ec.message().c_str());
     }
     return ERRORCODE_OK;
 }
