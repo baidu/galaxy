@@ -6,36 +6,48 @@
 #include "rpc/rpc_client.h"
 #include "ins_sdk.h"
 #include <gflags/gflags.h>
+#include "protocol/galaxy.pb.h"
+#include "protocol/appmaster.pb.h"
 #include "galaxy_sdk_appmaster.h"
-
-//nexus
-DECLARE_string(nexus_addr);
-DECLARE_string(nexus_root);
-DECLARE_string(appmaster_path);
 
 namespace baidu {
 namespace galaxy {
-
-class RpcClient;
-
 namespace sdk {
 
-AppMaster::AppMaster() : rpc_client_(NULL),
-                       appmaster_stub_(NULL) {
-    full_key_ = FLAGS_nexus_root + FLAGS_appmaster_path; 
-	rpc_client_ = new RpcClient();
-    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr); 
-}
-
-AppMaster::~AppMaster() {
-	delete rpc_client_;
-    if (NULL != appmaster_stub_) {
-        delete appmaster_stub_;
+class AppMasterImpl : public AppMaster {
+public:
+    AppMasterImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
+                      appmaster_stub_(NULL) {
+        full_key_ = path;
+        rpc_client_ = new RpcClient();
+        nexus_ = new ::galaxy::ins::sdk::InsSDK(nexus_addr);
     }
-    delete nexus_;
-}
 
-bool AppMaster::GetStub() {
+    virtual ~AppMasterImpl() {
+        delete rpc_client_;
+        if (NULL != appmaster_stub_) {
+            delete appmaster_stub_;
+        }
+        delete nexus_;
+    }
+
+    bool GetStub();
+    bool SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response);
+    bool UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response);
+    bool StopJob(const StopJobRequest& request, StopJobResponse* response);
+    bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response);
+    bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response);
+    bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response);
+    bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response);
+private:
+    ::galaxy::ins::sdk::InsSDK* nexus_;
+    ::baidu::galaxy::RpcClient* rpc_client_;
+    ::baidu::galaxy::proto::AppMaster_Stub* appmaster_stub_;
+    std::string full_key_;
+
+};
+
+bool AppMasterImpl::GetStub() {
     std::string endpoint;
     ::galaxy::ins::sdk::SDKError err;
     bool ok = nexus_->Get(full_key_, &endpoint, &err);
@@ -51,12 +63,24 @@ bool AppMaster::GetStub() {
     return true;
 }
 
-bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) {
+bool AppMasterImpl::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* response) {
     ::baidu::galaxy::proto::SubmitJobRequest pb_request;
     ::baidu::galaxy::proto::SubmitJobResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.hostname.empty()) {
+        fprintf(stderr, "hostname must not be empty\n");
+        return false;
+    }
     pb_request.set_hostname(request.hostname);
-    FillJobDescription(request.job, pb_request.mutable_job());
+
+    if (!FillJobDescription(request.job, pb_request.mutable_job())) {
+        return false;
+    }
+
     bool ok = rpc_client_->SendRequest(appmaster_stub_, 
                                         &::baidu::galaxy::proto::AppMaster_Stub::SubmitJob,
                                         &pb_request, &pb_response, 5, 1);
@@ -75,13 +99,52 @@ bool AppMaster::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse* re
     return true;
 }
 
-bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) {
+bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* response) {
     ::baidu::galaxy::proto::UpdateJobRequest pb_request;
     ::baidu::galaxy::proto::UpdateJobResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    FillJobDescription(request.job, pb_request.mutable_job());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+        
+    if (request.hostname.empty()) {
+        fprintf(stderr, "hostname must not be empty\n");
+        return false;
+    }
     pb_request.set_hostname(request.hostname);
+
+    if (request.jobid.empty()) {
+        fprintf(stderr, "jobid must not be empty\n");
+        return false;
+    }
     pb_request.set_jobid(request.jobid);
+
+    if (request.oprate == kUpdateJobStart) {
+        if (request.job.deploy.update_break_count < 0 
+                || request.job.deploy.update_break_count >= request.job.deploy.replica) {
+            fprintf(stderr, "deploy update_break_count must be greater than 0 and less than replica\n");
+            return false;
+        }
+        if (!FillJobDescription(request.job, pb_request.mutable_job())) {
+            return false;
+        }
+        pb_request.mutable_job()->mutable_deploy()->set_update_break_count(request.job.deploy.update_break_count);
+        pb_request.set_oprate(::baidu::galaxy::proto::kUpdateJobStart);
+    } else if (request.oprate == kUpdateJobContinue) {
+        pb_request.set_oprate(::baidu::galaxy::proto::kUpdateJobContinue);
+    } else if (request.oprate == kUpdateJobRollback) {
+        pb_request.set_oprate(::baidu::galaxy::proto::kUpdateJobRollback);
+    } else if (request.oprate == kUpdateJobDefault) {
+        if (!FillJobDescription(request.job, pb_request.mutable_job())) {
+            return false;
+        }
+    } else {
+        fprintf(stderr, "update operation must be kUpdateJobStart, \
+                    kUpdateJobContinue, kUpdateJobRollback, kUpdateJobDefault\n");
+        return false;
+    }
+
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::UpdateJob,
                                         &pb_request, &pb_response, 5, 1);
@@ -99,12 +162,25 @@ bool AppMaster::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse* re
     return true;
 }
 
-bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response) {
+bool AppMasterImpl::StopJob(const StopJobRequest& request, StopJobResponse* response) {
     ::baidu::galaxy::proto::StopJobRequest pb_request;
     ::baidu::galaxy::proto::StopJobResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    pb_request.set_jobid(request.jobid);
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.hostname.empty()) {
+        fprintf(stderr, "hostname must not be empty\n");
+        return false;
+    }
     pb_request.set_hostname(request.hostname);
+
+    if (request.jobid.empty()) {
+        fprintf(stderr, "jobid must not be empty\n");
+        return false;
+    }
+    pb_request.set_jobid(request.jobid);
 
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::StopJob,
@@ -121,12 +197,26 @@ bool AppMaster::StopJob(const StopJobRequest& request, StopJobResponse* response
     return true;
 }
 
-bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) {
+bool AppMasterImpl::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) {
     ::baidu::galaxy::proto::RemoveJobRequest pb_request;
     ::baidu::galaxy::proto::RemoveJobResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
-    pb_request.set_jobid(request.jobid);
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    
+    if (request.hostname.empty()) {
+        fprintf(stderr, "hostname must not be empty\n");
+        return false;
+    }
     pb_request.set_hostname(request.hostname);
+
+    if (request.jobid.empty()) {
+        fprintf(stderr, "jobid must not be empty\n");
+        return false;
+    }
+    pb_request.set_jobid(request.jobid);
+
     bool ok = rpc_client_->SendRequest(appmaster_stub_, 
                                         &::baidu::galaxy::proto::AppMaster_Stub::RemoveJob,
                                         &pb_request, &pb_response, 5, 1);
@@ -143,10 +233,14 @@ bool AppMaster::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* re
     return true;
 }
 
-bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* response) {
+bool AppMasterImpl::ListJobs(const ListJobsRequest& request, ListJobsResponse* response) {
     ::baidu::galaxy::proto::ListJobsRequest pb_request;
     ::baidu::galaxy::proto::ListJobsResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::ListJobs,
                                         &pb_request, &pb_response, 5, 1);
@@ -179,11 +273,20 @@ bool AppMaster::ListJobs(const ListJobsRequest& request, ListJobsResponse* respo
     return true;
 }
 
-bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response) {
+bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* response) {
     ::baidu::galaxy::proto::ShowJobRequest pb_request;
     ::baidu::galaxy::proto::ShowJobResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.jobid.empty()) {
+        fprintf(stderr, "jobid must not be empty\n");
+        return false;
+    }
     pb_request.set_jobid(request.jobid);
+
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::ShowJob,
                                         &pb_request, &pb_response, 5, 1);
@@ -220,12 +323,26 @@ bool AppMaster::ShowJob(const ShowJobRequest& request, ShowJobResponse* response
     return true;
 }
 
-bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) {
+bool AppMasterImpl::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) {
     ::baidu::galaxy::proto::ExecuteCmdRequest pb_request;
     ::baidu::galaxy::proto::ExecuteCmdResponse pb_response;
-    FillUser(request.user, pb_request.mutable_user());
+
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+
+    if (request.jobid.empty()) {
+        fprintf(stderr, "jobid must not be empty\n");
+        return false;
+    }
     pb_request.set_jobid(request.jobid);
+
+    if (request.cmd.empty()) {
+        fprintf(stderr, "cmd must not be empty\n");
+        return false;
+    }
     pb_request.set_cmd(request.cmd);
+
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::ExecuteCmd,
                                         &pb_request, &pb_response, 5, 1);
@@ -241,6 +358,15 @@ bool AppMaster::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse*
     }
 
     return true;
+}
+
+AppMaster* AppMaster::ConnectAppMaster(const std::string& nexus_addr, const std::string& path) {
+    AppMasterImpl* appmaster = new AppMasterImpl(nexus_addr, path);
+    if (!appmaster->GetStub()) {
+        delete appmaster;
+        return NULL;
+    }
+    return appmaster;
 }
 
 

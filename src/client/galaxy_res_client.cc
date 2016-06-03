@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <stdlib.h>
+#include <string.h>
 #include "galaxy_res_action.h"
 
 DEFINE_string(f, "", "specify config file");
@@ -10,8 +12,13 @@ DEFINE_string(p, "", "specify agent pool");
 DEFINE_string(e, "", "specify agent endpoint");
 DEFINE_string(t, "", "specify agent tag or token");
 DEFINE_string(u, "", "username");
-DEFINE_string(o, "", "opration");
+DEFINE_string(o, "", "operation");
 DEFINE_string(a, "", "authority, split by ,");
+DEFINE_int32(c, 0, "specify millicores");
+DEFINE_int32(r, 0, "specify replica");
+DEFINE_string(d, "", "specify disk size");
+DEFINE_string(s, "", "specify ssd size");
+DEFINE_string(m, "", "specify memory size");
 
 DECLARE_string(flagfile);
 
@@ -21,13 +28,14 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client create_container -f <jobconfig>\n"
                                  "      galaxy_res_client update_container -f <jobconfig> -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
-                                 "      galaxy_res_client list_containers\n"
+                                 "      galaxy_res_client list_containers [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client show_container -i id\n\n"
                                  "  agent usage:\n"
                                  "      galaxy_res_client add_agent -p pool -e endpoint\n"
-                                 "      galaxy_res_client show_agent -e endpoint\n"
+                                 "      galaxy_res_client set_agent -p pool -e endpoint\n"
+                                 "      galaxy_res_client show_agent -e endpoint [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client remove_agent -e endpoint\n"
-                                 "      galaxy_res_client list_agents [-p pool -t tag]\n"
+                                 "      galaxy_res_client list_agents [-p pool -t tag -o cpu,mem,volums]\n"
                                  "      galaxy_res_client online_agent -e endpoint\n"
                                  "      galaxy_res_client offline_agent -e endpoint\n\n"
                                  "      galaxy_res_client preempt -i container_group_id -e endpoint\n\n"
@@ -38,7 +46,9 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client status\n\n"
                                  "  tag usage:\n"
                                  "      galaxy_res_client create_tag -t tag -f endpoint_file\n"
-                                 "      galaxy_res_client list_tags\n\n"
+                                 "      galaxy_res_client list_tags -e endpoint\n"
+                                 "  pool usage:\n"
+                                 "      galaxy_res_client list_pools -e endpoint\n\n"
                                  "  user usage:\n"
                                  "      galaxy_res_client add_user -u user -t token\n"
                                  "      galaxy_res_client remove_user -u user -t token\n"
@@ -47,6 +57,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]\n" 
                                  "                                   -a [create_container,remove_container,update_container,\n"
                                  "                                   list_containers,submit_job,remove_job,update_job,list_jobs] \n"
+                                 "      galaxy_res_client assign_quota -u user -c millicores -d disk_size -s ssd_size -m memory_size -r replica\n"
                                  "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -i specify container id.\n"
@@ -54,8 +65,13 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      -e specify endpoint.\n"
                                  "      -u specity user.\n"
                                  "      -t specify agent tag or token.\n"
-                                 "      -o specify opration.\n"
-                                 "      -a specify authority split by ,\n";
+                                 "      -o specify operation [cpu,mem,volums].\n"
+                                 "      -a specify authority split by ,\n"
+                                 "      -c specify millicores, such as 1000\n"
+                                 "      -r specify replica, such as 100\n"
+                                 "      -d specify disk size, such as 1G\n"
+                                 "      -s specify ssd size, such as 1G\n"
+                                 "      -m specify memory size, such as 1G\n";
 
 
 int main(int argc, char** argv) {
@@ -96,7 +112,7 @@ int main(int argc, char** argv) {
         ok = resAction->RemoveContainerGroup(FLAGS_i);
 
     } else if (strcmp(argv[1], "list_containers") == 0) {
-        ok = resAction->ListContainerGroups();
+        ok = resAction->ListContainerGroups(FLAGS_o);
     } else if (strcmp(argv[1], "show_container") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");
@@ -105,6 +121,7 @@ int main(int argc, char** argv) {
         ok = resAction->ShowContainerGroup(FLAGS_i);
 
     } else if (strcmp(argv[1], "add_agent") == 0) {
+        //agent不存在,将agent加入到pool
         if (FLAGS_p.empty()) {
             fprintf(stderr, "-p is needed\n");
             return -1;
@@ -114,12 +131,23 @@ int main(int argc, char** argv) {
             return -1;
         }
         ok =  resAction->AddAgent(FLAGS_p, FLAGS_e);
+    } else if (strcmp(argv[1], "set_agent") == 0) { 
+        //已有agent,重置pool
+        if (FLAGS_p.empty()) {
+            fprintf(stderr, "-p is needed\n");
+            return -1;
+        }
+        if (FLAGS_e.empty()) {
+            fprintf(stderr, "-e is needed\n");
+            return -1;
+        }
+        ok =  resAction->AddAgentToPool(FLAGS_e, FLAGS_p);
     } else if (strcmp(argv[1], "show_agent") == 0) { 
         if (FLAGS_e.empty()) {
             fprintf(stderr, "-e is needed\n");
             return -1;
         }
-        ok = resAction->ShowAgent(FLAGS_e);
+        ok = resAction->ShowAgent(FLAGS_e, FLAGS_o);
     } else if (strcmp(argv[1], "remove_agent") == 0) {
         if (FLAGS_e.empty()) {
             fprintf(stderr, "-e is needed\n");
@@ -128,11 +156,11 @@ int main(int argc, char** argv) {
         ok = resAction->RemoveAgent(FLAGS_e);
     } else if (strcmp(argv[1], "list_agents") == 0) {
         if (!FLAGS_p.empty()) {
-            ok = resAction->ListAgentsByPool(FLAGS_p);
+            ok = resAction->ListAgentsByPool(FLAGS_p, FLAGS_o);
         } else if (!FLAGS_t.empty()) {
-            ok = resAction->ListAgentsByTag(FLAGS_t);
+            ok = resAction->ListAgentsByTag(FLAGS_t, FLAGS_o);
         } else {
-            ok = resAction->ListAgents();
+            ok = resAction->ListAgents(FLAGS_o);
         }
     } else if (strcmp(argv[1], "enter_safemode") == 0) { 
         ok =  resAction->EnterSafeMode();
@@ -170,8 +198,12 @@ int main(int argc, char** argv) {
         }
         ok = resAction->CreateTag(FLAGS_t, FLAGS_f);
     } else if (strcmp(argv[1], "list_tags") == 0) {
-        ok = resAction->ListTags();
-    } else if (strcmp(argv[1], "list_tags") == 0) {
+        if (!FLAGS_e.empty()) {
+            ok = resAction->GetTagsByAgent(FLAGS_e);
+        } else {
+            ok = resAction->ListTags();
+        }
+    } else if (strcmp(argv[1], "list_pools") == 0) {
         if (FLAGS_e.empty()) {
             fprintf(stderr, "-e is needed\n");
             return -1;
@@ -210,6 +242,12 @@ int main(int argc, char** argv) {
 
         ok =  resAction->GrantUser(FLAGS_u, FLAGS_t, FLAGS_p, FLAGS_o, FLAGS_a);
 
+    } else if (strcmp(argv[1], "assign_quota") == 0) {
+        if (FLAGS_s.empty() || FLAGS_d.empty() || FLAGS_m.empty() || FLAGS_u.empty()) {
+            fprintf(stderr, "-u, -s, -d, -m and -c are needed\n");
+            return -1;
+        }
+        ok = resAction->AssignQuota(FLAGS_u, FLAGS_c, FLAGS_m, FLAGS_d, FLAGS_s, FLAGS_r);
     } else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;

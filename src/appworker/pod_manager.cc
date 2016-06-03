@@ -6,12 +6,14 @@
 
 #include <stdlib.h>
 
+#include <algorithm>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 
 #include "protocol/appmaster.pb.h"
+#include "utils.h"
 
 DECLARE_int32(pod_manager_change_pod_status_interval);
 
@@ -26,6 +28,10 @@ PodManager::PodManager() :
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodStatus, this)
+    );
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopCheckPodServiceStatus, this)
     );
 }
 
@@ -143,6 +149,8 @@ int PodManager::QueryPod(Pod& pod) {
     pod.status = pod_.status;
     pod.reload_status = pod_.reload_status;
     pod.stage = pod_.stage;
+    pod.fail_count = pod_.fail_count;
+    pod.services.assign(pod_.services.begin(), pod_.services.end());
 
     return 0;
 }
@@ -168,17 +176,29 @@ int PodManager::DoCreatePod() {
     pod_.pod_id = pod_.env.pod_id;
     pod_.status = proto::kPodReady;
     pod_.stage = kPodStageCreating;
+    pod_.fail_count = 0;
     LOG(INFO) << "create pod, task size: " << tasks_size;
 
-    for (int i = 0; i < tasks_size; i++) {
+    for (int i = 0; i < tasks_size; ++i) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         TaskEnv env;
+        env.user = pod_.env.user;
         env.job_id = pod_.env.job_id;
         env.pod_id = pod_.env.pod_id;
         env.task_id = task_id;
         env.cgroup_subsystems = pod_.env.cgroup_subsystems;
         env.cgroup_paths = pod_.env.task_cgroup_paths[i];
         env.ports = pod_.env.task_ports[i];
+
+        if (pod_.desc.has_workspace_volum()
+                && pod_.desc.workspace_volum().has_dest_path()) {
+            env.workspace = pod_.desc.workspace_volum().dest_path();
+        } else {
+            env.workspace = "/";
+        }
+
+        LOG(WARNING) << "task workspace: " << env.workspace;
+
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
 
         if (0 != ret) {
@@ -190,7 +210,36 @@ int PodManager::DoCreatePod() {
         LOG(INFO) << "create task ok, task " << task_id;
     }
 
-    LOG(INFO) << "create pod ok";
+    // fill services
+    pod_.services.clear();
+    std::vector<ServiceInfo>(pod_.services).swap(pod_.services);
+
+    for (int i = 0; i < tasks_size; ++i) {
+        int32_t services_size = pod_.desc.tasks(i).services().size();
+        std::map<std::string, std::string>::iterator p_it;
+
+        for (int j = 0; j < services_size; ++j) {
+            const proto::Service& service = pod_.desc.tasks(i).services(j);
+            std::string port_name = service.port_name();
+            transform(port_name.begin(), port_name.end(), port_name.begin(), toupper);
+            p_it = pod_.env.task_ports[i].find(port_name);
+
+            if (pod_.env.task_ports[i].end() == p_it) {
+                LOG(WARNING) << "### not found: " << port_name;
+                continue;
+            }
+
+            ServiceInfo service_info;
+            service_info.set_name(service.service_name());
+            service_info.set_port(p_it->second);
+            service_info.set_status(proto::kError);
+            pod_.services.push_back(service_info);
+            LOG(INFO)
+                    << "create task: " << i << ", "
+                    << "service: " << service_info.name() << ", "
+                    << "port: " << service_info.port();
+        }
+    }
 
     return 0;
 }
@@ -432,6 +481,8 @@ void PodManager::RunningPodCheck() {
     int tasks_size = pod_.desc.tasks().size();
     TaskStatus task_status = proto::kTaskFinished;
 
+    int32_t fail_count = 0;
+
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         Task task;
@@ -439,6 +490,8 @@ void PodManager::RunningPodCheck() {
         if (0 != task_manager_.CheckTask(task_id, task)) {
             return;
         }
+
+        fail_count += task.fail_retry_times;
 
         if (proto::kTaskFailed == task.status) {
             task_status = proto::kTaskFailed;
@@ -448,6 +501,7 @@ void PodManager::RunningPodCheck() {
         if (task.status < task_status) {
             task_status = task.status;
         }
+
     }
 
     if (proto::kTaskRunning != task_status) {
@@ -460,6 +514,7 @@ void PodManager::RunningPodCheck() {
         }
     }
 
+    pod_.fail_count = fail_count;
     return;
 }
 
@@ -601,6 +656,28 @@ void PodManager::LoopChangePodReloadStatus() {
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodReloadStatus, this)
+    );
+
+    return;
+}
+
+void PodManager::LoopCheckPodServiceStatus() {
+    MutexLock lock(&mutex_);
+    LOG(INFO) << "loop check pod service status";
+    std::vector<ServiceInfo>::iterator it = pod_.services.begin();
+
+    for (; it != pod_.services.end(); ++it) {
+        int32_t port = boost::lexical_cast<int32_t>(it->port());
+        if (net::IsPortOpen(port)) {
+            it->set_status(proto::kOk);
+        } else {
+            it->set_status(proto::kError);
+        }
+    }
+
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopCheckPodServiceStatus, this)
     );
 
     return;

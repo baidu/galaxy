@@ -40,12 +40,21 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
         return -1;
     }
     deploy->max_per_host = deploy_json["max_per_host"].GetInt();
+    if (!deploy_json.HasMember("tag")) {
+        fprintf(stderr, "tag is needed in deploy\n");
+        return false;
+    } 
     deploy->tag = deploy_json["tag"].GetString();
     boost::trim(deploy->tag);
+
     std::vector<std::string> pools;
     std::string str_pools = deploy_json["pools"].GetString();
     boost::trim(str_pools);
-    boost::split(pools, str_pools, boost::is_any_of(","));
+    ::baidu::common::SplitString(str_pools, ",", &pools);
+    if (pools.size() == 0) {
+        fprintf(stderr, "pools are needed in deploy\n");
+        return false;
+    }
     deploy->pools.assign(pools.begin(), pools.end());
     return 0;
 
@@ -137,7 +146,7 @@ int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRe
 
     //use_symlink
     if (!volum_json.HasMember("use_symlink")) {
-        volum->use_symlink = true;
+        volum->use_symlink = false;;
     } else {
         volum->use_symlink = volum_json["use_symlink"].GetBool();
     }
@@ -567,7 +576,6 @@ int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescript
         if (ok != 0) {
             break;
         }
-        task.id = ::baidu::common::NumToString((uint32_t)i);
         tasks.push_back(task);
     }
 
@@ -612,12 +620,21 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     }
 
     //version
-    if (!doc.HasMember("version")) {
+    /*if (!doc.HasMember("version")) {
         fprintf(stderr, "version is required in config\n");
         return -1;
     }
     job->version = doc["version"].GetString();
-    boost::trim(job->version);
+    boost::trim(job->version);*/
+
+    //run_user
+    /*if (!doc.HasMember("run_user")) {
+        fprintf(stderr, "run_user is required in config\n");
+        return -1;
+    }
+    job->run_user = doc["run_user"].GetString();
+    boost::trim(job->run_user);*/
+    job->run_user = "galaxy";
 
     ::baidu::galaxy::sdk::Deploy& deploy = job->deploy;
 

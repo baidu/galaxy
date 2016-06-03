@@ -20,20 +20,25 @@ public:
     JobAction();
     ~JobAction();
     bool SubmitJob(const std::string& json_file);
-    bool UpdateJob(const std::string& json_file, const std::string& jobid);
+    bool UpdateJob(const std::string& json_file, const std::string& jobid, 
+                        const std::string& operation, uint32_t update_break_count);
     bool StopJob(const std::string& jobid);
     bool RemoveJob(const std::string& jobid);
-    bool ListJobs();
+    bool ListJobs(const std::string& soptions);
     bool ShowJob(const std::string& jobid);
     bool ExecuteCmd(const std::string& jobid, const std::string& cmd);
 
 private:
     bool Init();
+    bool InitResman();
+    static void* ListContainers(void* param);
+    static void* ListJobs(void* param);
+    static void* ShowJob(void* param);
+    static void* ShowContainerGroup(void* param);
 private:
     ::baidu::galaxy::sdk::AppMaster* app_master_;
     ::baidu::galaxy::sdk::User user_;
     ::baidu::galaxy::sdk::ResourceManager* resman_;
-
 }; // end class JobAction
 
 } // end namespace client
