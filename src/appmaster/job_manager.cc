@@ -218,7 +218,7 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
             LOG(INFO) << "pod[" << pod->podid() << " heartbeat[" << 
                 pod->heartbeat_time() << "] now[" <<  ::baidu::common::timer::get_micros()
                 <<"] dead & remove. " << __FUNCTION__;
-            DestroyService(pod->services());
+            DestroyService(pod->mutable_services());
             delete pod;
         }
         return;
@@ -511,7 +511,7 @@ PodInfo* JobManager::CreatePod(Job* job,
     podinfo->set_endpoint(endpoint);
     podinfo->set_status(kPodDeploying);
     podinfo->set_start_time(::baidu::common::timer::get_micros());
-    podinfo->set_update_time(::baidu::common::timer::get_micros());
+    podinfo->set_update_time(job->update_time_);
     podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
     podinfo->set_fail_count(0);
     podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
@@ -587,7 +587,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
     }
     if (podinfo != NULL && podinfo->status() == kPodFinished) {
         job->pods_.erase(podinfo->podid());
-        DestroyService(podinfo->services());
+        DestroyService(podinfo->mutable_services());
         job->history_pods_[podinfo->podid()] = podinfo;
         rlt_code = kTerminate;
     } else if (podinfo != NULL && podinfo->status() == kPodFailed) {
@@ -672,58 +672,56 @@ bool JobManager::IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest) 
     return true;
 }
 
-void JobManager::RefreshService(ServiceList src, ServiceList dest) {
-    for (int i = 0; i < src.size(); i++) {
-        ServiceInfo src_serv = src.Get(i);
-        ServiceInfo dest_serv;
-        bool need_refresh_naming = false;
-        for (int j = 0; j < dest.size(); j++) {
-            dest_serv = dest.Get(j);
-            if (src_serv.name() != dest_serv.name()) {
-                continue;
-            } else if (!IsSerivceSame(src_serv, dest_serv)) {
-                need_refresh_naming = true;
-            }
-        }
-        if (src_serv.name() != dest_serv.name()) {
-            dest_serv = *(dest.Add());
-            LOG(INFO) << " add service : " << src_serv.name();
-            need_refresh_naming = true;
-        }
-        if (need_refresh_naming) {
-            dest_serv.CopyFrom(src_serv);
-            LOG(INFO) << "refresh service : "
-            << " name : " << src_serv.name()
-            << " ip : " << src_serv.ip()
-            << " port : " << src_serv.port()
-            << " status : " << src_serv.status();
-            //todo
-        }
-    }
-
-    for (int i = 0; i < dest.size(); i++) {
-        ServiceInfo src_serv = dest.Get(i);
-        ServiceInfo dest_serv;
-        for (int j = 0; j < src.size(); j++) {
-            dest_serv = src.Get(j);
-            if (src_serv.name() == dest_serv.name()) {
+void JobManager::RefreshService(ServiceList* src, PodInfo* pod) {
+    for (int i = 0; i < pod->services().size(); i++) {
+        bool found = false;
+        for (int j = 0; j < src->size(); j++) {
+            if (pod->services(i).name() == src->Get(j).name()) {
+                found = true;
                 break;
             }
         }
-        if (src_serv.name() != dest_serv.name()) {
-            dest.DeleteSubrange(i, 1);
+        if (!found) {
+            pod->mutable_services()->DeleteSubrange(i, 1);
             //todo
+        }
+    }
+    for (int i = 0; i < src->size(); i++) {
+        ServiceInfo src_serv = src->Get(i);
+        bool need_refresh_naming = false;
+        bool found = false;
+        for (int j = 0; j < pod->services().size(); j++) {
+            if (src_serv.name() != pod->services(j).name()) {
+                continue;
+            } else {
+                found = true;
+                if (!IsSerivceSame(src_serv, pod->services(j))) {
+                    pod->mutable_services(j)->CopyFrom(src_serv);
+                    need_refresh_naming = true;
+                    LOG(INFO) << "refresh service : "
+                    << " name : " << pod->services(j).name()
+                    << " ip : " << pod->services(j).ip()
+                    << " port : " << pod->services(j).port()
+                    << " status : " << pod->services(j).status();
+                }
+                break;
+            }
+        }
+        if (!found) {
+            pod->add_services()->CopyFrom(src_serv);
+            LOG(INFO) << " add service : " << src_serv.name();
+            need_refresh_naming = true;
         }
     }
     return;
 }
 
-void JobManager::DestroyService(ServiceList services) {
-    for (int i = 0; i < services.size(); i++) {
-        ServiceInfo serv = services.Get(i);
+void JobManager::DestroyService(ServiceList* services) {
+    for (int i = 0; i < services->size(); i++) {
+        ServiceInfo serv = services->Get(i);
         //todo
     }
-    services.Clear();
+    services->Clear();
     return;
 }
 
@@ -740,15 +738,16 @@ void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
     if (request->services().size() != 0) {
         LOG(INFO) << "DEBUG servie msg : "
         << request->DebugString();
-        RefreshService(request->services(), podinfo->services());
+        RefreshService(request->mutable_services(), podinfo);
     } else {
-        DestroyService(podinfo->services());
+        DestroyService(podinfo->mutable_services());
     }
     LOG(INFO) << "DEBUG: PodHeartBeat "
             << "refresh pod id : " << request->podid() << " status :"
             << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()
             << " last_normal_time : " << podinfo->last_normal_time()
             << " fail count : " << podinfo->fail_count()
+            << " services : " << podinfo->services().size()
             << "END DEBUG";
     return;
 }
@@ -975,6 +974,8 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
         PodInfo* pod = pod_it->second;
         job_info->add_pods()->CopyFrom(*pod);
     }
+    VLOG(10) << "DEBUG GetJobInfo: " << job_info->DebugString()
+        << "DEBUG END";
     return kOk;
 }
 

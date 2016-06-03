@@ -170,8 +170,8 @@ private:
                                 Job* job);
 
     bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
-    void RefreshService(ServiceList src, ServiceList dest);
-    void DestroyService(ServiceList services);
+    void RefreshService(ServiceList* src, PodInfo* pod);
+    void DestroyService(ServiceList* services);
 
 private:
     std::map<JobId, Job*> jobs_;
