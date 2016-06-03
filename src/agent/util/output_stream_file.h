@@ -17,7 +17,7 @@ public:
     OutputStreamFile(const std::string& path, const std::string& mode);
     ~OutputStreamFile();
     bool IsOpen();
-    void GetLastError(baidu::galaxy::util::ErrorCode& ec);
+    baidu::galaxy::util::ErrorCode GetLastError();
     baidu::galaxy::util::ErrorCode Write(const void* data, size_t& len);
 
 private:

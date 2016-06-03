@@ -119,7 +119,7 @@ struct VolumRequired {
     bool exclusive;
     bool use_symlink;
 };
-enum UpdateJobOprate {
+enum UpdateJobOperate {
     kUpdateJobStart = 1,
     kUpdateJobContinue = 2,
     kUpdateJobRollback = 3,
@@ -569,7 +569,7 @@ struct UpdateJobRequest {
     std::string jobid;
     std::string hostname;
     JobDescription job;
-    UpdateJobOprate oprate;
+    UpdateJobOperate operate;
 };
 struct UpdateJobResponse {
     ErrorCode error_code;

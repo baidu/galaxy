@@ -33,6 +33,7 @@ public:
     ~AppWorkerImpl();
     void PrepareEnvs();
     void Init();
+    void Quit();
 
 private:
     void FetchTask();
@@ -49,6 +50,7 @@ private:
     std::string endpoint_;
     std::string job_id_;
     std::string pod_id_;
+    bool quit_;
 
     RpcClient rpc_client_;
     InsSDK* nexus_;

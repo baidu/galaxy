@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include <thread.h>
-//#include <time.h>
-#include <sys/time.h>
 #include <tprinter.h>
 #include "galaxy_job_action.h"
 
@@ -44,9 +42,6 @@ bool JobAction::InitResman() {
 }
 
 bool JobAction::Init() {
-    struct timeval t_start;
-    gettimeofday(&t_start, NULL);
-
     std::string path = FLAGS_nexus_root + FLAGS_appmaster_path;
     app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(FLAGS_nexus_addr, path); 
     if (app_master_ == NULL) {
@@ -118,21 +113,21 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
             fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
             return false;
         }
-        request.oprate = baidu::galaxy::sdk::kUpdateJobStart;
+        request.operate = baidu::galaxy::sdk::kUpdateJobStart;
         request.job.deploy.update_break_count = update_break_count;
     } else if (operation.compare("continue") == 0) {
         fprintf(stderr, "breakpoint update continue\n");
-        request.oprate = baidu::galaxy::sdk::kUpdateJobContinue;
+        request.operate = baidu::galaxy::sdk::kUpdateJobContinue;
     } else if (operation.compare("rollback") == 0) {
         fprintf(stderr, "breakpoint update rollback\n");
-        request.oprate = baidu::galaxy::sdk::kUpdateJobRollback;
+        request.operate = baidu::galaxy::sdk::kUpdateJobRollback;
     } else if (operation.compare("default") == 0 || operation.empty()) {
         fprintf(stderr, "batch update default\n");
         if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
             fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
             return false;
         }
-        request.oprate = baidu::galaxy::sdk::kUpdateJobDefault;
+        request.operate = baidu::galaxy::sdk::kUpdateJobDefault;
     } else {
         fprintf(stderr, "update operation must be start, continue, rollback or default\n");
         return false;
@@ -638,12 +633,12 @@ bool JobAction::ShowJob(const std::string& jobid) {
                                   );
              } else {
                  desc_task.AddRow(7, "",
-                                      "",
-                                      "",
-                                      "",
-                                      "",
-                                      "",
-                                      sports.c_str()
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     "",
+                                     sports.c_str()
                                   );
              }
 
@@ -663,9 +658,9 @@ bool JobAction::ShowJob(const std::string& jobid) {
 
          printf("job description pod task [%u] exe_package infomation\n", i);
          printf("-----------------------------------------------\n");
-         printf("start_cmd: %s\n", response.job.desc.pod.tasks[i].exe_package.start_cmd.c_str());
-         printf("stop_cmd: %s\n", response.job.desc.pod.tasks[i].exe_package.stop_cmd.c_str());
-         printf("dest_path: %s\n", response.job.desc.pod.tasks[i].exe_package.package.dest_path.c_str());
+         printf("start_cmd: %s\n\n", response.job.desc.pod.tasks[i].exe_package.start_cmd.c_str());
+         printf("stop_cmd: %s\n\n", response.job.desc.pod.tasks[i].exe_package.stop_cmd.c_str());
+         printf("dest_path: %s\n\n", response.job.desc.pod.tasks[i].exe_package.package.dest_path.c_str());
          printf("version: %s\n", response.job.desc.pod.tasks[i].exe_package.package.version.c_str());
 
          printf("\njob description pod task [%u] data_package infomation\n", i);
