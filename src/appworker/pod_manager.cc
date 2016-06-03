@@ -25,6 +25,7 @@ PodManager::PodManager() :
         background_pool_(10) {
     pod_.status = proto::kPodPending;
     pod_.reload_status = proto::kPodPending;
+    pod_.fail_count = 0;
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopChangePodStatus, this)
@@ -182,15 +183,10 @@ int PodManager::DoCreatePod() {
         env.cgroup_subsystems = pod_.env.cgroup_subsystems;
         env.cgroup_paths = pod_.env.task_cgroup_paths[i];
         env.ports = pod_.env.task_ports[i];
+        env.workspace_path = pod_.env.workspace_path;
+        env.workspace_abspath = pod_.env.workspace_abspath;
 
-        if (pod_.desc.has_workspace_volum()
-                && pod_.desc.workspace_volum().has_dest_path()) {
-            env.workspace = pod_.desc.workspace_volum().dest_path();
-        } else {
-            env.workspace = "/";
-        }
-
-        LOG(INFO) << "task workspace: " << env.workspace;
+        LOG(INFO) << "task workspace: " << env.workspace_path;
 
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
 
