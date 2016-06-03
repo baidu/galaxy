@@ -54,6 +54,8 @@ struct Requirement {
     std::vector<proto::VolumRequired> volums;
     std::vector<proto::PortRequired> ports;
     std::string version;
+    std::vector<proto::TcpthrotRequired> tcp_throts;
+    std::vector<proto::BlkioRequired> blkios;
     Requirement() : max_per_host(0) {};
     int64_t CpuNeed() {
         int64_t total = 0;
@@ -87,6 +89,15 @@ struct Requirement {
         }
         return total;
     }
+    int64_t TmpfsNeed() {
+        int64_t total = 0;
+        for (size_t i = 0; i < volums.size(); i++) {
+            if (volums[i].medium() == proto::kTmpfs) {
+                total += volums[i].size();
+            }
+        }
+        return total;   
+    }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
 
@@ -108,6 +119,7 @@ struct Container {
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
     proto::ContainerInfo remote_info;
+    Container() : status(kContainerPending), last_res_err(proto::kResOk) {}
     typedef boost::shared_ptr<Container> Ptr;
 };
 
@@ -246,7 +258,7 @@ public:
     bool ChangeStatus(const ContainerGroupId& container_group_id,
                       const ContainerId& container_id,
                       ContainerStatus new_status);
-
+    void MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota& quota);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);

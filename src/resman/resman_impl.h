@@ -193,6 +193,14 @@ private:
                        const std::string& user_name,
                        const std::map<std::string, std::set<std::string> > & users_auth,
                        std::string& invalid_pool);
+    bool HasQuotaToCreate(const std::string& user,
+                          const proto::ContainerGroupMeta& meta,
+                          std::string& fail_reason);
+    bool HasQuotaToUpdate(const std::string& user,
+                          const proto::ContainerGroupMeta& old_meta,
+                          const proto::ContainerGroupMeta& new_meta,
+                          std::string& fail_reason);
+
     sched::Scheduler* scheduler_;
     InsSDK* nexus_;
     std::map<std::string, proto::AgentMeta> agents_;

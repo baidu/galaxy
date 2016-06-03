@@ -19,8 +19,10 @@ namespace galaxy {
 
 typedef proto::PodDescription PodDescription;
 typedef proto::PodStatus PodStatus;
+typedef proto::ServiceInfo ServiceInfo;
 
 struct PodEnv {
+    std::string user;
     std::string job_id;
     std::string pod_id;
     std::vector<std::string> task_ids;
@@ -45,6 +47,8 @@ struct Pod {
     PodStage stage;
     PodEnv env;
     PodDescription desc;
+    int32_t fail_count;
+    std::vector<ServiceInfo> services;
 };
 
 class PodManager {
@@ -70,6 +74,7 @@ private:
 
     void LoopChangePodStatus();
     void LoopChangePodReloadStatus();
+    void LoopCheckPodServiceStatus();
     void PendingPodCheck();
     void ReadyPodCheck();
     void DeployingPodCheck();

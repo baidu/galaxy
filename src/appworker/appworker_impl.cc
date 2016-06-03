@@ -20,7 +20,9 @@
 DECLARE_string(nexus_addr);
 DECLARE_string(nexus_root_path);
 DECLARE_string(appmaster_nexus_path);
+DECLARE_string(tag);
 DECLARE_string(appworker_exit_file);
+DECLARE_string(appworker_user_env);
 DECLARE_string(appworker_agent_hostname_env);
 DECLARE_string(appworker_agent_ip_env);
 DECLARE_string(appworker_agent_port_env);
@@ -63,6 +65,15 @@ AppWorkerImpl::~AppWorkerImpl() {
 }
 
 void AppWorkerImpl::PrepareEnvs() {
+    // 0.user
+    char* c_user = getenv(FLAGS_appworker_user_env.c_str());
+
+    if (NULL == c_user) {
+        LOG(WARNING) << FLAGS_appworker_user_env << " is  not set";
+        exit(-1);
+    }
+    std::string user = std::string(c_user);
+
     // 1.job_id
     char* c_job_id = getenv(FLAGS_appworker_job_id_env.c_str());
 
@@ -202,6 +213,7 @@ void AppWorkerImpl::PrepareEnvs() {
     }
 
     PodEnv env;
+    env.user = user;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
     env.task_ids = task_ids;
@@ -294,10 +306,24 @@ void AppWorkerImpl::FetchTask() {
     request->set_update_time(update_time_);
     request->set_status(pod.status);
     request->set_reload_status(pod.reload_status);
-    LOG(INFO) << "task status: " << proto::PodStatus_Name(pod.status);
+    request->set_fail_count(pod.fail_count);
+    LOG(INFO) << "pod status: " << proto::PodStatus_Name(pod.status);
+    LOG(INFO) << "fail count: " << pod.fail_count;
+
+    // copy services status
+    for (unsigned i = 0; i < pod.services.size(); ++i) {
+        request->add_services()->CopyFrom(pod.services[i]);
+    }
+
+    for (int j = 0; j < request->services().size(); ++j) {
+        LOG(INFO)
+                << "service: " << request->services(j).name() << ", "
+                << "port: " << request->services(j).port() << ", "
+                << "status: " << proto::Status_Name(request->services(j).status());
+    }
 
     if (kPodStageReloading == pod.stage) {
-        LOG(INFO) << "task reload_status: " << proto::PodStatus_Name(pod.reload_status);
+        LOG(INFO) << "pod reload_status: " << proto::PodStatus_Name(pod.reload_status);
     }
 
     boost::function<void (const FetchTaskRequest*, FetchTaskResponse*, bool, int)> fetch_task_callback;
@@ -306,6 +332,8 @@ void AppWorkerImpl::FetchTask() {
     rpc_client_.AsyncRequest(appmaster_stub_, &AppMaster_Stub::FetchTask,
                              request, response, fetch_task_callback,
                              FLAGS_appworker_fetch_task_timeout, 0);
+
+    return;
 }
 
 void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
@@ -350,7 +378,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
 
         // ignore expired actions
         if (!response->has_update_time()
-                || response->update_time() <= update_time_) {
+                || response->update_time() == update_time_) {
             LOG(WARNING) << "ignore expire action, current: " << update_time_;
             break;
         }
@@ -384,6 +412,7 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
         FLAGS_appworker_fetch_task_interval,
         boost::bind(&AppWorkerImpl::FetchTask, this)
     );
+
     return;
 }
 

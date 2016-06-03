@@ -14,6 +14,7 @@ DECLARE_string(nexus_addr);
 DECLARE_int32(master_job_check_interval);
 DECLARE_int32(master_pod_check_interval);
 DECLARE_int32(master_pod_dead_time);
+DECLARE_int32(master_fail_last_threshold);
 DECLARE_string(jobs_store_path);
 
 namespace baidu {
@@ -50,7 +51,7 @@ void JobManager::BuildFsm() {
     fsm_.insert(std::make_pair(BuildFsmKey(kJobPending, kFetch),
         BuildFsmValue(kJobRunning, boost::bind(&JobManager::StartJob, this, _1, _2))));
     fsm_.insert(std::make_pair(BuildFsmKey(kJobPending, kRemove),
-        BuildFsmValue(kJobFinished, boost::bind(&JobManager::RemoveJob, this, _1, _2))));
+        BuildFsmValue(kJobDestroying, boost::bind(&JobManager::RemoveJob, this, _1, _2))));
     fsm_.insert(std::make_pair(BuildFsmKey(kJobPending, kUpdate),
         BuildFsmValue(kJobUpdating, boost::bind(&JobManager::UpdateJob, this, _1, _2))));
     fsm_.insert(std::make_pair(BuildFsmKey(kJobRunning, kUpdate),
@@ -63,6 +64,15 @@ void JobManager::BuildFsm() {
         BuildFsmValue(kJobDestroying, boost::bind(&JobManager::RemoveJob, this, _1, _2))));
     fsm_.insert(std::make_pair(BuildFsmKey(kJobDestroying, kRemoveFinish),
         BuildFsmValue(kJobFinished, boost::bind(&JobManager::ClearJob, this, _1, _2))));
+    fsm_.insert(std::make_pair(BuildFsmKey(kJobPending, kBatchUpdate),
+        BuildFsmValue(kJobBatchUpdate, boost::bind(&JobManager::UpdateJob, this, _1, _2))));
+    fsm_.insert(std::make_pair(BuildFsmKey(kJobRunning, kBatchUpdate),
+        BuildFsmValue(kJobBatchUpdate, boost::bind(&JobManager::UpdateJob, this, _1, _2))));
+    fsm_.insert(std::make_pair(BuildFsmKey(kJobBatchUpdate, kUpdateContinue),
+        BuildFsmValue(kJobUpdating, boost::bind(&JobManager::ContinueUpdateJob, this, _1, _2))));
+    fsm_.insert(std::make_pair(BuildFsmKey(kJobBatchUpdate, kUpdateRollback),
+        BuildFsmValue(kJobUpdating, boost::bind(&JobManager::RollbackJob, this, _1, _2))));
+    
     for (FSM::iterator it = fsm_.begin(); it != fsm_.end(); it++) {
         LOG(INFO) << "key:" << it->first << " value: " << JobStatus_Name(it->second->next_status_);
     }
@@ -75,6 +85,7 @@ void JobManager::BuildDispatch() {
     dispatch_.insert(std::make_pair(JobStatus_Name(kJobUpdating), boost::bind(&JobManager::UpdatePod, this, _1, _2)));
     dispatch_.insert(std::make_pair(JobStatus_Name(kJobDestroying), boost::bind(&JobManager::DistroyPod, this, _1, _2)));
     dispatch_.insert(std::make_pair(JobStatus_Name(kJobFinished), boost::bind(&JobManager::DistroyPod, this, _1, _2)));
+    dispatch_.insert(std::make_pair(JobStatus_Name(kJobBatchUpdate), boost::bind(&JobManager::BatchUpdatePod, this, _1, _2)));
     return;
 }
 
@@ -84,6 +95,7 @@ void JobManager::BuildAging() {
     aging_.insert(std::make_pair(JobStatus_Name(kJobUpdating), boost::bind(&JobManager::CheckUpdating, this, _1)));
     aging_.insert(std::make_pair(JobStatus_Name(kJobDestroying), boost::bind(&JobManager::CheckDestroying, this, _1)));
     aging_.insert(std::make_pair(JobStatus_Name(kJobFinished), boost::bind(&JobManager::CheckClear, this, _1)));
+    aging_.insert(std::make_pair(JobStatus_Name(kJobBatchUpdate), boost::bind(&JobManager::CheckBatchUpdate, this, _1)));
     return;
 }
 
@@ -93,6 +105,11 @@ void JobManager::CheckPending(Job* job) {
 }
 
 void JobManager::CheckRunning(Job* job) {
+    mutex_.AssertHeld();
+    return;
+}
+
+void JobManager::CheckBatchUpdate(Job* job) {
     mutex_.AssertHeld();
     return;
 }
@@ -150,6 +167,12 @@ void JobManager::CheckDestroying(Job* job) {
 void JobManager::CheckClear(Job* job) {
     mutex_.AssertHeld();
     VLOG(10) << "DEBUG: CheckClear ";
+    for (std::map<PodId, PodInfo*>::iterator it = job->history_pods_.begin();
+        it != job->history_pods_.end(); it++) {
+        PodInfo* podinfo = it->second;
+        job->history_pods_.erase(it->first);
+        delete podinfo;
+    }
     JobId id = job->id_;
     std::map<JobId, Job*>::iterator job_it = jobs_.find(id);
     if (job_it != jobs_.end()) {
@@ -196,7 +219,7 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
         }
         return;
     }
-    pod_checker_.DelayTask(FLAGS_master_pod_check_interval,
+    pod_checker_.DelayTask(FLAGS_master_pod_check_interval * 1000,
         boost::bind(&JobManager::CheckPodAlive, this, pod, job));
     return;
 }
@@ -210,19 +233,19 @@ Status JobManager::Add(const JobId& job_id, const JobDescription& job_desc) {
     if (!job->desc_.has_version()) {
         job->desc_.set_version("1.0.0");
     }
-    job->job_descs_[job_desc.version()].CopyFrom(job_desc);
-    job->curent_version_ = job_desc.version();
+    job->last_desc_.CopyFrom(job_desc);
     job->action_type_ = kActionNull;
 
     job->create_time_ = ::baidu::common::timer::get_micros();
     job->update_time_ = ::baidu::common::timer::get_micros();
+    job->rollback_time_ = ::baidu::common::timer::get_micros();
     SaveToNexus(job);   
     MutexLock lock(&mutex_); 
     jobs_[job_id] = job;
     job_checker_.DelayTask(FLAGS_master_job_check_interval * 1000, boost::bind(&JobManager::CheckJobStatus, this, job));
     LOG(INFO) << "job[" << job_id << "] jobname[" << job_desc.name() 
         <<"] step[" << job_desc.deploy().step() << "] replica[" 
-        << job_desc.deploy().replica() << "] version[" << job->curent_version_ << "] "
+        << job_desc.deploy().replica() << "]"
         << "submitted" << __FUNCTION__;
     return kOk;
 }
@@ -251,6 +274,93 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc) {
     } else {
         LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
             << "] reject event [" << JobEvent_Name(kUpdate) << "]" << __FUNCTION__;
+        return kStatusConflict;
+    }
+    return kOk;
+}
+
+Status JobManager::BatchUpdate(const JobId& job_id, const JobDescription& job_desc) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator it;
+    it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        LOG(WARNING) << "batch update job " << job_id << "failed."
+        << "job not found" << __FUNCTION__;
+        return kJobNotFound;
+    }
+    Job* job = it->second;
+    std::string fsm_key = BuildFsmKey(job->status_, kBatchUpdate);
+    std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
+    if (fsm_it != fsm_.end()) {
+        Status rlt = fsm_it->second->trans_func_(job, (void*)&job_desc);
+        if (kOk != rlt) {
+            return rlt;
+        }
+        job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
+        SaveToNexus(job);
+    } else {
+        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+            << "] reject event [" << JobEvent_Name(kBatchUpdate) << "]" << __FUNCTION__;
+        return kStatusConflict;
+    }
+    return kOk;
+}
+
+Status JobManager::ContinueUpdate(const JobId& job_id) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator it;
+    it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        LOG(WARNING) << "continue update job " << job_id << "failed."
+        << "job not found" << __FUNCTION__;
+        return kJobNotFound;
+    }
+    Job* job = it->second;
+    std::string fsm_key = BuildFsmKey(job->status_, kUpdateContinue);
+    std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
+    if (fsm_it != fsm_.end()) {
+        Status rlt = fsm_it->second->trans_func_(job, NULL);
+        if (kOk != rlt) {
+            return rlt;
+        }
+        job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
+        SaveToNexus(job);
+    } else {
+        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+            << "] reject event [" << JobEvent_Name(kUpdateContinue) << "]" << __FUNCTION__;
+        return kStatusConflict;
+    }
+    return kOk;
+}
+
+Status JobManager::Rollback(const JobId& job_id) {
+    MutexLock lock(&mutex_);
+    std::map<JobId, Job*>::iterator it;
+    it = jobs_.find(job_id);
+    if (it == jobs_.end()) {
+        LOG(WARNING) << "rollback job " << job_id << "failed."
+        << "job not found" << __FUNCTION__;
+        return kJobNotFound;
+    }
+    Job* job = it->second;
+    std::string fsm_key = BuildFsmKey(job->status_, kUpdateRollback);
+    std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
+    if (fsm_it != fsm_.end()) {
+        Status rlt = fsm_it->second->trans_func_(job, NULL);
+        if (kOk != rlt) {
+            return rlt;
+        }
+        job->status_ = fsm_it->second->next_status_;
+        LOG(INFO) << "job[" << job->id_ << "] status trans to : " << 
+        JobStatus_Name(job->status_);
+        SaveToNexus(job);
+    } else {
+        LOG(INFO) << "job[" << job->id_ << "][" << JobStatus_Name(job->status_) 
+            << "] reject event [" << JobEvent_Name(kUpdateRollback) << "]" << __FUNCTION__;
         return kStatusConflict;
     }
     return kOk;
@@ -298,9 +408,9 @@ Status JobManager::RecoverJob(Job* job, void* arg) {
 Status JobManager::UpdateJob(Job* job, void* arg) {
     mutex_.AssertHeld();
     JobDescription* desc = (JobDescription*)arg;
+    job->rollback_time_ = job->update_time_;
     job->update_time_ = ::baidu::common::timer::get_micros();
-    job->curent_version_ = desc->version();
-    job->job_descs_[desc->version()] = *desc;
+    job->last_desc_.CopyFrom(job->desc_);
     if (desc->pod().tasks_size() != job->desc_.pod().tasks_size()) {
         job->action_type_ = kActionRebuild;
         LOG(INFO) << "job : " << job->id_ << "set act_type : rebuild" << __FUNCTION__;     
@@ -333,14 +443,20 @@ Status JobManager::UpdateJob(Job* job, void* arg) {
             }
         }
     }
-    /*
-    for (std::map<std::string, PodInfo*>::iterator it = job->pods_.begin();
-        it != job->pods_.end(); it++) {
-        it->second->set_update_time(job->update_time_);
-    }
-    */
     job->desc_.CopyFrom(*desc);
     LOG(INFO) << "job desc update success: %s" << desc->name();
+    return kOk;
+}
+
+Status JobManager::ContinueUpdateJob(Job* job, void* arg) {
+    mutex_.AssertHeld();
+    return kOk;
+}
+
+Status JobManager::RollbackJob(Job* job, void* arg) {
+    mutex_.AssertHeld();
+    job->update_time_ = job->rollback_time_;
+    job->desc_.CopyFrom(job->last_desc_);
     return kOk;
 }
 
@@ -390,12 +506,13 @@ PodInfo* JobManager::CreatePod(Job* job,
     podinfo->set_jobid(job->id_);
     podinfo->set_endpoint(endpoint);
     podinfo->set_status(kPodDeploying);
-    podinfo->set_version(job->curent_version_);
     podinfo->set_start_time(::baidu::common::timer::get_micros());
     podinfo->set_update_time(job->update_time_);
     podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
+    podinfo->set_fail_count(0);
+    podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
     job->pods_[podid] = podinfo;
-    pod_checker_.DelayTask(FLAGS_master_pod_check_interval*1000,
+    pod_checker_.DelayTask(FLAGS_master_pod_check_interval * 1000,
         boost::bind(&JobManager::CheckPodAlive, this, podinfo, job));
     LOG(INFO) << "DEBUG: CreatePod " << podinfo->DebugString()
     << "END DEBUG";
@@ -406,9 +523,10 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
     mutex_.AssertHeld();
     proto::FetchTaskRequest* request = (proto::FetchTaskRequest*)arg;
     std::map<std::string, PodInfo*>::iterator pod_it = job->pods_.find(request->podid());
-    //heartbeat
+    Status rlt_code = kOk;
+    PodInfo* podinfo = NULL;
     if (pod_it != job->pods_.end()) {
-        PodInfo* podinfo = pod_it->second;
+        podinfo = pod_it->second;
         //repeated fetch from different worker
         if (podinfo->endpoint() != request->endpoint()) {  
             //abandon worker request
@@ -416,65 +534,200 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
                 LOG(WARNING) << "DEBUG: PodHeartBeat "
                 << "abandon worker : " << request->endpoint()
                 << "END DEBUG";
-                return kTerminate;
+                rlt_code = kTerminate;
+            } else {
+                //worker replace
+                podinfo->set_endpoint(request->endpoint());
+                podinfo->set_status(kPodDeploying);
+                podinfo->set_start_time(request->start_time());
+                podinfo->set_update_time(job->update_time_);
+                podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
+                podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
+                podinfo->set_fail_count(request->fail_count());
+                LOG(INFO) << "DEBUG: PodHeartBeat "
+                    << "new worker : " << request->endpoint()
+                    << "END DEBUG";
+                rlt_code = kOk;
             }
-            //worker replace
-            podinfo->set_endpoint(request->endpoint());
-            podinfo->set_status(kPodDeploying);
-            podinfo->set_version(job->curent_version_);
-            podinfo->set_start_time(request->start_time());
-            podinfo->set_update_time(job->update_time_);
-            podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
-            LOG(INFO) << "DEBUG: PodHeartBeat "
-                << "new worker : " << request->endpoint()
-                << "END DEBUG";
-            return kOk;
-        }
+        } else {
         //refresh
+            podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
+            podinfo->set_fail_count(request->fail_count());
+            podinfo->set_status(request->status());
+            LOG(INFO) << "DEBUG: PodHeartBeat "
+                    << "refresh pod id : " << request->podid() << " status :"
+                    << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()
+                    << "END DEBUG";
+            if (request->status() >= kPodServing &&
+                job->deploying_pods_.find(request->podid()) != 
+                job->deploying_pods_.end()) {
+                job->deploying_pods_.erase(request->podid());
+            }
+            if (request->fail_count() == 0) {
+                podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
+            }
+            rlt_code = kOk;
+        }
+    } else {
+        //interval control
+        if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
+            LOG(WARNING) << "DEBUG: fetch task deny "
+            << " deploying: " << job->deploying_pods_.size()
+            << " step: " << job->desc_.deploy().step();
+            rlt_code = kSuspend;
+        } else if (job->pods_.size() >= job->desc_.deploy().replica()) {
+            LOG(WARNING) << "DEBUG: fetch task deny "
+            << " pod cnt: " << job->pods_.size() 
+            << " replica: " << job->desc_.deploy().replica();
+            rlt_code = kTerminate;
+        } else if (request->status() != kPodPending) {
+            LOG(INFO) << "DEBUG: rebuild previous pod "
+            << " jobid: " << request->jobid()
+            << " podid: " << request->podid()
+            << " endpoint: " << request->endpoint()
+            << " END DEBUG";
+            podinfo = CreatePod(job, request->podid(), request->endpoint());
+            podinfo->set_status(request->status());
+            podinfo->set_start_time(request->start_time());
+            rlt_code = kOk;
+        } else { 
+            podinfo = CreatePod(job, request->podid(), request->endpoint());
+            job->deploying_pods_.insert(podinfo->podid());
+            rlt_code = kOk;
+        }
+    }
+    if (podinfo != NULL && podinfo->status() == kPodFinished) {
+        job->pods_.erase(podinfo->podid());
+        job->history_pods_[podinfo->podid()] = podinfo;
+        rlt_code = kTerminate;
+    } else if (podinfo != NULL && podinfo->status() == kPodFailed) {
+        if (::baidu::common::timer::get_micros() - podinfo->last_normal_time() > 
+            FLAGS_master_fail_last_threshold * 1000) {
+            rlt_code = kRebuild;
+        } else {
+            rlt_code = kSuspend;
+        }
+    }
+    return rlt_code;
+}
+
+Status JobManager::BatchUpdatePod(Job* job, void* arg) {
+    mutex_.AssertHeld();
+    ::baidu::galaxy::proto::FetchTaskRequest* request =
+    (::baidu::galaxy::proto::FetchTaskRequest*)arg;
+    std::map<std::string, PodInfo*>::iterator pod_it = job->pods_.find(request->podid());
+    Status rlt_code = kOk;
+    PodInfo* podinfo = NULL;
+    //exsist pod
+    if (pod_it != job->pods_.end()) {
+        //refresh
+        podinfo = pod_it->second;
         podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
+        podinfo->set_fail_count(request->fail_count());
+        if (request->fail_count() == 0) {
+            podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
+        }
         podinfo->set_status(request->status());
         LOG(INFO) << "DEBUG: PodHeartBeat "
                 << "refresh pod id : " << request->podid() << " status :"
                 << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()
                 << "END DEBUG";
         if (request->status() >= kPodServing &&
-            job->deploying_pods_.find(request->podid()) != 
-            job->deploying_pods_.end()) {
-            job->deploying_pods_.erase(request->podid());
+                job->deploying_pods_.find(request->podid()) != 
+                job->deploying_pods_.end()) {
+                job->deploying_pods_.erase(request->podid());
         }
-        return kOk;
+        //update process
+        if (job->update_time_ != request->update_time()) {  
+            if (job->action_type_ == kActionNull) {
+                rlt_code = kOk;
+            } else if (job->action_type_ == kActionRebuild) {
+                //interval control
+                if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
+                    LOG(WARNING) << "DEBUG: fetch task suspend "
+                    << " deploying: " << job->deploying_pods_.size()
+                    << " step: " << job->desc_.deploy().step();
+                    rlt_code = kSuspend;
+                } else {
+                    std::map<PodId, PodInfo*>::iterator it = job->pods_.begin();
+                    uint32_t updated_cnt = 0;
+                    for (; it != job->pods_.end(); it++) {
+                        PodInfo* pod_ptr = it->second;
+                        if (pod_ptr->update_time() == job->update_time_) {
+                            updated_cnt++;
+                        }
+                    }
+                    if (updated_cnt < job->desc_.deploy().update_break_count()) {
+                        rlt_code = kRebuild;
+                        job->deploying_pods_.insert(podinfo->podid());
+                    } else {
+                        rlt_code = kSuspend;
+                    }
+                }
+            } else if (job->action_type_ == kActionReload) {
+                //interval control
+                if (job->reloading_pods_.size() >= job->desc_.deploy().step()) {
+                    LOG(WARNING) << "DEBUG: fetch task suspend "
+                    << " reloading: " << job->reloading_pods_.size()
+                    << " step: " << job->desc_.deploy().step();
+                    rlt_code = kSuspend;
+                } else {
+                    rlt_code = kReload;
+                    job->reloading_pods_.insert(podinfo->podid());
+                }
+            } else {
+                rlt_code = kError;
+            }
+            LOG(INFO) << "pod : " << request->podid() << "update status :" 
+            << Status_Name(rlt_code) << " " << __FUNCTION__;
+        } else {
+            podinfo->set_update_time(job->update_time_);
+        }
+    } else {
+        //interval control
+        if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
+            LOG(WARNING) << "DEBUG: fetch task deny "
+            << " deploying: " << job->deploying_pods_.size()
+            << " step: " << job->desc_.deploy().step();
+            rlt_code = kSuspend;
+        } else if (job->pods_.size() >= job->desc_.deploy().replica()) {
+            //replica control
+            LOG(WARNING) << "DEBUG: fetch task deny "
+            << " pod cnt: " << job->pods_.size() 
+            << " replica: " << job->desc_.deploy().replica();
+            rlt_code = kTerminate;
+        } else if (request->status() != kPodPending) {
+            //previous pod       
+            LOG(INFO) << "DEBUG: rebuild previous pod "
+            << " jobid: " << request->jobid()
+            << " podid: " << request->podid()
+            << " endpoint: " << request->endpoint()
+            << " END DEBUG";
+            podinfo = CreatePod(job, request->podid(), request->endpoint());
+            podinfo->set_status(request->status());
+            podinfo->set_start_time(request->start_time());
+            std::map<PodId, PodInfo*>::iterator it = job->pods_.begin();
+            uint32_t updated_cnt = 0;
+            for (; it != job->pods_.end(); it++) {
+                PodInfo* pod_ptr = it->second;
+                if (pod_ptr->update_time() == job->update_time_) {
+                    updated_cnt++;
+                }
+            }
+            if (updated_cnt < job->desc_.deploy().update_break_count()) {
+                rlt_code = kRebuild;
+                job->deploying_pods_.insert(podinfo->podid());
+            } else {
+                rlt_code = kSuspend;
+            }
+        } else {
+            //new pod
+            podinfo = CreatePod(job, request->podid(), request->endpoint());
+            job->deploying_pods_.insert(podinfo->podid());
+            rlt_code = kOk;
+        }
     }
-    //interval control
-    if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
-        LOG(WARNING) << "DEBUG: fetch task deny "
-        << " deploying: " << job->deploying_pods_.size()
-        << " step: " << job->desc_.deploy().step();
-        return kSuspend;
-    }
-    // replica
-    if (job->pods_.size() >= job->desc_.deploy().replica()) {
-        LOG(WARNING) << "DEBUG: fetch task deny "
-        << " pod cnt: " << job->pods_.size() 
-        << " replica: " << job->desc_.deploy().replica();
-        return kTerminate;
-    }
-
-    //previous pod 
-    if (request->status() != kPodPending) {
-        LOG(INFO) << "DEBUG: rebuild previous pod "
-        << " jobid: " << request->jobid()
-        << " podid: " << request->podid()
-        << " endpoint: " << request->endpoint()
-        << " END DEBUG";
-        PodInfo* pod = CreatePod(job, request->podid(), request->endpoint());
-        pod->set_status(request->status());
-        pod->set_start_time(request->start_time());
-        return kOk;
-    } else { 
-        PodInfo* pod = CreatePod(job, request->podid(), request->endpoint());
-        job->deploying_pods_.insert(pod->podid());
-        return kOk;
-    }
+    return rlt_code;
 }
 
 Status JobManager::UpdatePod(Job* job, void* arg) {
@@ -482,31 +735,35 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
     ::baidu::galaxy::proto::FetchTaskRequest* request =
     (::baidu::galaxy::proto::FetchTaskRequest*)arg;
     std::map<std::string, PodInfo*>::iterator pod_it = job->pods_.find(request->podid());
-    
+    Status rlt_code = kOk;
+    PodInfo* podinfo = NULL;
     //exsist pod
     if (pod_it != job->pods_.end()) {
         //refresh
-        PodInfo* podinfo = pod_it->second;
+        podinfo = pod_it->second;
         podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
+        podinfo->set_fail_count(request->fail_count());
+        if (request->fail_count() == 0) {
+            podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
+        }
         podinfo->set_status(request->status());
         LOG(INFO) << "DEBUG: PodHeartBeat "
                 << "refresh pod id : " << request->podid() << " status :"
                 << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()
                 << "END DEBUG";
         if (request->status() >= kPodServing &&
-            job->deploying_pods_.find(request->podid()) != 
-            job->deploying_pods_.end()) {
-            job->deploying_pods_.erase(request->podid());
+                job->deploying_pods_.find(request->podid()) != 
+                job->deploying_pods_.end()) {
+                job->deploying_pods_.erase(request->podid());
         }
         //update process
-        Status rlt_code = kOk;
-        if (job->update_time_ > request->update_time()) {  
+        if (job->update_time_ != request->update_time()) {  
             if (job->action_type_ == kActionNull) {
                 rlt_code = kOk;
             } else if (job->action_type_ == kActionRebuild) {
                 //interval control
                 if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
-                    LOG(WARNING) << "DEBUG: fetch task deny "
+                    LOG(WARNING) << "DEBUG: fetch task suspend "
                     << " deploying: " << job->deploying_pods_.size()
                     << " step: " << job->desc_.deploy().step();
                     rlt_code = kSuspend;
@@ -515,49 +772,56 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
                     job->deploying_pods_.insert(podinfo->podid());
                 }
             } else if (job->action_type_ == kActionReload) {
-                rlt_code = kReload;
+                //interval control
+                if (job->reloading_pods_.size() >= job->desc_.deploy().step()) {
+                    LOG(WARNING) << "DEBUG: fetch task suspend "
+                    << " reloading: " << job->reloading_pods_.size()
+                    << " step: " << job->desc_.deploy().step();
+                    rlt_code = kSuspend;
+                } else {
+                    rlt_code = kReload;
+                    job->reloading_pods_.insert(podinfo->podid());
+                }
             } else {
                 rlt_code = kError;
             }
             LOG(INFO) << "pod : " << request->podid() << "update status :" 
             << Status_Name(rlt_code) << " " << __FUNCTION__;
         } else {
-            podinfo->set_version(job->curent_version_);
             podinfo->set_update_time(job->update_time_);
         }
-        return rlt_code;
-    }
-    //interval control
-    if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
-        LOG(WARNING) << "DEBUG: fetch task deny "
-        << " deploying: " << job->deploying_pods_.size()
-        << " step: " << job->desc_.deploy().step();
-        return kSuspend;
-    }
-    //replica control
-    if (job->pods_.size() >= job->desc_.deploy().replica()) {
-        LOG(WARNING) << "DEBUG: fetch task deny "
-        << " pod cnt: " << job->pods_.size() 
-        << " replica: " << job->desc_.deploy().replica();
-        return kTerminate;
-    }
-    //previous pod
-    if (request->status() != kPodPending) {
-        LOG(INFO) << "DEBUG: rebuild previous pod "
-        << " jobid: " << request->jobid()
-        << " podid: " << request->podid()
-        << " endpoint: " << request->endpoint()
-        << " END DEBUG";
-        PodInfo* pod = CreatePod(job, request->podid(), request->endpoint());
-        pod->set_status(request->status());
-        pod->set_start_time(request->start_time());
-        return kRebuild;
     } else {
-        //new pod
-        PodInfo* pod = CreatePod(job, request->podid(), request->endpoint());
-        job->deploying_pods_.insert(pod->podid());
-        return kOk;
+        //interval control
+        if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
+            LOG(WARNING) << "DEBUG: fetch task deny "
+            << " deploying: " << job->deploying_pods_.size()
+            << " step: " << job->desc_.deploy().step();
+            rlt_code = kSuspend;
+        } else if (job->pods_.size() >= job->desc_.deploy().replica()) {
+            //replica control
+            LOG(WARNING) << "DEBUG: fetch task deny "
+            << " pod cnt: " << job->pods_.size() 
+            << " replica: " << job->desc_.deploy().replica();
+            rlt_code = kTerminate;
+        } else if (request->status() != kPodPending) {
+            //previous pod       
+            LOG(INFO) << "DEBUG: rebuild previous pod "
+            << " jobid: " << request->jobid()
+            << " podid: " << request->podid()
+            << " endpoint: " << request->endpoint()
+            << " END DEBUG";
+            podinfo = CreatePod(job, request->podid(), request->endpoint());
+            podinfo->set_status(request->status());
+            podinfo->set_start_time(request->start_time());
+            rlt_code = kRebuild;
+        } else {
+            //new pod
+            podinfo = CreatePod(job, request->podid(), request->endpoint());
+            job->deploying_pods_.insert(podinfo->podid());
+            rlt_code = kOk;
+        }
     }
+    return rlt_code;
 }
 
 Status JobManager::DistroyPod(Job* job, void* arg) {
@@ -614,11 +878,7 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
     job->user_.CopyFrom(job_info.user());
     job->desc_.CopyFrom(job_info.desc());
     job->id_ = job_info.jobid();
-    job->curent_version_ = job_info.version();
-    for (int32_t i = 0; i < job_info.descs_size(); i++) {
-        const JobDescription& desc = job_info.descs(i);
-        job->job_descs_[desc.version()] = desc;
-    }
+    job->last_desc_.CopyFrom(job_info.last_desc());
     job->create_time_ = job_info.create_time();
     job->update_time_ = job_info.update_time();
     job->action_type_ = job_info.action();
@@ -649,7 +909,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         overview->set_running_num(state_stat[kPodRunning]);
         overview->set_deploying_num(state_stat[kPodDeploying] + state_stat[kPodStarting] + state_stat[kPodReady]);
         overview->set_death_num(state_stat[kPodFinished] + state_stat[kPodFailed] + state_stat[kPodStopping] +
-            state_stat[kPodTerminated]);
+            state_stat[kPodTerminated] + job->history_pods_.size());
         overview->set_pending_num(job->desc_.deploy().replica() - 
             overview->deploying_num() - overview->death_num() - overview->running_num());
         overview->set_create_time(job->create_time_);
@@ -672,10 +932,13 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
     job_info->set_status(job->status_);
     job_info->set_create_time(job->create_time_);
     job_info->set_update_time(job->update_time_);
-    job_info->set_version(job->curent_version_);
     job_info->mutable_desc()->CopyFrom(job->desc_);
     std::map<PodId, PodInfo*>::iterator pod_it = job->pods_.begin();
     for (; pod_it != job->pods_.end(); ++pod_it) {
+        PodInfo* pod = pod_it->second;
+        job_info->add_pods()->CopyFrom(*pod);
+    }
+    for (pod_it = job->history_pods_.begin(); pod_it != job->history_pods_.end(); ++pod_it) {
         PodInfo* pod = pod_it->second;
         job_info->add_pods()->CopyFrom(*pod);
     }
@@ -689,14 +952,10 @@ bool JobManager::SaveToNexus(const Job* job) {
     JobInfo job_info;
     job_info.set_jobid(job->id_);
     job_info.set_status(job->status_);
-    std::map<Version, JobDescription>::const_iterator it = job->job_descs_.begin();
-    for (; it != job->job_descs_.end(); it++) {
-        job_info.add_descs()->CopyFrom(it->second);
-    }
+    job_info.mutable_last_desc()->CopyFrom(job->last_desc_);
     job_info.mutable_desc()->CopyFrom(job->desc_);
     job_info.mutable_user()->CopyFrom(job->user_);
     job_info.set_action(job->action_type_);
-    job_info.set_version(job->curent_version_);
     job_info.set_create_time(job->create_time_);
     job_info.set_update_time(job->update_time_);
     std::string job_raw_data;

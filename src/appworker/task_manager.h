@@ -24,12 +24,14 @@ typedef proto::Package Package;
 typedef proto::ProcessStatus ProcessStatus;
 
 struct TaskEnv {
+    std::string user;
     std::string job_id;
     std::string pod_id;
     std::string task_id;
     std::vector<std::string> cgroup_subsystems;
     std::map<std::string, std::string> cgroup_paths;
     std::map<std::string, std::string> ports;
+    std::string workspace;
 };
 
 struct Task {

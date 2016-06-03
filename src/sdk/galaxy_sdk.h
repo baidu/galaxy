@@ -6,10 +6,6 @@
 #include <string>
 #include <stdint.h>
 #include <vector>
-#include "rpc/rpc_client.h"
-#include "ins_sdk.h"
-//#include "protocol/resman.pb.h"
-//#include "protocol/galaxy.pb.h"
 
 namespace baidu {
 namespace galaxy {
@@ -30,20 +26,20 @@ struct Quota {
     int64_t replica;
 };
 enum Authority {
-    kAuthorityCreateContainer=1,
-    kAuthorityRemoveContainer=2,
-    kAuthorityUpdateContainer=3,
-    kAuthorityListContainer=4,
-    kAuthoritySubmitJob=5,
-    kAuthorityRemoveJob=6,
-    kAuthorityUpdateJob=7,
-    kAuthorityListJobs=8,
+    kAuthorityCreateContainer = 1,
+    kAuthorityRemoveContainer = 2,
+    kAuthorityUpdateContainer = 3,
+    kAuthorityListContainer = 4,
+    kAuthoritySubmitJob = 5,
+    kAuthorityRemoveJob = 6,
+    kAuthorityUpdateJob = 7,
+    kAuthorityListJobs = 8,
 };
 enum AuthorityAction {
-    kActionAdd=1,
-    kActionRemove=2,
-    kActionSet=3,
-    kActionClear=4,
+    kActionAdd = 1,
+    kActionRemove = 2,
+    kActionSet = 3,
+    kActionClear = 4,
 };
 struct Grant {
     std::string pool;
@@ -56,10 +52,10 @@ struct Resource {
     int64_t used;
 };
 enum VolumMedium {
-    kSsd=1,
-    kDisk=2,
-    kBfs=3,
-    kTmpfs=4,
+    kSsd= 1,
+    kDisk= 2,
+    kBfs= 3,
+    kTmpfs= 4,
 };
 
 enum ResourceError {
@@ -110,8 +106,8 @@ struct PortRequired {
     std::string real_port;
 };
 enum VolumType {
-    kEmptyDir=1,
-    kHostDir=2,
+    kEmptyDir = 1,
+    kHostDir = 2,
 };
 struct VolumRequired {
     int64_t size;
@@ -123,37 +119,45 @@ struct VolumRequired {
     bool exclusive;
     bool use_symlink;
 };
+enum UpdateJobOprate {
+    kUpdateJobStart = 1,
+    kUpdateJobContinue = 2,
+    kUpdateJobRollback = 3,
+    kUpdateJobDefault = 4,
+};
 enum JobType {
-    kJobMonitor=0,
-    kJobService=100,
-    kJobBatch=200,
-    kJobBestEffort=300,
+    kJobMonitor = 0,
+    kJobService = 100,
+    kJobBatch = 200,
+    kJobBestEffort = 300,
 };
 enum JobStatus {
-    kJobPending=1,
-    kJobRunning=2,
-    kJobFinished=3,
-    kJobDestroying=4,
+    kJobPending = 1,
+    kJobRunning = 2,
+    kJobFinished = 3,
+    kJobDestroying = 4,
+    kJobUpdating = 5,
+    kJobBatchUpdate = 6,
 };
 enum PodStatus {
-    kPodPending=1,
-    kPodReady=2,
-    kPodDeploying=3,
-    kPodStarting=4,
-    kPodServing=5,
-    kPodFailed=6,
-    kPodFinished=7,
+    kPodPending = 1,
+    kPodReady = 2,
+    kPodDeploying = 3,
+    kPodStarting = 4,
+    kPodServing = 5,
+    kPodFailed = 6,
+    kPodFinished = 7,
     kPodRunning = 8,
     kPodStopping = 9,
     kPodTerminated = 10,
 };
 enum TaskStatus {
-    kTaskPending=1,
-    kTaskDeploying=2,
-    kTaskStarting=3,
-    kTaskServing=4,
-    kTaskFailed=5,
-    kTaskFinished=6,
+    kTaskPending = 1,
+    kTaskDeploying = 2,
+    kTaskStarting = 3,
+    kTaskServing = 4,
+    kTaskFailed = 5,
+    kTaskFinished = 6,
 };
 struct Package {
     std::string source_path;
@@ -176,6 +180,7 @@ struct Deploy {
     uint32_t max_per_host;
     std::string tag;
     std::vector<std::string> pools;
+    uint32_t update_break_count;
 };
 struct Service {
     std::string service_name;
@@ -227,17 +232,17 @@ struct ContainerDescription {
     std::vector<std::string> pool_names;
 };
 enum ContainerStatus {
-    kContainerPending=1,
-    kContainerAllocating=2,
-    kContainerReady=3,
+    kContainerPending = 1,
+    kContainerAllocating = 2,
+    kContainerReady = 3,
     kContainerFinish = 4,      // finish , when appworker exit with code 0
-    kContainerError=5,
-    kContainerDestroying=6,
-    kContainerTerminated=7,
+    kContainerError = 5,
+    kContainerDestroying = 6,
+    kContainerTerminated = 7,
 };
 enum ContainerGroupStatus {
-    kContainerGroupNormal=1,
-    kContainerGroupTerminated=2,
+    kContainerGroupNormal = 1,
+    kContainerGroupTerminated = 2,
 };
 struct ContainerInfo {
     std::string id;
@@ -270,10 +275,10 @@ struct ErrorCode {
     std::string reason;
 };
 enum AgentStatus {
-    kAgentUnkown=0,
-    kAgentAlive=1,
-    kAgentDead=2,
-    kAgentOffline=3,
+    kAgentUnkown = 0,
+    kAgentAlive = 1,
+    kAgentDead = 2,
+    kAgentOffline = 3,
 };
 struct AgentInfo {
     std::string version;
@@ -564,6 +569,7 @@ struct UpdateJobRequest {
     std::string jobid;
     std::string hostname;
     JobDescription job;
+    UpdateJobOprate oprate;
 };
 struct UpdateJobResponse {
     ErrorCode error_code;
