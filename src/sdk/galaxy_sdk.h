@@ -608,6 +608,13 @@ struct ShowJobRequest {
     std::string jobid;
 };
 
+struct ServiceInfo {
+    std::string name;
+    std::string port;
+    std::string ip;
+    Status status;
+};
+
 struct PodInfo {
     std::string podid;
     std::string jobid;
@@ -617,6 +624,7 @@ struct PodInfo {
     int64_t start_time;
     int64_t update_time;
     int32_t fail_count;
+    std::vector<ServiceInfo> services;
 };
 struct JobInfo {
     std::string jobid;
