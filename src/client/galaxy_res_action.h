@@ -21,7 +21,7 @@ public:
     bool CreateContainerGroup(const std::string& json_file);
     bool UpdateContainerGroup(const std::string& json_file, const std::string& id);
     bool RemoveContainerGroup(const std::string& id);
-    bool ListContainerGroups();
+    bool ListContainerGroups(const std::string& soptions);
     bool ShowContainerGroup(const std::string& id);
     bool AddAgent(const std::string& pool, const std::string& endpoint);
     bool RemoveAgent(const std::string& endpoint);
@@ -45,12 +45,11 @@ public:
                    const std::string& pool, const std::string& opration, 
                    const std::string& authority);
     bool AssignQuota(const std::string& user,
-                     const std::string& token,
                      uint32_t millicores,
                      const std::string& memory,
                      const std::string& disk,
                      const std::string& ssd,
-                     int replica
+                     uint32_t replica
                   );
     bool Preempt(const std::string& container_group_id, const std::string& endpoint);
 

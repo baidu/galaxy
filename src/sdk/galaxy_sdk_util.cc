@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "galaxy_sdk_util.h"
+#include "string_util.h"
 
 #ifndef GALAXY_SDK_UTIL_H
 #define GALAXY_SDK_UTIL_H
@@ -11,18 +12,34 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
-void FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
+bool FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
+    if (sdk_user.user.empty()) {
+        fprintf(stderr, "user must not be empty\n");
+        return false;
+    }
+    if (sdk_user.token.empty()) {
+        fprintf(stderr, "token must not be empty\n");
+        return false;
+    }
     user->set_user(sdk_user.user);
     user->set_token(sdk_user.token);
+    return true;
 }
 
-void FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::VolumRequired* volum) {
+bool FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::VolumRequired* volum) {
+    if (sdk_volum.size <= 0) {
+        fprintf(stderr, "volum size must be greater than 0\n");
+        return false;
+    }
     volum->set_size(sdk_volum.size);
 
     if (sdk_volum.type == kEmptyDir) {
         volum->set_type(::baidu::galaxy::proto::kEmptyDir);
     } else if (sdk_volum.type == kHostDir) {
         volum->set_type(::baidu::galaxy::proto::kHostDir);
+    } else {
+        fprintf(stderr, "volum type must be kEmptyDir or kHostDir\n");
+        return false;
     }
 
     if (sdk_volum.medium == kSsd) {
@@ -33,156 +50,393 @@ void FillVolumRequired(const VolumRequired& sdk_volum, ::baidu::galaxy::proto::V
         volum->set_medium(baidu::galaxy::proto::kBfs);
     } else if (sdk_volum.medium == kTmpfs) {
         volum->set_medium(::baidu::galaxy::proto::kTmpfs);
+    } else {
+        fprintf(stderr, "volum medium must be kDisk, kBfs, kTmpfs\n");
+        return false;
     }
 
-    volum->set_source_path(sdk_volum.source_path);
+    volum->set_source_path(sdk_volum.source_path); //不需要赋值
+
+    if (sdk_volum.dest_path.empty()) {
+        fprintf(stderr, "volum dest_path must not be empty\n");
+        return false;
+    }
     volum->set_dest_path(sdk_volum.dest_path);
     volum->set_readonly(sdk_volum.readonly);
     volum->set_exclusive(sdk_volum.exclusive);
-    volum->set_use_symlink(sdk_volum.use_symlink);
-
+    //volum->set_use_symlink(sdk_volum.use_symlink);//暂时不支持，默认为false
+    volum->set_use_symlink(false);
+    return true;
 }
 
-void FillCpuRequired(const CpuRequired& sdk_cpu, 
+bool FillCpuRequired(const CpuRequired& sdk_cpu, 
                         ::baidu::galaxy::proto::CpuRequired* cpu) {
+    if (sdk_cpu.milli_core <= 0) {
+        fprintf(stderr, "cpu millicores must be greater than 0\n");
+        return false;
+    }
     cpu->set_milli_core(sdk_cpu.milli_core);
     cpu->set_excess(sdk_cpu.excess);
+    return true;
 }
-void FillMemRequired(const MemoryRequired& sdk_mem, 
+
+bool FillMemRequired(const MemoryRequired& sdk_mem, 
                         ::baidu::galaxy::proto::MemoryRequired* mem) {
+    if (sdk_mem.size <= 0) {
+        fprintf(stderr, "memory size must be greater than 0\n");
+        return false;
+    }
     mem->set_size(sdk_mem.size);
     mem->set_excess(sdk_mem.excess);
+    return true;
 }
-void FillTcpthrotRequired(const TcpthrotRequired& sdk_tcp,
+
+bool FillTcpthrotRequired(const TcpthrotRequired& sdk_tcp,
                         ::baidu::galaxy::proto::TcpthrotRequired* tcp) {
+    if (sdk_tcp.recv_bps_quota <= 0) {
+        fprintf(stderr, "tcp recv_bps_quota must be greater than 0\n");
+        return false;
+    }
     tcp->set_recv_bps_quota(sdk_tcp.recv_bps_quota);
     tcp->set_recv_bps_excess(sdk_tcp.recv_bps_excess);
+
+    if (sdk_tcp.send_bps_quota <= 0) {
+        fprintf(stderr, "tcp send_bps_quota must be greater than 0\n");
+        return false;
+    }
     tcp->set_send_bps_quota(sdk_tcp.send_bps_quota);
     tcp->set_send_bps_excess(sdk_tcp.send_bps_excess);
+    return true;
 }
-void FillBlkioRequired(const BlkioRequired& sdk_blk,
+
+bool FillBlkioRequired(const BlkioRequired& sdk_blk,
                         ::baidu::galaxy::proto::BlkioRequired* blk) {
+    if (sdk_blk.weight <= 0 || sdk_blk.weight >= 1000) {
+        fprintf(stderr, "blkio weight must be in 0~1000\n");
+        return false;
+    }
     blk->set_weight(sdk_blk.weight);
+    return true;
 }
 
-void FillPortRequired(const PortRequired& sdk_port,
+bool FillPortRequired(const PortRequired& sdk_port,
                         ::baidu::galaxy::proto::PortRequired* port) {
+    if (sdk_port.port_name.empty()) {
+        fprintf(stderr, "port_name must not be empty in port\n");
+        return false;
+    }
     port->set_port_name(sdk_port.port_name);
+    if (sdk_port.port.empty()) {
+        fprintf(stderr, "port must not be empty in port, it could be \"dynamic\"or specific port such as \"8080\" \n");
+        return false;
+    }
     port->set_port(sdk_port.port);
-    port->set_real_port(sdk_port.real_port);
+
+    port->set_real_port(sdk_port.real_port);//可以不用，有resman分配
+    return true;
 }
 
-void FillCgroup(const Cgroup& sdk_cgroup, 
+bool FillCgroup(const Cgroup& sdk_cgroup, 
                         ::baidu::galaxy::proto::Cgroup* cgroup) {
-    cgroup->set_id(sdk_cgroup.id);
-    FillCpuRequired(sdk_cgroup.cpu, cgroup->mutable_cpu());
-    FillMemRequired(sdk_cgroup.memory, cgroup->mutable_memory());
-    FillTcpthrotRequired(sdk_cgroup.tcp_throt, cgroup->mutable_tcp_throt());
-    FillBlkioRequired(sdk_cgroup.blkio, cgroup->mutable_blkio());
+    
+    if (!FillCpuRequired(sdk_cgroup.cpu, cgroup->mutable_cpu())) {
+        return false;
+    }
+
+    if (!FillMemRequired(sdk_cgroup.memory, cgroup->mutable_memory())) {
+        return false;
+    }
+    
+    if (!FillTcpthrotRequired(sdk_cgroup.tcp_throt, cgroup->mutable_tcp_throt())) {
+        return false;
+    }
+    
+    if (!FillBlkioRequired(sdk_cgroup.blkio, cgroup->mutable_blkio())) {
+        return false;
+    }
+
+    bool ok = true;
     for (size_t i = 0; i < sdk_cgroup.ports.size(); ++i) {
         ::baidu::galaxy::proto::PortRequired* port = cgroup->add_ports();
-        FillPortRequired(sdk_cgroup.ports[i], port);
+        if (!FillPortRequired(sdk_cgroup.ports[i], port)) {
+            ok = false;
+            break;
+        }
     }
+    return ok;
 }
 
-void FillContainerDescription(const ContainerDescription& sdk_container, 
+bool FillContainerDescription(const ContainerDescription& sdk_container, 
                                 ::baidu::galaxy::proto::ContainerDescription* container) {
 
-    container->set_priority(sdk_container.priority);
+    if (sdk_container.priority == kJobMonitor) {
+        container->set_priority(::baidu::galaxy::proto::kJobMonitor);
+    } else if (sdk_container.priority == kJobService) {
+        container->set_priority(::baidu::galaxy::proto::kJobService);
+    } else if (sdk_container.priority == kJobBatch) {
+        container->set_priority(::baidu::galaxy::proto::kJobBatch);
+    } else if (sdk_container.priority == kJobBestEffort) {
+        container->set_priority(::baidu::galaxy::proto::kJobBestEffort);
+    } else {
+        fprintf(stderr, "job type must be kJobService, kJobBatch, kJobBestEffort\n");
+        return false;
+    }
+
+    if (sdk_container.run_user.empty()) {
+        fprintf(stderr, "run_user must no be empty\n");
+        return false;
+    }
     container->set_run_user(sdk_container.run_user);
+    if (sdk_container.version.empty()) {
+        fprintf(stderr, "version must no be empty\n");
+        return false;
+    }
     container->set_version(sdk_container.version);
+
+    if (sdk_container.tag.empty()) {
+        fprintf(stderr, "tag must no be empty\n");
+        return false;
+    }
     container->set_tag(sdk_container.tag);
-    container->set_cmd_line(sdk_container.cmd_line);
+
+    container->set_cmd_line(sdk_container.cmd_line); //不用
+
+    if (sdk_container.max_per_host <= 0) {
+        fprintf(stderr, "max_per_host must be greater than 0\n");
+        return false;
+    }
     container->set_max_per_host(sdk_container.max_per_host);
+
+    bool ok = true;
     for (size_t i = 0; i < sdk_container.pool_names.size(); ++i) {
+        if (sdk_container.pool_names[i].empty()) {
+            fprintf(stderr, "pool must no be empty\n");
+            ok = false;
+            break;
+        }
         container->add_pool_names(sdk_container.pool_names[i]);
     }
-    FillVolumRequired(sdk_container.workspace_volum, container->mutable_workspace_volum());
+    if (!ok) {
+        return false;
+    }
+
+    if (!FillVolumRequired(sdk_container.workspace_volum, container->mutable_workspace_volum())) {
+        return false;
+    }
+
     for (size_t i = 0; i < sdk_container.data_volums.size(); ++i) {
         ::baidu::galaxy::proto::VolumRequired* volum = container->add_data_volums();
-        FillVolumRequired(sdk_container.data_volums[i], volum);
+        if(!FillVolumRequired(sdk_container.data_volums[i], volum)) {
+            ok = false;
+            break;
+        }
+    }
+    if (!ok) {
+        return false;
     }
 
-    for (size_t i = 0; i < sdk_container.cgroups.size(); ++i) {
+    for (uint32_t i = 0; i < sdk_container.cgroups.size(); ++i) {
         ::baidu::galaxy::proto::Cgroup* cgroup = container->add_cgroups();
-        FillCgroup(sdk_container.cgroups[i], cgroup);
+        if(!FillCgroup(sdk_container.cgroups[i], cgroup)) {
+            ok = false;
+            break;
+        }
+        cgroup->set_id(::baidu::common::NumToString(i));
     }
+    
+    return ok;
 }
 
-void FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package* package) {
+bool FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package* package) {
+    if (sdk_package.source_path.empty()) {
+        fprintf(stderr, "package source_path must no be empty\n");
+        return false;
+    }
     package->set_source_path(sdk_package.source_path);
+    if (sdk_package.dest_path.empty()) {
+        fprintf(stderr, "package dest_path must no be empty\n");
+        return false;
+    }
     package->set_dest_path(sdk_package.dest_path);
+    if (sdk_package.version.empty()) {
+        fprintf(stderr, "package version must no be empty\n");
+        return false;
+    }
     package->set_version(sdk_package.version);
+    return true;
 }
 
-void FillImagePackage(const ImagePackage& sdk_image, 
+bool FillImagePackage(const ImagePackage& sdk_image, 
                         ::baidu::galaxy::proto::ImagePackage* image) {
+    if (sdk_image.start_cmd.empty()) {
+        fprintf(stderr, "package start_cmd must no be empty\n");
+        return false;
+    }
     image->set_start_cmd(sdk_image.start_cmd);
     image->set_stop_cmd(sdk_image.stop_cmd);
-    FillPackage(sdk_image.package, image->mutable_package());
+    if (!FillPackage(sdk_image.package, image->mutable_package())) {
+        return false;
+    }
+    return true;
 }
 
-void FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data) {
+bool FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data) {
+    bool ok = true;
     data->set_reload_cmd(sdk_data.reload_cmd);
     for (size_t i = 0; i < sdk_data.packages.size(); ++i) {
         ::baidu::galaxy::proto::Package* package = data->add_packages();
-        FillPackage(sdk_data.packages[i], package);
+        ok = FillPackage(sdk_data.packages[i], package);
+        if (!ok) {
+            break;
+        }
     }
+    return ok;
 }
 
-void FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* service) {
+bool FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* service) {
+    if (sdk_service.service_name.empty()) {
+        fprintf(stderr, "service service_name must no be empty\n");
+        return false;
+    }
     service->set_service_name(sdk_service.service_name);
+    
+    if (sdk_service.port_name.empty()) {
+        fprintf(stderr, "service port_name must no be empty\n");
+        return false;
+    }
     service->set_port_name(sdk_service.port_name);
     service->set_use_bns(sdk_service.use_bns);
+    return true;
 }
 
-void FillTaskDescription(const TaskDescription& sdk_task,
+bool FillTaskDescription(const TaskDescription& sdk_task,
         ::baidu::galaxy::proto::TaskDescription* task) {
-    task->set_id(sdk_task.id);
-    FillCpuRequired(sdk_task.cpu, task->mutable_cpu());
-    FillMemRequired(sdk_task.memory, task->mutable_memory());
+    
+    bool ok = true;
+    if (!FillCpuRequired(sdk_task.cpu, task->mutable_cpu())) {
+        return false;
+    }
+
+    if (!FillMemRequired(sdk_task.memory, task->mutable_memory())) {
+        return false;
+    }
+
     for (size_t i = 0; i < sdk_task.ports.size(); ++i) {
         ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
-        FillPortRequired(sdk_task.ports[i], port);
+        ok = FillPortRequired(sdk_task.ports[i], port);
+        if (!ok) {
+            break;
+        }
     }
-    FillTcpthrotRequired(sdk_task.tcp_throt, task->mutable_tcp_throt());
-    FillBlkioRequired(sdk_task.blkio, task->mutable_blkio());
-    FillImagePackage(sdk_task.exe_package, task->mutable_exe_package());
-    FilldataPackage(sdk_task.data_package, task->mutable_data_package());
+
+    if (!ok) {
+        return false;
+    }
+
+    if (!FillTcpthrotRequired(sdk_task.tcp_throt, task->mutable_tcp_throt())) {
+        return false;
+    }
+
+    if (!FillBlkioRequired(sdk_task.blkio, task->mutable_blkio())) {
+        return false;
+    }
+
+    if (!FillImagePackage(sdk_task.exe_package, task->mutable_exe_package())) {
+        return false;
+    }
+    
+    if (!FilldataPackage(sdk_task.data_package, task->mutable_data_package())) {
+        return false;
+    }
+
     for (size_t i = 0; i < sdk_task.services.size(); ++i) {
         ::baidu::galaxy::proto::Service* service = task->add_services();
-        FillService(sdk_task.services[i], service);
+        ok = FillService(sdk_task.services[i], service);
+        if (!ok) {
+            break;
+        }
     }
+    return ok;
 }
 
-void FillPodDescription(const PodDescription& sdk_pod,
+bool FillPodDescription(const PodDescription& sdk_pod,
                             ::baidu::galaxy::proto::PodDescription* pod) {
-    FillVolumRequired(sdk_pod.workspace_volum, pod->mutable_workspace_volum());
+    if (!FillVolumRequired(sdk_pod.workspace_volum, pod->mutable_workspace_volum())) {
+        return false;
+    }
+    
+    bool ok = true;
     for (size_t i = 0; i < sdk_pod.data_volums.size(); ++i) {
         ::baidu::galaxy::proto::VolumRequired* volum = pod->add_data_volums();
-        FillVolumRequired(sdk_pod.data_volums[i], volum);
+        ok = FillVolumRequired(sdk_pod.data_volums[i], volum);
+        if (!ok) {
+            break;
+        }
     }
-    for (size_t i = 0; i < sdk_pod.tasks.size(); ++i) {
+    if (!ok) {
+        return false;
+    }
+
+    for (uint32_t i = 0; i < sdk_pod.tasks.size(); ++i) {
         ::baidu::galaxy::proto::TaskDescription* task = pod->add_tasks(); 
-        FillTaskDescription(sdk_pod.tasks[i], task);
+        ok = FillTaskDescription(sdk_pod.tasks[i], task);
+        if (!ok) {
+            break;
+        }
+        task->set_id(::baidu::common::NumToString(i));
     }
+    return ok;
 }
 
-void FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
+bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
+    if (sdk_deploy.replica <= 0 || sdk_deploy.replica >= 10000) {
+        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+        return false;
+    }
     deploy->set_replica(sdk_deploy.replica);
+
+    if (sdk_deploy.step <= 0 || sdk_deploy.step > sdk_deploy.replica) {
+        fprintf(stderr, "deploy step must be greater than 0 and less than replica\n");
+        return false;
+    }
     deploy->set_step(sdk_deploy.step);
+
+    if (sdk_deploy.interval < 0 || sdk_deploy.interval > 3600) {
+        fprintf(stderr, "deploy interval must be greater than or equal to 0 and less than 3600\n");
+        return false;
+    }
     deploy->set_interval(sdk_deploy.interval);
+
+    if (sdk_deploy.max_per_host <= 0 || sdk_deploy.max_per_host >= 30) {
+        fprintf(stderr, "deploy max_per_host must be greater than 0 and less than 30\n");
+        return false;
+    }
     deploy->set_max_per_host(sdk_deploy.max_per_host);
+    
     deploy->set_tag(sdk_deploy.tag);
+
+    bool ok = true;
     for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
+        if (sdk_deploy.pools[i].empty()) {
+            fprintf(stderr, "deploy pools must not be empty\n");
+            ok = false;
+            break;
+        }
         deploy->add_pools(sdk_deploy.pools[i]);
     }
+    return ok;
 }
 
-void FillJobDescription(const JobDescription& sdk_job,
+bool FillJobDescription(const JobDescription& sdk_job,
                         ::baidu::galaxy::proto::JobDescription* job) {
+    if (sdk_job.name.empty()) {
+        fprintf(stderr, "job name must not be empty\n");
+        return false;
+    }
     job->set_name(sdk_job.name);
-    job->set_version(sdk_job.version);
+
+    //job->set_version(sdk_job.version); //不再需要
+
     if (sdk_job.type == kJobMonitor) {
         job->set_priority(::baidu::galaxy::proto::kJobMonitor);
     } else if (sdk_job.type == kJobService) {
@@ -191,16 +445,26 @@ void FillJobDescription(const JobDescription& sdk_job,
         job->set_priority(::baidu::galaxy::proto::kJobBatch);
     } else if (sdk_job.type == kJobBestEffort) {
         job->set_priority(::baidu::galaxy::proto::kJobBestEffort);
+    } else {
+        fprintf(stderr, "job type must be kJobService, kJobBatch, kJobBestEffort\n");
+        return false;
     }
-    FillDeploy(sdk_job.deploy, job->mutable_deploy());
+    if (!FillDeploy(sdk_job.deploy, job->mutable_deploy())) {
+        return false;
+    }
     //job->set_run_user(sdk_job.run_user);
     job->set_run_user("galaxy");
-    FillPodDescription(sdk_job.pod, job->mutable_pod());
-
+    if (!FillPodDescription(sdk_job.pod, job->mutable_pod())) {
+        return false;
+    }
+    return true;
 }
 
-void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
-    
+bool FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
+    if (sdk_grant.pool.empty()) {
+        fprintf(stderr, "pool must not be empty\n");
+        return false;
+    } 
     grant->set_pool(sdk_grant.pool);
 
     if (sdk_grant.action == kActionAdd) {
@@ -211,8 +475,12 @@ void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
         grant->set_action(::baidu::galaxy::proto::kActionSet);
     } else if (sdk_grant.action == kActionClear) {
         grant->set_action(::baidu::galaxy::proto::kActionClear);
+    } else {
+        fprintf(stderr, "action must be kActionAdd, kActionRemove, kActionSet or kActionClear\n");
+        return false;
     }
 
+    bool ok = true;
     for (size_t i = 0; i < sdk_grant.authority.size(); ++i) {
         switch (sdk_grant.authority[i]) {
         case kAuthorityCreateContainer:
@@ -239,8 +507,14 @@ void FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant) {
         case kAuthorityListJobs:
             grant->add_authority(::baidu::galaxy::proto::kAuthorityListJobs);
             break;
+        default:
+            ok = false;
+        }
+        if (!ok) {
+            break;
         }
     }
+    return ok;
 }
 
 void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescription& pb_job, JobDescription* job) {

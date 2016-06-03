@@ -29,8 +29,6 @@ ResAction::~ResAction() {
 }
 
 bool ResAction::Init() {
-    //用户名和token验证
-    //
     std::string path = FLAGS_nexus_root + FLAGS_resman_path;
     resman_ = ::baidu::galaxy::sdk::ResourceManager::ConnectResourceManager(FLAGS_nexus_addr, path);
     if (resman_ == NULL) {
@@ -138,7 +136,6 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
 
     for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
-        cgroup.id = ::baidu::common::NumToString(i);
         cgroup.cpu = job.pod.tasks[i].cpu;
         cgroup.memory = job.pod.tasks[i].memory;
         cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
@@ -189,10 +186,13 @@ bool ResAction::RemoveContainerGroup(const std::string& id) {
     return ret;
 }
 
-bool ResAction::ListContainerGroups() {
+bool ResAction::ListContainerGroups(const std::string& soptions) {
     if(!this->Init()) {
         return false;
     }
+
+    std::vector<std::string> options;
+    ::baidu::common::SplitString(soptions, ",", &options);
 
     ::baidu::galaxy::sdk::ListContainerGroupsRequest request;
     ::baidu::galaxy::sdk::ListContainerGroupsResponse response;
@@ -200,60 +200,116 @@ bool ResAction::ListContainerGroups() {
 
     bool ret = resman_->ListContainerGroups(request, &response);
     if (ret) {
-        ::baidu::common::TPrinter containers(9);
-        containers.AddRow(9, "", "id", "replica", "stat(r/a/p)", "cpu(a/u)", "mem(a/u)", "volums(med/a/u)", "create", "update");
+        std::string array_headers[4] = {"", "id", "replica", "stat(r/a/p)"};
+        std::vector<std::string> headers(array_headers, array_headers + 4);
+        if (find(options.begin(), options.end(), "cpu") != options.end()) {
+            headers.push_back("cpu(a/u)");
+        }
+        if (find(options.begin(), options.end(), "mem") != options.end()) {
+            headers.push_back("mem(a/u)");
+        }
+        if (find(options.begin(), options.end(), "volums") != options.end()) {
+            headers.push_back("volums(med/a/u)");
+        }
+        if (options.size() == 0) {
+            headers.push_back("cpu(a/u)");
+            headers.push_back("mem(a/u)");
+            headers.push_back("volums(med/a/u)");
+        }
+        headers.push_back("create_time");
+        headers.push_back("update_time");
+        ::baidu::common::TPrinter containers(headers.size());
+        containers.AddRow(headers);
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             std::string sstatus = ::baidu::common::NumToString(response.containers[i].ready) + "/" 
                                   +::baidu::common::NumToString(response.containers[i].allocating) + "/" +
                                   ::baidu::common::NumToString(response.containers[i].pending);
 
-            std::string scpu = ::baidu::common::NumToString(response.containers[i].cpu.assigned / 1000.0) + "/" +
-                               ::baidu::common::NumToString(response.containers[i].cpu.used / 1000.0);
+            std::string scpu;
+            if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
+                    scpu = ::baidu::common::NumToString(response.containers[i].cpu.assigned / 1000.0) + "/" +
+                           ::baidu::common::NumToString(response.containers[i].cpu.used / 1000.0);
+            }
 
-            std::string smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
-                                ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+            std::string smem;
+            if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
+                smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
+                       ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+            }
 
-            for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
-                std::string svolums;
-                svolums = StringVolumMedium(response.containers[i].volums[j].medium) + "/"
-                          + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
-                          + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used);
-                          //+ response.containers[i].volums[j].device_path;
-                if (j == 0) {
-                    containers.AddRow(9, baidu::common::NumToString(i).c_str(),
-                                         response.containers[i].id.c_str(),
-                                         ::baidu::common::NumToString(response.containers[i].replica).c_str(),
-                                         sstatus.c_str(),
-                                         scpu.c_str(),
-                                         smem.c_str(),
-                                         svolums.c_str(),
-                                         FormatDate(response.containers[i].submit_time).c_str(),
-                                         FormatDate(response.containers[i].update_time).c_str()
-                                     );
-                } else {
-                    containers.AddRow(9, "",
-                                         "",
-                                         "",
-                                         "",
-                                         "",
-                                         "",
-                                         svolums.c_str(),
-                                         "",
-                                         ""
-                                     );
+            std::vector<std::string> values;
+            if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
+                for (size_t j = 0; j < response.containers[i].volums.size(); ++j) {
+                    values.clear();
+                    std::string svolums;
+                    svolums = StringVolumMedium(response.containers[i].volums[j].medium) + "/"
+                              + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
+                              + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used);
+                            //+ response.containers[i].volums[j].device_path;
+                    if (j == 0) {
+                        values.push_back(baidu::common::NumToString(i));
+                        values.push_back(response.containers[i].id);
+                        values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                        values.push_back(sstatus);
+                        if (!scpu.empty()) {
+                            values.push_back(scpu);
+                        }
+                        if (!smem.empty()) {
+                            values.push_back(smem);
+                        };
+                        values.push_back(svolums);
+                        values.push_back(FormatDate(response.containers[i].submit_time));
+                        values.push_back(FormatDate(response.containers[i].submit_time));
+                    } else {
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        values.push_back("");
+                        if (!scpu.empty()) {
+                            values.push_back("");
+                        }
+                        if (!smem.empty()) {
+                            values.push_back("");
+                        };
+                        values.push_back(svolums);
+                        values.push_back("");
+                        values.push_back("");
+                    }
+                    containers.AddRow(values);
+                }
+
+                if (response.containers[i].volums.size() == 0) {
+                    values.push_back(baidu::common::NumToString(i));
+                    values.push_back(response.containers[i].id);
+                    values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                    values.push_back(sstatus);
+                    if (!scpu.empty()) {
+                        values.push_back(scpu);
+                    }
+                    if (!smem.empty()) {
+                        values.push_back(smem);
+                    };
+                    values.push_back("");
+                    values.push_back(FormatDate(response.containers[i].submit_time));
+                    values.push_back(FormatDate(response.containers[i].submit_time));
+                    containers.AddRow(values);
                 }
             }
-            if (response.containers[i].volums.size() == 0) {
-                containers.AddRow(9, baidu::common::NumToString(i).c_str(),
-                                     response.containers[i].id.c_str(),
-                                     ::baidu::common::NumToString(response.containers[i].replica).c_str(),
-                                     sstatus.c_str(),
-                                     scpu.c_str(),
-                                     smem.c_str(),
-                                     "",
-                                     FormatDate(response.containers[i].submit_time).c_str(),
-                                     FormatDate(response.containers[i].update_time).c_str()
-                                 );
+
+            if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
+                values.push_back(baidu::common::NumToString(i));
+                values.push_back(response.containers[i].id);
+                values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                values.push_back(sstatus);
+                if (!scpu.empty()) {
+                    values.push_back(scpu);
+                }
+                if (!smem.empty()) {
+                    values.push_back(smem);
+                };
+                values.push_back(FormatDate(response.containers[i].submit_time));
+                values.push_back(FormatDate(response.containers[i].submit_time));
+                containers.AddRow(values);
             }
         }
         printf("%s\n", containers.ToString().c_str());
@@ -1199,7 +1255,7 @@ bool ResAction::Status() {
         other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
         other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
                         ::baidu::common::NumToString(response.total_containers).c_str(),
-                        ::baidu::common::NumToString(response.in_safe_mode).c_str());
+                        StringBool(response.in_safe_mode).c_str());
         printf("%s\n", other.ToString().c_str());
 
     } else {
@@ -1384,7 +1440,7 @@ bool ResAction::ShowUser(const std::string& user) {
     ::baidu::galaxy::sdk::ShowUserResponse response;
     request.admin = user_;
     request.user.user = user;
-    //request.user.token = token;
+    request.user.token = "default";
 
     bool ret = resman_->ShowUser(request, &response);
     
@@ -1417,7 +1473,7 @@ bool ResAction::ShowUser(const std::string& user) {
 
         printf("quota infomation\n");
         ::baidu::common::TPrinter quota(5);
-        quota.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
+        quota.AddRow(5, "cpu", "memory", "disk", "ssd", "replica");
         quota.AddRow(5, ::baidu::common::NumToString(response.quota.millicore / 1000.0).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.memory).c_str(),
                         ::baidu::common::HumanReadableString(response.quota.disk).c_str(),
@@ -1426,9 +1482,9 @@ bool ResAction::ShowUser(const std::string& user) {
                     );
         printf("%s\n", quota.ToString().c_str());
 
-        printf("assignd infomation\n");
+        printf("jobs assigned quota infomation\n");
         ::baidu::common::TPrinter assign(5);
-        assign.AddRow(5, "millicore", "memory", "disk", "ssd", "replica");
+        assign.AddRow(5, "cpu", "memory", "disk", "ssd", "replica");
         assign.AddRow(5, ::baidu::common::NumToString(response.assigned.millicore / 1000.0).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.memory).c_str(),
                         ::baidu::common::HumanReadableString(response.assigned.disk).c_str(),
@@ -1438,7 +1494,7 @@ bool ResAction::ShowUser(const std::string& user) {
         printf("%s\n", assign.ToString().c_str());
 
     } else {
-        printf("List users failed for reason %s:%s\n",
+        printf("Show users failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
@@ -1519,32 +1575,37 @@ bool ResAction::GrantUser(const std::string& user,
 }
 
 bool ResAction::AssignQuota(const std::string& user,
-                 const std::string& token,
                  uint32_t millicores,
                  const std::string& memory,
                  const std::string& disk,
                  const std::string& ssd,
-                 int replica
+                 uint32_t replica
                  ) {
 
-    if (user.empty() || token.empty()) {
+    if (user.empty()) {
         return false;
     }
     if(!this->Init()) {
         return false;
     }
+    
+    if (millicores <= 0 || replica <= 0) {
+        printf("millicores or replica must larger than 0\n");
+        return false;
+    }
+
     ::baidu::galaxy::sdk::Quota quota;
     quota.millicore = millicores;
     quota.replica = replica;
-    if (UnitStringToByte(memory, &quota.memory)) {
+    if (UnitStringToByte(memory, &quota.memory) != 0) {
         return false;
     }
 
-    if (UnitStringToByte(disk, &quota.disk)) {
+    if (UnitStringToByte(disk, &quota.disk) != 0) {
         return false;
     }
 
-    if (UnitStringToByte(ssd, &quota.ssd)) {
+    if (UnitStringToByte(ssd, &quota.ssd) != 0) {
         return false;
     }
 
@@ -1552,7 +1613,6 @@ bool ResAction::AssignQuota(const std::string& user,
     ::baidu::galaxy::sdk::AssignQuotaResponse response;
     request.admin = user_;
     request.user.user  = user;
-    request.user.token = token;
     request.quota = quota;
 
     bool ret = resman_->AssignQuota(request, &response);
