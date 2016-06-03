@@ -38,9 +38,10 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
 {
     assert(NULL != collector.get());
     boost::mutex::scoped_lock lock(mutex_);
+    std::list<boost::shared_ptr<RuntimeCollector> >::iterator iter = collectors_.begin();
 
-    for (size_t i = 0; i < collectors_.size(); i++) {
-        if (collectors_[i]->GetCollector()->Equal(*collector)) {
+    for (; iter != collectors_.end(); iter++) {
+        if ((*iter)->GetCollector()->Equal(*collector)) {
             return ERRORCODE(-1, "collector %s alread registered", collector->Name().c_str());
         }
     }
@@ -50,7 +51,7 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
     return ERRORCODE_OK;
 }
 
-void CollectorEngine::Unregister(boost::shared_ptr<Collector> collector)
+/*void CollectorEngine::Unregister(boost::shared_ptr<Collector> collector)
 {
     assert(NULL != collector.get());
     boost::mutex::scoped_lock lock(mutex_);
@@ -62,7 +63,7 @@ void CollectorEngine::Unregister(boost::shared_ptr<Collector> collector)
             collectors_.erase(iter);
         }
     }
-}
+}*/
 
 int CollectorEngine::Setup()
 {
@@ -89,23 +90,40 @@ void CollectorEngine::CollectMainThreadRoutine()
         {
             boost::mutex::scoped_lock lock(mutex_);
 
-            for (size_t i = 0; i < collectors_.size(); i++) {
-                if (collectors_[i]->Expired(now)) {
-                    if (collectors_[i]->IsRunning()) {
+            std::list<boost::shared_ptr<RuntimeCollector> >::iterator iter = collectors_.begin();
+            for (; iter != collectors_.end(); iter++) {
+                if (!(*iter)->Enabled()) {
+                    continue;
+                }
+
+                if ((*iter)->Expired(now)) {
+                    if ((*iter)->IsRunning()) {
                         LOG(WARNING) << "last collection is not commplete: "
-                                     << collectors_[i]->GetCollector()->Name();
+                                     << (*iter)->GetCollector()->Name();
                         continue;
                     }
 
-                    if (!collectors_[i]->GetCollector()->Enabled()) {
+                    if (!(*iter)->GetCollector()->Enabled()) {
                         LOG(WARNING) << "collector is not enabled: "
-                                     << collectors_[i]->GetCollector()->Name();
+                                     << (*iter)->GetCollector()->Name();
                         continue;
                     }
 
-                    collectors_[i]->SetRunning(true);
-                    collector_pool_.AddTask(boost::bind(&CollectorEngine::CollectRoutine, this, collectors_[i]));
-                    collectors_[i]->UpdateNextRuntime();
+                    (*iter)->SetRunning(true);
+                    collector_pool_.AddTask(boost::bind(&CollectorEngine::CollectRoutine, this, *iter));
+                    (*iter)->UpdateNextRuntime();
+                }
+            }
+
+            iter = collectors_.begin();
+            while (iter != collectors_.end()) {
+                if (!(*iter)->Enabled() && (*iter)->IsRunning()) {
+                    LOG(WARNING) << "collector " << (*iter)->Name() << " is disabled, but is running";
+                    iter++;
+                } else if (!(*iter)->Enabled()) {
+                    collectors_.erase(iter++);
+                } else {
+                    iter++;
                 }
             }
         }

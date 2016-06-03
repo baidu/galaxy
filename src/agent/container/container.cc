@@ -6,7 +6,6 @@
 
 #include "cgroup/subsystem_factory.h"
 #include "cgroup/cgroup.h"
-#include "cgroup/cgroup_collector.h"
 #include "protocol/galaxy.pb.h"
 #include "volum/volum_group.h"
 #include "util/user.h"
@@ -19,8 +18,7 @@
 #include "boost/algorithm/string/classification.hpp"
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/algorithm/string/replace.hpp"
-#include "collector/collector_engine.h"
-#include "cgroup/cgroup_collector.h"
+#include "agent/volum/volum.h"
 
 #include <glog/logging.h>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
@@ -45,11 +43,6 @@ DECLARE_string(cmd_line);
 namespace baidu {
 namespace galaxy {
 namespace container {
-
-bool is_null(const std::string& x)
-{
-    return x.empty();
-}
 
 Container::Container(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc) :
     desc_(desc),
@@ -97,13 +90,6 @@ int Container::Construct()
         ec = status_.EnterReady();
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
-        }
-
-        // register collector
-        for (size_t i = 0; i < cgroup_.size(); i++) {
-            boost::shared_ptr<baidu::galaxy::collector::Collector> c(new baidu::galaxy::cgroup::CgroupCollector(cgroup_[i]));
-            baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(c);
-            collectors_.push_back(c);
         }
     }
 
@@ -253,6 +239,7 @@ int Container::ConstructVolumGroup() {
     volum_group_->SetContainerId(id_.SubId());
     volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
     volum_group_->SetGcIndex(created_time_/1000000);
+    volum_group_->SetOwner(desc_.run_user());
 
     for (int i = 0; i < desc_.data_volums_size(); i++) {
         volum_group_->AddDataVolum(desc_.data_volums(i));
@@ -297,12 +284,12 @@ int Container::Destroy_()
         baidu::galaxy::util::ErrorCode ec = Process::Kill(pid);
         if (ec.Code() != 0) {
             LOG(WARNING) << "failed in killing appwork for container "
-                         << id_.CompactId() << ": " << ec.Message();
+                << id_.CompactId() << ": " << ec.Message();
             return -1;
         }
     }
-
     LOG(INFO) << "container " << id_.CompactId() << " suceed in killing appwork whose pid is " << pid;
+
     // destroy cgroup
     for (size_t i = 0; i < cgroup_.size(); i++) {
         baidu::galaxy::util::ErrorCode ec = cgroup_[i]->Destroy();
@@ -318,11 +305,10 @@ int Container::Destroy_()
     baidu::galaxy::util::ErrorCode ec = volum_group_->Destroy();
     if (0 != ec.Code()) {
         LOG(WARNING) << "failed in destroying volum group in container " << id_.CompactId()
-                     << " " << ec.Message();
+            << " " << ec.Message();
         return -1;
     }
     LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy volum";
-
     // mv to gc queue
     return 0;
 }
@@ -413,6 +399,7 @@ void Container::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_agent_hostname"] = FLAGS_agent_hostname;
     env["baidu_galaxy_agent_ip"] = FLAGS_agent_ip;
     env["baidu_galaxy_agent_port"] = FLAGS_agent_port;
+    env["baidu_galaxy_container_user"] = desc_.run_user();
 }
 
 baidu::galaxy::proto::ContainerStatus Container::Status()
@@ -517,7 +504,15 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     ret->set_created_time(0);
     ret->set_status(status_.Status());
     ret->set_cpu_used(0);
-    ret->set_memory_used(0);
+
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> metrix = ContainerMetrix();
+    if (metrix->has_memory_used_in_byte()) {
+        ret->set_memory_used(metrix->memory_used_in_byte());
+    }
+
+    if (metrix->has_cpu_used_in_millicore()) {
+        ret->set_cpu_used(metrix->cpu_used_in_millicore());
+    }
 
     baidu::galaxy::proto::ContainerDescription* cd = ret->mutable_container_desc();
     if (full_info) {
@@ -539,9 +534,56 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta(
     return ret;
 }
 
+boost::shared_ptr<ContainerProperty> Container::Property() {
+    boost::shared_ptr<ContainerProperty> property(new ContainerProperty);
+    property->container_id_ = id_.SubId();
+    property->group_id_ = id_.GroupId();
+    property->created_time_ = created_time_;
+    property->pid_ = process_->Pid();
+    
+    const boost::shared_ptr<baidu::galaxy::volum::Volum> wv = volum_group_->WorkspaceVolum();
+    property->workspace_volum_.container_abs_path = wv->TargetPath();
+    property->workspace_volum_.phy_source_path = wv->SourcePath();
+    property->workspace_volum_.container_rel_path = wv->Description()->dest_path();
+    property->workspace_volum_.phy_gc_path = wv->SourceGcPath();
+    property->workspace_volum_.medium = baidu::galaxy::proto::VolumMedium_Name(wv->Description()->medium());
+    property->workspace_volum_.quota = wv->Description()->size();
+    // 
+    
+    for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
+        ContainerProperty::Volum cv;
+        const boost::shared_ptr<baidu::galaxy::volum::Volum> v = volum_group_->DataVolum(i);
+        cv.container_abs_path = v->TargetPath();
+        cv.phy_source_path = v->SourcePath();
+        cv.container_rel_path = v->Description()->dest_path();
+        cv.phy_gc_path = v->SourceGcPath();
+        cv.medium = baidu::galaxy::proto::VolumMedium_Name(v->Description()->medium());
+        cv.quota = v->Description()->size();
+        property->data_volums_.push_back(cv);
+    }
+    return property;
+}
+
 const baidu::galaxy::proto::ContainerDescription& Container::Description()
 {
     return desc_;
+}
+
+boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMetrix() {
+    boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> cm(new baidu::galaxy::proto::ContainerMetrix);
+    int64_t memory_used_in_byte = 0L;
+    int64_t cpu_used_in_millicore = 0L;
+    for (size_t i = 0; i < cgroup_.size(); i++) {
+        boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> m = cgroup_[i]->Statistics();
+        if (NULL != cm.get()) {
+            memory_used_in_byte += m->memory_used_in_byte();
+            cpu_used_in_millicore += m->cpu_used_in_millicore();
+        }
+    }
+    cm->set_memory_used_in_byte(memory_used_in_byte);
+    cm->set_cpu_used_in_millicore(cpu_used_in_millicore);
+    cm->set_time(baidu::common::timer::get_micros());
+    return cm;
 }
 
 } //namespace container

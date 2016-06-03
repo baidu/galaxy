@@ -29,6 +29,8 @@ const std::string GcDir();
 const std::string WorkDir();
 
 const std::string ContainerRootPath(const std::string& container_id);
+const std::string ContainerPropertyPath(const std::string& container_id);
+const std::string ContainerMetaPath(const std::string& container_id);
 const std::string ContainerGcRootPath(const std::string& container_id, uint32_t index);
 const std::string CgroupRootPath(const std::string& container_id, const std::string& cgroup_id);
 const std::string ContainerGcDir(const std::string& container_id, int gc_index);
