@@ -41,6 +41,7 @@ AppWorkerImpl::AppWorkerImpl() :
         mutex_(),
         start_time_(0),
         update_time_(0),
+        quit_(false),
         nexus_(NULL),
         appmaster_stub_(NULL),
         backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
@@ -235,6 +236,15 @@ void AppWorkerImpl::Init() {
     return;
 }
 
+void AppWorkerImpl::Quit() {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "!!! appworker will exit for signal catched";
+    quit_= true;
+    pod_manager_.TerminatePod();
+
+    return;
+}
+
 void AppWorkerImpl::UpdateAppMasterStub() {
     MutexLock lock(&mutex_);
     SDKError err;
@@ -282,7 +292,9 @@ void AppWorkerImpl::FetchTask() {
     if (proto::kPodTerminated == pod.status) {
         LOG(INFO) << "pod terminated";
         std::string value = boost::lexical_cast<std::string>(0);
-        file::Write(FLAGS_appworker_exit_file, value);
+        if (!quit_) {
+            file::Write(FLAGS_appworker_exit_file, value);
+        }
         exit(0);
     }
 
