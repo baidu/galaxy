@@ -321,6 +321,7 @@ bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* resp
             ServiceInfo service;
             service.name = pb_response.job().pods(i).services(j).name();
             service.port = pb_response.job().pods(i).services(j).port();
+            service.ip = pb_response.job().pods(i).services(j).ip();
             service.status = (Status)pb_response.job().pods(i).services(j).status();
             pod.services.push_back(service);
         }

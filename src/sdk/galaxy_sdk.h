@@ -611,6 +611,7 @@ struct ShowJobRequest {
 struct ServiceInfo {
     std::string name;
     std::string port;
+    std::string ip;
     Status status;
 };
 
