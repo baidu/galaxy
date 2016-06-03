@@ -7,17 +7,19 @@
 
 #include "boost/thread/mutex.hpp"
 #include "boost/shared_ptr.hpp"
-#include "cgroup/metrix.h"
 
 namespace baidu {
 namespace galaxy {
-namespace cgroup {
+namespace proto {
+    class CgroupMetrix;
+}
 
+namespace cgroup {
 class Cgroup;
 
 class CgroupCollector : public baidu::galaxy::collector::Collector {
 public:
-    explicit CgroupCollector(boost::shared_ptr<Cgroup> cgroup);
+    explicit CgroupCollector(Cgroup* cgroup);
     ~CgroupCollector();
 
     baidu::galaxy::util::ErrorCode Collect();
@@ -29,16 +31,17 @@ public:
     int Cycle(); // unit second
     std::string Name() const;
     void SetName(const std::string& name);
-    int GetMetrix(Metrix* metrix);
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> Statistics();
 
 private:
     bool enabled_;
     int cycle_;
-    boost::shared_ptr<Cgroup> cgroup_;
+    Cgroup* cgroup_;
     std::string name_;
     boost::mutex mutex_;
 
-    boost::shared_ptr<Metrix> metrix_;
+    boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix_;
+    int64_t last_time_;
 
 };
 }

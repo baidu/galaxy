@@ -4,7 +4,6 @@
 #pragma once
 
 #include "util/error_code.h"
-#include "cgroup/metrix.h"
 #include <boost/shared_ptr.hpp>
 #include <google/protobuf/message.h>
 
@@ -17,6 +16,7 @@ namespace baidu {
 namespace galaxy {
 namespace proto {
 class Cgroup;
+class CgroupMetrix;
 }
 
 namespace cgroup {
@@ -112,7 +112,7 @@ public:
     virtual baidu::galaxy::util::ErrorCode GetProcs(std::vector<int>& pids);
     virtual std::string Path();
 
-    virtual baidu::galaxy::util::ErrorCode Collect(Metrix& metrix) {
+    virtual baidu::galaxy::util::ErrorCode Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix) {
         return ERRORCODE_OK;
     }
     //virtual bool Empty();

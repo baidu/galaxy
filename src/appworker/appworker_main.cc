@@ -33,7 +33,10 @@ int main(int argc, char* argv[]) {
     baidu::galaxy::AppWorkerImpl* appworker_impl = new baidu::galaxy::AppWorkerImpl();
     appworker_impl->Init();
 
-    while (!s_quit) {
+    while (true) {
+        if (s_quit) {
+            appworker_impl->Quit();
+        }
         sleep(1);
     }
 

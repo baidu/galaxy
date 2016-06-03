@@ -18,7 +18,7 @@ public:
     boost::shared_ptr<Subsystem> Clone();
     std::string Name();
     baidu::galaxy::util::ErrorCode Construct();
-    baidu::galaxy::util::ErrorCode Collect(Metrix& metrix);
+    baidu::galaxy::util::ErrorCode Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix);
 };
 
 } //namespace cgroup
