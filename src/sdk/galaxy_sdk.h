@@ -119,6 +119,12 @@ struct VolumRequired {
     bool exclusive;
     bool use_symlink;
 };
+enum UpdateJobOprate {
+    kUpdateJobStart = 1,
+    kUpdateJobContinue = 2,
+    kUpdateJobRollback = 3,
+    kUpdateJobDefault = 4,
+};
 enum JobType {
     kJobMonitor = 0,
     kJobService = 100,
@@ -131,6 +137,7 @@ enum JobStatus {
     kJobFinished = 3,
     kJobDestroying = 4,
     kJobUpdating = 5,
+    kJobBatchUpdate = 6,
 };
 enum PodStatus {
     kPodPending = 1,
@@ -173,6 +180,7 @@ struct Deploy {
     uint32_t max_per_host;
     std::string tag;
     std::vector<std::string> pools;
+    uint32_t update_break_count;
 };
 struct Service {
     std::string service_name;
@@ -561,6 +569,7 @@ struct UpdateJobRequest {
     std::string jobid;
     std::string hostname;
     JobDescription job;
+    UpdateJobOprate oprate;
 };
 struct UpdateJobResponse {
     ErrorCode error_code;
