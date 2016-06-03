@@ -72,8 +72,6 @@ bool ResAction::CreateContainerGroup(const std::string& json_file) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
         time_t timestamp;
         time(&timestamp);
-        //cgroup.id = job.name + baidu::common::NumToString(timestamp);
-        cgroup.id = ::baidu::common::NumToString(i);
         cgroup.cpu = job.pod.tasks[i].cpu;
         cgroup.memory = job.pod.tasks[i].memory;
         cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
