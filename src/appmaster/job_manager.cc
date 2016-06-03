@@ -638,7 +638,7 @@ void JobManager::ReduceUpdateList(Job* job,
     return;
 }
 
-bool JobManager::ReachBreakoint(Job* job) {
+bool JobManager::ReachBreakpoint(Job* job) {
     std::map<PodId, PodInfo*>::iterator it = job->pods_.begin();
     uint32_t updated_cnt = 0;
     for (; it != job->pods_.end(); it++) {
@@ -706,7 +706,7 @@ Status JobManager::BatchUpdatePod(Job* job, void* arg) {
     }
     //update process
     if (job->update_time_ != request->update_time()) {  
-        if (ReachBreakoint(job)) {
+        if (ReachBreakpoint(job)) {
             rlt_code = kSuspend;
         } else if (job->action_type_ == kActionNull) {
             rlt_code = kOk;
