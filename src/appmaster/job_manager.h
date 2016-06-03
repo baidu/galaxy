@@ -161,8 +161,8 @@ private:
     Status TryReload(Job* job, PodInfo* pod);
     void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
                             PodStatus reload_status);
-    bool JobManager::ReachBreakoint(Job* job);
-    void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
+    bool ReachBreakpoint(Job* job);
+    void RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
                                 PodInfo* podinfo,
                                 Job* job);
 
