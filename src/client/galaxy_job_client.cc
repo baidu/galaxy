@@ -24,7 +24,7 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      galaxy stop -i id\n"
                                  "      galaxy remove -i id\n"
                                  "      galaxy list [-o cpu,mem,volums]\n"
-                                 "      galaxy show -i id\n"
+                                 "      galaxy show -i id [-o cpu,mem,volums]\n"
                                  "      galaxy exec -i id -c cmd\n"
                                  "      galaxy json [-t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
                                  "Optionss: \n"
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-i is needed\n");
             return -1;
         }
-        ok = jobAction->ShowJob(FLAGS_i);
+        ok = jobAction->ShowJob(FLAGS_i, FLAGS_o);
 
     } else if (strcmp(argv[1], "exec") == 0) {
         if (FLAGS_i.empty()) {
