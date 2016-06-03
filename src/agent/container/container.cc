@@ -510,6 +510,10 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         ret->set_memory_used(metrix->memory_used_in_byte());
     }
 
+    if (metrix->has_cpu_used_in_millicore()) {
+        ret->set_cpu_used(metrix->cpu_used_in_millicore());
+    }
+
     baidu::galaxy::proto::ContainerDescription* cd = ret->mutable_container_desc();
     if (full_info) {
         cd->CopyFrom(desc_);
@@ -573,7 +577,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMet
         boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> m = cgroup_[i]->Statistics();
         if (NULL != cm.get()) {
             memory_used_in_byte += m->memory_used_in_byte();
-            cpu_used_in_millicore + m->cpu_used_in_millicore();
+            cpu_used_in_millicore += m->cpu_used_in_millicore();
         }
     }
     cm->set_memory_used_in_byte(memory_used_in_byte);
