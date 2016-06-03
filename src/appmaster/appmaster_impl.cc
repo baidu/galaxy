@@ -272,7 +272,7 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         return;
     }
     const JobDescription& job_desc = request->job();
-    if (request->has_oprate() && request->oprate() == kUpdateJobContinue) {
+    if (request->has_operate() && request->operate() == kUpdateJobContinue) {
         Status status = job_manager_.ContinueUpdate(request->jobid());
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
@@ -280,7 +280,7 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
             done->Run();
             return;
         }
-    } else if (request->has_oprate() && request->oprate() == kUpdateJobRollback) {
+    } else if (request->has_operate() && request->operate() == kUpdateJobRollback) {
         Status status = job_manager_.Rollback(request->jobid());
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
@@ -305,7 +305,7 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
                           proto::UpdateContainerGroupResponse*, 
                           bool, int)> call_back;
     call_back = boost::bind(&AppMasterImpl::UpdateContainerGroupCallBack, this,
-                            job_desc, response, done, UpdateJobOprate_Name(request->oprate()),
+                            job_desc, response, done, UpdateJobOperate_Name(request->operate()),
                             _1, _2, _3, _4);
     ResMan_Stub* resman_;
     rpc_client_.GetStub(resman_endpoint_, &resman_);
