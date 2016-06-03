@@ -37,7 +37,7 @@ void SetRootPath(const std::string& root_path)
     boost::system::error_code ec;
     if (!boost::filesystem::exists(path, ec)
             && !boost::filesystem::create_directories(path, ec)) {
-        LOG(FATAL) << "failed in creating root path: " << ec.message();
+        LOG(FATAL) << "failed in creating root path: " << path.string() << " " << ec.message();
         exit(1);
     }
 
@@ -93,6 +93,23 @@ const std::string ContainerRootPath(const std::string& container_id)
     path.append(container_id);
     return path.string();
 }
+
+
+const std::string ContainerPropertyPath(const std::string& container_id) {
+    assert(!root_path_.empty());
+    boost::filesystem::path path(ContainerRootPath(container_id));
+    path.append("container.property");
+    return path.string();
+}
+
+
+const std::string ContainerMetaPath(const std::string& container_id) {
+    assert(!root_path_.empty());
+    boost::filesystem::path path(ContainerRootPath(container_id));
+    path.append("container.meta");
+    return path.string();
+}
+
 
 const std::string ContainerGcRootPath(const std::string& container_id, uint32_t index)
 {

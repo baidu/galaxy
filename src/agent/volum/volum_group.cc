@@ -63,7 +63,7 @@ baidu::galaxy::util::ErrorCode VolumGroup::Construct()
     workspace_volum_ = Construct(this->ws_description_);
 
     if (NULL == workspace_volum_.get()) {
-        return ERRORCODE(-1, "workspace volum is empty");
+        return ERRORCODE(-1, "failed in constructin workspace volum");
     }
 
     baidu::galaxy::util::ErrorCode ec;
@@ -107,28 +107,30 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
         }
     }
 
-    ec = workspace_volum_->Destroy();
-    if (0 != ec.Code()) {
-        return ERRORCODE(-1,
-                "failed in destroying workspace volum: %s",
-                ec.Message().c_str());
+    if (workspace_volum_.get() != NULL) { 
+        ec = workspace_volum_->Destroy();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in destroying workspace volum: %s",
+                        ec.Message().c_str());
+        }
     }
 
     // mv container root dir to gc_dir
     std::string container_root_path
         = baidu::galaxy::path::ContainerRootPath(container_id_);
-    std::string container_gc_root_path
-        = baidu::galaxy::path::ContainerGcRootPath(container_id_, gc_index_);
-
     boost::system::error_code boost_ec;
-    boost::filesystem::rename(container_root_path, container_gc_root_path, boost_ec);
-    if (boost_ec.value() != 0) {
-        return ERRORCODE(-1, "failed in renaming %s to %s: %s",
-                container_root_path.c_str(),
-                container_gc_root_path.c_str(),
-                boost_ec.message().c_str());
+    if (boost::filesystem::exists(container_root_path, boost_ec)) {
+        std::string container_gc_root_path
+            = baidu::galaxy::path::ContainerGcRootPath(container_id_, gc_index_);
+        boost::filesystem::rename(container_root_path, container_gc_root_path, boost_ec);
+        if (boost_ec.value() != 0) {
+            return ERRORCODE(-1, "failed in renaming %s to %s: %s",
+                        container_root_path.c_str(),
+                        container_gc_root_path.c_str(),
+                        boost_ec.message().c_str());
+        }
     }
-
 
     return ERRORCODE_OK;
 }
@@ -139,12 +141,6 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_container_workspace_abstargetpath"] = workspace_volum_->TargetPath();
     env["baidu_galaxy_container_workspace_abssourcepath"] = workspace_volum_->SourcePath();
     return 0;
-}
-
-boost::shared_ptr<google::protobuf::Message> VolumGroup::Report()
-{
-    boost::shared_ptr<google::protobuf::Message> ret;
-    return ret;
 }
 
 boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp)
@@ -160,6 +156,7 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
     volum->SetDescription(dp);
     volum->SetContainerId(this->container_id_);
     volum->SetGcIndex(gc_index_);
+    volum->SetUser(user_);
 
     baidu::galaxy::util::ErrorCode ec = volum->Construct();
     if (0 != ec.Code()) {
@@ -169,6 +166,21 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
     }
 
     return volum;
+}
+
+const boost::shared_ptr<Volum> VolumGroup::WorkspaceVolum() const {
+    return workspace_volum_;
+}
+
+const int VolumGroup::DataVolumsSize() const {
+    return data_volum_.size();
+}
+
+const boost::shared_ptr<Volum> VolumGroup::DataVolum(int i) const {
+    assert(i >= 0);
+    assert(i < (int)data_volum_.size());
+    
+    return data_volum_[i];
 }
 
 // FIX: a single class

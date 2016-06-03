@@ -223,7 +223,7 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
         }
 
         if (process_status == proto::kProcessFinished) {
-            LOG(WARNING) << "deploy all processes successed";
+            LOG(INFO) << "deploy all processes successed";
             it->second->status = proto::kTaskStarting;
         }
 

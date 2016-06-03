@@ -197,7 +197,7 @@ int PodManager::DoCreatePod() {
             env.workspace = "/";
         }
 
-        LOG(WARNING) << "task workspace: " << env.workspace;
+        LOG(INFO) << "task workspace: " << env.workspace;
 
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
 
