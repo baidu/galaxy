@@ -26,6 +26,7 @@ typedef proto::AppMaster_Stub AppMaster_Stub;
 typedef proto::FetchTaskRequest FetchTaskRequest;
 typedef proto::FetchTaskResponse FetchTaskResponse;
 typedef proto::ErrorCode ErrorCode;
+typedef proto::Status Status;
 
 class AppWorkerImpl {
 public:
@@ -46,6 +47,7 @@ private:
     Mutex mutex_;
     int64_t start_time_;
     int64_t update_time_;
+    Status update_status_;
     std::string hostname_;
     std::string endpoint_;
     std::string job_id_;
