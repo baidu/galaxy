@@ -119,6 +119,36 @@ bool FillBlkioRequired(const BlkioRequired& sdk_blk,
     return true;
 }
 
+bool ValidatePort(const std::vector<std::string>& vec_ports) {
+
+    bool ok = true;
+    for (size_t i = 1; i < vec_ports.size(); ++i) {
+        if ((vec_ports[i].compare("dynamic") != 0 && vec_ports[i].compare(vec_ports[i-1]) == 0)
+                || (vec_ports[i-1].compare("dynamic") == 0
+                     && vec_ports[i].compare("dynamic") != 0)) {
+            fprintf(stderr, "ports are not correct in task, ports must be serial\n");
+            ok = false;
+            break;
+        }
+
+        if (vec_ports[i-1].compare("dynamic") != 0 && vec_ports[i].compare("dynamic") != 0) {
+            int int_port = atoi(vec_ports[i-1].c_str());
+            if (int_port < 1025 || int_port > 9999) {
+                fprintf(stderr, "port %s is error, must be in 1025~9999\n", vec_ports[i-1].c_str());
+                ok =  false;
+                break;
+            }
+            ++int_port;
+            if (vec_ports[i].compare(::baidu::common::NumToString(int_port)) != 0) {
+                fprintf(stderr, "ports are not correct in task, ports must be serial\n");
+                ok =  false;
+                break;
+            }
+        }
+    }
+    return ok;
+}
+
 bool FillPortRequired(const PortRequired& sdk_port,
                         ::baidu::galaxy::proto::PortRequired* port) {
     if (sdk_port.port_name.empty()) {
@@ -156,13 +186,21 @@ bool FillCgroup(const Cgroup& sdk_cgroup,
     }
 
     bool ok = true;
+    std::vector<std::string> vec_ports; //端口连续性校验
     for (size_t i = 0; i < sdk_cgroup.ports.size(); ++i) {
         ::baidu::galaxy::proto::PortRequired* port = cgroup->add_ports();
         if (!FillPortRequired(sdk_cgroup.ports[i], port)) {
             ok = false;
             break;
         }
+        vec_ports.push_back(sdk_cgroup.ports[i].port);
     }
+
+    if (!ok) {
+        return false;
+    }
+
+    ok = ValidatePort(vec_ports);
     return ok;
 }
 
@@ -224,12 +262,26 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         return false;
     }
 
+    //重复值检测
+    std::vector<std::string> vec_des_path;
+    vec_des_path.push_back(sdk_container.workspace_volum.dest_path);
+
     for (size_t i = 0; i < sdk_container.data_volums.size(); ++i) {
         ::baidu::galaxy::proto::VolumRequired* volum = container->add_data_volums();
         if(!FillVolumRequired(sdk_container.data_volums[i], volum)) {
             ok = false;
             break;
         }
+        //重复值检测
+        std::vector<std::string> ::iterator it = find(vec_des_path.begin(), 
+                                                      vec_des_path.end(), 
+                                                      sdk_container.data_volums[i].dest_path);
+        if (it != vec_des_path.end()) {
+            fprintf(stderr, "dest_path in volums cannot be repeated\n");
+            ok = false;
+            break;
+        }
+        vec_des_path.push_back(sdk_container.data_volums[i].dest_path);
     }
     if (!ok) {
         return false;
@@ -321,14 +373,21 @@ bool FillTaskDescription(const TaskDescription& sdk_task,
         return false;
     }
 
+    std::vector<std::string> vec_ports; //端口连续性校验
     for (size_t i = 0; i < sdk_task.ports.size(); ++i) {
         ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
         ok = FillPortRequired(sdk_task.ports[i], port);
         if (!ok) {
             break;
         }
+        vec_ports.push_back(sdk_task.ports[i].port);
     }
 
+    if (!ok) {
+        return false;
+    }
+
+    ok = ValidatePort(vec_ports);
     if (!ok) {
         return false;
     }
@@ -364,6 +423,10 @@ bool FillPodDescription(const PodDescription& sdk_pod,
     if (!FillVolumRequired(sdk_pod.workspace_volum, pod->mutable_workspace_volum())) {
         return false;
     }
+
+    //重复值检测
+    std::vector<std::string> vec_des_path;
+    vec_des_path.push_back(sdk_pod.workspace_volum.dest_path);
     
     bool ok = true;
     for (size_t i = 0; i < sdk_pod.data_volums.size(); ++i) {
@@ -372,6 +435,17 @@ bool FillPodDescription(const PodDescription& sdk_pod,
         if (!ok) {
             break;
         }
+        
+        //重复值检测
+        std::vector<std::string> ::iterator it = find(vec_des_path.begin(), 
+                                                      vec_des_path.end(), 
+                                                      sdk_pod.data_volums[i].dest_path);
+        if (it != vec_des_path.end()) {
+            fprintf(stderr, "dest_path in volums cannot be repeated\n");
+            ok = false;
+            break;
+        }
+        vec_des_path.push_back(sdk_pod.data_volums[i].dest_path);
     }
     if (!ok) {
         return false;
