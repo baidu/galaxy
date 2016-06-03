@@ -244,7 +244,7 @@ enum ContainerGroupStatus {
     kContainerGroupNormal = 1,
     kContainerGroupTerminated = 2,
 };
-struct ContainerInfo {
+/*struct ContainerInfo {
     std::string id;
     std::string group_id;
     int64_t created_time;
@@ -255,7 +255,7 @@ struct ContainerInfo {
     std::vector<Volum> volum_used;
     std::vector<std::string> port_used;
     uint32_t restart_counter;
-};
+};*/
 enum Status {
    kOk = 1,
    kError = 2,
@@ -280,7 +280,7 @@ enum AgentStatus {
     kAgentDead = 2,
     kAgentOffline = 3,
 };
-struct AgentInfo {
+/*struct AgentInfo {
     std::string version;
     int64_t start_time;
     bool unhealthy;
@@ -288,7 +288,7 @@ struct AgentInfo {
     Resource cpu_resoruce;
     Resource memory_resource;
     std::vector<VolumResource> volum_resources;
-};
+};*/
 
 struct EnterSafeModeRequest {
     User user;
