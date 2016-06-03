@@ -501,7 +501,7 @@ bool Container::Alive()
 
 void Container::SetExpiredTimeIfAbsent(int32_t rel_sec) {
     assert(rel_sec >= 0);
-    if (-1 == rel_sec) {
+    if (-1 == force_kill_time_) {
         force_kill_time_ = rel_sec * 1000000L + baidu::common::timer::get_micros(); 
     }
 }

@@ -19,7 +19,7 @@ class Cgroup;
 
 class CgroupCollector : public baidu::galaxy::collector::Collector {
 public:
-    explicit CgroupCollector(Cgroup* cgroup);
+    explicit CgroupCollector();
     ~CgroupCollector();
 
     baidu::galaxy::util::ErrorCode Collect();
@@ -33,16 +33,29 @@ public:
     void SetName(const std::string& name);
     boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> Statistics();
 
+    void SetCpuacctPath(const std::string& path) {
+        cpuacct_path_ = path;
+    }
+
+    void SetMemoryPath(const std::string& path) {
+        memory_path_ = path;
+    }
+
 private:
+    baidu::galaxy::util::ErrorCode Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix);
+    baidu::galaxy::util::ErrorCode ContainerCpuStat(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix);
+    baidu::galaxy::util::ErrorCode SystemCpuStat(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix);
+    baidu::galaxy::util::ErrorCode MemoryStat(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix);
+
     bool enabled_;
     int cycle_;
-    Cgroup* cgroup_;
     std::string name_;
     boost::mutex mutex_;
 
     boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix_;
     int64_t last_time_;
-
+    std::string cpuacct_path_;
+    std::string memory_path_;
 };
 }
 }

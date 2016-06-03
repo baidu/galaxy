@@ -92,7 +92,8 @@ void AgentImpl::Setup()
     }
     LOG(INFO) << "init resource manager watcher successfully";
 
-    baidu::galaxy::collector::CollectorEngine::GetInstance()->Setup();
+
+   baidu::galaxy::collector::CollectorEngine::GetInstance()->Setup();
 
     heartbeat_pool_.AddTask(boost::bind(&AgentImpl::KeepAlive, this, FLAGS_keepalive_interval));
     LOG(INFO) << "start keep alive thread, interval is " << FLAGS_keepalive_interval << "ms";
