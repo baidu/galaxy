@@ -50,6 +50,7 @@ private:
     Status update_status_;
     std::string hostname_;
     std::string endpoint_;
+    std::string ip_;
     std::string job_id_;
     std::string pod_id_;
     bool quit_;

@@ -111,7 +111,7 @@ void AppWorkerImpl::PrepareEnvs() {
         exit(-1);
     }
 
-    std::string ip = std::string(c_ip);
+    ip_ = std::string(c_ip);
     // 5.port
     char* c_port = getenv(FLAGS_appworker_agent_port_env.c_str());
 
@@ -121,7 +121,7 @@ void AppWorkerImpl::PrepareEnvs() {
     }
 
     std::string port = std::string(c_port);
-    endpoint_ = ip + ":" + port;
+    endpoint_ = ip_ + ":" + port;
     // 6.task_ids
     char* c_task_ids = getenv(FLAGS_appworker_task_ids_env.c_str());
 
@@ -216,6 +216,7 @@ void AppWorkerImpl::PrepareEnvs() {
 
     PodEnv env;
     env.user = user;
+    env.ip = ip_;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
     env.task_ids = task_ids;
@@ -331,6 +332,7 @@ void AppWorkerImpl::FetchTask() {
     for (int j = 0; j < request->services().size(); ++j) {
         LOG(INFO)
                 << "service: " << request->services(j).name() << ", "
+                << "ip: " << request->services(j).ip() << ", "
                 << "port: " << request->services(j).port() << ", "
                 << "status: " << proto::Status_Name(request->services(j).status());
     }
