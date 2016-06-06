@@ -384,12 +384,10 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
             context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
             context.work_dir = task->env.workspace_path;
-
             context.package = context.work_dir + "/" + context.process_id
                                   + "." + context.version +  ".tar.gz";
-            context.cmd = "wget -O " + context.package  + " " + context.src_path
-                          + " && tar -zxf " + context.package + " -C " + context.dst_path;
 
+            // process env
             ProcessEnv env;
             MakeProcessEnv(task, env);
 

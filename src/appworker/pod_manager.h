@@ -95,5 +95,4 @@ private:
 } // ending namespace galaxy
 } // ending namespace baidu
 
-
 #endif  // BAIDU_GALAXY_POD_MANAGER_H
