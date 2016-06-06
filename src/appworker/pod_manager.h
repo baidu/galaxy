@@ -23,6 +23,8 @@ typedef proto::ServiceInfo ServiceInfo;
 
 struct PodEnv {
     std::string user;
+    std::string workspace_path;
+    std::string workspace_abspath;
     std::string job_id;
     std::string pod_id;
     std::string ip;
@@ -92,6 +94,5 @@ private:
 
 } // ending namespace galaxy
 } // ending namespace baidu
-
 
 #endif  // BAIDU_GALAXY_POD_MANAGER_H

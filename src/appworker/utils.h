@@ -86,5 +86,4 @@ bool IsPortOpen(int32_t port);
 } // ending namespace galaxy
 } // ending namespace baidu
 
-
 #endif // BAIDU_GALAXY_APPWORKER_UTILS_H
