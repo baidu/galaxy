@@ -66,5 +66,4 @@ private:
 } // ending namespace galaxy
 } // ending namespace baidu
 
-
 #endif  // BAIDU_GALAXY_APPWORKER_IMPL_H

@@ -37,3 +37,5 @@ DEFINE_int32(task_manager_task_max_fail_retry_times, 10, "task fail retry times 
 
 // process_manager
 DEFINE_int32(process_manager_loop_wait_interval, 500, "process manager loop wait processes interval");
+DEFINE_int32(process_manager_download_retry_times, 3, "process nmanager download package fail retry times limit");
+DEFINE_int32(process_manager_download_timeout, 300, "process manager download package timeout");
