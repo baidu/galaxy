@@ -352,7 +352,7 @@ bool FillImagePackage(const ImagePackage& sdk_image,
     }
     image->set_start_cmd(sdk_image.start_cmd);
     image->set_stop_cmd(sdk_image.stop_cmd);
-    image->set_wait_cmd(sdk_image.wait_cmd);
+    image->set_health_cmd(sdk_image.health_cmd);
     if (!FillPackage(sdk_image.package, image->mutable_package())) {
         return false;
     }
