@@ -17,7 +17,7 @@ public:
     virtual baidu::galaxy::util::ErrorCode Collect() = 0;
     virtual void Enable(bool enable) = 0;
     virtual bool Enabled() = 0;
-    virtual bool Equal(const Collector&) = 0;
+    virtual bool Equal(const Collector*) = 0;
     virtual int Cycle() = 0;  // unit second
     virtual std::string Name() const = 0;
 };
