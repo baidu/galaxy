@@ -5,6 +5,7 @@
 #pragma once
 
 #include "volum.h"
+#include "volum_collector.h"
 
 namespace baidu {
 namespace galaxy {
@@ -20,6 +21,10 @@ public:
     //baidu::galaxy::util::ErrorCode Gc();
     int64_t Used();
     std::string ToString();
+
+private:
+    baidu::galaxy::util::ErrorCode Construct_();
+    boost::shared_ptr<VolumCollector> vc_;
 
 };
 

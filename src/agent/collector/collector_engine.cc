@@ -41,7 +41,7 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
     std::list<boost::shared_ptr<RuntimeCollector> >::iterator iter = collectors_.begin();
 
     for (; iter != collectors_.end(); iter++) {
-        if ((*iter)->GetCollector()->Equal(*collector)) {
+        if ((*iter)->GetCollector()->Equal(collector.get())) {
             return ERRORCODE(-1, "collector %s alread registered", collector->Name().c_str());
         }
     }
@@ -58,7 +58,7 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
     std::vector<boost::shared_ptr<RuntimeCollector> >::iterator iter = collectors_.begin();
 
     while (iter != collectors_.end()) {
-        if ((*iter)->GetCollector()->Equal(*collector)) {
+        if ((*iter)->GetCollector()->Equal(collector.get())) {
             (*iter)->GetCollector()->Enable(false);
             collectors_.erase(iter);
         }

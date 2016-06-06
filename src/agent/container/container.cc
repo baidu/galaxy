@@ -25,6 +25,7 @@
 #include <boost/bind.hpp>
 
 #include <unistd.h>
+#include <signal.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -49,7 +50,9 @@ Container::Container(const ContainerId& id, const baidu::galaxy::proto::Containe
     volum_group_(new baidu::galaxy::volum::VolumGroup()),
     process_(new Process()),
     id_(id),
-    status_(id.SubId())
+    status_(id.SubId()),
+    created_time_(0L),
+    force_kill_time_(-1L)
 {
 }
 
@@ -496,6 +499,27 @@ bool Container::Alive()
     return false;
 }
 
+void Container::SetExpiredTimeIfAbsent(int32_t rel_sec) {
+    assert(rel_sec >= 0);
+    if (-1 == force_kill_time_) {
+        force_kill_time_ = rel_sec * 1000000L + baidu::common::timer::get_micros(); 
+    }
+}
+
+bool Container::Expired() {
+    assert(force_kill_time_ >= 0);
+    int64_t now = baidu::common::timer::get_micros();
+    return now >= force_kill_time_;
+}
+
+
+bool Container::TryKill() {
+    if (process_->Pid() > 0 && 0 == ::kill(process_->Pid(), SIGTERM)) {
+        return true;
+    }
+    return false;
+}
+
 boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(bool full_info)
 {
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ret(new baidu::galaxy::proto::ContainerInfo());
@@ -520,6 +544,22 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
     } else {
         cd->set_version(desc_.version());
     }
+
+    boost::shared_ptr<baidu::galaxy::volum::Volum> wv = volum_group_->WorkspaceVolum();
+    if (NULL != wv) {
+        baidu::galaxy::proto::Volum* vr = ret->add_volum_used();
+        vr->set_used_size(wv->Used());
+        vr->set_path(wv->Description()->dest_path());
+    }
+
+    for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
+        baidu::galaxy::proto::Volum* vr = ret->add_volum_used();
+        boost::shared_ptr<baidu::galaxy::volum::Volum> dv = volum_group_->DataVolum(i);
+        vr->set_used_size(dv->Used());
+        vr->set_path(dv->Description()->dest_path());
+    }
+    std::cerr << ret->DebugString() << std::endl;
+
     return ret;
 }
 

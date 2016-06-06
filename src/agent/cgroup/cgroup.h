@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #pragma once
+#include "util/error_code.h"
+
 #include <boost/shared_ptr.hpp>
+#include <boost/thread/mutex.hpp>
 #include <google/protobuf/message.h>
 
 #include <string>
 #include <map>
-
-#include "util/error_code.h"
 
 namespace baidu {
 namespace galaxy {
@@ -42,11 +43,16 @@ public:
 private:
     std::vector<boost::shared_ptr<Subsystem> > subsystem_;
     boost::shared_ptr<FreezerSubsystem> freezer_;
+    boost::shared_ptr<Subsystem> cpu_acct_;
+    boost::shared_ptr<Subsystem> memory_;
 
     std::string container_id_;
     boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup_;
     const boost::shared_ptr<SubsystemFactory> factory_;
     boost::shared_ptr<CgroupCollector> collector_;
+    boost::mutex mutex_;
+
+
 };
 }
 }

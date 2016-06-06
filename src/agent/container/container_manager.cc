@@ -136,6 +136,7 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
     }
 
     // judge container existence
+    boost::shared_ptr<baidu::galaxy::container::Container> ctn;
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter;
     {
         boost::mutex::scoped_lock lock(mutex_);
@@ -145,9 +146,20 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
             LOG(WARNING) << "container " << id.CompactId() << " do not exist";
             return 0;
         }
+        ctn = iter->second;
+    }
+
+    // wait appworker exist
+    assert(NULL != ctn.get());
+    
+    ctn->SetExpiredTimeIfAbsent(30);
+    if (!ctn->Expired() && ctn->Alive() && ctn->TryKill()) {
+        LOG(INFO) << ctn->Id().CompactId() << " try kill appworker";
+        return 0;
     }
 
     // do releasing
+    // Fix me: should delete meta first, what happend when delete meta failed???
     int ret = 0;
     if (0 == (ret = iter->second->Destroy())) {
 
