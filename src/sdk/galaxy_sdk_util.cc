@@ -13,6 +13,11 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
+std::vector<std::string> g_vec_ports; //端口连续性校验
+std::vector<std::string> g_vec_port_names; //端口名重复检测
+std::vector<std::string> g_vec_service_name; //service name重复值检测
+std::vector<std::string> g_vec_service_port_name; //service 中port_name重复值检测
+
 bool FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
     if (sdk_user.user.empty()) {
         fprintf(stderr, "user must not be empty\n");
@@ -120,27 +125,27 @@ bool FillBlkioRequired(const BlkioRequired& sdk_blk,
     return true;
 }
 
-bool ValidatePort(const std::vector<std::string>& vec_ports) {
+bool ValidatePort() {
 
     bool ok = true;
-    for (size_t i = 1; i < vec_ports.size(); ++i) {
-        if ((vec_ports[i].compare("dynamic") != 0 && vec_ports[i].compare(vec_ports[i-1]) == 0)
-                || (vec_ports[i-1].compare("dynamic") == 0
-                     && vec_ports[i].compare("dynamic") != 0)) {
+    for (size_t i = 1; i < g_vec_ports.size(); ++i) {
+        if ((g_vec_ports[i].compare("dynamic") != 0 && g_vec_ports[i].compare(g_vec_ports[i-1]) == 0)
+                || (g_vec_ports[i-1].compare("dynamic") == 0
+                     && g_vec_ports[i].compare("dynamic") != 0)) {
             fprintf(stderr, "ports are not correct in task, ports must be serial\n");
             ok = false;
             break;
         }
 
-        if (vec_ports[i-1].compare("dynamic") != 0 && vec_ports[i].compare("dynamic") != 0) {
-            int int_port = atoi(vec_ports[i-1].c_str());
+        if (g_vec_ports[i-1].compare("dynamic") != 0 && g_vec_ports[i].compare("dynamic") != 0) {
+            int int_port = atoi(g_vec_ports[i-1].c_str());
             if (int_port < 1025 || int_port > 9999) {
-                fprintf(stderr, "port %s is error, must be in 1025~9999\n", vec_ports[i-1].c_str());
+                fprintf(stderr, "port %s is error, must be in 1025~9999\n", g_vec_ports[i-1].c_str());
                 ok =  false;
                 break;
             }
             ++int_port;
-            if (vec_ports[i].compare(::baidu::common::NumToString(int_port)) != 0) {
+            if (g_vec_ports[i].compare(::baidu::common::NumToString(int_port)) != 0) {
                 fprintf(stderr, "ports are not correct in task, ports must be serial\n");
                 ok =  false;
                 break;
@@ -156,13 +161,35 @@ bool FillPortRequired(const PortRequired& sdk_port,
         fprintf(stderr, "port_name must not be empty in port\n");
         return false;
     }
+    
+    //重复的端口名检测
+    std::vector<std::string> ::iterator it = find(g_vec_port_names.begin(),
+                                                  g_vec_port_names.end(),
+                                                  sdk_port.port_name);
+    if (it != g_vec_port_names.end()) {
+        fprintf(stderr, "port_name in ports cannot be repeated\n");
+        return false;
+    }
+    g_vec_port_names.push_back(sdk_port.port_name);
+
     port->set_port_name(sdk_port.port_name);
+
     if (sdk_port.port.empty()) {
         fprintf(stderr, "port must not be empty in port, it could be \"dynamic\"or specific port such as \"8080\" \n");
         return false;
     }
-    port->set_port(sdk_port.port);
+       
+    //端口号不可重复
+    if (sdk_port.port.compare("dynamic") != 0) {
+        it =  find(g_vec_ports.begin(), g_vec_ports.end(), sdk_port.port);
+        if (it != g_vec_ports.end()) {
+            fprintf(stderr, "port in ports cannot be repeated\n");
+            return false;
+        }
+    }
+    g_vec_ports.push_back(sdk_port.port);
 
+    port->set_port(sdk_port.port);
     port->set_real_port(sdk_port.real_port);//可以不用，有resman分配
     return true;
 }
@@ -187,32 +214,19 @@ bool FillCgroup(const Cgroup& sdk_cgroup,
     }
 
     bool ok = true;
-    std::vector<std::string> vec_ports; //端口连续性校验
-    std::vector<std::string> vec_port_names; //端口名重复检测
     for (size_t i = 0; i < sdk_cgroup.ports.size(); ++i) {
         ::baidu::galaxy::proto::PortRequired* port = cgroup->add_ports();
         if (!FillPortRequired(sdk_cgroup.ports[i], port)) {
             ok = false;
             break;
         }
-        //重复的端口名检测
-        std::vector<std::string> ::iterator it = find(vec_port_names.begin(),
-                                                      vec_port_names.end(),
-                                                      sdk_cgroup.ports[i].port_name);
-        if (it != vec_port_names.end()) {
-            fprintf(stderr, "port_name in ports cannot be repeated\n");
-            ok = false;
-            break;
-        }
-        vec_port_names.push_back(sdk_cgroup.ports[i].port_name);
-        vec_ports.push_back(sdk_cgroup.ports[i].port);
     }
 
     if (!ok) {
         return false;
     }
 
-    ok = ValidatePort(vec_ports);
+    ok = ValidatePort();
     return ok;
 }
 
@@ -338,6 +352,7 @@ bool FillImagePackage(const ImagePackage& sdk_image,
     }
     image->set_start_cmd(sdk_image.start_cmd);
     image->set_stop_cmd(sdk_image.stop_cmd);
+    image->set_wait_cmd(sdk_image.wait_cmd);
     if (!FillPackage(sdk_image.package, image->mutable_package())) {
         return false;
     }
@@ -362,12 +377,31 @@ bool FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* se
         fprintf(stderr, "service service_name must no be empty\n");
         return false;
     }
+
+    std::vector<std::string> ::iterator it = find(g_vec_service_name.begin(),
+                                                 g_vec_service_name.end(),
+                                                 sdk_service.service_name);
+    if (it != g_vec_service_name.end()) {
+        fprintf(stderr, "service_name in service cannot be repeated\n");
+        return false;
+    }
     service->set_service_name(sdk_service.service_name);
+    g_vec_service_name.push_back(sdk_service.service_name);
     
     if (sdk_service.port_name.empty()) {
         fprintf(stderr, "service port_name must no be empty\n");
         return false;
     }
+
+    it = find(g_vec_service_port_name.begin(), 
+              g_vec_service_port_name.end(), 
+              sdk_service.port_name);
+    if (it != g_vec_service_port_name.end()) {
+        fprintf(stderr, "port_name in service cannot be repeated\n");
+        return false;
+    }
+    g_vec_service_port_name.push_back(sdk_service.port_name);
+
     service->set_port_name(sdk_service.port_name);
     service->set_use_bns(sdk_service.use_bns);
     return true;
@@ -385,33 +419,21 @@ bool FillTaskDescription(const TaskDescription& sdk_task,
         return false;
     }
 
-    std::vector<std::string> vec_ports; //端口连续性校验
-    std::vector<std::string> vec_port_names; //端口名重复检测
+    std::vector<std::string> vec_task_port_names;
     for (size_t i = 0; i < sdk_task.ports.size(); ++i) {
         ::baidu::galaxy::proto::PortRequired* port = task->add_ports();
         ok = FillPortRequired(sdk_task.ports[i], port);
         if (!ok) {
             break;
-        }
-        
-        //重复的端口名检测
-        std::vector<std::string> ::iterator it = find(vec_port_names.begin(),
-                                                      vec_port_names.end(),
-                                                      sdk_task.ports[i].port_name);
-        if (it != vec_port_names.end()) {
-            fprintf(stderr, "port_name in ports cannot be repeated\n");
-            ok = false;
-            break;
-        }
-        vec_port_names.push_back(sdk_task.ports[i].port_name);
-        vec_ports.push_back(sdk_task.ports[i].port);
+        } 
+        vec_task_port_names.push_back(sdk_task.ports[i].port_name);
     }
 
     if (!ok) {
         return false;
     }
 
-    ok = ValidatePort(vec_ports);
+    ok = ValidatePort();
     if (!ok) {
         return false;
     }
@@ -432,42 +454,21 @@ bool FillTaskDescription(const TaskDescription& sdk_task,
         return false;
     }
 
-    //service name重复值检测
-    std::vector<std::string> vec_service_name;
-    //service中port_name重复值检测
-    std::vector<std::string> vec_service_port_name;
     for (size_t i = 0; i < sdk_task.services.size(); ++i) {
         ::baidu::galaxy::proto::Service* service = task->add_services();
         ok = FillService(sdk_task.services[i], service);
         if (!ok) {
             break;
         }
-        std::vector<std::string> ::iterator it = find(vec_service_name.begin(),
-                                                      vec_service_name.end(),
-                                                      sdk_task.services[i].service_name);
-        if (it != vec_service_name.end()) {
-            fprintf(stderr, "service_name in service cannot be repeated\n");
-            ok = false;
-            break;
-        }
-        vec_service_name.push_back(sdk_task.services[i].service_name);
-
-        //检测使用的端口名称是否在port中
-        it = find(vec_port_names.begin(), vec_port_names.end(), sdk_task.services[i].port_name);
-        if (it == vec_port_names.end()) {
-            fprintf(stderr, "port_name in service is not existed\n");
+        //检测使用的端口名称是否在本task的port中
+        std::vector<std::string> ::iterator it = find(vec_task_port_names.begin(), 
+                                                      vec_task_port_names.end(), 
+                                                      sdk_task.services[i].port_name);
+        if (it == vec_task_port_names.end()) {
+            fprintf(stderr, "port_name in service[%d] is not existed in task ports\n", (int)i);
             ok = false;
             break;
         } 
-        //service中port_name重复值检测
-        it = find(vec_service_port_name.begin(), vec_service_port_name.end(),
-                            sdk_task.services[i].port_name);
-        if (it != vec_service_port_name.end()) {
-            fprintf(stderr, "port_name in service cannot be repeated\n");
-            ok = false;
-            break;
-        }
-        vec_service_port_name.push_back(sdk_task.services[i].port_name);
     }
     return ok;
 }
