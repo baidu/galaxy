@@ -26,6 +26,7 @@ typedef proto::AppMaster_Stub AppMaster_Stub;
 typedef proto::FetchTaskRequest FetchTaskRequest;
 typedef proto::FetchTaskResponse FetchTaskResponse;
 typedef proto::ErrorCode ErrorCode;
+typedef proto::Status Status;
 
 class AppWorkerImpl {
 public:
@@ -33,6 +34,7 @@ public:
     ~AppWorkerImpl();
     void PrepareEnvs();
     void Init();
+    void Quit();
 
 private:
     void FetchTask();
@@ -45,10 +47,13 @@ private:
     Mutex mutex_;
     int64_t start_time_;
     int64_t update_time_;
+    Status update_status_;
     std::string hostname_;
     std::string endpoint_;
+    std::string ip_;
     std::string job_id_;
     std::string pod_id_;
+    bool quit_;
 
     RpcClient rpc_client_;
     InsSDK* nexus_;
@@ -60,6 +65,5 @@ private:
 
 } // ending namespace galaxy
 } // ending namespace baidu
-
 
 #endif  // BAIDU_GALAXY_APPWORKER_IMPL_H

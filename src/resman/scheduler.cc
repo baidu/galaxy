@@ -23,7 +23,7 @@ namespace galaxy {
 namespace sched {
 
 const int sMaxPort = 9999;
-const int sMinPort = 1000;
+const int sMinPort = 1025;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -1479,7 +1479,7 @@ void Scheduler::ShowUserAlloc(const std::string& user_name, proto::Quota& alloc)
         if (container_group->user_name != user_name) {
             continue;
         }
-        int64_t replica = container_group->replica;
+        int64_t replica = container_group->Replica();
         replica_alloc +=  replica;
         cpu_alloc += container_group->require->CpuNeed() * replica;
         memory_alloc += container_group->require->MemoryNeed() * replica;

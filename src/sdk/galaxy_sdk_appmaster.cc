@@ -120,7 +120,7 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
     }
     pb_request.set_jobid(request.jobid);
 
-    if (request.oprate == kUpdateJobStart) {
+    if (request.operate == kUpdateJobStart) {
         if (request.job.deploy.update_break_count < 0 
                 || request.job.deploy.update_break_count >= request.job.deploy.replica) {
             fprintf(stderr, "deploy update_break_count must be greater than 0 and less than replica\n");
@@ -130,12 +130,12 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
             return false;
         }
         pb_request.mutable_job()->mutable_deploy()->set_update_break_count(request.job.deploy.update_break_count);
-        pb_request.set_oprate(::baidu::galaxy::proto::kUpdateJobStart);
-    } else if (request.oprate == kUpdateJobContinue) {
-        pb_request.set_oprate(::baidu::galaxy::proto::kUpdateJobContinue);
-    } else if (request.oprate == kUpdateJobRollback) {
-        pb_request.set_oprate(::baidu::galaxy::proto::kUpdateJobRollback);
-    } else if (request.oprate == kUpdateJobDefault) {
+        pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobStart);
+    } else if (request.operate == kUpdateJobContinue) {
+        pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobContinue);
+    } else if (request.operate == kUpdateJobRollback) {
+        pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobRollback);
+    } else if (request.operate == kUpdateJobDefault) {
         if (!FillJobDescription(request.job, pb_request.mutable_job())) {
             return false;
         }
@@ -317,6 +317,14 @@ bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* resp
         pod.start_time = pb_response.job().pods(i).start_time();
         pod.update_time = pb_response.job().pods(i).update_time();
         pod.fail_count = pb_response.job().pods(i).fail_count();
+        for (int32_t j = 0; j < pb_response.job().pods(i).services().size(); ++j) {
+            ServiceInfo service;
+            service.name = pb_response.job().pods(i).services(j).name();
+            service.port = pb_response.job().pods(i).services(j).port();
+            service.ip = pb_response.job().pods(i).services(j).ip();
+            service.status = (Status)pb_response.job().pods(i).services(j).status();
+            pod.services.push_back(service);
+        }
         response->job.pods.push_back(pod);
     }
 

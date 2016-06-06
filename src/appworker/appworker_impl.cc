@@ -23,6 +23,8 @@ DECLARE_string(appmaster_nexus_path);
 DECLARE_string(tag);
 DECLARE_string(appworker_exit_file);
 DECLARE_string(appworker_user_env);
+DECLARE_string(appworker_workspace_path_env);
+DECLARE_string(appworker_workspace_abspath_env);
 DECLARE_string(appworker_agent_hostname_env);
 DECLARE_string(appworker_agent_ip_env);
 DECLARE_string(appworker_agent_port_env);
@@ -41,6 +43,8 @@ AppWorkerImpl::AppWorkerImpl() :
         mutex_(),
         start_time_(0),
         update_time_(0),
+        update_status_(proto::kSuspend),
+        quit_(false),
         nexus_(NULL),
         appmaster_stub_(NULL),
         backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
@@ -65,89 +69,97 @@ AppWorkerImpl::~AppWorkerImpl() {
 }
 
 void AppWorkerImpl::PrepareEnvs() {
-    // 0.user
+    // 1.user
     char* c_user = getenv(FLAGS_appworker_user_env.c_str());
-
     if (NULL == c_user) {
         LOG(WARNING) << FLAGS_appworker_user_env << " is  not set";
         exit(-1);
     }
     std::string user = std::string(c_user);
 
-    // 1.job_id
-    char* c_job_id = getenv(FLAGS_appworker_job_id_env.c_str());
+    // 2.workspace_path
+    char* c_workspace_path = getenv(FLAGS_appworker_workspace_path_env.c_str());
+    if (NULL == c_workspace_path) {
+        LOG(WARNING) << FLAGS_appworker_workspace_path_env << " is  not set";
+        exit(-1);
+    }
+    std::string workspace_path = std::string(c_workspace_path);
 
+    // 3.workspace_abspath
+    char* c_workspace_abspath = getenv(FLAGS_appworker_workspace_abspath_env.c_str());
+    if (NULL == c_workspace_abspath) {
+        LOG(WARNING) << FLAGS_appworker_workspace_abspath_env << " is  not set";
+        exit(-1);
+    }
+    std::string workspace_abspath = std::string(c_workspace_abspath);
+
+    // 4.job_id
+    char* c_job_id = getenv(FLAGS_appworker_job_id_env.c_str());
     if (NULL == c_job_id) {
         LOG(WARNING) << FLAGS_appworker_job_id_env << " is  not set";
         exit(-1);
     }
-
     job_id_ = std::string(c_job_id);
-    // 2.pod_id
-    char* c_pod_id = getenv(FLAGS_appworker_pod_id_env.c_str());
 
+    // 5.pod_id
+    char* c_pod_id = getenv(FLAGS_appworker_pod_id_env.c_str());
     if (NULL == c_pod_id) {
         LOG(WARNING) << FLAGS_appworker_pod_id_env << " is  not set";
         exit(-1);
     }
-
     pod_id_ = std::string(c_pod_id);
-    // 3.hostname
-    char* c_hostname = getenv(FLAGS_appworker_agent_hostname_env.c_str());
 
+    // 6.hostname
+    char* c_hostname = getenv(FLAGS_appworker_agent_hostname_env.c_str());
     if (NULL == c_hostname) {
         LOG(WARNING) << FLAGS_appworker_agent_hostname_env << " is  not set";
         exit(-1);
     }
-
     hostname_ = std::string(c_hostname);
+
     // 4.ip
     char* c_ip = getenv(FLAGS_appworker_agent_ip_env.c_str());
-
     if (NULL == c_ip) {
         LOG(WARNING) << FLAGS_appworker_agent_ip_env << " is  not set";
         exit(-1);
     }
+    ip_ = std::string(c_ip);
 
-    std::string ip = std::string(c_ip);
     // 5.port
     char* c_port = getenv(FLAGS_appworker_agent_port_env.c_str());
-
     if (NULL == c_port) {
         LOG(WARNING) << FLAGS_appworker_agent_port_env << " is  not set";
         exit(-1);
     }
-
     std::string port = std::string(c_port);
-    endpoint_ = ip + ":" + port;
+    endpoint_ = ip_ + ":" + port;
+
     // 6.task_ids
     char* c_task_ids = getenv(FLAGS_appworker_task_ids_env.c_str());
-
     if (NULL == c_task_ids) {
         LOG(WARNING) << FLAGS_appworker_task_ids_env << " is  not set";
         exit(-1);
     }
-
     std::string s_task_ids = std::string(c_task_ids);
     std::vector<std::string> task_ids;
     boost::split(task_ids,
                  s_task_ids,
                  boost::is_any_of(","),
                  boost::token_compress_on);
+
     // 7.cgroup subsystems
     char* c_cgroup_subsystems = getenv(FLAGS_appworker_cgroup_subsystems_env.c_str());
-
     if (NULL == c_cgroup_subsystems) {
         LOG(WARNING) << FLAGS_appworker_cgroup_subsystems_env << "is not set";
         exit(-1);
     }
-
     std::string s_cgroup_subsystems = std::string(c_cgroup_subsystems);
     std::vector<std::string> cgroup_subsystems;
     boost::split(cgroup_subsystems,
                  s_cgroup_subsystems,
                  boost::is_any_of(","),
                  boost::token_compress_on);
+
     // 8.task cgroup paths and ports
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
     std::vector<std::map<std::string, std::string> > task_ports;
@@ -214,6 +226,9 @@ void AppWorkerImpl::PrepareEnvs() {
 
     PodEnv env;
     env.user = user;
+    env.workspace_path = workspace_path;
+    env.workspace_abspath = workspace_abspath;
+    env.ip = ip_;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
     env.task_ids = task_ids;
@@ -231,6 +246,15 @@ void AppWorkerImpl::Init() {
     LOG(INFO)
             << "appworker start, endpoint: " << endpoint_ << ", "
             << "job_id: " << job_id_ << ", pod_id: " << pod_id_;
+
+    return;
+}
+
+void AppWorkerImpl::Quit() {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "!!! appworker will exit for signal catched";
+    quit_= true;
+    pod_manager_.TerminatePod();
 
     return;
 }
@@ -282,7 +306,9 @@ void AppWorkerImpl::FetchTask() {
     if (proto::kPodTerminated == pod.status) {
         LOG(INFO) << "pod terminated";
         std::string value = boost::lexical_cast<std::string>(0);
-        file::Write(FLAGS_appworker_exit_file, value);
+        if (!quit_) {
+            file::Write(FLAGS_appworker_exit_file, value);
+        }
         exit(0);
     }
 
@@ -318,6 +344,7 @@ void AppWorkerImpl::FetchTask() {
     for (int j = 0; j < request->services().size(); ++j) {
         LOG(INFO)
                 << "service: " << request->services(j).name() << ", "
+                << "ip: " << request->services(j).ip() << ", "
                 << "port: " << request->services(j).port() << ", "
                 << "status: " << proto::Status_Name(request->services(j).status());
     }
@@ -376,35 +403,57 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
 
-        // ignore expired actions
-        if (!response->has_update_time()
-                || response->update_time() == update_time_) {
-            LOG(WARNING) << "ignore expire action, current: " << update_time_;
-            break;
+        // ignore expired action
+        if (error_code.status() == update_status_
+                && response->update_time() == update_time_) {
+            LOG(WARNING)
+                    << "ignore expire action, current "
+                    << "update_time: " << update_time_ << ", "
+                    << "update_status: " << proto::Status_Name(update_status_);
         }
 
-        update_time_ = response->update_time();
-        LOG(INFO) << "update_time updated";
+        update_status_ = error_code.status();
+        LOG(INFO) << "update_status updated";
 
-        if (!response->has_pod()) {
-            LOG(WARNING) << "ignore empty pod description";
-            break;
-        }
+        if (response->update_time() == update_time_) {
+            LOG(INFO) << "update_time not updated";
 
-        LOG(INFO) << "fetch task: " << proto::Status_Name(error_code.status());
-        pod_manager_.SetPodDescription(response->pod());
+            switch (error_code.status()) {
+            case proto::kRebuild: {
+                Pod pod;
+                pod_manager_.QueryPod(pod);
+                if (proto::kPodFailed == pod.status) {
+                    LOG(WARNING) << "inplace rebuild failed pod";
+                    pod_manager_.RebuildPod();
+                }
+                break;
+            }
+            default:
+                break;
+            }
+        } else {
+            update_time_ = response->update_time();
+            LOG(INFO) << "update_time updated";
 
-        switch (error_code.status()) {
-        case proto::kReload:
-            pod_manager_.ReloadPod();
-            break;
+            if (!response->has_pod()) {
+                LOG(WARNING) << "ignore empty pod description";
+                break;
+            }
 
-        case proto::kRebuild:
-            pod_manager_.RebuildPod();
-            break;
+            pod_manager_.SetPodDescription(response->pod());
 
-        default:
-            break;
+            switch (error_code.status()) {
+            case proto::kReload:
+                pod_manager_.ReloadPod();
+                break;
+
+            case proto::kRebuild:
+                pod_manager_.RebuildPod();
+                break;
+
+            default:
+                break;
+            }
         }
     } while (0);
 

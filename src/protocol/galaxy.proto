@@ -257,7 +257,8 @@ message Service {
 message ServiceInfo {
     optional string name = 1;
     optional string port = 2;
-    optional Status status = 3;
+    optional string ip = 3;
+    optional Status status = 4;
 }
 
 message TaskDescription {

@@ -119,7 +119,7 @@ struct VolumRequired {
     bool exclusive;
     bool use_symlink;
 };
-enum UpdateJobOprate {
+enum UpdateJobOperate {
     kUpdateJobStart = 1,
     kUpdateJobContinue = 2,
     kUpdateJobRollback = 3,
@@ -244,7 +244,7 @@ enum ContainerGroupStatus {
     kContainerGroupNormal = 1,
     kContainerGroupTerminated = 2,
 };
-struct ContainerInfo {
+/*struct ContainerInfo {
     std::string id;
     std::string group_id;
     int64_t created_time;
@@ -255,7 +255,7 @@ struct ContainerInfo {
     std::vector<Volum> volum_used;
     std::vector<std::string> port_used;
     uint32_t restart_counter;
-};
+};*/
 enum Status {
    kOk = 1,
    kError = 2,
@@ -280,7 +280,7 @@ enum AgentStatus {
     kAgentDead = 2,
     kAgentOffline = 3,
 };
-struct AgentInfo {
+/*struct AgentInfo {
     std::string version;
     int64_t start_time;
     bool unhealthy;
@@ -288,7 +288,7 @@ struct AgentInfo {
     Resource cpu_resoruce;
     Resource memory_resource;
     std::vector<VolumResource> volum_resources;
-};
+};*/
 
 struct EnterSafeModeRequest {
     User user;
@@ -569,7 +569,7 @@ struct UpdateJobRequest {
     std::string jobid;
     std::string hostname;
     JobDescription job;
-    UpdateJobOprate oprate;
+    UpdateJobOperate operate;
 };
 struct UpdateJobResponse {
     ErrorCode error_code;
@@ -608,6 +608,13 @@ struct ShowJobRequest {
     std::string jobid;
 };
 
+struct ServiceInfo {
+    std::string name;
+    std::string port;
+    std::string ip;
+    Status status;
+};
+
 struct PodInfo {
     std::string podid;
     std::string jobid;
@@ -617,6 +624,7 @@ struct PodInfo {
     int64_t start_time;
     int64_t update_time;
     int32_t fail_count;
+    std::vector<ServiceInfo> services;
 };
 struct JobInfo {
     std::string jobid;
