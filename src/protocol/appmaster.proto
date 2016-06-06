@@ -13,7 +13,7 @@ message SubmitJobResponse {
     optional string jobid = 2;
 }
 
-enum UpdateJobOprate {
+enum UpdateJobOperate {
     kUpdateJobStart = 1;
     kUpdateJobContinue = 2;
     kUpdateJobRollback = 3;
@@ -25,7 +25,7 @@ message UpdateJobRequest {
     optional string hostname = 3;
     optional uint32 interval = 4;
     optional JobDescription job = 5;
-    optional UpdateJobOprate oprate = 6;
+    optional UpdateJobOperate operate = 6;
 }
 message UpdateJobResponse {
     optional ErrorCode error_code = 1;
@@ -83,6 +83,8 @@ message PodInfo {
     optional int32 fail_count = 8; 
     optional int64 heartbeat_time = 9;
     optional int64 last_normal_time = 10;
+    repeated ServiceInfo services = 11;
+    optional int64 send_rebuild_time = 12;
 }
 
 message JobInfo {

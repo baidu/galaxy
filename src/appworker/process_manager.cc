@@ -21,6 +21,8 @@
 #include "protocol/galaxy.pb.h"
 
 DECLARE_int32(process_manager_loop_wait_interval);
+DECLARE_int32(process_manager_download_retry_times);
+DECLARE_int32(process_manager_download_timeout);
 
 namespace baidu {
 namespace galaxy {
@@ -148,8 +150,11 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
                         download_context->package.c_str(),
                         download_context->version.c_str());
                 fflush(stdout);
-                cmd = "wget -O " + download_context->package
-                      + " " + download_context->src_path + " && " + cmd;
+                cmd = "wget -t " + boost::lexical_cast<std::string>(FLAGS_process_manager_download_retry_times)
+                      + " --timeout=" + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
+                      + " -O " + download_context->package
+                      + " " + download_context->src_path
+                      + " && " + cmd;
             }
         }
 
@@ -289,7 +294,7 @@ void ProcessManager::LoopWaitProcesses() {
                 }
             }
 
-            LOG(WARNING)
+            LOG(INFO)
                     << "process: " << it->second->process_id << ", "
                     << "pid: " << pid << ", "
                     << "exit code: " << it->second->exit_code;
