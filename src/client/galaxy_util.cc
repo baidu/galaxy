@@ -502,11 +502,12 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     rapidjson::Value obj_str(rapidjson::kStringType);
     std::string str;
 
-    
     //根节点
     rapidjson::Value root(rapidjson::kObjectType);
     
-    root.AddMember("name", "example", allocator);
+    std::string name = "example";
+    obj_str.SetString(name.c_str(), allocator);
+    root.AddMember("name", obj_str, allocator);
     root.AddMember("type", "kJobService", allocator);
     //root.AddMember("version", "1.0.0", allocator);
     //root.AddMember("run_user", "galaxy", allocator);
@@ -601,8 +602,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         package.AddMember("version", "1.0.0", allocator);
 
         rapidjson::Value exec_package(rapidjson::kObjectType);
-        exec_package.AddMember("start_cmd", "sh_start.sh", allocator);
+        exec_package.AddMember("start_cmd", "sh app_start.sh", allocator);
         exec_package.AddMember("stop_cmd", "sh app_stop.sh", allocator);
+        exec_package.AddMember("wait_cmd", "sh app_wait.sh", allocator);
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
@@ -631,7 +633,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value services(rapidjson::kArrayType);
         for (int j = 0; j < num_services; ++j) {
             rapidjson::Value service(rapidjson::kObjectType);
-            str = "service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             service.AddMember("service_name", obj_str, allocator);
 
