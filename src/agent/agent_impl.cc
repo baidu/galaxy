@@ -219,6 +219,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     ec->set_status(baidu::galaxy::proto::kOk);
 
     //LOG(INFO) << "query:" << response->DebugString();
+    //std::cout << "query:" << response->DebugString() << std::endl;
     done->Run();
 }
 

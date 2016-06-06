@@ -106,10 +106,11 @@ bool CgroupCollector::Enabled()
     return enabled_;
 }
 
-bool CgroupCollector::Equal(const Collector& c)
+bool CgroupCollector::Equal(const Collector* c)
 {
+    assert(NULL != c);
     int64_t addr1 = (int64_t)this;
-    int64_t addr2 = (int64_t)&c;
+    int64_t addr2 = (int64_t)c;
     return addr1 == addr2;
 }
 

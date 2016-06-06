@@ -26,7 +26,7 @@ public:
 
     void Enable(bool enable);
     bool Enabled();
-    bool Equal(const Collector&);
+    bool Equal(const Collector*);
     void SetCycle(int cycle);
     int Cycle(); // unit second
     std::string Name() const;

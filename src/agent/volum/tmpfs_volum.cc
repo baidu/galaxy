@@ -6,6 +6,8 @@
 #include "protocol/galaxy.pb.h"
 #include "mounter.h"
 #include "util/error_code.h"
+#include "collector/collector_engine.h"
+
 #include "glog/logging.h"
 
 #include <boost/filesystem/path.hpp>
@@ -25,7 +27,17 @@ TmpfsVolum::TmpfsVolum()
 
 TmpfsVolum::~TmpfsVolum() {}
 
-baidu::galaxy::util::ErrorCode TmpfsVolum::Construct()
+baidu::galaxy::util::ErrorCode TmpfsVolum::Construct() {
+    baidu::galaxy::util::ErrorCode err = Construct_();
+    if (err.Code() == 0) {
+        vc_.reset(new VolumCollector(this->TargetPath()));
+        vc_->Enable(true);
+        baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(vc_);
+    }
+    return err;
+}
+
+baidu::galaxy::util::ErrorCode TmpfsVolum::Construct_()
 {
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     assert(baidu::galaxy::proto::kTmpfs == vr->medium());
@@ -62,12 +74,19 @@ baidu::galaxy::util::ErrorCode TmpfsVolum::Construct()
 baidu::galaxy::util::ErrorCode TmpfsVolum::Destroy()
 {
     // do nothing
+    if (vc_.get() != NULL) {
+        vc_->Enable(false);
+    }
     return Umount(this->TargetPath());
 }
 
 int64_t TmpfsVolum::Used()
 {
-    return 0;
+    int64_t ret = 0L;
+    if (NULL != vc_.get()) {
+        ret = vc_->Size();
+    }
+    return ret;
 }
 
 std::string TmpfsVolum::ToString()
