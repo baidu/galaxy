@@ -219,6 +219,7 @@ private:
     bool force_safe_mode_;
     ThreadPool query_pool_;
     RpcClient rpc_client_;
+    int64_t start_time_;
 };
 
 }
