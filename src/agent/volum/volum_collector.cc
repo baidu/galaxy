@@ -16,6 +16,7 @@ VolumCollector::VolumCollector(const std::string& phy_path) :
 }
 
 VolumCollector::~VolumCollector() {
+
 }
 
 baidu::galaxy::util::ErrorCode VolumCollector::Collect() {
