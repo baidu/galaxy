@@ -29,6 +29,7 @@ using ::baidu::galaxy::proto::JobDescription;
 using ::baidu::galaxy::proto::JobEvent;
 using ::baidu::galaxy::proto::UpdateAction;
 using ::baidu::galaxy::proto::Status;
+using ::baidu::galaxy::proto::PodStatus;
 using ::baidu::galaxy::proto::PodDescription;
 using ::baidu::galaxy::proto::kOk;
 using ::baidu::galaxy::proto::kError;
@@ -72,12 +73,15 @@ using ::baidu::galaxy::proto::kPodStopping;
 using ::baidu::galaxy::proto::kPodTerminated;
 using ::baidu::galaxy::proto::ResMan_Stub;
 using ::baidu::galaxy::proto::User;
+using ::baidu::galaxy::proto::ServiceInfo;
 
 typedef std::string JobId;
 typedef std::string Version;
 typedef std::string PodId;
+typedef std::string ServiceName;
 typedef baidu::galaxy::proto::JobOverview JobOverview;
 typedef ::google::protobuf::RepeatedPtrField<JobOverview> JobOverviewList;
+typedef ::google::protobuf::RepeatedPtrField<ServiceInfo> ServiceList;
 
 struct Job {
     JobStatus status_;
@@ -156,6 +160,18 @@ private:
     Status RollbackJob(Job* job, void* arg);
     Status BatchUpdatePod(Job* job, void* arg);
     void CheckBatchUpdate(Job* job);
+    Status TryRebuild(Job* job, PodInfo* podinfo);
+    Status TryReload(Job* job, PodInfo* pod);
+    void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
+                            PodStatus reload_status);
+    bool ReachBreakpoint(Job* job);
+    void RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
+                                PodInfo* podinfo,
+                                Job* job);
+
+    bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
+    void RefreshService(ServiceList* src, PodInfo* pod);
+    void DestroyService(ServiceList* services);
 
 private:
     std::map<JobId, Job*> jobs_;
