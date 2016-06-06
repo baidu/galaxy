@@ -234,6 +234,9 @@ int ParseImagePackage(const rapidjson::Value& image_json, ::baidu::galaxy::sdk::
     }
     image->stop_cmd = image_json["stop_cmd"].GetString();
     boost::trim(image->stop_cmd);
+
+    image->health_cmd = image_json["health_cmd"].GetString();
+    boost::trim(image->health_cmd);
     
     if (!image_json.HasMember("package")) {
         fprintf(stderr, "package is required in exec_package\n");

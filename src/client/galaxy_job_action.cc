@@ -366,13 +366,11 @@ bool JobAction::ListJobs(const std::string& soptions) {
                         values.push_back(FormatDate(jobs[i].create_time));
                         values.push_back(FormatDate(jobs[i].update_time));
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -728,10 +726,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
     for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
         size_t pos = resman_response.containers[i].id.rfind("."); 
         std::string podid(resman_response.containers[i].id, pos + 1, resman_response.containers[i].id.size()- (pos + 1));
-        std::string update_finish = "No";
-        if (pods[resman_response.containers[i].id].update_time == response.job.update_time) {
-            update_finish = "Yes";
-        }
+                
         std::string scpu;
         if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
             scpu = ::baidu::common::NumToString(resman_response.containers[i].cpu.assigned / 1000.0) + "/" +
@@ -743,7 +738,21 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
             smem = ::baidu::common::HumanReadableString(resman_response.containers[i].memory.assigned) + "/" +
                    ::baidu::common::HumanReadableString(resman_response.containers[i].memory.used);
         }
-            
+
+        std::string pod_fail_count;
+        std::string pod_start_time;
+        std::string pod_update_time;
+        std::map<std::string, ::baidu::galaxy::sdk::PodInfo> ::iterator it = pods.find(resman_response.containers[i].id);
+        std::string update_finish = "No";
+        if (pods.find(resman_response.containers[i].id) != pods.end()) {
+           pod_fail_count = ::baidu::common::NumToString(pods[resman_response.containers[i].id].fail_count);
+           pod_start_time = FormatDate(pods[resman_response.containers[i].id].start_time);
+           pod_update_time = FormatDate(pods[resman_response.containers[i].id].update_time);
+           if (pods[resman_response.containers[i].id].update_time == response.job.update_time) {
+               update_finish = "Yes";
+           }
+        }
+        
         std::vector<std::string> values; 
         if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
             for (uint32_t j = 0; j < resman_response.containers[i].volums.size(); ++j) {
@@ -757,7 +766,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                     values.push_back(podid);
                     values.push_back(resman_response.containers[i].endpoint);
                     values.push_back(StringPodStatus(pods[resman_response.containers[i].id].status));
-                    values.push_back(::baidu::common::NumToString(pods[resman_response.containers[i].id].fail_count));
+                    values.push_back(pod_fail_count);
                     values.push_back(StringContainerStatus(resman_response.containers[i].status));
                     values.push_back(StringResourceError(resman_response.containers[i].last_res_err));
                     values.push_back(update_finish);
@@ -768,17 +777,13 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                         values.push_back(smem);
                     }
                     values.push_back(svolums);
-                    values.push_back(FormatDate(pods[resman_response.containers[i].id].start_time));
-                    values.push_back(FormatDate(pods[resman_response.containers[i].id].update_time));     
+                    values.push_back(pod_start_time);
+                    values.push_back(pod_start_time);     
                 } else {
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
-                    values.push_back("");
+                    int base_size = sizeof(array_headers) / sizeof(std::string);
+                    for (int base_it = 0; base_it < base_size; ++base_it) {
+                        values.push_back("");
+                    }
                     if (!scpu.empty()) {
                         values.push_back("");
                     }
@@ -797,7 +802,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                 values.push_back(podid);
                 values.push_back(resman_response.containers[i].endpoint);
                 values.push_back(StringPodStatus(pods[resman_response.containers[i].id].status));
-                values.push_back(::baidu::common::NumToString(pods[resman_response.containers[i].id].fail_count));
+                values.push_back(pod_fail_count);
                 values.push_back(StringContainerStatus(resman_response.containers[i].status));
                 values.push_back(StringResourceError(resman_response.containers[i].last_res_err));
                 values.push_back(update_finish);
@@ -808,8 +813,8 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                     values.push_back(smem);
                 }
                 values.push_back("");
-                values.push_back(FormatDate(pods[resman_response.containers[i].id].start_time));
-                values.push_back(FormatDate(pods[resman_response.containers[i].id].update_time));  
+                values.push_back(pod_start_time);
+                values.push_back(pod_update_time);  
                 tp_pods.AddRow(values);
             }
         }
@@ -819,7 +824,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
             values.push_back(podid);
             values.push_back(resman_response.containers[i].endpoint);
             values.push_back(StringPodStatus(pods[resman_response.containers[i].id].status));
-            values.push_back(::baidu::common::NumToString(pods[resman_response.containers[i].id].fail_count));
+            values.push_back(pod_fail_count);
             values.push_back(StringContainerStatus(resman_response.containers[i].status));
             values.push_back(StringResourceError(resman_response.containers[i].last_res_err));
             values.push_back(update_finish);
@@ -829,31 +834,33 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
             if (!smem.empty()) {
                 values.push_back(smem);
             }
-            values.push_back(FormatDate(pods[resman_response.containers[i].id].start_time));
-            values.push_back(FormatDate(pods[resman_response.containers[i].id].update_time));  
+            values.push_back(pod_start_time);
+            values.push_back(pod_update_time);  
             tp_pods.AddRow(values);
         }
     }
     printf("%s\n", tp_pods.ToString().c_str());
 
-    printf("service info infomation\n");
-    ::baidu::common::TPrinter services(5);
-    services.AddRow(5, "", "podid", "name", "port", "status");
+    printf("services infomation\n");
+    ::baidu::common::TPrinter services(6);
+    services.AddRow(6, "", "podid", "service_addr", "name", "port", "status");
 
     for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
         size_t pos = resman_response.containers[i].id.rfind("."); 
         std::string podid(resman_response.containers[i].id, pos + 1, resman_response.containers[i].id.size()- (pos + 1));
         for (uint32_t j = 0; j < pods[resman_response.containers[i].id].services.size(); ++j) {
             if (j == 0) {
-                services.AddRow(5, ::baidu::common::NumToString(i).c_str(),
+                services.AddRow(6, ::baidu::common::NumToString(i).c_str(),
                                     podid.c_str(),
+                                    pods[resman_response.containers[i].id].services[j].ip.c_str(),
                                     pods[resman_response.containers[i].id].services[j].name.c_str(),
                                     pods[resman_response.containers[i].id].services[j].port.c_str(),
                                     StringStatus(pods[resman_response.containers[i].id].services[j].status).c_str()
                                );
             } else {
-                services.AddRow(5, "",
+                services.AddRow(6, "",
                                    "",
+                                   pods[resman_response.containers[i].id].services[j].ip.c_str(),
                                    pods[resman_response.containers[i].id].services[j].name.c_str(),
                                    pods[resman_response.containers[i].id].services[j].port.c_str(),
                                    StringStatus(pods[resman_response.containers[i].id].services[j].status).c_str()
