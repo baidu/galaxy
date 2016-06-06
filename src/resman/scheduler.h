@@ -184,7 +184,8 @@ private:
                        std::vector<DevicePath>& devices);
     bool RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
                             std::map<DevicePath, VolumInfo>& volum_free,
-                            std::vector<DevicePath>& devices);
+                            std::vector<DevicePath>& devices,
+                            std::set<DevicePath>& path_used);
     bool SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
                          std::vector<std::string>& ports_free);
     AgentEndpoint endpoint_;
