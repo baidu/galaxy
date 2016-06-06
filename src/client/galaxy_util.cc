@@ -519,7 +519,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     deploy.AddMember("interval", 1, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
     deploy.AddMember("tag", "", allocator);
-    deploy.AddMember("pools", "example1,test", allocator);
+    deploy.AddMember("pools", "example,test", allocator);
 
     root.AddMember("deploy", deploy, allocator);
 
@@ -604,7 +604,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value exec_package(rapidjson::kObjectType);
         exec_package.AddMember("start_cmd", "sh app_start.sh", allocator);
         exec_package.AddMember("stop_cmd", "sh app_stop.sh", allocator);
-        exec_package.AddMember("wait_cmd", "sh app_wait.sh", allocator);
+        exec_package.AddMember("health_cmd", "sh app_health.sh", allocator);
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
