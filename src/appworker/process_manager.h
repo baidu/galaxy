@@ -70,5 +70,4 @@ private:
 } // ending namespace galaxy
 } // ending namespace baidu
 
-
 #endif // BAIDU_GALAXY_PROCESS_MANAGER_H
