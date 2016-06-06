@@ -231,6 +231,7 @@ message ImagePackage {
     optional Package package = 1;
     optional string start_cmd = 2;
     optional string stop_cmd = 3;
+    optional string health_cmd = 4;
 }
 
 message DataPackage {

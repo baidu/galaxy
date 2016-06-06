@@ -168,6 +168,7 @@ struct ImagePackage {
     Package package;
     std::string start_cmd;
     std::string stop_cmd;
+    std::string health_cmd;
 };
 struct DataPackage {
     std::vector<Package> packages;
