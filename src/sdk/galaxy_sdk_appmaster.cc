@@ -122,7 +122,7 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
 
     if (request.operate == kUpdateJobStart) {
         if (request.job.deploy.update_break_count < 0 
-                || request.job.deploy.update_break_count >= request.job.deploy.replica) {
+                || request.job.deploy.update_break_count > request.job.deploy.replica) {
             fprintf(stderr, "deploy update_break_count must be greater than 0 and less than replica\n");
             return false;
         }
@@ -135,10 +135,8 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
         pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobContinue);
     } else if (request.operate == kUpdateJobRollback) {
         pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobRollback);
-    } else if (request.operate == kUpdateJobDefault) {
-        if (!FillJobDescription(request.job, pb_request.mutable_job())) {
-            return false;
-        }
+    } else if (request.operate == kUpdateJobPause) {
+        pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobPause);
     } else {
         fprintf(stderr, "update operation must be kUpdateJobStart, \
                     kUpdateJobContinue, kUpdateJobRollback, kUpdateJobDefault\n");

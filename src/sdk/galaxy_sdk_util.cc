@@ -518,14 +518,14 @@ bool FillPodDescription(const PodDescription& sdk_pod,
 }
 
 bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
-    if (sdk_deploy.replica <= 0 || sdk_deploy.replica >= 10000) {
+    if (sdk_deploy.replica < 0 || sdk_deploy.replica >= 10000) {
         fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
         return false;
     }
     deploy->set_replica(sdk_deploy.replica);
 
-    if (sdk_deploy.step <= 0 || sdk_deploy.step > sdk_deploy.replica) {
-        fprintf(stderr, "deploy step must be greater than 0 and less than replica\n");
+    if (sdk_deploy.step < 0) {
+        fprintf(stderr, "deploy step must be greater than 0 \n");
         return false;
     }
     deploy->set_step(sdk_deploy.step);

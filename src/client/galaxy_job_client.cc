@@ -9,7 +9,7 @@ DEFINE_string(f, "", "specify config file");
 DEFINE_string(i, "", "specify job id");
 DEFINE_string(n, "", "specify job name");
 DEFINE_string(c, "", "specify cmd");
-DEFINE_int32(t, 1, "specify task num");
+DEFINE_int32(t, 0, "specify task num");
 DEFINE_int32(d, 1, "specify data_volums num");
 DEFINE_int32(p, 1, "specify port num");
 DEFINE_int32(a, 1, "specify packages num in data_package");
@@ -21,7 +21,7 @@ DECLARE_string(flagfile);
 const std::string kGalaxyUsage = "galaxy.\n"
                                  "Usage:\n"
                                  "      galaxy submit -f <jobconfig>\n"
-                                 "      galaxy update -f <jobconfig> -i id [-o start(need -f -t breakpoint)|continue|rollback|default(need -f)]\n"
+                                 "      galaxy update -f <jobconfig> -i id [-t breakpoint -o pause|continue|rollback]\n"
                                  "      galaxy stop -i id\n"
                                  "      galaxy remove -i id\n"
                                  "      galaxy list [-o cpu,mem,volums]\n"
@@ -32,7 +32,7 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
                                  "      -i specify job id.\n"
-                                 "      -t specify specify task num or update breakpoint, default 1.\n"
+                                 "      -t specify specify task num or update breakpoint, default 0.\n"
                                  "      -d spicify data_volums num, default 1\n"
                                  "      -p specify port num, default 1\n"
                                  "      -a specify packages num in data_package, default 1\n"
