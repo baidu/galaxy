@@ -83,8 +83,11 @@ void AgentImpl::Setup()
 
     baidu::galaxy::cgroup::SubsystemFactory::GetInstance()->Setup();
     baidu::galaxy::container::ContainerStatus::Setup();
-
     cm_->Setup();
+
+    health_checker_->LoadVolum(rm_);
+    health_checker_->LoadCgroup(baidu::galaxy::cgroup::SubsystemFactory::GetInstance());
+    health_checker_->Setup();
 
     if (!rm_watcher_->Init(boost::bind(&AgentImpl::HandleMasterChange, this, _1))) {
         LOG(FATAL) << "init res manager watch failed, agent will exit ...";

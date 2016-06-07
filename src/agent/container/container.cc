@@ -558,7 +558,6 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         vr->set_used_size(dv->Used());
         vr->set_path(dv->Description()->dest_path());
     }
-    std::cerr << ret->DebugString() << std::endl;
 
     return ret;
 }
