@@ -171,8 +171,12 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         } else {
             LOG(INFO) << "succeed in releasing resource for container " << id.CompactId();
         }
-
-        work_containers_.erase(iter);
+        
+        {
+            boost::mutex::scoped_lock lock(mutex_);
+            gc_containers_[iter->first] = iter->second->Property();
+            work_containers_.erase(iter);
+        }
         ec = serializer_.DeleteWork(id.GroupId(), id.SubId());
         if (ec.Code() != 0) {
             LOG(WARNING) << "delete key failed, key is: " << id.CompactId()
