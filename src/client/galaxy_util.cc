@@ -574,6 +574,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     pod.AddMember("data_volums", data_volums, allocator);
 
     rapidjson::Value tasks(rapidjson::kArrayType);
+    if (num_tasks < 1) {
+        num_tasks = 1;
+    }
     for (int i = 0; i < num_tasks; ++i) {
 
         rapidjson::Value cpu(rapidjson::kObjectType);

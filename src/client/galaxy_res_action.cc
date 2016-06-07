@@ -478,11 +478,13 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         base.AddRow(7, "user", "version", "priority", "cmd_line", "max_per_host", "tag", "pools");
         std::string pools; 
         for (size_t i = 0; i < response.desc.pool_names.size(); ++i) {
-            pools += response.desc.pool_names[i] + ", ";
+            pools += response.desc.pool_names[i];
+            if (i != response.desc.pool_names.size() - 1) {
+                pools += ",";
+            }
         }
         base.AddRow(7,  response.desc.run_user.c_str(),
                         response.desc.version.c_str(),
-                        //::baidu::common::NumToString(response.desc.priority).c_str(),
                         StringJobType((::baidu::galaxy::sdk::JobType)response.desc.priority).c_str(),
                         response.desc.cmd_line.c_str(),
                         ::baidu::common::NumToString(response.desc.max_per_host).c_str(),
@@ -698,7 +700,10 @@ bool ResAction::ListAgents(const std::string& soptions) {
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -804,7 +809,7 @@ bool ResAction::ListAgents(const std::string& soptions) {
 
 }
 
-bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& soptions) {
+bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool, const std::string& soptions) {
     if (tag.empty()) {
         return false;
     }
@@ -843,9 +848,15 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
         ::baidu::common::TPrinter agents(headers.size());
         agents.AddRow(headers);
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            if (!pool.empty() && pool.compare(response.agents[i].pool) != 0) {
+                continue;
+            }
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -993,7 +1004,10 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;

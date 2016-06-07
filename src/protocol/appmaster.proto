@@ -17,8 +17,9 @@ enum UpdateJobOperate {
     kUpdateJobStart = 1;
     kUpdateJobContinue = 2;
     kUpdateJobRollback = 3;
-    kUpdateJobDefault = 4;
+    kUpdateJobPause = 4;
 }
+
 message UpdateJobRequest {
     optional User user = 1;
     optional string jobid = 2;
