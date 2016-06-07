@@ -25,7 +25,6 @@ std::string Subsystem::RootPath(const std::string& name)
 {
     boost::filesystem::path path(FLAGS_cgroup_root_path);
     path.append(name);
-    path.append("galaxy");
     return path.string();
 }
 
@@ -66,6 +65,7 @@ std::string Subsystem::Path()
 {
     std::string id = container_id_ + "_" + cgroup_->id();
     boost::filesystem::path path(Subsystem::RootPath(this->Name()));
+    path.append("galaxy");
     path.append(id);
     return path.string();
 }
