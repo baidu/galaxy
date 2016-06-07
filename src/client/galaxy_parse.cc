@@ -669,6 +669,10 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
 int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job) {
     FILE *fd = fopen(conf.c_str(), "r");
+    if (fd == NULL) {
+        fprintf(stderr, "%s is not existed\n", conf.c_str());
+        return -1;
+    }
     char buf[5120];
     rapidjson::FileReadStream frs(fd, buf, sizeof(buf));
     rapidjson::Document doc;

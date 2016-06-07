@@ -338,16 +338,16 @@ bool JobAction::ListJobs(const std::string& soptions) {
                        + ::baidu::common::NumToString(it->second.cpu.used / 1000.0);
             }
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
-                smem = ::baidu::common::HumanReadableString(it->second.memory.assigned) + "/"
-                       + ::baidu::common::HumanReadableString(it->second.memory.used);
+                smem = HumanReadableString(it->second.memory.assigned) + "/"
+                       + HumanReadableString(it->second.memory.used);
             }
             if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
                 for (size_t j = 0; j < it->second.volums.size(); ++j) {
                     values.clear();
                     std::string svolums;
                     svolums = StringVolumMedium(it->second.volums[j].medium) + "/"
-                              + ::baidu::common::HumanReadableString(it->second.volums[j].volum.assigned) + "/"
-                              + ::baidu::common::HumanReadableString(it->second.volums[j].volum.used);
+                              + HumanReadableString(it->second.volums[j].volum.assigned) + "/"
+                              + HumanReadableString(it->second.volums[j].volum.used);
                     if (j == 0) {
                         values.push_back(::baidu::common::NumToString(i));
                         values.push_back(jobs[i].jobid);
@@ -575,7 +575,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
      printf("job description pod workspace_volum infomation\n");
      ::baidu::common::TPrinter desc_workspace_volum(7);
      desc_workspace_volum.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
-     desc_workspace_volum.AddRow(7, ::baidu::common::HumanReadableString(response.job.desc.pod.workspace_volum.size).c_str(),
+     desc_workspace_volum.AddRow(7, HumanReadableString(response.job.desc.pod.workspace_volum.size).c_str(),
                                     StringVolumType(response.job.desc.pod.workspace_volum.type).c_str(),
                                     StringVolumMedium(response.job.desc.pod.workspace_volum.medium).c_str(),
                                     response.job.desc.pod.workspace_volum.dest_path.c_str(),
@@ -589,7 +589,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
      ::baidu::common::TPrinter desc_data_volums(7);
      desc_data_volums.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
      for (size_t i = 0; i < response.job.desc.pod.data_volums.size(); ++i) {
-     desc_data_volums.AddRow(7, ::baidu::common::HumanReadableString(response.job.desc.pod.data_volums[i].size).c_str(),
+     desc_data_volums.AddRow(7, HumanReadableString(response.job.desc.pod.data_volums[i].size).c_str(),
                                     StringVolumType(response.job.desc.pod.data_volums[i].type).c_str(),
                                     StringVolumMedium(response.job.desc.pod.data_volums[i].medium).c_str(),
                                     response.job.desc.pod.data_volums[i].dest_path.c_str(),
@@ -608,11 +608,11 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
          desc_task.AddRow(7, "", "id", "cpu(cores/excess)", "memory(size/excess)", "tcp_throt(r/re/s/se)", "blkio", "ports(name/port)");
          std::string scpu = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].cpu.milli_core / 1000.0) + "/"
                             + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
-         std::string smem = ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].memory.size) + "/"
+         std::string smem = HumanReadableString(response.job.desc.pod.tasks[i].memory.size) + "/"
                             + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
-         std::string stcp = ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_quota) + "/"
+         std::string stcp = HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_quota) + "/"
                             + StringBool(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_excess) + "/"
-                            + ::baidu::common::HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.send_bps_quota) + "/"
+                            + HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.send_bps_quota) + "/"
                             + StringBool(response.job.desc.pod.tasks[i].tcp_throt.send_bps_excess);
          std::string sblkio;
          if (response.job.desc.pod.tasks[i].blkio.weight >= 0 && response.job.desc.pod.tasks[i].blkio.weight <= 1000) {
@@ -735,8 +735,8 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
 
         std::string smem;
         if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
-            smem = ::baidu::common::HumanReadableString(resman_response.containers[i].memory.assigned) + "/" +
-                   ::baidu::common::HumanReadableString(resman_response.containers[i].memory.used);
+            smem = HumanReadableString(resman_response.containers[i].memory.assigned) + "/" +
+                   HumanReadableString(resman_response.containers[i].memory.used);
         }
 
         std::string pod_fail_count;
@@ -759,8 +759,8 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                 values.clear();
                 std::string svolums;
                 svolums = StringVolumMedium(resman_response.containers[i].volums[j].medium) + "/"
-                          + ::baidu::common::HumanReadableString(resman_response.containers[i].volums[j].volum.assigned) + "/"
-                          + ::baidu::common::HumanReadableString(resman_response.containers[i].volums[j].volum.used);
+                          + HumanReadableString(resman_response.containers[i].volums[j].volum.assigned) + "/"
+                          + HumanReadableString(resman_response.containers[i].volums[j].volum.used);
                 if (j == 0) {
                     values.push_back(::baidu::common::NumToString(i));
                     values.push_back(podid);

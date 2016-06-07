@@ -7,6 +7,7 @@
 
 DEFINE_string(f, "", "specify config file");
 DEFINE_string(i, "", "specify job id");
+DEFINE_string(n, "", "specify job name");
 DEFINE_string(c, "", "specify cmd");
 DEFINE_int32(t, 1, "specify task num");
 DEFINE_int32(d, 1, "specify data_volums num");
@@ -26,7 +27,7 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      galaxy list [-o cpu,mem,volums]\n"
                                  "      galaxy show -i id [-o cpu,mem,volums]\n"
                                  "      galaxy exec -i id -c cmd\n"
-                                 "      galaxy json [-t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
+                                 "      galaxy json [-n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
                                  "Optionss: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
@@ -34,8 +35,9 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      -t specify specify task num or update breakpoint, default 1.\n"
                                  "      -d spicify data_volums num, default 1\n"
                                  "      -p specify port num, default 1\n"
-                                 "      -a specify specify packages num in data_package, default 1\n"
-                                 "      -s specify specify service num, default 1\n"
+                                 "      -a specify packages num in data_package, default 1\n"
+                                 "      -s specify service num, default 1\n"
+                                 "      -n specify job name\n"
                                  "      -o specify operation.\n";
 
 int main(int argc, char** argv) {
@@ -103,7 +105,8 @@ int main(int argc, char** argv) {
                                                    FLAGS_d,
                                                    FLAGS_p, 
                                                    FLAGS_a, 
-                                                   FLAGS_s
+                                                   FLAGS_s,
+                                                   FLAGS_n
                                                   ); 
     }else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
