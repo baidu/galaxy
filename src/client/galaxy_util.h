@@ -30,8 +30,11 @@ std::string StringAgentStatus(const ::baidu::galaxy::sdk::AgentStatus& status);
 std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error);
 std::string StringBool(bool flag);
 
-//单位转换
+//单位转换 1K => 1024
 int UnitStringToByte(const std::string& input, int64_t* output);
+
+//单位转换 1024 => 1K
+std::string HumanReadableString(int64_t num);
 
 //job json解析
 int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job);
@@ -46,7 +49,8 @@ bool GetHostname(std::string* hostname);
 bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::string>* agents);
 
 //自动生成json文件
-bool GenerateJson(int num_task, int num_data_volums, int num_port, int num_data_packages, int num_services);
+bool GenerateJson(int num_task, int num_data_volums, int num_port, 
+                  int num_data_packages, int num_services, const std::string& jobname);
 
 } //end namespace client
 } //end namespace galaxy
