@@ -347,6 +347,8 @@ int Container::RunRoutine(void*)
     std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
     std::string cmd_line = FLAGS_cmd_line;
     //char* argv[] = {"cat", NULL};
+    cmd_line += " --tag=";
+    cmd_line += Id().SubId();
     char* argv[] = {
         const_cast<char*>("sh"),
         const_cast<char*>("-c"),
