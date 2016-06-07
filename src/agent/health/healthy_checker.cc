@@ -16,11 +16,10 @@
 namespace baidu {
 namespace galaxy {
 namespace health {
-typedef enum ERR {
-    CHECK_FAILURE = -1,
-    CHECK_OK = 0,
-    INTERVAL_ERROR = 1
-};
+
+const static int CHECK_FAILURE = -1;
+const static int CHECK_OK = 0;
+const static int INTERVAL_ERROR = 1;
 
 HealthChecker::HealthChecker() :
     running_(false),
