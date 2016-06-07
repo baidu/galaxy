@@ -47,9 +47,9 @@ public:
 private:
     void CheckRoutine();
     typedef std::map<std::string, boost::shared_ptr<baidu::galaxy::volum::Mounter> > MMounter;
-    baidu::galaxy::util::ErrorCode HealthChecker::CheckVolumMounter(const MMounter& mounters);
-    baidu::galaxy::util::ErrorCode HealthChecker::CheckCgroupMounter(const MMounter& mounters);
-    baidu::galaxy::util::ErrorCode HealthChecker::CheckVolumReadable();
+    baidu::galaxy::util::ErrorCode CheckVolumMounter(const MMounter& mounters);
+    baidu::galaxy::util::ErrorCode CheckCgroupMounter(const MMounter& mounters);
+    baidu::galaxy::util::ErrorCode CheckVolumReadable();
 
     std::vector<std::string> volums_;
     std::vector<std::string> cgroups_;
