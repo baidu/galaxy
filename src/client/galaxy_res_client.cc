@@ -155,10 +155,10 @@ int main(int argc, char** argv) {
         }
         ok = resAction->RemoveAgent(FLAGS_e);
     } else if (strcmp(argv[1], "list_agents") == 0) {
-        if (!FLAGS_p.empty()) {
+        if (!FLAGS_t.empty()) {
+            ok = resAction->ListAgentsByTag(FLAGS_t, FLAGS_p, FLAGS_o);
+        } else if (!FLAGS_p.empty()) {
             ok = resAction->ListAgentsByPool(FLAGS_p, FLAGS_o);
-        } else if (!FLAGS_t.empty()) {
-            ok = resAction->ListAgentsByTag(FLAGS_t, FLAGS_o);
         } else {
             ok = resAction->ListAgents(FLAGS_o);
         }

@@ -405,7 +405,7 @@ message ErrorCode {
 }
 
 enum AgentStatus {
-    kAgentUnkown = 0;
+    kAgentUnknown = 0;
     kAgentAlive = 1;
     kAgentDead = 2;
     kAgentOffline = 3;

@@ -106,28 +106,32 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
         return false;
     }
 
-    if (operation.compare("start") == 0 && update_break_count >= 0) {
-        fprintf(stderr, "breakpoint update start\n");
+    if (operation.compare("pause") == 0) {
+        fprintf(stderr, "breakpoint update pause\n");
+        request.operate = baidu::galaxy::sdk::kUpdateJobPause;
+    } else if (operation.compare("continue") == 0) {
+        if (update_break_count < 0) {
+            fprintf(stderr, "update_break_count must not be less than 0\n");
+            return false;
+        }
+        fprintf(stderr, "breakpoint update continue\n");
+        request.operate = baidu::galaxy::sdk::kUpdateJobContinue;
+        request.update_break_count = update_break_count;
+    } else if (operation.compare("rollback") == 0) {
+        fprintf(stderr, "breakpoint update rollback\n");
+        request.operate = baidu::galaxy::sdk::kUpdateJobRollback;
+    } else if (operation.empty()) {
+        if (update_break_count < 0) {
+            fprintf(stderr, "update_break_count must not be less than 0\n");
+            return false;
+        }
+        fprintf(stderr, "update now\n");
         if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
-            fprintf(stderr, "json_file error\n");
             fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
             return false;
         }
         request.operate = baidu::galaxy::sdk::kUpdateJobStart;
         request.job.deploy.update_break_count = update_break_count;
-    } else if (operation.compare("continue") == 0) {
-        fprintf(stderr, "breakpoint update continue\n");
-        request.operate = baidu::galaxy::sdk::kUpdateJobContinue;
-    } else if (operation.compare("rollback") == 0) {
-        fprintf(stderr, "breakpoint update rollback\n");
-        request.operate = baidu::galaxy::sdk::kUpdateJobRollback;
-    } else if (operation.compare("default") == 0 || operation.empty()) {
-        fprintf(stderr, "batch update default\n");
-        if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
-            fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
-            return false;
-        }
-        request.operate = baidu::galaxy::sdk::kUpdateJobDefault;
     } else {
         fprintf(stderr, "update operation must be start, continue, rollback or default\n");
         return false;
@@ -559,7 +563,10 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
     printf("job description deploy infomation\n");
     std::string pools;
     for (size_t i = 0; i < response.job.desc.deploy.pools.size(); ++i) {
-        pools += response.job.desc.deploy.pools[i] + ",";
+        pools += response.job.desc.deploy.pools[i];
+        if (i != response.job.desc.deploy.pools.size() - 1) {
+            pools += ",";
+        }
     }
     ::baidu::common::TPrinter desc_deploy(6);
     desc_deploy.AddRow(6, "replica", "step", "interval", "max_per_host", "tag", "pools");

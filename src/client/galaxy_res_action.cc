@@ -478,11 +478,13 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         base.AddRow(7, "user", "version", "priority", "cmd_line", "max_per_host", "tag", "pools");
         std::string pools; 
         for (size_t i = 0; i < response.desc.pool_names.size(); ++i) {
-            pools += response.desc.pool_names[i] + ", ";
+            pools += response.desc.pool_names[i];
+            if (i != response.desc.pool_names.size() - 1) {
+                pools += ",";
+            }
         }
         base.AddRow(7,  response.desc.run_user.c_str(),
                         response.desc.version.c_str(),
-                        //::baidu::common::NumToString(response.desc.priority).c_str(),
                         StringJobType((::baidu::galaxy::sdk::JobType)response.desc.priority).c_str(),
                         response.desc.cmd_line.c_str(),
                         ::baidu::common::NumToString(response.desc.max_per_host).c_str(),
@@ -698,7 +700,10 @@ bool ResAction::ListAgents(const std::string& soptions) {
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -804,7 +809,7 @@ bool ResAction::ListAgents(const std::string& soptions) {
 
 }
 
-bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& soptions) {
+bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool, const std::string& soptions) {
     if (tag.empty()) {
         return false;
     }
@@ -843,9 +848,15 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
         ::baidu::common::TPrinter agents(headers.size());
         agents.AddRow(headers);
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            if (!pool.empty() && pool.compare(response.agents[i].pool) != 0) {
+                continue;
+            }
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -993,7 +1004,10 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -1586,7 +1600,7 @@ bool ResAction::AssignQuota(const std::string& user,
     }
     
     if (millicores <= 0 || replica <= 0) {
-        printf("millicores or replica must larger than 0\n");
+        printf("millicores and replica must be larger than 0\n");
         return false;
     }
 
@@ -1645,7 +1659,6 @@ bool ResAction::Preempt(const std::string& container_group_id, const std::string
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 bool ResAction::GetTagsByAgent(const std::string& endpoint) {
@@ -1702,7 +1715,6 @@ bool ResAction::AddAgentToPool(const std::string& endpoint, const std::string& p
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 bool ResAction::RemoveAgentFromPool(const std::string& endpoint, const std::string& pool) {
@@ -1722,13 +1734,12 @@ bool ResAction::RemoveAgentFromPool(const std::string& endpoint, const std::stri
 
     bool ret = resman_->RemoveAgentFromPool(request, &response);
     if (ret) {
-        printf("Remove agent %s to pool %s successfully\n", endpoint.c_str(), pool.c_str());
+        printf("Remove agent %s from pool %s successfully\n", endpoint.c_str(), pool.c_str());
     } else {
         printf("Remove agent failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 } // end namespace client
