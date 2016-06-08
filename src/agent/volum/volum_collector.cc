@@ -52,12 +52,15 @@ void VolumCollector::Du(const boost::filesystem::path& p, int64_t& size, int64_t
     for (boost::filesystem::directory_iterator iter(p); iter != end; iter++) {
         if (boost::filesystem::is_directory(iter->path(), ec)) {
             Du(iter->path(), size, count);
-        } else if (boost::filesystem::is_regular(iter->path(), ec)) {
+        } else if (boost::filesystem::is_symlink(iter->path(), ec)) {
+            //do nothing just ingor
+        }
+        else if (boost::filesystem::is_regular(iter->path(), ec)) {
             uint64_t s = boost::filesystem::file_size(iter->path(), ec);
-
             if (static_cast<uintmax_t>(-1) != s) {
                 size += s;
                 count++;
+
             }
         }
     }

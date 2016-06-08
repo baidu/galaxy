@@ -40,11 +40,14 @@ public:
         assert(NULL != format);
         std::stringstream ss;
         ss << "[" << file << ":" << function << ":" << line << "] ";
+        header_ = ss.str();
+
         char buf[2048];
         va_list va;
         va_start(va, format);
         vsnprintf(buf, sizeof buf, format, va);
         va_end(va);
+        ss.str("");
         ss << buf;
         message_ = ss.str();
     }
@@ -60,11 +63,14 @@ public:
         assert(NULL != format);
         std::stringstream ss;
         ss << "[" << file << ":" << function << ":" << line << "] ";
+        header_ = ss.str();
+
         char buf[2048];
         va_list va;
         va_start(va, format);
         vsnprintf(buf, sizeof buf, format, va);
         va_end(va);
+        ss.str("");
         ss << buf << ": " << strerror(errnum);
         message_ = ss.str();
     }
@@ -74,13 +80,17 @@ public:
     }
 
     const std::string Message() const {
-        return message_;
+        return header_ + message_;
     }
 
+    const std::string ShortMessage() const {
+        return message_;
+    }
 
 private:
     int code_;
     std::string message_;
+    std::string header_;
 };
 }
 }
