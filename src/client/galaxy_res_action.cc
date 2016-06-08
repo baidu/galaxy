@@ -1600,7 +1600,7 @@ bool ResAction::AssignQuota(const std::string& user,
     }
     
     if (millicores <= 0 || replica <= 0) {
-        printf("millicores or replica must larger than 0\n");
+        printf("millicores and replica must be larger than 0\n");
         return false;
     }
 
@@ -1659,7 +1659,6 @@ bool ResAction::Preempt(const std::string& container_group_id, const std::string
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 bool ResAction::GetTagsByAgent(const std::string& endpoint) {
@@ -1716,7 +1715,6 @@ bool ResAction::AddAgentToPool(const std::string& endpoint, const std::string& p
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 bool ResAction::RemoveAgentFromPool(const std::string& endpoint, const std::string& pool) {
@@ -1736,13 +1734,12 @@ bool ResAction::RemoveAgentFromPool(const std::string& endpoint, const std::stri
 
     bool ret = resman_->RemoveAgentFromPool(request, &response);
     if (ret) {
-        printf("Remove agent %s to pool %s successfully\n", endpoint.c_str(), pool.c_str());
+        printf("Remove agent %s from pool %s successfully\n", endpoint.c_str(), pool.c_str());
     } else {
         printf("Remove agent failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 } // end namespace client

@@ -110,12 +110,21 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
         fprintf(stderr, "breakpoint update pause\n");
         request.operate = baidu::galaxy::sdk::kUpdateJobPause;
     } else if (operation.compare("continue") == 0) {
+        if (update_break_count < 0) {
+            fprintf(stderr, "update_break_count must not be less than 0\n");
+            return false;
+        }
         fprintf(stderr, "breakpoint update continue\n");
         request.operate = baidu::galaxy::sdk::kUpdateJobContinue;
+        request.update_break_count = update_break_count;
     } else if (operation.compare("rollback") == 0) {
         fprintf(stderr, "breakpoint update rollback\n");
         request.operate = baidu::galaxy::sdk::kUpdateJobRollback;
     } else if (operation.empty()) {
+        if (update_break_count < 0) {
+            fprintf(stderr, "update_break_count must not be less than 0\n");
+            return false;
+        }
         fprintf(stderr, "update now\n");
         if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
             fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
