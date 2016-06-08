@@ -347,6 +347,8 @@ int Container::RunRoutine(void*)
     std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
     std::string cmd_line = FLAGS_cmd_line;
     //char* argv[] = {"cat", NULL};
+    cmd_line += " --tag=";
+    cmd_line += Id().SubId();
     char* argv[] = {
         const_cast<char*>("sh"),
         const_cast<char*>("-c"),
@@ -558,7 +560,6 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         vr->set_used_size(dv->Used());
         vr->set_path(dv->Description()->dest_path());
     }
-    std::cerr << ret->DebugString() << std::endl;
 
     return ret;
 }

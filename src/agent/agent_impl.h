@@ -16,7 +16,7 @@
 #include "resource/resource_manager.h"
 #include "container/container.h"
 #include "container/container_manager.h"
-#include "health/health.h"
+#include "health/healthy_checker.h"
 
 namespace baidu {
 namespace galaxy {
