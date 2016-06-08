@@ -57,7 +57,6 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
     }
     deploy->pools.assign(pools.begin(), pools.end());
     return 0;
-
 }
 
 int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRequired* volum) {
