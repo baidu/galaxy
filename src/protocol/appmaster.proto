@@ -27,6 +27,7 @@ message UpdateJobRequest {
     optional uint32 interval = 4;
     optional JobDescription job = 5;
     optional UpdateJobOperate operate = 6;
+    optional uint32 update_break_count = 7; //continue, mutiple breakpoint
 }
 message UpdateJobResponse {
     optional ErrorCode error_code = 1;

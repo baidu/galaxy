@@ -844,7 +844,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         }
         std::map<std::string, AgentStat>::iterator jt = agent_stats_.find(endpoint);
         if (jt == agent_stats_.end()) {
-            agent_st->set_status(proto::kAgentUnkown);
+            agent_st->set_status(proto::kAgentUnknown);
             continue;
         }
         agent_st->set_status(jt->second.status);

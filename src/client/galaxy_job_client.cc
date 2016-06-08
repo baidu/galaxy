@@ -9,7 +9,7 @@ DEFINE_string(f, "", "specify config file");
 DEFINE_string(i, "", "specify job id");
 DEFINE_string(n, "", "specify job name");
 DEFINE_string(c, "", "specify cmd");
-DEFINE_int32(t, 0, "specify task num");
+DEFINE_int32(t, 0, "specify task num or update breakpoint");
 DEFINE_int32(d, 1, "specify data_volums num");
 DEFINE_int32(p, 1, "specify port num");
 DEFINE_int32(a, 1, "specify packages num in data_package");
@@ -28,7 +28,7 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      galaxy show -i id [-o cpu,mem,volums]\n"
                                  "      galaxy exec -i id -c cmd\n"
                                  "      galaxy json [-n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
-                                 "Optionss: \n"
+                                 "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
                                  "      -i specify job id.\n"
