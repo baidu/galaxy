@@ -159,6 +159,7 @@ enum JobStatus {
    kJobDestroying = 4;
    kJobUpdating = 5;
    kJobBatchUpdate = 6;
+   //kJobUpdatePaused = 6;
 }
 
 enum JobEvent {

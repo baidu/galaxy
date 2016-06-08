@@ -137,7 +137,7 @@ enum JobStatus {
     kJobFinished = 3,
     kJobDestroying = 4,
     kJobUpdating = 5,
-    kJobBatchUpdate = 6,
+    kJobUpdatePaused = 6,
 };
 enum PodStatus {
     kPodPending = 1,

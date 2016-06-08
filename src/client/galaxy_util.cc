@@ -152,8 +152,8 @@ std::string StringJobStatus(const ::baidu::galaxy::sdk::JobStatus& status) {
     case ::baidu::galaxy::sdk::kJobUpdating:
         result = "Updating";
         break;
-    case ::baidu::galaxy::sdk::kJobBatchUpdate:
-        result = "BatchUpdate";
+    case ::baidu::galaxy::sdk::kJobUpdatePaused:
+        result = "UpdatePaused";
         break;
     default:
         result = "";
@@ -624,8 +624,8 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
 
         rapidjson::Value exec_package(rapidjson::kObjectType);
         exec_package.AddMember("start_cmd", "sh app_start.sh", allocator);
-        exec_package.AddMember("stop_cmd", "sh app_stop.sh", allocator);
-        exec_package.AddMember("health_cmd", "sh app_health.sh", allocator);
+        exec_package.AddMember("stop_cmd", "", allocator);
+        exec_package.AddMember("health_cmd", "", allocator);
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
@@ -648,7 +648,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         }
 
         rapidjson::Value data_package(rapidjson::kObjectType);
-        data_package.AddMember("reload_cmd", "sh -x reload.sh", allocator);
+        data_package.AddMember("reload_cmd", "", allocator);
         data_package.AddMember("packages", data_packages, allocator);
 
         rapidjson::Value services(rapidjson::kArrayType);
