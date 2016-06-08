@@ -79,7 +79,6 @@ private:
     void UpdateContainerGroupCallBack(JobDescription job_desc, 
                                      proto::UpdateJobResponse* update_response,
                                      ::google::protobuf::Closure* done,
-                                     std::string oprate,
                                      const proto::UpdateContainerGroupRequest* request,
                                      proto::UpdateContainerGroupResponse* response,
                                      bool failed, int err);

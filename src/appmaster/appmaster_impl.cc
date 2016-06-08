@@ -228,7 +228,6 @@ void AppMasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
 void AppMasterImpl::UpdateContainerGroupCallBack(JobDescription job_desc, 
                                          proto::UpdateJobResponse* update_response,
                                          ::google::protobuf::Closure* done,
-                                         std::string oprate,
                                          const proto::UpdateContainerGroupRequest* request,
                                          proto::UpdateContainerGroupResponse* response,
                                          bool failed, int err) {
@@ -240,12 +239,7 @@ void AppMasterImpl::UpdateContainerGroupCallBack(JobDescription job_desc,
         done->Run();
         return;
     }
-    Status status;
-    if (oprate == "kUpdateJobStart") {
-        status = job_manager_.BatchUpdate(request->id(), job_desc);
-    } else {
-        status = job_manager_.Update(request->id(), job_desc);
-    }
+    Status = job_manager_.Update(request->id(), job_desc);
     if (status != proto::kOk) {
         update_response->mutable_error_code()->set_status(status);
         update_response->mutable_error_code()->set_reason("appmaster update job error");
@@ -273,7 +267,8 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     }
     const JobDescription& job_desc = request->job();
     if (request->has_operate() && request->operate() == kUpdateJobContinue) {
-        Status status = job_manager_.ContinueUpdate(request->jobid());
+        if (request->has_brea)
+        Status status = job_manager_.ContinueUpdate(request->jobid(), request->breakpoint());
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
             response->mutable_error_code()->set_reason("appmaster continue update job error");
@@ -300,6 +295,20 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         LOG(INFO) << response->DebugString();
         done->Run();
         return;
+    } else if (request->has_operate() && request->operate() == kUpdateJobPause) {
+        Status status = job_manager_.PauseUpdate(request->jobid());
+        if (status != proto::kOk) {
+            response->mutable_error_code()->set_status(status);
+            response->mutable_error_code()->set_reason("appmaster pause update job error");
+            LOG(INFO) << response->DebugString();
+            done->Run();
+            return;
+        }
+        response->mutable_error_code()->set_status(status);
+        response->mutable_error_code()->set_reason("pause job ok");
+        LOG(INFO) << response->DebugString();
+        done->Run();
+        return;
     }
     
     MutexLock lock(&resman_mutex_);
@@ -316,12 +325,9 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     boost::function<void (const proto::UpdateContainerGroupRequest*,
                           proto::UpdateContainerGroupResponse*, 
                           bool, int)> call_back;
-    std::string operate = "";
-    if (request->has_operate() && request->operate() == kUpdateJobStart) {
-        operate = UpdateJobOperate_Name(request->operate());
-    }
+
     call_back = boost::bind(&AppMasterImpl::UpdateContainerGroupCallBack, this,
-                            job_desc, response, done, operate,
+                            job_desc, response, done,
                             _1, _2, _3, _4);
     ResMan_Stub* resman_;
     rpc_client_.GetStub(resman_endpoint_, &resman_);

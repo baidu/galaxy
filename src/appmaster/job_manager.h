@@ -55,7 +55,7 @@ using ::baidu::galaxy::proto::kUpdate;
 using ::baidu::galaxy::proto::kRemove;
 using ::baidu::galaxy::proto::kRemoveFinish;
 using ::baidu::galaxy::proto::kUpdateFinish;
-using ::baidu::galaxy::proto::kBatchUpdate;
+using ::baidu::galaxy::proto::kPauseUpdate;
 using ::baidu::galaxy::proto::kUpdateContinue;
 using ::baidu::galaxy::proto::kUpdateRollback;
 using ::baidu::galaxy::proto::kActionNull;
@@ -111,7 +111,7 @@ public:
     Status Add(const JobId& job_id, const JobDescription& job_desc);
     Status Update(const JobId& job_id, const JobDescription& job_desc);
     Status Terminate(const JobId& jobid, const User& user, const std::string hostname);
-    Status BatchUpdate(const JobId& job_id, const JobDescription& job_desc);
+    Status PauseUpdate(const JobId& job_id);
     Status ContinueUpdate(const JobId& job_id);
     Status Rollback(const JobId& job_id);
 
