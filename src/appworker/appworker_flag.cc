@@ -21,6 +21,8 @@ DEFINE_string(appworker_agent_port_env, "BAIDU_GALAXY_AGENT_PORT", "agent port e
 DEFINE_string(appworker_job_id_env, "BAIDU_GALAXY_CONTAINERGROUP_ID", "job id env name");
 DEFINE_string(appworker_pod_id_env, "BAIDU_GALAXY_CONTAINER_ID", "pod id env name");
 DEFINE_string(appworker_user_env, "BAIDU_GALAXY_CONTAINER_USER", "pod run user env name");
+DEFINE_string(appworker_workspace_path_env, "BAIDU_GALAXY_CONTAINER_WORKSPACE_PATH", "container workspace rel-path env name");
+DEFINE_string(appworker_workspace_abspath_env, "BAIDU_GALAXY_CONTAINER_WORKSPACE_ABSSOURCEPATH", "container workspace abs-path env name");
 DEFINE_string(appworker_task_ids_env, "BAIDU_GALAXY_CONTAINER_CGROUP_IDS", "task ids env name");
 DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
 DEFINE_string(appworker_exit_file, ".exit", "appworker exit file");
@@ -35,3 +37,5 @@ DEFINE_int32(task_manager_task_max_fail_retry_times, 10, "task fail retry times 
 
 // process_manager
 DEFINE_int32(process_manager_loop_wait_interval, 500, "process manager loop wait processes interval");
+DEFINE_int32(process_manager_download_retry_times, 3, "process nmanager download package fail retry times limit");
+DEFINE_int32(process_manager_download_timeout, 300, "process manager download package timeout");

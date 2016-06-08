@@ -63,7 +63,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.src_path = task->desc.exe_package().package().source_path();
         context.dst_path = task->desc.exe_package().package().dest_path();
         context.version = task->desc.exe_package().package().version();
-        context.work_dir = task->env.workspace;
+        context.work_dir = task->env.workspace_path;
         context.package = context.work_dir + "/" + context.process_id
                           + "." + context.version + ".tar.gz";
 
@@ -87,7 +87,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
-            context.work_dir = task->env.workspace;
+            context.work_dir = task->env.workspace_path;
             context.package = context.work_dir + "/" + context.process_id
                               + "." + context.version + ".tar.gz";
 
@@ -125,7 +125,7 @@ int TaskManager::DoStartTask(const std::string& task_id) {
         ProcessContext context;
         context.process_id = task->task_id + "_main";
         context.cmd = task->desc.exe_package().start_cmd();
-        context.work_dir = task->env.workspace;
+        context.work_dir = task->env.workspace_path;
 
         ProcessEnv env;
         MakeProcessEnv(task, env);
@@ -170,7 +170,7 @@ int TaskManager::StopTask(const std::string& task_id) {
     ProcessContext context;
     context.process_id = task->task_id + "_stop";
     context.cmd = task->desc.exe_package().stop_cmd();
-    context.work_dir = task->env.workspace;
+    context.work_dir = task->env.workspace_path;
 
     ProcessEnv env;
     MakeProcessEnv(task, env);
@@ -383,13 +383,11 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
             context.version = task->desc.data_package().packages(i).version();
-            context.work_dir = task->env.workspace;
-
+            context.work_dir = task->env.workspace_path;
             context.package = context.work_dir + "/" + context.process_id
                                   + "." + context.version +  ".tar.gz";
-            context.cmd = "wget -O " + context.package  + " " + context.src_path
-                          + " && tar -zxf " + context.package + " -C " + context.dst_path;
 
+            // process env
             ProcessEnv env;
             MakeProcessEnv(task, env);
 
@@ -425,7 +423,7 @@ int TaskManager::ReloadStartTask(const std::string& task_id,
         ProcessContext context;
         context.process_id = task->task_id + "_reload_main";
         context.cmd = task->desc.data_package().reload_cmd();
-        context.work_dir = task->env.workspace;
+        context.work_dir = task->env.workspace_path;
 
         ProcessEnv env;
         MakeProcessEnv(task, env);
@@ -532,6 +530,7 @@ int MakeProcessEnv(Task* task, ProcessEnv& env) {
     env.envs.push_back("GALAXY_JOB_ID=" + task->env.job_id);
     env.envs.push_back("GALAXY_POD_ID=" + task->env.pod_id);
     env.envs.push_back("GALAXY_TASK_ID=" + task->env.task_id);
+    env.envs.push_back("GALAXY_ABS_PATH=" + task->env.workspace_abspath);
     std::map<std::string, std::string>::iterator p_it = task->env.ports.begin();
 
     for (; p_it != task->env.ports.end(); ++p_it) {

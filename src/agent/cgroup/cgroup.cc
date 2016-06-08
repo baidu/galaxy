@@ -56,6 +56,11 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
             freezer_ = boost::dynamic_pointer_cast<FreezerSubsystem>(ss);
             assert(NULL != freezer_.get());
         } else {
+            if (subsystems[i] == "cpuacct") {
+                cpu_acct_ = ss;
+            } else if ("memory" == subsystems[i]) {
+                memory_ = ss;
+            }
             subsystem_.push_back(ss);
         }
 
@@ -92,7 +97,9 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
     }
 
 
-    collector_.reset(new CgroupCollector(this));
+    collector_.reset(new CgroupCollector());
+    collector_->SetCpuacctPath(cpu_acct_->Path() + "/cpuacct.stat");
+    collector_->SetMemoryPath(memory_->Path() + "/memory.usage_in_bytes");
     collector_->SetCycle(5);
     collector_->SetName(container_id_ + "_cgroup");
     collector_->Enable(true);
@@ -103,6 +110,8 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
 // Fixme: freeze first, and than kill
 baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 {
+    boost::mutex::scoped_lock lock(mutex_);
+
     if (collector_.get() != NULL) {
         collector_->Enable(false);
     }
@@ -156,7 +165,6 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
             return ERRORCODE(-1, "failed in destroying freezer:",
                     ec.Message().c_str());
         }
-
         freezer_.reset();
     }
 
@@ -220,6 +228,7 @@ std::string Cgroup::Id()
 
 baidu::galaxy::util::ErrorCode Cgroup::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix) {
     assert(NULL != metrix);
+    boost::mutex::scoped_lock lock(mutex_);
     for (size_t i = 0; i < subsystem_.size(); i++) {
         baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(metrix);
 

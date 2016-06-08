@@ -23,7 +23,7 @@ namespace galaxy {
 namespace sched {
 
 const int sMaxPort = 9999;
-const int sMinPort = 1000;
+const int sMinPort = 1025;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -316,6 +316,7 @@ bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
                           std::vector<DevicePath>& devices) {
     typedef std::map<DevicePath, VolumInfo> VolumMap;
     VolumMap volum_free;
+    std::set<DevicePath> path_used;
     BOOST_FOREACH(const VolumMap::value_type& pair, volum_total_) {
         const DevicePath& device_path = pair.first;
         const VolumInfo& volum_info = pair.second;
@@ -328,12 +329,13 @@ bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
             }
         }
     }
-    return RecurSelectDevices(0, volums, volum_free, devices);
+    return RecurSelectDevices(0, volums, volum_free, devices, path_used);
 }
 
 bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
                                std::map<DevicePath, VolumInfo>& volum_free,
-                               std::vector<DevicePath>& devices) {
+                               std::vector<DevicePath>& devices,
+                               std::set<DevicePath>& path_used) {
     if (i >= volums.size()) {
         if (devices.size() == volums.size()) {
             return true;
@@ -352,15 +354,21 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
         if (volum_info.medium != volum_need.medium()) {
             continue;
         }
+        if (volum_need.exclusive() && 
+            path_used.find(device_path) != path_used.end()) {
+            continue;
+        }
         volum_info.size -= volum_need.size();
         volum_info.exclusive = volum_need.exclusive();
         devices.push_back(device_path);
-        if (RecurSelectDevices(i + 1, volums, volum_free, devices)) {
+        path_used.insert(device_path);
+        if (RecurSelectDevices(i + 1, volums, volum_free, devices, path_used)) {
             return true;
         } else {
             volum_info.size += volum_need.size();
             volum_info.exclusive = false;
             devices.pop_back();
+            path_used.erase(device_path);
         }
     }
     return false;
@@ -1479,7 +1487,7 @@ void Scheduler::ShowUserAlloc(const std::string& user_name, proto::Quota& alloc)
         if (container_group->user_name != user_name) {
             continue;
         }
-        int64_t replica = container_group->replica;
+        int64_t replica = container_group->Replica();
         replica_alloc +=  replica;
         cpu_alloc += container_group->require->CpuNeed() * replica;
         memory_alloc += container_group->require->MemoryNeed() * replica;

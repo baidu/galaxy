@@ -416,7 +416,7 @@ bool GetHostname(std::string* hostname) {
     return true;
 }
 
-//单位转换
+//单位转换 1K => 1024
 int UnitStringToByte(const std::string& input, int64_t* output) {
     if (output == NULL) {
         return -1;
@@ -456,6 +456,19 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     return 0;
 }
 
+//单位转换 1024 => 1K
+std::string HumanReadableString(int64_t num) {
+    static const int max_shift = 6;
+    static const char* const prefix[max_shift + 1] = {"", "K", "M", "G", "T", "P", "E"};
+    int shift = 0;
+    double v = num;
+    while ((num>>=10) > 0 && shift < max_shift) {
+        v /= 1024;
+        shift++;
+    }
+    return ::baidu::common::NumToString(v) + prefix[shift];
+}
+
 //读取endpoint
 bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::string>* agents) {
     const int LINE_BUF_SIZE = 1024;
@@ -493,7 +506,13 @@ bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::s
     return true;
 }
 
-bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_data_packages, int num_services) {
+bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, 
+                  int num_data_packages, int num_services, const std::string& jobname) {
+
+    std::string name = jobname;
+    if (name.empty()) {
+        name = "example";
+    }
 
     rapidjson::Document document;
     rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
@@ -502,11 +521,11 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     rapidjson::Value obj_str(rapidjson::kStringType);
     std::string str;
 
-    
     //根节点
     rapidjson::Value root(rapidjson::kObjectType);
     
-    root.AddMember("name", "example", allocator);
+    obj_str.SetString(name.c_str(), allocator);
+    root.AddMember("name", obj_str, allocator);
     root.AddMember("type", "kJobService", allocator);
     //root.AddMember("version", "1.0.0", allocator);
     //root.AddMember("run_user", "galaxy", allocator);
@@ -518,7 +537,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     deploy.AddMember("interval", 1, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
     deploy.AddMember("tag", "", allocator);
-    deploy.AddMember("pools", "example1,test", allocator);
+    deploy.AddMember("pools", "example,test", allocator);
 
     root.AddMember("deploy", deploy, allocator);
 
@@ -532,7 +551,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     workspace_volum.AddMember("dest_path", "/home/work", allocator);
     workspace_volum.AddMember("readonly", false, allocator);
     workspace_volum.AddMember("exclusive", false, allocator);
-    workspace_volum.AddMember("use_symlink", true, allocator);
+    workspace_volum.AddMember("use_symlink", false, allocator);
     
     pod.AddMember("workspace_volum", workspace_volum, allocator);
 
@@ -577,7 +596,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value ports(rapidjson::kArrayType);
         for (int j = 0; j < num_ports; ++j) {
             rapidjson::Value port(rapidjson::kObjectType);
-            str = "port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             port.AddMember("name", obj_str, allocator);
 
@@ -601,8 +620,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         package.AddMember("version", "1.0.0", allocator);
 
         rapidjson::Value exec_package(rapidjson::kObjectType);
-        exec_package.AddMember("start_cmd", "sh_start.sh", allocator);
+        exec_package.AddMember("start_cmd", "sh app_start.sh", allocator);
         exec_package.AddMember("stop_cmd", "sh app_stop.sh", allocator);
+        exec_package.AddMember("health_cmd", "sh app_health.sh", allocator);
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
@@ -631,11 +651,11 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value services(rapidjson::kArrayType);
         for (int j = 0; j < num_services; ++j) {
             rapidjson::Value service(rapidjson::kObjectType);
-            str = "service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             service.AddMember("service_name", obj_str, allocator);
 
-            str = "port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             service.AddMember("port_name", obj_str, allocator);
             service.AddMember("user_bns", false, allocator);

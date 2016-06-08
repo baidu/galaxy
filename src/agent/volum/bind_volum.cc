@@ -5,6 +5,7 @@
 #include "protocol/galaxy.pb.h"
 #include "mounter.h"
 #include "util/user.h"
+#include "collector/collector_engine.h"
 
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -23,7 +24,20 @@ BindVolum::~BindVolum()
 {
 }
 
-baidu::galaxy::util::ErrorCode BindVolum::Construct()
+
+baidu::galaxy::util::ErrorCode BindVolum::Construct() {
+    baidu::galaxy::util::ErrorCode err = Construct_();
+
+    if (err.Code() == 0) {
+        vc_.reset(new VolumCollector(this->SourcePath()));
+        vc_->Enable(true);
+        baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(vc_);
+    }
+
+    return err;
+}
+
+baidu::galaxy::util::ErrorCode BindVolum::Construct_()
 {
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     assert(vr->medium() == baidu::galaxy::proto::kDisk
@@ -70,6 +84,10 @@ baidu::galaxy::util::ErrorCode BindVolum::Construct()
 
 baidu::galaxy::util::ErrorCode BindVolum::Destroy()
 {
+    if (NULL != vc_.get()) {
+        vc_->Enable(false);
+    }
+
     baidu::galaxy::util::ErrorCode err = Umount(this->TargetPath());
     if (err.Code() != 0) {
         return err;
@@ -86,14 +104,18 @@ baidu::galaxy::util::ErrorCode BindVolum::Destroy()
     if (0 != ec.value()) {
         return ERRORCODE(-1, "failed in renaming %s -> %s: %s",
                 source_path.string().c_str(),
-                gc_source_path.string().c_str());
+                gc_source_path.string().c_str(),
+                ec.message().c_str());
     }
     return ERRORCODE_OK;
 }
 
 int64_t BindVolum::Used()
 {
-    return 0;
+    if (vc_.get() != NULL) {
+        return vc_->Size();
+    }
+    return 0L;
 }
 
 std::string BindVolum::ToString()

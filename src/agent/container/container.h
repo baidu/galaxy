@@ -111,6 +111,14 @@ public:
     boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> ContainerMetrix();
     boost::shared_ptr<ContainerProperty> Property();
     void KeepAlive();
+    bool Alive();
+
+    // container will be killed after rel_sec seconds
+    void SetExpiredTimeIfAbsent(int32_t rel_sec);
+
+    bool Expired();
+
+    bool TryKill();
 
 private:
     int Construct_();
@@ -123,7 +131,6 @@ private:
     int RunRoutine(void*);
     void ExportEnv(std::map<std::string, std::string>& env);
     void ExportEnv();
-    bool Alive();
 
     const baidu::galaxy::proto::ContainerDescription desc_;
     std::vector<boost::shared_ptr<baidu::galaxy::cgroup::Cgroup> > cgroup_;
@@ -132,6 +139,7 @@ private:
     ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
     int64_t created_time_;
+    int64_t force_kill_time_;
 
 };
 

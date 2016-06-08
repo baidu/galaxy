@@ -41,7 +41,8 @@ namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()),
                            safe_mode_(true),
-                           force_safe_mode_(false) {
+                           force_safe_mode_(false), 
+                           start_time_(0) {
     nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
 
@@ -101,6 +102,7 @@ bool ResManImpl::Init() {
                  << "\n" << container_group_meta.DebugString()
                  << "TRACE END";
     }
+    start_time_ = common::timer::get_micros();
     return true;
 }
 
@@ -297,7 +299,7 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
              << ",timeout:" << FLAGS_agent_timeout
              << ",now_tm:" << now_tm;
     if (agent.last_heartbeat_time + FLAGS_agent_timeout < now_tm) {
-        LOG(INFO) << "this agent maybe dead:" << agent_endpoint;
+        LOG(WARNING) << "this agent maybe dead:" << agent_endpoint;
         agent.status = proto::kAgentDead;
         scheduler_->RemoveAgent(agent_endpoint);
         query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
@@ -388,9 +390,13 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         if (!force_safe_mode_ && 
             safe_mode_ && 
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
-            LOG(INFO) << "leave safe mode";
-            safe_mode_ = false;
-            leave_safe_mode_event = true;
+            int64_t running_time = (common::timer::get_micros() - start_time_) / 1000000;
+            LOG(INFO) << "running time: " << running_time << " seconds";
+            if ( running_time > FLAGS_agent_timeout) {
+                LOG(INFO) << "leave safe mode";
+                safe_mode_ = false;
+                leave_safe_mode_event = true;
+            }
         }
     }
     if (leave_safe_mode_event) {
@@ -495,6 +501,7 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
     CHECK_USER()
     std::string user = request->user().user();
     LOG(INFO) << "user:" << user << " create container group";
+    LOG(INFO) << request->DebugString();
     std::string invalid_pool;
     if (!CheckUserAuth(request->desc(), user, users_can_create_, invalid_pool)) {
         response->mutable_error_code()->set_status(proto::kCreateContainerGroupFail);
@@ -599,7 +606,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     CHECK_USER()
     LOG(INFO) << "user:" << request->user().user()
               << " update container group: " << request->id();
-    VLOG(10) << request->DebugString();
+    LOG(INFO) << request->DebugString();
     proto::ContainerGroupMeta new_meta;
     proto::ContainerGroupMeta old_meta;
     bool replica_changed = false;
@@ -625,6 +632,13 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     if (!CheckUserAuth(old_meta.desc(), request->user().user(), users_can_update_, invalid_pool)) {
         response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
         response->mutable_error_code()->set_reason("no update permission on pool: " + invalid_pool);
+        done->Run();
+        return;
+    }
+    if (old_meta.user_name() != request->user().user()) {
+        response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+        response->mutable_error_code()->set_reason(
+            "user mismatch:" + old_meta.user_name() + " , " + request->user().user());
         done->Run();
         return;
     }

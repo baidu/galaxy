@@ -88,6 +88,8 @@ int main(int argc, char** argv) {
                   << job.pod.tasks[i].exe_package.start_cmd << std::endl;
         std::cout << "                  stop_cmd: " 
                   << job.pod.tasks[i].exe_package.stop_cmd << std::endl;
+        std::cout << "                  health_cmd: "
+                  << job.pod.tasks[i].exe_package.health_cmd << std::endl;
         std::cout << "                  source_path: " 
                   << job.pod.tasks[i].exe_package.package.source_path << std::endl;
         std::cout << "                  dest_path: " 
