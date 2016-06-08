@@ -17,6 +17,7 @@
 
 DECLARE_int64(sched_interval);
 DECLARE_int64(container_group_gc_check_interval);
+DECLARE_bool(check_container_version);
 
 namespace baidu {
 namespace galaxy {
@@ -958,7 +959,9 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         return;
     }
 
-    CheckVersion(agent); //check containers version
+    if (FLAGS_check_container_version) {
+        CheckVersion(agent); //check containers version
+    }
     CheckTagAndPool(agent); //may evict some containers
     //for each container_group checking pending containers, try to put on...
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess>::iterator jt;
@@ -1124,7 +1127,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             cmd.action = kDestroyContainer;
             commands.push_back(cmd);
             continue;
-        } 
+        }
         const std::string& local_version = it_local->second->require->version;
         const std::string& remote_version = container_remote.container_desc().version();
         if (local_version != remote_version) {
@@ -1135,7 +1138,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             cmd.action = kDestroyContainer;
             commands.push_back(cmd);
             continue;
-        } 
+        }
         remote_status[container_remote.id()] = container_remote.status();
         Container::Ptr container_local = it_local->second;
         container_local->remote_info.set_cpu_used(container_remote.cpu_used());
