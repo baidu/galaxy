@@ -247,18 +247,18 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
     }
 
     if (sdk_container.run_user.empty()) {
-        fprintf(stderr, "run_user must no be empty\n");
+        fprintf(stderr, "run_user must not be empty\n");
         return false;
     }
     container->set_run_user(sdk_container.run_user);
     if (sdk_container.version.empty()) {
-        fprintf(stderr, "version must no be empty\n");
+        fprintf(stderr, "version must not be empty\n");
         return false;
     }
     container->set_version(sdk_container.version);
 
     if (sdk_container.tag.empty()) {
-        fprintf(stderr, "tag must no be empty\n");
+        fprintf(stderr, "tag must not be empty\n");
         return false;
     }
     container->set_tag(sdk_container.tag);
@@ -274,7 +274,7 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
     bool ok = true;
     for (size_t i = 0; i < sdk_container.pool_names.size(); ++i) {
         if (sdk_container.pool_names[i].empty()) {
-            fprintf(stderr, "pool must no be empty\n");
+            fprintf(stderr, "pool must not be empty\n");
             ok = false;
             break;
         }
@@ -327,17 +327,17 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
 
 bool FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package* package) {
     if (sdk_package.source_path.empty()) {
-        fprintf(stderr, "package source_path must no be empty\n");
+        fprintf(stderr, "package source_path must not be empty\n");
         return false;
     }
     package->set_source_path(sdk_package.source_path);
     if (sdk_package.dest_path.empty()) {
-        fprintf(stderr, "package dest_path must no be empty\n");
+        fprintf(stderr, "package dest_path must not be empty\n");
         return false;
     }
     package->set_dest_path(sdk_package.dest_path);
     if (sdk_package.version.empty()) {
-        fprintf(stderr, "package version must no be empty\n");
+        fprintf(stderr, "package version must not be empty\n");
         return false;
     }
     package->set_version(sdk_package.version);
@@ -347,7 +347,7 @@ bool FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package* pa
 bool FillImagePackage(const ImagePackage& sdk_image, 
                         ::baidu::galaxy::proto::ImagePackage* image) {
     if (sdk_image.start_cmd.empty()) {
-        fprintf(stderr, "package start_cmd must no be empty\n");
+        fprintf(stderr, "package start_cmd must not be empty\n");
         return false;
     }
     image->set_start_cmd(sdk_image.start_cmd);
@@ -361,6 +361,10 @@ bool FillImagePackage(const ImagePackage& sdk_image,
 
 bool FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data) {
     bool ok = true;
+    if (sdk_data.reload_cmd.empty()) {
+        fprintf(stderr, "package reload_cmd must not be empty\n");
+        return false;
+    }
     data->set_reload_cmd(sdk_data.reload_cmd);
     for (size_t i = 0; i < sdk_data.packages.size(); ++i) {
         ::baidu::galaxy::proto::Package* package = data->add_packages();
@@ -374,7 +378,7 @@ bool FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPa
 
 bool FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* service) {
     if (sdk_service.service_name.empty()) {
-        fprintf(stderr, "service service_name must no be empty\n");
+        fprintf(stderr, "service service_name must not be empty\n");
         return false;
     }
 
@@ -389,7 +393,7 @@ bool FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* se
     g_vec_service_name.push_back(sdk_service.service_name);
     
     if (sdk_service.port_name.empty()) {
-        fprintf(stderr, "service port_name must no be empty\n");
+        fprintf(stderr, "service port_name must not be empty\n");
         return false;
     }
 
