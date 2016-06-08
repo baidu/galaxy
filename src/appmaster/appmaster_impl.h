@@ -24,6 +24,7 @@ using ::baidu::galaxy::proto::JobDescription;
 using ::baidu::galaxy::proto::kUpdateJobContinue;
 using ::baidu::galaxy::proto::kUpdateJobStart;
 using ::baidu::galaxy::proto::kUpdateJobRollback;
+using ::baidu::galaxy::proto::kUpdateJobPause;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:

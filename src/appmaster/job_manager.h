@@ -49,7 +49,7 @@ using ::baidu::galaxy::proto::kJobRunning;
 using ::baidu::galaxy::proto::kJobFinished; 
 using ::baidu::galaxy::proto::kJobDestroying;
 using ::baidu::galaxy::proto::kJobUpdating;
-using ::baidu::galaxy::proto::kJobBatchUpdate;
+using ::baidu::galaxy::proto::kJobUpdatePause;
 using ::baidu::galaxy::proto::kFetch;
 using ::baidu::galaxy::proto::kUpdate;
 using ::baidu::galaxy::proto::kRemove;
@@ -112,7 +112,7 @@ public:
     Status Update(const JobId& job_id, const JobDescription& job_desc);
     Status Terminate(const JobId& jobid, const User& user, const std::string hostname);
     Status PauseUpdate(const JobId& job_id);
-    Status ContinueUpdate(const JobId& job_id);
+    Status ContinueUpdate(const JobId& job_id, int32_t break_point);
     Status Rollback(const JobId& job_id);
 
 
@@ -140,11 +140,13 @@ private:
     void CheckClear(Job* job);
     void CheckJobStatus(Job* job);
     void CheckPodAlive(PodInfo* pod, Job* job);
+    void CheckPauseUpdate(Job* job);
     Status StartJob(Job* job, void* arg);
     Status RecoverJob(Job* job, void* arg);
     Status UpdateJob(Job* job, void* arg);
     Status RemoveJob(Job* job, void* arg);
     Status ClearJob(Job* job, void* arg);
+    Status PauseUpdateJob(Job* job, void * arg);
     void RemoveContainerGroupCallBack(const proto::RemoveContainerGroupRequest* request,
                                   proto::RemoveContainerGroupResponse* response,
                                   bool failed, int);
@@ -158,8 +160,7 @@ private:
     bool DeleteFromNexus(const JobId& job_id);
     Status ContinueUpdateJob(Job* job, void* arg);
     Status RollbackJob(Job* job, void* arg);
-    Status BatchUpdatePod(Job* job, void* arg);
-    void CheckBatchUpdate(Job* job);
+    Status PauseUpdatePod(Job* job, void* arg);
     Status TryRebuild(Job* job, PodInfo* podinfo);
     Status TryReload(Job* job, PodInfo* pod);
     void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
@@ -172,6 +173,7 @@ private:
     bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
     void RefreshService(ServiceList* src, PodInfo* pod);
     void DestroyService(ServiceList* services);
+    void EraseFormDeployList(Job* job, std::string podid);
 
 private:
     std::map<JobId, Job*> jobs_;

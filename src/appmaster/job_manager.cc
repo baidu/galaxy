@@ -294,7 +294,7 @@ Status JobManager::PauseUpdate(const JobId& job_id) {
     std::string fsm_key = BuildFsmKey(job->status_, kPauseUpdate);
     std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
     if (fsm_it != fsm_.end()) {
-        Status rlt = fsm_it->second->trans_func_(job);
+        Status rlt = fsm_it->second->trans_func_(job, NULL);
         if (kOk != rlt) {
             return rlt;
         }
@@ -310,7 +310,7 @@ Status JobManager::PauseUpdate(const JobId& job_id) {
     return kOk;
 }
 
-Status JobManager::ContinueUpdate(const JobId& job_id, const int32_t break_point) {
+Status JobManager::ContinueUpdate(const JobId& job_id, int32_t break_point) {
     MutexLock lock(&mutex_);
     std::map<JobId, Job*>::iterator it;
     it = jobs_.find(job_id);
@@ -454,9 +454,9 @@ Status JobManager::ContinueUpdateJob(Job* job, void* arg) {
     mutex_.AssertHeld();
     int32_t break_point = *(int32_t*)arg; 
     if (break_point != 0) {
-        job->desc_.deploy().set_update_break_count(break_point);
+        job->desc_.mutable_deploy()->set_update_break_count(break_point);
     } else {
-        job->desc_.deploy().set_update_break_count(job->desc_.deploy().replica());
+        job->desc_.mutable_deploy()->set_update_break_count(job->desc_.deploy().replica());
     }
     return kOk;
 }
@@ -465,6 +465,10 @@ Status JobManager::RollbackJob(Job* job, void* arg) {
     mutex_.AssertHeld();
     job->update_time_ = job->rollback_time_;
     job->desc_.CopyFrom(job->last_desc_);
+    return kOk;
+}
+
+Status JobManager::PauseUpdateJob(Job* job, void * arg) {
     return kOk;
 }
 
@@ -567,8 +571,8 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
         //interval control
         if (request->status() == kPodStopping) {
             LOG(INFO) << "DEBUG: ignore finished pod ";
-        } else if (request->status() == kPodStopping) {
-            LOG(INFO << LOG(INFO) << "DEBUG: kill finished pod ";)
+        } else if (request->status() == kPodFinished) {
+            LOG(INFO) << "DEBUG: kill finished pod ";
             rlt_code = kTerminate;
         } else if (job->deploying_pods_.size() >= job->desc_.deploy().step()) {
             LOG(WARNING) << "DEBUG: fetch task deny "
@@ -591,8 +595,11 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
             rlt_code = kOk;
         } else { 
             podinfo = CreatePod(job, request->podid(), request->endpoint());
-            job->deploying_pods_.insert(podinfo->podid());
-            rlt_code = kOk;
+            if (kSuspend == TryRebuild(job, podinfo)) {
+                rlt_code = kSuspend;
+            } else {
+                rlt_code = kOk;
+            }
         }
     }
     if (podinfo != NULL && podinfo->status() == kPodFinished) {
@@ -636,13 +643,24 @@ Status JobManager::TryReload(Job* job, PodInfo* pod) {
     }
 }
 
+void JobManager::EraseFormDeployList(Job* job, std::string podid) {
+    MutexLock lock(&mutex_); 
+    job->deploying_pods_.erase(podid);
+    return;
+}
+
 void JobManager::ReduceUpdateList(Job* job, 
                                  std::string podid,
                                  PodStatus pod_status,
                                  PodStatus reload_status) {
     if (pod_status > kPodServing 
         && job->deploying_pods_.find(podid) != job->deploying_pods_.end()) {
-        job->deploying_pods_.erase(podid);
+        if (job->desc_.deploy().interval() == 0) {
+            job->deploying_pods_.erase(podid);
+        } else {
+            job_checker_.DelayTask(job->desc_.deploy().interval() * 1000,
+                boost::bind(&JobManager::EraseFormDeployList, this, job, podid));
+        }
     } else if((reload_status == kPodFinished || reload_status == kPodFailed) &&
         job->reloading_pods_.find(podid) != job->reloading_pods_.end()) {
         job->reloading_pods_.erase(podid);
@@ -746,7 +764,7 @@ void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
     podinfo->set_status(request->status());
     podinfo->set_reload_status(request->reload_status());
     ReduceUpdateList(job, podinfo->podid(), request->status(), request->reload_status());
-    if (request->().size() != 0) {
+    if (request->services().size() != 0) {
         LOG(INFO) << "DEBUG servie msg : "
         << request->DebugString();
         RefreshService(request->mutable_services(), podinfo);
@@ -801,8 +819,8 @@ Status JobManager::PauseUpdatePod(Job* job, void* arg) {
         //interval control
         if (request->status() == kPodStopping) {
             LOG(INFO) << "DEBUG: ignore finished pod ";
-        } else if (request->status() == kPodStopping) {
-            LOG(INFO << LOG(INFO) << "DEBUG: kill finished pod ";)
+        } else if (request->status() == kPodFinished) {
+            LOG(INFO) << "DEBUG: kill finished pod ";
             rlt_code = kTerminate;
         } else if (job->pods_.size() >= job->desc_.deploy().replica()) {
             LOG(WARNING) << "DEBUG: fetch task deny "
@@ -870,7 +888,7 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
             std::string fsm_key = BuildFsmKey(job->status_, kPauseUpdate);
             std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
             if (fsm_it != fsm_.end()) {
-                Status rlt = fsm_it->second->trans_func_(job);
+                Status rlt = fsm_it->second->trans_func_(job, NULL);
                 if (kOk != rlt) {
                     LOG(WARNING) << "trans func exec fail . Status : " << rlt;
                 }

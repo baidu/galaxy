@@ -158,7 +158,7 @@ enum JobStatus {
    kJobFinished = 3;
    kJobDestroying = 4;
    kJobUpdating = 5;
-   kJobBatchUpdate = 6;
+   kJobUpdatePause = 6;
 }
 
 enum JobEvent {
@@ -167,7 +167,7 @@ enum JobEvent {
     kRemove = 3;
     kRemoveFinish = 4;
     kUpdateFinish = 5;
-    kBatchUpdate = 6;
+    kPauseUpdate = 6;
     kUpdateContinue = 7;
     kUpdateRollback = 8;
 }

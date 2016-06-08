@@ -239,7 +239,7 @@ void AppMasterImpl::UpdateContainerGroupCallBack(JobDescription job_desc,
         done->Run();
         return;
     }
-    Status = job_manager_.Update(request->id(), job_desc);
+    Status status = job_manager_.Update(request->id(), job_desc);
     if (status != proto::kOk) {
         update_response->mutable_error_code()->set_status(status);
         update_response->mutable_error_code()->set_reason("appmaster update job error");
@@ -267,8 +267,11 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
     }
     const JobDescription& job_desc = request->job();
     if (request->has_operate() && request->operate() == kUpdateJobContinue) {
-        if (request->has_brea)
-        Status status = job_manager_.ContinueUpdate(request->jobid(), request->breakpoint());
+        uint32_t update_break_count = 0;
+        if (request->has_update_break_count()) {
+            update_break_count = request->update_break_count();
+        }
+        Status status = job_manager_.ContinueUpdate(request->jobid(), update_break_count);
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
             response->mutable_error_code()->set_reason("appmaster continue update job error");
