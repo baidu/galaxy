@@ -231,6 +231,7 @@ message ImagePackage {
     optional Package package = 1;
     optional string start_cmd = 2;
     optional string stop_cmd = 3;
+    optional string check_cmd = 4;
 }
 
 message DataPackage {
@@ -396,6 +397,7 @@ enum Status {
    kStatusConflict = 19;
    kJobTerminateFail = 20;
    kSuspend = 21;
+   kQuit = 22;
 }
 
 message ErrorCode {

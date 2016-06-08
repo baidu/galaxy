@@ -115,9 +115,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
         for (; c_it != env.cgroup_paths.end(); ++c_it) {
             std::string path = *c_it + "/tasks";
-            fprintf(stdout, "attach pid to cgroup, pid: %d, cgroup: %s\n",
-                    my_pid, path.c_str());
-            fflush(stdout);
             std::string content = boost::lexical_cast<std::string>(my_pid);
             bool ok = file::Write(path, content);
 
@@ -140,16 +137,7 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
                   + " -C " + download_context->dst_path;
 
             // if package exist
-            if (file::IsExists(download_context->package)) {
-                fprintf(stdout, "package not changed, package: %s, version: %s\n",
-                        download_context->package.c_str(),
-                        download_context->version.c_str());
-                fflush(stdout);
-            } else {
-                fprintf(stdout, "package has changed, package: %s, version: %s\n",
-                        download_context->package.c_str(),
-                        download_context->version.c_str());
-                fflush(stdout);
+            if (!file::IsExists(download_context->package)) {
                 cmd = "wget -t " + boost::lexical_cast<std::string>(FLAGS_process_manager_download_retry_times)
                       + " --timeout=" + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
                       + " -O " + download_context->package
@@ -157,9 +145,6 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
                       + " && " + cmd;
             }
         }
-
-        fprintf(stdout, "cmd: %s, user: %s\n", cmd.c_str(), env.user.c_str());
-        fflush(stdout);
 
         // set user
         if (!user::Su(env.user)) {
@@ -173,6 +158,9 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             const_cast<char*>(cmd.c_str()),
             NULL
         };
+
+        fprintf(stdout, "cmd: %s, user: %s\n", cmd.c_str(), env.user.c_str());
+        fflush(stdout);
 
         // 6.prepare envs
         char* envs[env.envs.size() + 1];

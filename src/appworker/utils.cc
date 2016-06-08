@@ -161,8 +161,10 @@ bool PrepareStdFds(const std::string& pwd,
     baidu::galaxy::file::MkdirRecur(pwd);
     std::string now_str_time;
     GetStrFTime(&now_str_time);
-    std::string stdout_file = pwd + "/" + process_id + "_" + now_str_time + "_stdout";
-    std::string stderr_file = pwd + "/" + process_id + "_" + now_str_time + "_stderr";
+    // std::string stdout_file = pwd + "/" + process_id + "_" + now_str_time + "_stdout";
+    // std::string stderr_file = pwd + "/" + process_id + "_" + now_str_time + "_stderr";
+    std::string stdout_file = pwd + "/" + process_id + "_stdout";
+    std::string stderr_file = pwd + "/" + process_id + "_stderr";
 
     const int STD_FILE_OPEN_FLAG = O_CREAT | O_APPEND | O_WRONLY;
     const int STD_FILE_OPEN_MODE = S_IRWXU | S_IRWXG | S_IROTH;

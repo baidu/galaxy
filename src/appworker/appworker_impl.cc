@@ -252,7 +252,7 @@ void AppWorkerImpl::Init() {
 
 void AppWorkerImpl::Quit() {
     MutexLock lock(&mutex_);
-    LOG(WARNING) << "!!! appworker will exit for signal catched";
+    LOG(WARNING) << "appworker will quit for exception exit";
     quit_= true;
     pod_manager_.TerminatePod();
 
@@ -399,6 +399,13 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
 
         if (proto::kTerminate == error_code.status()) {
             LOG(WARNING) << "fetch task: kTerminate";
+            pod_manager_.TerminatePod();
+            break;
+        }
+
+        if (proto::kQuit == error_code.status()) {
+            LOG(WARNING) << "fetch task: kQuit";
+            quit_= true;
             pod_manager_.TerminatePod();
             break;
         }
