@@ -83,6 +83,16 @@ private:
                                      const proto::UpdateContainerGroupRequest* request,
                                      proto::UpdateContainerGroupResponse* response,
                                      bool failed, int err);
+    void RollbackContainerGroupCallBack(proto::UpdateJobResponse* rollback_response,
+                                 ::google::protobuf::Closure* done,
+                                 const proto::UpdateContainerGroupRequest* request,
+                                 proto::UpdateContainerGroupResponse* response,
+                                 bool failed, int err);
+    void RemoveContainerGroupCallBack(::baidu::galaxy::proto::RemoveJobResponse* remove_response,
+                                      ::google::protobuf::Closure* done,
+                                      const proto::RemoveContainerGroupRequest* request,
+                                      proto::RemoveContainerGroupResponse* response,
+                                      bool failed, int);
     void HandleResmanChange(const std::string& new_endpoint);
     void OnLockChange(std::string lock_session_id);
     void ReloadAppInfo();

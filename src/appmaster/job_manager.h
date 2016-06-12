@@ -42,6 +42,7 @@ using ::baidu::galaxy::proto::kRemoveContainerGroupFail;
 using ::baidu::galaxy::proto::kUpdateContainerGroupFail;
 using ::baidu::galaxy::proto::kRebuild;
 using ::baidu::galaxy::proto::kReload;
+using ::baidu::galaxy::proto::kQuit;
 using ::baidu::galaxy::proto::kStatusConflict;
 using ::baidu::galaxy::proto::kJobTerminateFail;
 using ::baidu::galaxy::proto::kJobPending; 
@@ -61,6 +62,7 @@ using ::baidu::galaxy::proto::kUpdateRollback;
 using ::baidu::galaxy::proto::kActionNull;
 using ::baidu::galaxy::proto::kActionReload;
 using ::baidu::galaxy::proto::kActionRebuild;
+using ::baidu::galaxy::proto::kActionRecreate;
 using ::baidu::galaxy::proto::kPodPending;
 using ::baidu::galaxy::proto::kPodReady;
 using ::baidu::galaxy::proto::kPodDeploying;
@@ -109,8 +111,9 @@ class JobManager {
 public:
     void Start();
     Status Add(const JobId& job_id, const JobDescription& job_desc);
-    Status Update(const JobId& job_id, const JobDescription& job_desc);
-    Status Terminate(const JobId& jobid, const User& user, const std::string hostname);
+    Status Update(const JobId& job_id, const JobDescription& job_desc,
+                    bool container_change);
+    Status Terminate(const JobId& jobid, const User& user);
     Status PauseUpdate(const JobId& job_id);
     Status ContinueUpdate(const JobId& job_id, int32_t break_point);
     Status Rollback(const JobId& job_id);
@@ -122,7 +125,7 @@ public:
     void GetJobsOverview(JobOverviewList* jobs_overview);
     void SetResmanEndpoint(std::string new_endpoint);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
-
+    JobDescription GetLastDesc(const JobId jonid);
     JobManager();
     ~JobManager();
 private:
@@ -147,9 +150,6 @@ private:
     Status RemoveJob(Job* job, void* arg);
     Status ClearJob(Job* job, void* arg);
     Status PauseUpdateJob(Job* job, void * arg);
-    void RemoveContainerGroupCallBack(const proto::RemoveContainerGroupRequest* request,
-                                  proto::RemoveContainerGroupResponse* response,
-                                  bool failed, int);
     PodInfo* CreatePod(Job* job,
                 std::string podid,
                 std::string endpoint);

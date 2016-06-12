@@ -397,6 +397,7 @@ enum Status {
    kStatusConflict = 19;
    kJobTerminateFail = 20;
    kSuspend = 21;
+   kQuit = 22;
 }
 
 message ErrorCode {
