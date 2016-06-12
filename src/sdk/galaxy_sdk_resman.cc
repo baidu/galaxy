@@ -1083,7 +1083,7 @@ bool ResourceManagerImpl::AddUser(const AddUserRequest& request, AddUserResponse
         return false;
     }
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1116,7 +1116,7 @@ bool ResourceManagerImpl::RemoveUser(const RemoveUserRequest& request,
         return false;
     }
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1231,7 +1231,7 @@ bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserRe
         return false;
     }
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1267,7 +1267,7 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
         return false;
     }
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
