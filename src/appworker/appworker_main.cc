@@ -2,16 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <assert.h>
-#include <algorithm>
-#include <vector>
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <sofa/pbrpc/pbrpc.h>
 
 #include "appworker_impl.h"
 #include "src/utils/setting_utils.h"

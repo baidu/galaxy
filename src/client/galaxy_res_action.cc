@@ -231,8 +231,8 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
 
             std::string smem;
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
-                smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
-                       ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+                smem = HumanReadableString(response.containers[i].memory.assigned) + "/" +
+                       HumanReadableString(response.containers[i].memory.used);
             }
 
             std::vector<std::string> values;
@@ -241,8 +241,8 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
                     values.clear();
                     std::string svolums;
                     svolums = StringVolumMedium(response.containers[i].volums[j].medium) + "/"
-                              + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
-                              + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used);
+                              + HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
+                              + HumanReadableString(response.containers[i].volums[j].volum.used);
                             //+ response.containers[i].volums[j].device_path;
                     if (j == 0) {
                         values.push_back(baidu::common::NumToString(i));
@@ -259,10 +259,11 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
                         values.push_back(FormatDate(response.containers[i].submit_time));
                         values.push_back(FormatDate(response.containers[i].submit_time));
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -370,9 +371,9 @@ bool ResAction::ShowAgent(const std::string& endpoint, const std::string& soptio
 
             std::string smem;
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
-            //std::string smem = ::baidu::common::HumanReadableString(response.containers[i].memory.total) + "/" +
-                smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
-                       ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+            //std::string smem = HumanReadableString(response.containers[i].memory.total) + "/" +
+                smem = HumanReadableString(response.containers[i].memory.assigned) + "/" +
+                       HumanReadableString(response.containers[i].memory.used);
             }
             
             std::vector<std::string> values;      
@@ -382,9 +383,9 @@ bool ResAction::ShowAgent(const std::string& endpoint, const std::string& soptio
                     std::string svolums;
                     //svolums =  "vol_" + ::baidu::common::NumToString(j) + " " 
                     svolums =  StringVolumMedium(response.containers[i].volums[j].medium) + "/" 
-                                //+ ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.total) + "/"
-                                + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
-                                + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used) + " "
+                                //+ HumanReadableString(response.containers[i].volums[j].volum.total) + "/"
+                                + HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
+                                + HumanReadableString(response.containers[i].volums[j].volum.used) + " "
                                 + response.containers[i].volums[j].device_path;
                     if (j == 0) {
                         values.push_back(::baidu::common::NumToString(i));
@@ -401,11 +402,11 @@ bool ResAction::ShowAgent(const std::string& endpoint, const std::string& soptio
                         values.push_back(svolums);
 
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -477,11 +478,13 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         base.AddRow(7, "user", "version", "priority", "cmd_line", "max_per_host", "tag", "pools");
         std::string pools; 
         for (size_t i = 0; i < response.desc.pool_names.size(); ++i) {
-            pools += response.desc.pool_names[i] + ", ";
+            pools += response.desc.pool_names[i];
+            if (i != response.desc.pool_names.size() - 1) {
+                pools += ",";
+            }
         }
         base.AddRow(7,  response.desc.run_user.c_str(),
                         response.desc.version.c_str(),
-                        //::baidu::common::NumToString(response.desc.priority).c_str(),
                         StringJobType((::baidu::galaxy::sdk::JobType)response.desc.priority).c_str(),
                         response.desc.cmd_line.c_str(),
                         ::baidu::common::NumToString(response.desc.max_per_host).c_str(),
@@ -494,7 +497,7 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
         printf("workspace volum infomation\n");
         ::baidu::common::TPrinter workspace_volum(7);
         workspace_volum.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
-        workspace_volum.AddRow(7, ::baidu::common::HumanReadableString(response.desc.workspace_volum.size).c_str(),
+        workspace_volum.AddRow(7, HumanReadableString(response.desc.workspace_volum.size).c_str(),
                                   StringVolumType(response.desc.workspace_volum.type).c_str(),
                                   StringVolumMedium(response.desc.workspace_volum.medium).c_str(),
                                   response.desc.workspace_volum.dest_path.c_str(),
@@ -511,7 +514,7 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
 
         for (uint32_t i = 0; i < response.desc.data_volums.size(); ++i) {
             data_volums.AddRow(9, ::baidu::common::NumToString(i).c_str(),
-                                  ::baidu::common::HumanReadableString(response.desc.data_volums[i].size).c_str(),
+                                  HumanReadableString(response.desc.data_volums[i].size).c_str(),
                                   StringVolumType(response.desc.data_volums[i].type).c_str(),
                                   StringVolumMedium(response.desc.data_volums[i].medium).c_str(),
                                   response.desc.data_volums[i].source_path.c_str(),
@@ -532,11 +535,11 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                                response.desc.cgroups[i].id.c_str(),
                                ::baidu::common::NumToString(response.desc.cgroups[i].cpu.milli_core / 1000.0).c_str(),
                                StringBool(response.desc.cgroups[i].cpu.excess).c_str(),
-                               ::baidu::common::HumanReadableString(response.desc.cgroups[i].memory.size).c_str(),
+                               HumanReadableString(response.desc.cgroups[i].memory.size).c_str(),
                                StringBool(response.desc.cgroups[i].memory.excess).c_str(),
-                               ::baidu::common::HumanReadableString(response.desc.cgroups[i].tcp_throt.recv_bps_quota).c_str(),
+                               HumanReadableString(response.desc.cgroups[i].tcp_throt.recv_bps_quota).c_str(),
                                StringBool(response.desc.cgroups[i].tcp_throt.recv_bps_excess).c_str(),
-                               ::baidu::common::HumanReadableString(response.desc.cgroups[i].tcp_throt.send_bps_quota).c_str(),
+                               HumanReadableString(response.desc.cgroups[i].tcp_throt.send_bps_quota).c_str(),
                                StringBool(response.desc.cgroups[i].tcp_throt.send_bps_excess).c_str(),
                                ::baidu::common::NumToString(response.desc.cgroups[i].blkio.weight).c_str()
                             );
@@ -554,17 +557,17 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
             std::string scpu = ::baidu::common::NumToString(response.containers[i].cpu.assigned / 1000.0) + "/" +
                                ::baidu::common::NumToString(response.containers[i].cpu.used / 1000.0);
              
-            //std::string smem = ::baidu::common::HumanReadableString(response.containers[i].memory.total) + "/" +
-            std::string smem = ::baidu::common::HumanReadableString(response.containers[i].memory.assigned) + "/" +
-                               ::baidu::common::HumanReadableString(response.containers[i].memory.used);
+            //std::string smem = HumanReadableString(response.containers[i].memory.total) + "/" +
+            std::string smem = HumanReadableString(response.containers[i].memory.assigned) + "/" +
+                               HumanReadableString(response.containers[i].memory.used);
                    
             for (uint32_t j = 0; j < response.containers[i].volums.size(); ++j) {
                 std::string svolums;
                 svolums +=  "vol_" + ::baidu::common::NumToString(j) + " " 
                             + StringVolumMedium(response.containers[i].volums[j].medium) + " " 
-                            //+ ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.total) + "/"
-                            + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
-                            + ::baidu::common::HumanReadableString(response.containers[i].volums[j].volum.used) + " "
+                            //+ HumanReadableString(response.containers[i].volums[j].volum.total) + "/"
+                            + HumanReadableString(response.containers[i].volums[j].volum.assigned) + "/"
+                            + HumanReadableString(response.containers[i].volums[j].volum.used) + " "
                             + response.containers[i].volums[j].device_path;
                 if (j == 0) {
                     containers.AddRow(8, ::baidu::common::NumToString(i).c_str(),
@@ -697,7 +700,10 @@ bool ResAction::ListAgents(const std::string& soptions) {
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -711,9 +717,9 @@ bool ResAction::ListAgents(const std::string& soptions) {
             std::string smem;
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
 
-                smem = ::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
-                       ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
-                       ::baidu::common::HumanReadableString(response.agents[i].memory.used);
+                smem = HumanReadableString(response.agents[i].memory.total) + "/" +
+                       HumanReadableString(response.agents[i].memory.assigned) + "/" +
+                       HumanReadableString(response.agents[i].memory.used);
             }
             
             std::vector<std::string> values;
@@ -723,9 +729,9 @@ bool ResAction::ListAgents(const std::string& soptions) {
                     std::string svolums;
                     svolums +=  "vol_" + ::baidu::common::NumToString(j) + " "
                                 + StringVolumMedium(response.agents[i].volums[j].medium) + " "
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + " "
+                                + HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.used) + " "
                                 + response.agents[i].volums[j].device_path;
                     if (j == 0) {
                         values.push_back(::baidu::common::NumToString(i));
@@ -742,12 +748,11 @@ bool ResAction::ListAgents(const std::string& soptions) {
                         }
                         values.push_back(svolums);
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -804,7 +809,7 @@ bool ResAction::ListAgents(const std::string& soptions) {
 
 }
 
-bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& soptions) {
+bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool, const std::string& soptions) {
     if (tag.empty()) {
         return false;
     }
@@ -843,9 +848,15 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
         ::baidu::common::TPrinter agents(headers.size());
         agents.AddRow(headers);
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            if (!pool.empty() && pool.compare(response.agents[i].pool) != 0) {
+                continue;
+            }
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -859,9 +870,9 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
             std::string smem;
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
 
-                smem = ::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
-                       ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
-                       ::baidu::common::HumanReadableString(response.agents[i].memory.used);
+                smem = HumanReadableString(response.agents[i].memory.total) + "/" +
+                       HumanReadableString(response.agents[i].memory.assigned) + "/" +
+                       HumanReadableString(response.agents[i].memory.used);
             }
             
             std::vector<std::string> values;
@@ -871,9 +882,9 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
                     std::string svolums;
                     svolums +=  "vol_" + ::baidu::common::NumToString(j) + " "
                                 + StringVolumMedium(response.agents[i].volums[j].medium) + " "
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + " "
+                                + HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.used) + " "
                                 + response.agents[i].volums[j].device_path;
                     if (j == 0) {
                         values.push_back(::baidu::common::NumToString(i));
@@ -890,12 +901,11 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& sopti
                         }
                         values.push_back(svolums);
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -994,7 +1004,10 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             std::string tags;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
-                tags += response.agents[i].tags[j] + ", ";
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
             }
 
             std::string scpu;
@@ -1008,9 +1021,9 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
             std::string smem;
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
 
-                smem = ::baidu::common::HumanReadableString(response.agents[i].memory.total) + "/" +
-                       ::baidu::common::HumanReadableString(response.agents[i].memory.assigned) + "/" +
-                       ::baidu::common::HumanReadableString(response.agents[i].memory.used);
+                smem = HumanReadableString(response.agents[i].memory.total) + "/" +
+                       HumanReadableString(response.agents[i].memory.assigned) + "/" +
+                       HumanReadableString(response.agents[i].memory.used);
             }
             
             std::vector<std::string> values;
@@ -1020,9 +1033,9 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
                     std::string svolums;
                     svolums +=  "vol_" + ::baidu::common::NumToString(j) + " "
                                 + StringVolumMedium(response.agents[i].volums[j].medium) + " "
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
-                                + ::baidu::common::HumanReadableString(response.agents[i].volums[j].volum.used) + " "
+                                + HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.used) + " "
                                 + response.agents[i].volums[j].device_path;
                     if (j == 0) {
                         values.push_back(::baidu::common::NumToString(i));
@@ -1039,12 +1052,11 @@ bool ResAction::ListAgentsByPool(const std::string& pool, const std::string& sop
                         }
                         values.push_back(svolums);
                     } else {
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
-                        values.push_back("");
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
                         if (!scpu.empty()) {
                             values.push_back("");
                         }
@@ -1218,9 +1230,9 @@ bool ResAction::Status() {
         printf("cluster memory infomation\n");
         ::baidu::common::TPrinter mem(3);
         mem.AddRow(3, "total", "assigned", "used");
-        mem.AddRow(3, ::baidu::common::HumanReadableString(response.memory.total).c_str(), 
-                      ::baidu::common::HumanReadableString(response.memory.assigned).c_str(),
-                      ::baidu::common::HumanReadableString(response.memory.used).c_str());
+        mem.AddRow(3, HumanReadableString(response.memory.total).c_str(), 
+                      HumanReadableString(response.memory.assigned).c_str(),
+                      HumanReadableString(response.memory.used).c_str());
         printf("%s\n", mem.ToString().c_str());
 
         printf("cluster volumes infomation\n");
@@ -1230,9 +1242,9 @@ bool ResAction::Status() {
             volum.AddRow(6, ::baidu::common::NumToString(i).c_str(),  
                             StringVolumMedium(response.volum[i].medium).c_str(), 
                             //::baidu::common::NumToString(response.volum[i].medium).c_str(), 
-                            ::baidu::common::HumanReadableString(response.volum[i].volum.total).c_str(),
-                            ::baidu::common::HumanReadableString(response.volum[i].volum.assigned).c_str(),
-                            ::baidu::common::HumanReadableString(response.volum[i].volum.used).c_str(),
+                            HumanReadableString(response.volum[i].volum.total).c_str(),
+                            HumanReadableString(response.volum[i].volum.assigned).c_str(),
+                            HumanReadableString(response.volum[i].volum.used).c_str(),
                             response.volum[i].device_path.c_str());
         }
         printf("%s\n", volum.ToString().c_str());
@@ -1473,9 +1485,9 @@ bool ResAction::ShowUser(const std::string& user) {
         ::baidu::common::TPrinter quota(5);
         quota.AddRow(5, "cpu", "memory", "disk", "ssd", "replica");
         quota.AddRow(5, ::baidu::common::NumToString(response.quota.millicore / 1000.0).c_str(),
-                        ::baidu::common::HumanReadableString(response.quota.memory).c_str(),
-                        ::baidu::common::HumanReadableString(response.quota.disk).c_str(),
-                        ::baidu::common::HumanReadableString(response.quota.ssd).c_str(),
+                        HumanReadableString(response.quota.memory).c_str(),
+                        HumanReadableString(response.quota.disk).c_str(),
+                        HumanReadableString(response.quota.ssd).c_str(),
                         ::baidu::common::NumToString(response.quota.replica).c_str()
                     );
         printf("%s\n", quota.ToString().c_str());
@@ -1484,9 +1496,9 @@ bool ResAction::ShowUser(const std::string& user) {
         ::baidu::common::TPrinter assign(5);
         assign.AddRow(5, "cpu", "memory", "disk", "ssd", "replica");
         assign.AddRow(5, ::baidu::common::NumToString(response.assigned.millicore / 1000.0).c_str(),
-                        ::baidu::common::HumanReadableString(response.assigned.memory).c_str(),
-                        ::baidu::common::HumanReadableString(response.assigned.disk).c_str(),
-                        ::baidu::common::HumanReadableString(response.assigned.ssd).c_str(),
+                        HumanReadableString(response.assigned.memory).c_str(),
+                        HumanReadableString(response.assigned.disk).c_str(),
+                        HumanReadableString(response.assigned.ssd).c_str(),
                         ::baidu::common::NumToString(response.assigned.replica).c_str()
                     );
         printf("%s\n", assign.ToString().c_str());
@@ -1588,7 +1600,7 @@ bool ResAction::AssignQuota(const std::string& user,
     }
     
     if (millicores <= 0 || replica <= 0) {
-        printf("millicores or replica must larger than 0\n");
+        printf("millicores and replica must be larger than 0\n");
         return false;
     }
 
@@ -1647,7 +1659,6 @@ bool ResAction::Preempt(const std::string& container_group_id, const std::string
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 bool ResAction::GetTagsByAgent(const std::string& endpoint) {
@@ -1704,7 +1715,6 @@ bool ResAction::AddAgentToPool(const std::string& endpoint, const std::string& p
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 bool ResAction::RemoveAgentFromPool(const std::string& endpoint, const std::string& pool) {
@@ -1724,13 +1734,12 @@ bool ResAction::RemoveAgentFromPool(const std::string& endpoint, const std::stri
 
     bool ret = resman_->RemoveAgentFromPool(request, &response);
     if (ret) {
-        printf("Remove agent %s to pool %s successfully\n", endpoint.c_str(), pool.c_str());
+        printf("Remove agent %s from pool %s successfully\n", endpoint.c_str(), pool.c_str());
     } else {
         printf("Remove agent failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
 } // end namespace client

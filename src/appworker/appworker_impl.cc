@@ -11,6 +11,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <gflags/gflags.h>
 #include <timer.h>
 
@@ -335,6 +336,7 @@ void AppWorkerImpl::FetchTask() {
     request->set_fail_count(pod.fail_count);
     LOG(INFO) << "pod status: " << proto::PodStatus_Name(pod.status);
     LOG(INFO) << "fail count: " << pod.fail_count;
+    LOG(INFO) << "pod health: " << proto::Status_Name(pod.health);
 
     // copy services status
     for (unsigned i = 0; i < pod.services.size(); ++i) {
@@ -367,6 +369,8 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                                       FetchTaskResponse* response,
                                       bool failed, int /*error*/) {
     MutexLock lock(&mutex_);
+    boost::scoped_ptr<const FetchTaskRequest> request_ptr(request);
+    boost::scoped_ptr<FetchTaskResponse> response_ptr(response);
 
     do {
         // rpc error
@@ -376,15 +380,15 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
             break;
         }
 
-        if (!response->has_error_code()) {
+        if (!response_ptr->has_error_code()) {
             LOG(WARNING) << "fetch task failed, error_code not found";
             break;
         }
 
-        ErrorCode error_code = response->error_code();
+        ErrorCode error_code = response_ptr->error_code();
         LOG(INFO)
                 << "fetch task call back, "
-                << "update_time: " << response->update_time() << ", "
+                << "update_time: " << response_ptr->update_time() << ", "
                 << "status: " << proto::Status_Name(error_code.status());
 
         if (proto::kJobNotFound == error_code.status()) {
@@ -412,17 +416,19 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
 
         // ignore expired action
         if (error_code.status() == update_status_
-                && response->update_time() == update_time_) {
+                && response_ptr->update_time() == update_time_) {
             LOG(WARNING)
                     << "ignore expire action, current "
                     << "update_time: " << update_time_ << ", "
                     << "update_status: " << proto::Status_Name(update_status_);
         }
 
-        update_status_ = error_code.status();
-        LOG(INFO) << "update_status updated";
+        if (error_code.status() != update_status_)  {
+            update_status_ = error_code.status();
+            LOG(INFO) << "update_status updated";
+        }
 
-        if (response->update_time() == update_time_) {
+        if (response_ptr->update_time() == update_time_) {
             LOG(INFO) << "update_time not updated";
 
             switch (error_code.status()) {
@@ -439,15 +445,15 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
                 break;
             }
         } else {
-            update_time_ = response->update_time();
+            update_time_ = response_ptr->update_time();
             LOG(INFO) << "update_time updated";
 
-            if (!response->has_pod()) {
+            if (!response_ptr->has_pod()) {
                 LOG(WARNING) << "ignore empty pod description";
                 break;
             }
 
-            pod_manager_.SetPodDescription(response->pod());
+            pod_manager_.SetPodDescription(response_ptr->pod());
 
             switch (error_code.status()) {
             case proto::kReload:

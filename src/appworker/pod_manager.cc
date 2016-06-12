@@ -34,10 +34,10 @@ PodManager::PodManager() :
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopCheckPodService, this)
     );
-    background_pool_.DelayTask(
-        FLAGS_pod_manager_change_pod_status_interval,
-        boost::bind(&PodManager::LoopCheckPodHealth, this)
-    );
+    // background_pool_.DelayTask(
+    //     FLAGS_pod_manager_change_pod_status_interval,
+    //     boost::bind(&PodManager::LoopCheckPodHealth, this)
+    // );
 }
 
 PodManager::~PodManager() {
@@ -150,6 +150,7 @@ int PodManager::QueryPod(Pod& pod) {
     pod.stage = pod_.stage;
     pod.fail_count = pod_.fail_count;
     pod.services.assign(pod_.services.begin(), pod_.services.end());
+    pod.health = pod_.health;
 
     return 0;
 }
@@ -705,7 +706,7 @@ void PodManager::PodHealthCheck() {
         }
     }
 
-    LOG(INFO) << "### check pod health, task status: " << proto::TaskStatus_Name(task_status);
+    LOG(INFO) << "check pod health, task status: " << proto::TaskStatus_Name(task_status);
 
     if (proto::kTaskRunning == task_status) {
         background_pool_.DelayTask(
@@ -724,7 +725,10 @@ void PodManager::PodHealthCheck() {
     }
 
     DoClearPodHealthCheck();
-    background_pool_.AddTask(boost::bind(&PodManager::LoopCheckPodHealth, this));
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopCheckPodHealth, this)
+    );
 
     return;
 }
@@ -772,7 +776,7 @@ void PodManager::LoopCheckPodHealth() {
     }
 
     if (0 != DoStartPodHealthCheck()) {
-        LOG(WARNING) << "### start pod health check failed";
+        LOG(WARNING) << "start pod health check failed";
         pod_.health = proto::kError;
         DoClearPodHealthCheck();
         background_pool_.DelayTask(

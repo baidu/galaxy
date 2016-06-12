@@ -123,7 +123,7 @@ enum UpdateJobOperate {
     kUpdateJobStart = 1,
     kUpdateJobContinue = 2,
     kUpdateJobRollback = 3,
-    kUpdateJobDefault = 4,
+    kUpdateJobPause = 4,
 };
 enum JobType {
     kJobMonitor = 0,
@@ -168,6 +168,7 @@ struct ImagePackage {
     Package package;
     std::string start_cmd;
     std::string stop_cmd;
+    std::string health_cmd;
 };
 struct DataPackage {
     std::vector<Package> packages;
@@ -275,7 +276,7 @@ struct ErrorCode {
     std::string reason;
 };
 enum AgentStatus {
-    kAgentUnkown = 0,
+    kAgentUnknown = 0,
     kAgentAlive = 1,
     kAgentDead = 2,
     kAgentOffline = 3,
@@ -570,6 +571,7 @@ struct UpdateJobRequest {
     std::string hostname;
     JobDescription job;
     UpdateJobOperate operate;
+    uint32_t update_break_count;
 };
 struct UpdateJobResponse {
     ErrorCode error_code;

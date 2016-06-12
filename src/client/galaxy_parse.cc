@@ -57,7 +57,6 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
     }
     deploy->pools.assign(pools.begin(), pools.end());
     return 0;
-
 }
 
 int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRequired* volum) {
@@ -234,6 +233,9 @@ int ParseImagePackage(const rapidjson::Value& image_json, ::baidu::galaxy::sdk::
     }
     image->stop_cmd = image_json["stop_cmd"].GetString();
     boost::trim(image->stop_cmd);
+
+    image->health_cmd = image_json["health_cmd"].GetString();
+    boost::trim(image->health_cmd);
     
     if (!image_json.HasMember("package")) {
         fprintf(stderr, "package is required in exec_package\n");
@@ -666,6 +668,10 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
 int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job) {
     FILE *fd = fopen(conf.c_str(), "r");
+    if (fd == NULL) {
+        fprintf(stderr, "%s is not existed\n", conf.c_str());
+        return -1;
+    }
     char buf[5120];
     rapidjson::FileReadStream frs(fd, buf, sizeof(buf));
     rapidjson::Document doc;

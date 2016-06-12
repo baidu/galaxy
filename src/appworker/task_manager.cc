@@ -5,6 +5,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <timer.h>
@@ -15,7 +16,6 @@ DECLARE_int32(task_manager_task_stop_command_timeout);
 DECLARE_int32(task_manager_task_check_command_timeout);
 DECLARE_int32(task_manager_loop_wait_interval);
 DECLARE_int32(task_manager_task_max_fail_retry_times);
-DECLARE_string(appworker_default_user);
 
 namespace baidu {
 namespace galaxy {
@@ -63,7 +63,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.process_id = task->task_id + "_deploy_0";
         context.src_path = task->desc.exe_package().package().source_path();
         context.dst_path = task->desc.exe_package().package().dest_path();
-        context.version = task->desc.exe_package().package().version();
+        context.version = boost::replace_all_copy(task->desc.exe_package().package().version(), " ", "");
         context.work_dir = task->env.workspace_path;
         context.package = context.work_dir + "/" + context.process_id
                           + "." + context.version + ".tar.gz";
@@ -87,7 +87,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
                                  + boost::lexical_cast<std::string>(i + 1);
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
-            context.version = task->desc.data_package().packages(i).version();
+            context.version = boost::replace_all_copy(task->desc.data_package().packages(i).version(), " ", "");
             context.work_dir = task->env.workspace_path;
             context.package = context.work_dir + "/" + context.process_id
                               + "." + context.version + ".tar.gz";
@@ -383,7 +383,7 @@ int TaskManager::DeployReloadTask(const std::string& task_id,
                                  + boost::lexical_cast<std::string>(i + 1);
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
-            context.version = task->desc.data_package().packages(i).version();
+            context.version = boost::replace_all_copy(task->desc.data_package().packages(i).version(), " ", "");
             context.work_dir = task->env.workspace_path;
             context.package = context.work_dir + "/" + context.process_id
                                   + "." + context.version +  ".tar.gz";
@@ -539,10 +539,10 @@ int TaskManager::StartTaskHealthCheck(const std::string& task_id) {
     Task* task = it->second;
 
     if (task->desc.has_exe_package()
-            && task->desc.exe_package().has_check_cmd()) {
+            && task->desc.exe_package().has_health_cmd()) {
         ProcessContext context;
         context.process_id = task->task_id + "_check";
-        context.cmd = task->desc.exe_package().check_cmd();
+        context.cmd = task->desc.exe_package().health_cmd();
         context.work_dir = task->env.workspace_path;
 
         ProcessEnv env;
@@ -572,7 +572,7 @@ int TaskManager::CheckTaskHealth(const std::string& task_id, Task& task) {
     LOG(INFO) << "check health task, task: " << task_id;
 
     if (!(it->second->desc.has_exe_package()
-            && it->second->desc.exe_package().has_check_cmd())) {
+            && it->second->desc.exe_package().has_health_cmd())) {
         task.status = proto::kTaskFinished;
         return 0;
     }
