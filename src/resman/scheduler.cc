@@ -444,7 +444,9 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         Requirement::Ptr require(new Requirement());    
         const proto::ContainerDescription& container_desc = container_info.container_desc();    
         SetRequirement(require, container_desc);
-
+        if (container_group->require->version == require->version) {
+            require = container_group->require;
+        }
         container->id = container_info.id();
         container->container_group_id = container_info.group_id();
         container->priority = container_desc.priority();
