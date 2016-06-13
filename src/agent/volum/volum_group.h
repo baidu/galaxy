@@ -39,6 +39,7 @@ public:
 
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode  Destroy();
+    baidu::galaxy::util::ErrorCode  Gc();
     int ExportEnv(std::map<std::string, std::string>& env);
     int MountRootfs();
     

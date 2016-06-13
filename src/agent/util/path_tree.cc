@@ -48,7 +48,7 @@ void SetRootPath(const std::string& root_path)
         exit(1);
     }
 
-    std::string gc_dir = WorkDir();
+    std::string gc_dir = GcDir();
     if (!boost::filesystem::exists(gc_dir)
             && !boost::filesystem::create_directories(gc_dir, ec)) {
         LOG(FATAL) << "failed in creating workdir: " << ec.message();

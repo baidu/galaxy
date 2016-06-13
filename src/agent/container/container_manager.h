@@ -26,21 +26,22 @@ public:
     ~ContainerManager();
     
     void Setup();
-    int CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
-    int ReleaseContainer(const ContainerId& id);
+    baidu::galaxy::util::ErrorCode CreateContainer(const ContainerId& id, 
+                const baidu::galaxy::proto::ContainerDescription& desc);
+
+    baidu::galaxy::util::ErrorCode ReleaseContainer(const ContainerId& id);
     void ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo);
 
 private:
-    int CreateContainer_(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc);
-    int ReleaseContainer_(boost::shared_ptr<Container> container);
+    baidu::galaxy::util::ErrorCode CreateContainer_(const ContainerId& id, 
+                const baidu::galaxy::proto::ContainerDescription& desc);
+
     void KeepAliveRoutine();
     int Reload();
-
     void DumpProperty(boost::shared_ptr<Container> container);
+    void GcThreadRoutine();
 
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
-    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::ContainerProperty> > gc_containers_;
-    //boost::scoped_ptr<baidu::common::ThreadPool> gc_threadpool_;
     //boost::scoped_ptr<baidu::common::ThreadPool> check_read_threadpool_;
     boost::shared_ptr<baidu::galaxy::resource::ResourceManager> res_man_;
     boost::mutex mutex_;
@@ -49,7 +50,6 @@ private:
 
     boost::unordered_map<ContainerId, boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > contianer_info_;
     baidu::common::Thread keep_alive_thread_;
-    baidu::common::Thread gc_alive_thread_;
     bool running_;
 
     Serializer serializer_;

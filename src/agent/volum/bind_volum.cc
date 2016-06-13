@@ -118,6 +118,24 @@ int64_t BindVolum::Used()
     return 0L;
 }
 
+baidu::galaxy::util::ErrorCode BindVolum::Gc() {
+    boost::filesystem::path gc_source_path(SourceGcPath());
+    boost::system::error_code ec;
+    if (!boost::filesystem::exists(gc_source_path), ec) {
+        return ERRORCODE_OK;
+    }
+
+    boost::filesystem::remove_all(gc_source_path, ec);
+    if (ec.value() != 0) {
+        return ERRORCODE(-1, 
+                    "remove %s failed: %s", 
+                    gc_source_path.c_str(), 
+                    ec.message().c_str());
+    }
+
+    return ERRORCODE_OK;
+}
+
 std::string BindVolum::ToString()
 {
     return "";

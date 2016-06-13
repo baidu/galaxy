@@ -64,19 +64,19 @@ void ContainerManager::KeepAliveRoutine() {
     }
 }
 
-int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
+baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc)
 {
     // enter creating stage, every time only one thread does creating
     ScopedCreatingStage lock_stage(stage_, id.SubId());
     baidu::galaxy::util::ErrorCode ec = lock_stage.GetLastError();
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << "container " << id.CompactId() << " has been in creating stage already: " << ec.Message();
-        return 0;
+        return ERRORCODE_OK;
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
         LOG(WARNING) << "container " << id.CompactId() << " enter create stage failed: " << ec.Message();
-        return -1;
+        return ERRORCODE(-1, "stage err");
     }
 
     // judge container exist or not
@@ -87,7 +87,7 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
 
         if (work_containers_.end() != iter) {
             LOG(INFO) << "container " << id.CompactId() << " has already been created";
-            return 0;
+            return ERRORCODE_OK;
         }
     }
 
@@ -98,15 +98,15 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
                      << id.CompactId() << ", detail reason is: "
                      << ec.Message();
 
-        return -1;
+        return ERRORCODE(-1, "resource");
     } else {
         LOG(INFO) << "succeed in allocating resource for " << id.CompactId();
     }
 
     // create container
-    int ret = CreateContainer_(id, desc);
+    baidu::galaxy::util::ErrorCode ret = CreateContainer_(id, desc);
 
-    if (0 != ret) {
+    if (0 != ret.Code()) {
         ec = res_man_->Release(desc);
         if (ec.Code() != 0) {
             LOG(FATAL) << "failed in releasing resource for container "
@@ -118,7 +118,7 @@ int ContainerManager::CreateContainer(const ContainerId& id, const baidu::galaxy
     return ret;
 }
 
-int ContainerManager::ReleaseContainer(const ContainerId& id)
+baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const ContainerId& id)
 {
     // enter destroying stage, only one thread do releasing at a moment
     ScopedDestroyingStage lock_stage(stage_, id.SubId());
@@ -126,13 +126,13 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(INFO) << "container " << id.CompactId()
                   << " has been in destroying stage: " << ec.Message();
-        return 0;
+        return ERRORCODE_OK;
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
         LOG(WARNING) << "failed in entering destroying stage for container " << id.CompactId()
                      << ", reason: " << ec.Message();
-        return -1;
+        return ERRORCODE(-1, "stage err");
     }
 
     // judge container existence
@@ -144,7 +144,7 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
 
         if (work_containers_.end() == iter) {
             LOG(WARNING) << "container " << id.CompactId() << " do not exist";
-            return 0;
+            return ERRORCODE_OK;
         }
         ctn = iter->second;
     }
@@ -155,13 +155,13 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
     ctn->SetExpiredTimeIfAbsent(30);
     if (!ctn->Expired() && ctn->Alive() && ctn->TryKill()) {
         LOG(INFO) << ctn->Id().CompactId() << " try kill appworker";
-        return 0;
+        return ERRORCODE_OK;
     }
 
     // do releasing
     // Fix me: should delete meta first, what happend when delete meta failed???
-    int ret = 0;
-    if (0 == (ret = iter->second->Destroy())) {
+    baidu::galaxy::util::ErrorCode ret = iter->second->Destroy();
+    if (0 == ret.Code()) {
 
         ec = res_man_->Release(iter->second->Description());
         if (0 != ec.Code()) {
@@ -174,14 +174,15 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
         
         {
             boost::mutex::scoped_lock lock(mutex_);
-            gc_containers_[iter->first] = iter->second->Property();
+            //gc_containers_[iter->first] = iter->second;
+            // fix me
             work_containers_.erase(iter);
         }
         ec = serializer_.DeleteWork(id.GroupId(), id.SubId());
         if (ec.Code() != 0) {
             LOG(WARNING) << "delete key failed, key is: " << id.CompactId()
                 << " reason is: " << ec.Message();
-            ret = -1;
+            ret = ERRORCODE(-1, "serialize");
         } else {
             LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
@@ -189,24 +190,24 @@ int ContainerManager::ReleaseContainer(const ContainerId& id)
     return ret;
 }
 
-int ContainerManager::CreateContainer_(const ContainerId& id,
+baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer_(const ContainerId& id,
         const baidu::galaxy::proto::ContainerDescription& desc)
 {
 
     boost::shared_ptr<baidu::galaxy::container::Container>
     container(new baidu::galaxy::container::Container(id, desc));
     
-    if (0 != container->Construct()) {
-        LOG(WARNING) << "fail in constructing container " << id.CompactId();
-
+    baidu::galaxy::util::ErrorCode err = container->Construct();
+    if (0 != err.Code()) {
+        LOG(WARNING) << "fail in constructing container " << id.CompactId() << " " << err.Message();
         container->Destroy();
-        return -1;
+        return err;
     }
 
     baidu::galaxy::util::ErrorCode ec = serializer_.SerializeWork(container->ContainerMeta());
     if (ec.Code() != 0) {
         LOG(WARNING) << "fail in serializing container meta " << id.CompactId();
-        return -1;
+        return ERRORCODE(-1, "serialize");
     }
     LOG(INFO) << "succeed in serializing container meta for cantainer " << id.CompactId();
 
@@ -217,7 +218,7 @@ int ContainerManager::CreateContainer_(const ContainerId& id,
 
     DumpProperty(container);            
     LOG(INFO) << "succeed in constructing container " << id.CompactId();
-    return 0;
+    return ERRORCODE_OK;
 }
 
 
@@ -290,6 +291,8 @@ int ContainerManager::Reload() {
     }
     return 0;
 }
+
+
 
 }
 }

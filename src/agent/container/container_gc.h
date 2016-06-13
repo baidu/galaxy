@@ -12,13 +12,12 @@ class ContainerGc {
 public:
     ContainerGc();
     ~ContainerGc();
-
-    void Push();
-
+    baidu::galaxy::util::ErrorCode Load();
+    void Gc(boost::shared_ptr<baidu::galaxy::container::Container> container);
 private:
-    //std::priority_queue<>
-    // gc threadpool
-    //
+    std::string GcId();
+
+    boost::mutex mutex_;
 
 };
 }

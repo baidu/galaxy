@@ -135,6 +135,30 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
     return ERRORCODE_OK;
 }
 
+
+baidu::galaxy::util::ErrorCode VolumGroup::Gc() {
+    baidu::galaxy::util::ErrorCode ec;
+    for (size_t i = 0; i < data_volum_.size(); i++) {
+        ec = data_volum_[i]->Gc();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in gc data volum: %s",
+                        ec.Message().c_str());
+        }
+    }
+
+    if (workspace_volum_.get() != NULL) { 
+        ec = workspace_volum_->Gc();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in gc workspace volum: %s",
+                        ec.Message().c_str());
+        }
+    }
+
+    return ERRORCODE_OK;
+}
+
 int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
 {
     env["baidu_galaxy_container_workspace_path"] = workspace_volum_->Description()->dest_path();

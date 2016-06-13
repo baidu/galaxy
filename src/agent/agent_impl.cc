@@ -130,9 +130,10 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
 
-    if (0 != cm_->CreateContainer(id, request->container())) {
+    baidu::galaxy::util::ErrorCode err = cm_->CreateContainer(id, request->container());
+    if (0 != err.Code()) {
         ec->set_status(baidu::galaxy::proto::kError);
-        ec->set_reason("failed");
+        ec->set_reason(err.ShortMessage());
     } else {
         ec->set_status(baidu::galaxy::proto::kOk);
         ec->set_reason("sucess");
@@ -150,11 +151,11 @@ void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
     LOG(INFO) << "recv remove container request: " << request->DebugString();
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
-    int ret = cm_->ReleaseContainer(id);
+    baidu::galaxy::util::ErrorCode ret = cm_->ReleaseContainer(id);
 
-    if (0 != ret) {
+    if (0 != ret.Code()) {
         ec->set_status(baidu::galaxy::proto::kError);
-        ec->set_reason("failed");
+        ec->set_reason(ret.ShortMessage());
     } else {
         ec->set_status(baidu::galaxy::proto::kOk);
         ec->set_reason("sucess");
