@@ -18,7 +18,7 @@ DEFINE_string(o, "", "operation");
 
 DECLARE_string(flagfile);
 
-const std::string kGalaxyUsage = "galaxy.\n"
+const std::string kGalaxyUsage = "galaxy_client.\n"
                                  "Usage:\n"
                                  "      galaxy submit -f <jobconfig>\n"
                                  "      galaxy update -f <jobconfig> -i id [-t breakpoint -o pause|continue|rollback]\n"
