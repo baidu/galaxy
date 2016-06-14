@@ -1385,8 +1385,9 @@ bool ResAction::AddUser(const std::string& user, const std::string& token) {
 
 }
 
-bool ResAction::RemoveUser(const std::string& user, const std::string& token) {
-    if (user.empty() || token.empty()) {
+bool ResAction::RemoveUser(const std::string& user) {
+    if (user.empty()) {
+        fprintf(stderr, "user is needed\n");
         return false;
     }
     if(!this->Init()) {
@@ -1397,7 +1398,6 @@ bool ResAction::RemoveUser(const std::string& user, const std::string& token) {
     ::baidu::galaxy::sdk::RemoveUserResponse response;
     request.admin = user_;
     request.user.user  = user;
-    request.user.token = token;
 
     bool ret = resman_->RemoveUser(request, &response);
     if (ret) {
@@ -1511,12 +1511,12 @@ bool ResAction::ShowUser(const std::string& user) {
 }
 
 bool ResAction::GrantUser(const std::string& user, 
-                          const std::string& token, 
                           const std::string& pool, 
                           const std::string& opration,
                           const std::string& authority) {
     
-    if (user.empty() || token.empty() || pool.empty()) {
+    if (user.empty() || pool.empty()) {
+        fprintf(stderr, "user and pool is needed\n");
         return false;
     }
 
@@ -1571,7 +1571,6 @@ bool ResAction::GrantUser(const std::string& user,
     ::baidu::galaxy::sdk::GrantUserResponse response;
     request.admin = user_;
     request.user.user  = user;
-    request.user.token = token;
     request.grant = grant;
 
     bool ret = resman_->GrantUser(request, &response);
