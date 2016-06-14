@@ -42,7 +42,7 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
     deploy->max_per_host = deploy_json["max_per_host"].GetInt();
     if (!deploy_json.HasMember("tag")) {
         fprintf(stderr, "tag is needed in deploy\n");
-        return false;
+        return -1;
     } 
     deploy->tag = deploy_json["tag"].GetString();
     boost::trim(deploy->tag);
@@ -53,7 +53,7 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
     ::baidu::common::SplitString(str_pools, ",", &pools);
     if (pools.size() == 0) {
         fprintf(stderr, "pools are needed in deploy\n");
-        return false;
+        return -1;
     }
     deploy->pools.assign(pools.begin(), pools.end());
     return 0;
@@ -653,7 +653,7 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
     ok = ParseDeploy(deploy_json, &deploy);
     if (ok != 0) {
-        fprintf(stderr, "deploy is required in config\n");
+        fprintf(stderr, "deploy config error\n");
         return -1;
     }
     
