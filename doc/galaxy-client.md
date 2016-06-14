@@ -53,39 +53,44 @@ Options:
       -n specify job name
       -o specify operation.
 ```
-说明：
-    - submit 提交一个job
-        参数：-f(必选)指定job描述配置文件，文件格式是json格式
-        用法：./galaxy_client submit -f job.json
-    * update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
-        参数：
-            1. -f（必选）指定job描述配置文件 ，文件格式是json格式
-            2. -i（必选）指定需要更新的jobid, 当仅需要批量更新job，不考虑暂停点，则-f和-i两个参数足够了
-            3. -t指定暂停点，更新job时，job更新的副本数达到这个值时则暂停更新
-            4. -o指定更新job时的操作，pause表示暂停，continue表示继续，rollback表示回滚
-        用法:
-            批量更新：./galaxy_client update -i jobid -f job.json  
-            断点更新：./galaxy_client update -i jobid -f job.json -t 5
-            继续更新：./galaxy_client update -i jobid -o continue
-            多断点更新：./galaxy_client update -i jobid -t 5 -o continue
-            暂停更新：./galaxy_client update -i jobid -o pause
-            回滚：./galaxy_client update -i jobid -o rollback
-    * stop 停止一个job
-        参数：-i指定需要更新的jobid
-        用法：./galaxy_client stop -i jobid
-    * remove 删除一个job
-        参数：-i指定需要更新的jobid
-        用法：./galaxy_client remove -i jobid
-    * list 列出所有的job
-        参数: -o（可选） 值为cpu,mem,volums(用逗号分隔)
-              * 当不加这个参数时，会列出cpu、mem、volums的信息；
-              * 当-o others(非cpu,mem,volums)则不会列出cpu、mem、volums的信息，仅列出基本信息
-        用法：
-            ./galaxy_client list
-                r:处于running状态的副本树
-                p:处于pending状态的副本数
-                d:处于部署状态的副本数
-                die:死亡的副本数
+
+## 使用说明
+### submit 提交一个job
+    参数：-f(必选)指定job描述配置文件，文件格式是json格式
+    用法：./galaxy_client submit -f job.json
+
+### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
+    参数：
+        1. -f（必选）指定job描述配置文件 ，文件格式是json格式
+        2. -i（必选）指定需要更新的jobid, 当仅需要批量更新job，不考虑暂停点，则-f和-i两个参数足够了
+        3. -t指定暂停点，更新job时，job更新的副本数达到这个值时则暂停更新
+        4. -o指定更新job时的操作，pause表示暂停，continue表示继续，rollback表示回滚
+    用法:
+        批量更新：./galaxy_client update -i jobid -f job.json  
+        断点更新：./galaxy_client update -i jobid -f job.json -t 5
+        继续更新：./galaxy_client update -i jobid -o continue
+        多断点更新：./galaxy_client update -i jobid -t 5 -o continue
+        暂停更新：./galaxy_client update -i jobid -o pause
+        回滚：./galaxy_client update -i jobid -o rollback
+
+### stop 停止一个job
+    参数：-i指定需要更新的jobid
+    用法：./galaxy_client stop -i jobid
+
+### remove 删除一个job
+    参数：-i指定需要更新的jobid
+    用法：./galaxy_client remove -i jobid
+
+### list 列出所有的job
+    参数: -o（可选） 值为cpu,mem,volums(用逗号分隔)
+            * 当不加这个参数时，会列出cpu、mem、volums的信息；
+            * 当-o others(非cpu,mem,volums)则不会列出cpu、mem、volums的信息，仅列出基本信息
+    用法：
+        ./galaxy_client list
+            r:处于running状态的副本树
+            p:处于pending状态的副本数
+            d:处于部署状态的副本数
+            die:死亡的副本数
                 f:失败的副本数
 
         ```
@@ -111,7 +116,7 @@ Options:
 
         ```
 
-    * show 展示一个job
+### show 展示一个job
         参数：  
             1. -i（必选）指定需要更新的jobid
             2. -o（可选） 值为cpu,mem,volums(用逗号分隔)
@@ -190,24 +195,24 @@ services infomation
 ---------------------------------------------
             ```
 
-    * exec 执行命令
-        参数:
-            1. -i（必选） 指定jobid
-            2. -c（必选）指定要执行的命令
-        用法：
-            ./galaxy_client -i jobid -c cmd
+### exec 执行命令
+    参数:
+        1. -i（必选） 指定jobid
+        2. -c（必选）指定要执行的命令
+    用法：
+        ./galaxy_client -i jobid -c cmd
     
-    * json 生成一json格式的job配置文件
-        参数：
-            1. -n(可选) 指定jobname，默认为example
-            2. -t(可选) 指定task数，默认1
-            3. -d(可选) 指定data_volums数，默认1
-            4. -p(可选) 指定port数，默认1
-            5. -a(可选) 指定data package数，默认1
-            6. -s(可选) 指定services数，默认1
-        用法:
-            ./galaxy_client json
-            ```
+### json 生成一json格式的job配置文件
+    参数：
+        1. -n(可选) 指定jobname，默认为example
+        2. -t(可选) 指定task数，默认1
+        3. -d(可选) 指定data_volums数，默认1
+        4. -p(可选) 指定port数，默认1
+        5. -a(可选) 指定data package数，默认1
+        6. -s(可选) 指定services数，默认1
+    用法:
+        ./galaxy_client json
+        ```
 {
     "name": "example",
     "type": "kJobService",
