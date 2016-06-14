@@ -54,7 +54,7 @@ Options:
       -o specify operation.
 ```
 说明：
-    * submit 提交一个job
+    - submit 提交一个job
         参数：-f(必选)指定job描述配置文件，文件格式是json格式
         用法：./galaxy_client submit -f job.json
     * update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
