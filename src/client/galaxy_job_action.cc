@@ -125,11 +125,12 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
             fprintf(stderr, "update_break_count must not be less than 0\n");
             return false;
         }
-        fprintf(stderr, "update now\n");
+
         if (json_file.empty() || BuildJobFromConfig(json_file, &request.job) != 0) {
             fprintf(stderr, "json_file [%s] error\n", json_file.c_str());
             return false;
         }
+        fprintf(stderr, "update now\n");
         request.operate = baidu::galaxy::sdk::kUpdateJobStart;
         request.job.deploy.update_break_count = update_break_count;
     } else {
