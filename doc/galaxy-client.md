@@ -16,21 +16,21 @@ galaxy_client
 注：--resman_path和--appmaster不需要强制配置，可以使用默认值
 
 测试配置是否正确
-'''
+```
 ./galaxy_client list -o ppp(whatever you want)
 -  id  name     type         status   r/p/d/die/f  repli  create_time update_time
 -----------------------------------------------------------------------------------
-'''
+```
 
 如果出现如果下错误信息，则配置错误
-'''
+```
     1. get appmaster endpoint from nexus failed: Candidate
     2. SendRequest fail:RPC_ERROR_RESOLVE_ADDRESS
-'''
+```
 
 #galaxy用法
 运行./galaxy_client获取运行方法
-'''
+```
 galaxy_client.
 Usage:
       galaxy submit -f <jobconfig>
@@ -52,7 +52,7 @@ Options:
       -s specify service num, default 1
       -n specify job name
       -o specify operation.
-'''
+```
 说明：
     * submit 提交一个job
         参数：-f(必选)指定job描述配置文件，文件格式是json格式
