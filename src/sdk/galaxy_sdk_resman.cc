@@ -1111,10 +1111,11 @@ bool ResourceManagerImpl::RemoveUser(const RemoveUserRequest& request,
     ::baidu::galaxy::proto::RemoveUserRequest pb_request;
     ::baidu::galaxy::proto::RemoveUserResponse pb_response;
 
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    if (request.user.user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(request.user.user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
@@ -1226,10 +1227,11 @@ bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserRe
     ::baidu::galaxy::proto::GrantUserRequest pb_request;
     ::baidu::galaxy::proto::GrantUserResponse pb_response;
 
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    if (request.user.user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(request.user.user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
@@ -1262,10 +1264,11 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
     ::baidu::galaxy::proto::AssignQuotaRequest pb_request;
     ::baidu::galaxy::proto::AssignQuotaResponse pb_response;
     
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    if (request.user.user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(request.user.user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
