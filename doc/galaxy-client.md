@@ -87,11 +87,15 @@ Options:
             * 当-o others(非cpu,mem,volums)则不会列出cpu、mem、volums的信息，仅列出基本信息
     用法：
         ./galaxy_client list
-            r:处于running状态的副本树
-            p:处于pending状态的副本数
-            d:处于部署状态的副本数
-            die:死亡的副本数
-            f:失败的副本数
+        ./galaxy_client list -o cpu
+        ./galaxy_client list -o base
+    说明：
+        r/p/d/die/f:
+            1. r:处于running状态的副本树
+            2. p:处于pending状态的副本数
+            3. d:处于部署状态的副本数
+            4. die:死亡的副本数
+            5. f:失败的副本数
 
 ```
 -  id                                 name     type         status   r/p/d/die/f  repli  cpu(a/u)      memory(a/u)        volums(med/a/u)          create_time          update_time        
@@ -101,30 +105,33 @@ Options:
   -  -                                -        -            -        -            -      -             -                  kTmpfs/120.000G/0.000    -                    -                  
 ```
 
-            ./galaxy_client list -o cpu
-        ```
-              -  id                               name     type         status   r/p/d/die/f  repli  cpu(a/u)      create_time          update_time        
-        -------------------------------------------------------------------------------------------------------------------------------------------------
-              0  job_20160612_192152_72_ts3       ts3      kJobService  Running  15/0/0/0/0   15     45.000/0.000  2016-06-12 19:21:52  2016-06-12 19:39:16
-        ```
+```
+-  id                               name     type         status   r/p/d/die/f  repli  cpu(a/u)      create_time          update_time        
+-------------------------------------------------------------------------------------------------------------------------------------------------
+0  job_20160612_192152_72_ts3       ts3      kJobService  Running  15/0/0/0/0   15     45.000/0.000  2016-06-12 19:21:52  2016-06-12 19:39:16
+```
 
-            ./galaxy_client list -o base
-        ```
-              -  id                               name     type         status   r/p/d/die/f  repli  create_time          update_time        
-        -----------------------------------------------------------------------------------------------------------------------------------
-              0  job_20160612_192152_72_ts3       ts3      kJobService  Running  15/0/0/0/0   15     2016-06-12 19:21:52  2016-06-12 19:39:16
+```
+-  id                               name     type         status   r/p/d/die/f  repli  create_time          update_time        
+-----------------------------------------------------------------------------------------------------------------------------------
+0  job_20160612_192152_72_ts3       ts3      kJobService  Running  15/0/0/0/0   15     2016-06-12 19:21:52  2016-06-12 19:39:16
 
-        ```
+```
 
-### show 展示一个job
-        参数：  
-            1. -i（必选）指定需要更新的jobid
-            2. -o（可选） 值为cpu,mem,volums(用逗号分隔)
-        用法:
-            ./galaxy_client show -i job_20160612_192152_72_ts3 -o cpu
-            列出的信息包括:提交job时的job配置信息，pod运行信息podinfo，service信息
-            ```
-                base infomation
+### show 展示一个job, 列出的信息包括:提交job时的job配置信息，pod运行信息podinfo，service信息
+    参数：  
+        1. -i（必选）指定需要更新的jobid
+        2. -o（可选） 值为cpu,mem,volums(用逗号分隔)
+    用法:
+        ./galaxy_client show -i job_20160612_192152_72_ts3 -o cpu
+    说明:
+        基本信息：base infomation，job description base infomation，job description deploy infomation，job description pod workspace_volum infomation
+                  job description pod data_volums infomation等 
+        pod信息: podinfo
+        service信息：serviceinfo
+        
+```
+base infomation
   id                          status   create_time          update_time        
 ---------------------------------------------------------------------------------
   job_20160612_192152_72_ts3  Running  2016-06-12 19:21:52  2016-06-12 19:39:16
@@ -193,7 +200,7 @@ podinfo infomation
 services infomation
   -  podid  service_addr  name  port  status
 ---------------------------------------------
-            ```
+```
 
 ### exec 执行命令
     参数:
@@ -212,7 +219,8 @@ services infomation
         6. -s(可选) 指定services数，默认1
     用法:
         ./galaxy_client json
-        ```
+
+```
 {
     "name": "example",
     "type": "kJobService",
@@ -301,4 +309,4 @@ services infomation
         ]
     }
 }
-            ```
+```
