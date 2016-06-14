@@ -653,7 +653,7 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
     ok = ParseDeploy(deploy_json, &deploy);
     if (ok != 0) {
-        fprintf(stderr, "deploy is required in config\n");
+        fprintf(stderr, "deploy config error\n");
         return -1;
     }
     
