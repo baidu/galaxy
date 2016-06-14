@@ -29,6 +29,7 @@ public:
     std::vector<Volum> data_volums_;
     int pid_;
     int32_t created_time_;
+    int32_t destroy_time_;
     std::string group_id_;
     std::string container_id_;
 

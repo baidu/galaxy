@@ -20,3 +20,5 @@ DEFINE_int64(memory_resource, 0L, "max memory(unit:byte) galaxy can use");
 
 
 DEFINE_string(cmd_line, "", "just for debu");
+
+DEFINE_int64(gc_delay_time, 43200, "");

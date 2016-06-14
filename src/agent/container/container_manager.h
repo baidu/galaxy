@@ -12,6 +12,7 @@
 #include "boost/thread/mutex.hpp"
 
 #include "thread.h"
+#include "container_gc.h"
 
 #include <map>
 #include <string>
@@ -52,7 +53,8 @@ private:
     baidu::common::Thread keep_alive_thread_;
     bool running_;
 
-    Serializer serializer_;
+    boost::shared_ptr<Serializer> serializer_;
+    boost::shared_ptr<ContainerGc> container_gc_;
 };
 
 } //namespace agent

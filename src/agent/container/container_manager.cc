@@ -17,8 +17,9 @@ namespace container {
 
 ContainerManager::ContainerManager(boost::shared_ptr<baidu::galaxy::resource::ResourceManager> resman) :
     res_man_(resman),
-    running_(false)
-{
+    running_(false),
+    serializer_(new Serializer()),
+    container_gc_(new ContainerGc(serializer_)) {
     assert(NULL != resman);
 }
 
@@ -30,7 +31,7 @@ ContainerManager::~ContainerManager()
 void ContainerManager::Setup() {
     std::string path = baidu::galaxy::path::RootPath();
     path += "/data";
-    baidu::galaxy::util::ErrorCode ec = serializer_.Setup(path);
+    baidu::galaxy::util::ErrorCode ec = serializer_->Setup(path);
     if (ec.Code() != 0) {
         LOG(FATAL) << "set up serilzer failed, path is" << path 
             << " reason is: " << ec.Message();
@@ -45,6 +46,20 @@ void ContainerManager::Setup() {
     } else {
         LOG(INFO) <<"succeed in recovering container from meta";
     }
+
+    ec = container_gc_->Reload();
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "reload gc failed: " << ec.Message();
+        exit(-1);
+    }
+    LOG(INFO) <<"succeed in loading gc meta";
+
+    ec = container_gc_->Setup();
+    if (ec.Code() != 0) {
+        LOG(WARNING) << "set up container gc failed: " << ec.Message();
+        exit(-1);
+    }
+    LOG(INFO) << "setup container gc successful";
 
     running_ = true;
     this->keep_alive_thread_.Start(boost::bind(&ContainerManager::KeepAliveRoutine, this));
@@ -174,11 +189,10 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
         
         {
             boost::mutex::scoped_lock lock(mutex_);
-            //gc_containers_[iter->first] = iter->second;
             // fix me
             work_containers_.erase(iter);
         }
-        ec = serializer_.DeleteWork(id.GroupId(), id.SubId());
+        ec = serializer_->DeleteWork(id.GroupId(), id.SubId());
         if (ec.Code() != 0) {
             LOG(WARNING) << "delete key failed, key is: " << id.CompactId()
                 << " reason is: " << ec.Message();
@@ -186,6 +200,12 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
         } else {
             LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
+
+        ec = container_gc_->Gc(ctn);
+        if (ec.Code() != 0) {
+            LOG(WARNING) << id.CompactId() << " gc failed: " << ec.Message();
+        }
+
     }
     return ret;
 }
@@ -204,7 +224,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer_(const Containe
         return err;
     }
 
-    baidu::galaxy::util::ErrorCode ec = serializer_.SerializeWork(container->ContainerMeta());
+    baidu::galaxy::util::ErrorCode ec = serializer_->SerializeWork(container->ContainerMeta());
     if (ec.Code() != 0) {
         LOG(WARNING) << "fail in serializing container meta " << id.CompactId();
         return ERRORCODE(-1, "serialize");
@@ -268,7 +288,7 @@ void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galax
 
 int ContainerManager::Reload() {
     std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> > metas;
-    baidu::galaxy::util::ErrorCode ec = serializer_.LoadWork(metas);
+    baidu::galaxy::util::ErrorCode ec = serializer_->LoadWork(metas);
     if (ec.Code() != 0) {
         LOG(WARNING) << "load from db failed: " << ec.Message();
         return -1;
@@ -291,7 +311,6 @@ int ContainerManager::Reload() {
     }
     return 0;
 }
-
 
 
 }

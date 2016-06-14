@@ -48,6 +48,8 @@ public:
     const boost::shared_ptr<Volum> DataVolum(int i) const;
 private:
     boost::shared_ptr<Volum> Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
+    boost::shared_ptr<Volum> NewVolum(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
+
 
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> ws_description_;
     std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumRequired> > dv_description_;

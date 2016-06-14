@@ -63,7 +63,7 @@ baidu::galaxy::util::ErrorCode VolumGroup::Construct()
     workspace_volum_ = Construct(this->ws_description_);
 
     if (NULL == workspace_volum_.get()) {
-        return ERRORCODE(-1, "failed in constructin workspace volum");
+        return ERRORCODE(-1, "failed in constructing workspace volum");
     }
 
     baidu::galaxy::util::ErrorCode ec;
@@ -137,6 +137,7 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
 
 
 baidu::galaxy::util::ErrorCode VolumGroup::Gc() {
+
     baidu::galaxy::util::ErrorCode ec;
     for (size_t i = 0; i < data_volum_.size(); i++) {
         ec = data_volum_[i]->Gc();
@@ -156,6 +157,7 @@ baidu::galaxy::util::ErrorCode VolumGroup::Gc() {
         }
     }
 
+    std::cerr << "gc volum ..." << std::endl;
     return ERRORCODE_OK;
 }
 
@@ -169,6 +171,23 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
 
 boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp)
 {
+    boost::shared_ptr<Volum> volum = Volum::CreateVolum(dp);
+    if (NULL == volum.get()) {
+        return volum;
+    }
+
+    baidu::galaxy::util::ErrorCode ec = volum->Construct();
+    if (0 != ec.Code()) {
+        LOG(WARNING) << "failed in constructing volum for container "
+                     << container_id_ << ": " << ec.Message();
+        volum.reset();
+    }
+
+    return volum;
+}
+
+
+boost::shared_ptr<Volum> VolumGroup::NewVolum(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp) {
     assert(NULL != dp.get());
     assert(gc_index_ >= 0);
     boost::shared_ptr<Volum> volum = Volum::CreateVolum(dp);
@@ -181,15 +200,6 @@ boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::
     volum->SetContainerId(this->container_id_);
     volum->SetGcIndex(gc_index_);
     volum->SetUser(user_);
-
-    baidu::galaxy::util::ErrorCode ec = volum->Construct();
-    if (0 != ec.Code()) {
-        LOG(WARNING) << "failed in constructing volum for container "
-                     << container_id_ << ": " << ec.Message();
-        volum.reset();
-    }
-
-    return volum;
 }
 
 const boost::shared_ptr<Volum> VolumGroup::WorkspaceVolum() const {

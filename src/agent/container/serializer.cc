@@ -18,14 +18,18 @@ Serializer::Serializer() {
 Serializer::~Serializer() {
 }
 
-std::string Serializer::WorkContainerKey(const std::string& group_id,
+std::string Serializer::WorkKey(const std::string& group_id,
             const std::string& container_id) {
     return "#_" + group_id + "_" + container_id;
 }
 
-std::string GcContainerKey(const std::string& group_id, 
+std::string Serializer::GcKey(int64_t gc_time, 
+            const std::string& group_id, 
             const std::string& container_id) {
-    return "!_" + group_id + "_" + container_id;
+    char buf[32] = {0};
+    snprintf(buf, sizeof buf, "%012lld", (long long int )gc_time);
+    std::string str_t(buf);
+    return "!_" + str_t + "_" + group_id + "_" + container_id;
 }
 
 
@@ -44,7 +48,7 @@ baidu::galaxy::util::ErrorCode Serializer::Setup(const std::string& path) {
 baidu::galaxy::util::ErrorCode Serializer::SerializeWork(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
     assert(dictfile_->IsOpen());
     assert(NULL != meta.get());
-    std::string key = Serializer::WorkContainerKey(meta->group_id(),meta->container_id());
+    std::string key = Serializer::WorkKey(meta->group_id(),meta->container_id());
 
     baidu::galaxy::util::ErrorCode ec = dictfile_->Write(key, meta->SerializeAsString());
 
@@ -58,15 +62,51 @@ baidu::galaxy::util::ErrorCode Serializer::SerializeWork(boost::shared_ptr<baidu
 }
 
 baidu::galaxy::util::ErrorCode Serializer::SerializeGc(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
+    assert(dictfile_->IsOpen());
+    assert(NULL != meta.get());
+    std::string key = Serializer::GcKey(meta->destroy_time(), meta->group_id(), meta->container_id());
+    baidu::galaxy::util::ErrorCode ec = dictfile_->Write(key, meta->SerializeAsString());
+
+    if (ec.Code() != 0) {
+        return ERRORCODE(-1, "serialize gc container meta failed, key is %s: %s",
+                    key.c_str(),
+                    ec.Message().c_str());
+    }
     return ERRORCODE_OK;
 }
 
 
-baidu::galaxy::util::ErrorCode Serializer::DeleteWork(const std::string& group_id, const std::string& container_id) {
-    const std::string key = Serializer::WorkContainerKey(group_id, container_id);
+baidu::galaxy::util::ErrorCode Serializer::DeleteWork(const std::string& group_id,
+            const std::string& container_id) {
+    assert(dictfile_->IsOpen());
+    const std::string key = Serializer::WorkKey(group_id, container_id);
     baidu::galaxy::util::ErrorCode ec = dictfile_->Delete(key);
     if (ec.Code() != 0) {
-        return ERRORCODE(-1, "delete key %s failed: %s",
+        return ERRORCODE(-1, "delete work key %s failed: %s",
+                    key.c_str(),
+                    ec.Message().c_str());
+    }
+    return ERRORCODE_OK;
+}
+
+
+baidu::galaxy::util::ErrorCode Serializer::Delete(const std::string& key) {
+    assert(dictfile_->IsOpen());
+    baidu::galaxy::util::ErrorCode ec = dictfile_->Delete(key);
+    if (ec.Code() != 0) {
+        return ERRORCODE(-1, ec.Message().c_str());
+    }
+    return ERRORCODE_OK;
+}
+
+baidu::galaxy::util::ErrorCode Serializer::DeleteGc(int64_t time, 
+            const std::string& group_id, 
+            const std::string& container_id) {
+
+    const std::string key = Serializer::GcKey(time, group_id, container_id);
+    baidu::galaxy::util::ErrorCode ec = dictfile_->Delete(key);
+    if (ec.Code() != 0) {
+        return ERRORCODE(-1, "delete gc key %s failed: %s",
                     key.c_str(),
                     ec.Message().c_str());
     }
@@ -94,10 +134,48 @@ baidu::galaxy::util::ErrorCode Serializer::LoadWork(std::vector<boost::shared_pt
     return ERRORCODE_OK;
 }
 
+baidu::galaxy::util::ErrorCode Serializer::LoadGc(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> >& metas) {
+    assert(dictfile_->IsOpen());
+    std::string begin_key = "!_!";
+    std::string end_key = "!_~";
 
-baidu::galaxy::util::ErrorCode Serializer::LoadGc(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> >& gc_metas) {
+    std::vector<baidu::galaxy::file::DictFile::Kv> v;
+    baidu::galaxy::util::ErrorCode ec = dictfile_->Scan(begin_key, end_key, v);
+    if (ec.Code() != 0) {
+        return ERRORCODE(-1, 
+                    "scan gc-contaner meta failed: %s", 
+                    ec.Message().c_str());
+    }
+
+    for (size_t i = 0; i < v.size(); i++) {
+        boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> cm(new baidu::galaxy::proto::ContainerMeta);
+        cm->ParseFromString(v[i].value);
+        metas.push_back(cm);
+    }
     return ERRORCODE_OK;
 }
+
+ baidu::galaxy::util::ErrorCode Serializer::Read(const std::string& key,
+                boost::shared_ptr<baidu::galaxy::proto::ContainerMeta>& meta) {
+     assert(NULL != meta.get());
+     std::string value;
+     baidu::galaxy::util::ErrorCode ec = dictfile_->Read(key, value);
+     if (baidu::galaxy::file::kOk == 0) {
+         if (!meta->ParseFromString(value)) {
+             meta.reset();
+             return ERRORCODE(-1, "parse failed: %d", value.size());
+         }
+     } else if (baidu::galaxy::file::kNotFound == ec.Code()) {
+         meta.reset();
+         return ERRORCODE(0, ec.Message().c_str());
+     } else {
+         meta.reset();
+         return ERRORCODE(-1, ec.Message().c_str());
+     }
+
+     return ERRORCODE_OK;
+ }
+
 
 }
 }

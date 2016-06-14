@@ -99,10 +99,10 @@ public:
     void AddEnv(const std::string& key, const std::string& value);
     void AddEnv(const std::map<std::string, std::string>& env);
 
-    ContainerId Id() const;
+    const ContainerId& Id() const;
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode Destroy();
-    baidu::galaxy::util::ErrorCode Gc();
+    baidu::galaxy::util::ErrorCode Gc(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
     int Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
 
     baidu::galaxy::proto::ContainerStatus Status();
