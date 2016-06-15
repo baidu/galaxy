@@ -6,13 +6,13 @@ galaxy_client
 
 #配置galaxy.flag
 在galaxy客户端同级目录需要放置一个galaxy.flag配置文件,主要配置如下内容
-'''
+```
 --username=xxx  
 --token=xxx
 --nexus_addr=xxx1:8888, xxx2:8888
 --resman_path=xxx 
 --appmaster=xxx
-'''
+```
 注：--resman_path和--appmaster不需要强制配置，可以使用默认值
 
 测试配置是否正确
