@@ -19,9 +19,12 @@ bool FillMemRequired(const MemoryRequired& sdk_mem, ::baidu::galaxy::proto::Memo
 bool FillTcpthrotRequired(const TcpthrotRequired& sdk_tcp, ::baidu::galaxy::proto::TcpthrotRequired* tcp);
 bool FillBlkioRequired(const BlkioRequired& sdk_blk, ::baidu::galaxy::proto::BlkioRequired* blk);
 bool FillPortRequired(const PortRequired& sdk_port, ::baidu::galaxy::proto::PortRequired* port);
-bool FillCgroup(const Cgroup& sdk_cgroup, ::baidu::galaxy::proto::Cgroup* cgroup);
+bool FillCgroup(const Cgroup& sdk_cgroup, 
+                ::baidu::galaxy::proto::Cgroup* cgroup,
+                std::vector<std::string>& vec_port_names,
+                std::vector<std::string>& vec_ports);
 bool FillContainerDescription(const ContainerDescription& sdk_container,
-                                ::baidu::galaxy::proto::ContainerDescription* container);
+                              ::baidu::galaxy::proto::ContainerDescription* container);
 
 bool FillGrant(const Grant& sdk_grant, ::baidu::galaxy::proto::Grant* grant);
 
@@ -29,7 +32,11 @@ bool FillService(const Service& sdk_service, ::baidu::galaxy::proto::Service* se
 bool FillPackage(const Package& sdk_package, ::baidu::galaxy::proto::Package package);
 bool FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data);
 bool FillImagePackage(const ImagePackage& sdk_image, ::baidu::galaxy::proto::ImagePackage* image);
-bool FillTaskDescription(const TaskDescription& sdk_task, ::baidu::galaxy::proto::TaskDescription* task);
+bool FillTaskDescription(const TaskDescription& sdk_task, 
+                         ::baidu::galaxy::proto::TaskDescription* task, 
+                         std::vector<std::string>& vec_port_names,
+                         std::vector<std::string>& vec_ports,
+                         std::vector<std::string>& vec_service_names);
 bool FillPodDescription(const PodDescription& sdk_pod, ::baidu::galaxy::proto::PodDescription* pod);
 bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy);
 bool FillJobDescription(const JobDescription& sdk_job,

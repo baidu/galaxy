@@ -468,7 +468,6 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
                }
            }
         }
-
     }
 
     if (!task_json.HasMember("exec_package")) {
