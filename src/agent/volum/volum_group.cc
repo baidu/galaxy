@@ -153,7 +153,7 @@ int VolumGroup::ExportEnv(std::map<std::string, std::string>& env)
 
 boost::shared_ptr<Volum> VolumGroup::Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> dp)
 {
-    boost::shared_ptr<Volum> volum = Volum::CreateVolum(dp);
+    boost::shared_ptr<Volum> volum = NewVolum(dp);
     if (NULL == volum.get()) {
         return volum;
     }

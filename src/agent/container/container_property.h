@@ -19,9 +19,9 @@ public:
         std::string phy_source_path;
         std::string container_abs_path;
         std::string phy_gc_path;
+        std::string phy_gc_root_path;
         int64_t quota;
         std::string medium;
-
         std::string ToString() const;
     };
 

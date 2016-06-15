@@ -94,12 +94,16 @@ baidu::galaxy::util::ErrorCode BindVolum::Destroy()
     }
 
     boost::system::error_code ec;
-    boost::filesystem::path source_path(this->SourcePath());
+    boost::filesystem::path source_path(this->SourceRootPath());
     if (!boost::filesystem::exists(source_path, ec)) {
         return ERRORCODE_OK;
     }
 
-    boost::filesystem::path gc_source_path(SourceGcPath());
+    boost::filesystem::path gc_source_path(SourceGcRootPath());
+    if (!boost::filesystem::exists(gc_source_path.parent_path(), ec)) {
+        boost::filesystem::create_directories(gc_source_path.parent_path(), ec);
+    }
+
     boost::filesystem::rename(source_path, gc_source_path, ec);
     if (0 != ec.value()) {
         return ERRORCODE(-1, "failed in renaming %s -> %s: %s",
