@@ -19,7 +19,7 @@ ContainerManager::ContainerManager(boost::shared_ptr<baidu::galaxy::resource::Re
     res_man_(resman),
     running_(false),
     serializer_(new Serializer()),
-    container_gc_(new ContainerGc(serializer_)) {
+    container_gc_(new ContainerGc()) {
     assert(NULL != resman);
 }
 
@@ -201,7 +201,8 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
             LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
 
-        ec = container_gc_->Gc(ctn);
+        ec = container_gc_->Gc(ctn->ContainerGcPath(), ctn->DestroyTimeInSecond());
+        // ec is ok always
         if (ec.Code() != 0) {
             LOG(WARNING) << id.CompactId() << " gc failed: " << ec.Message();
         }

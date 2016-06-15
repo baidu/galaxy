@@ -141,27 +141,6 @@ baidu::galaxy::util::ErrorCode Container::Destroy()
     return ret;
 }
 
-
-baidu::galaxy::util::ErrorCode Container::Gc(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
-    assert(NULL != meta.get());
-    volum_group_->SetContainerId(id_.SubId());
-    volum_group_->SetWorkspaceVolum(desc_.workspace_volum());
-    volum_group_->SetGcIndex(created_time_/1000000);
-    volum_group_->SetOwner(desc_.run_user());
-
-    for (int i = 0; i < desc_.data_volums_size(); i++) {
-        volum_group_->AddDataVolum(desc_.data_volums(i));
-    }
-
-    baidu::galaxy::util::ErrorCode ec = volum_group_->Gc();
-    if (ec.Code() != 0) {
-        LOG(WARNING) << id_.CompactId() << " gc volum group failed: " << ec.Message();
-        return ec;
-    }
-
-    return ERRORCODE_OK;
-}
-
 baidu::galaxy::util::ErrorCode Container::Construct_()
 {
     assert(!id_.Empty());
@@ -660,6 +639,13 @@ int64_t Container::ConstructTimeInSecond() {
     return created_time_/1000000L;
 }
 
+std::string Container::ContainerGcPath() {
+    return volum_group_->ContainerGcPath();
+}
+
+std::string ContainerWorkPath() {
+    return "";
+}
 
 
 } //namespace container

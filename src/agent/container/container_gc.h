@@ -5,7 +5,6 @@
 #pragma once
 #include "boost/shared_ptr.hpp"
 #include "container/container.h"
-#include "container/serializer.h"
 #include "thread.h"
 
 #include <string>
@@ -17,17 +16,15 @@ namespace container {
 
 class ContainerGc {
 public:
-    ContainerGc(boost::shared_ptr<Serializer> ser);
+    ContainerGc();
     ~ContainerGc();
     baidu::galaxy::util::ErrorCode Reload();
-    baidu::galaxy::util::ErrorCode Gc(boost::shared_ptr<baidu::galaxy::container::Container> container);
+    baidu::galaxy::util::ErrorCode Gc(const std::string& path, int64_t destroy_time);
     baidu::galaxy::util::ErrorCode Setup();
 
 private:
     void GcRoutine();
-    std::string GcId(boost::shared_ptr<baidu::galaxy::container::Container> container);
-    baidu::galaxy::util::ErrorCode Gc(const std::string& id);
-    boost::shared_ptr<Serializer> ser_;
+    baidu::galaxy::util::ErrorCode DoGc(const std::string& path);
     std::map<std::string, int64_t> gc_index_;
 
     boost::mutex mutex_;

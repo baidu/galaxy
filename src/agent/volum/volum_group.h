@@ -39,13 +39,14 @@ public:
 
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode  Destroy();
-    baidu::galaxy::util::ErrorCode  Gc();
+
     int ExportEnv(std::map<std::string, std::string>& env);
     int MountRootfs();
-    
     const boost::shared_ptr<Volum> WorkspaceVolum() const;
     const int DataVolumsSize() const;
     const boost::shared_ptr<Volum> DataVolum(int i) const;
+
+    std::string ContainerGcPath();
 private:
     boost::shared_ptr<Volum> Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
     boost::shared_ptr<Volum> NewVolum(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);

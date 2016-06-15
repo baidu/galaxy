@@ -40,7 +40,6 @@ private:
     void KeepAliveRoutine();
     int Reload();
     void DumpProperty(boost::shared_ptr<Container> container);
-    void GcThreadRoutine();
 
     std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
     //boost::scoped_ptr<baidu::common::ThreadPool> check_read_threadpool_;

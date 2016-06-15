@@ -102,15 +102,15 @@ public:
     const ContainerId& Id() const;
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode Destroy();
-    baidu::galaxy::util::ErrorCode Gc(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
     int Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
-
     baidu::galaxy::proto::ContainerStatus Status();
     const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta();
     boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> ContainerMetrix();
     boost::shared_ptr<ContainerProperty> Property();
+    std::string ContainerGcPath();
+    std::string ContainerWorkPath();
     void KeepAlive();
     bool Alive();
     int64_t DestroyTimeInSecond();
