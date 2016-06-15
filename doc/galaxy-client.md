@@ -9,11 +9,12 @@ galaxy_client
 ```
 --username=xxx  
 --token=xxx
---nexus_addr=xxx1:8888, xxx2:8888
+--nexus_addr=xxx1:8888,xxx2:8888
+--nexus_root=xxx
 --resman_path=xxx 
---appmaster=xxx
+--appmaster_path=xxx
 ```
-注：--resman_path和--appmaster不需要强制配置，可以使用默认值
+注：--nexus_root、--resman_path和--appmaster_path不需要强制配置，可以使用默认值
 
 测试配置是否正确
 ```
