@@ -5,6 +5,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <timer.h>
@@ -12,9 +13,9 @@
 
 DECLARE_int32(task_manager_background_thread_pool_size);
 DECLARE_int32(task_manager_task_stop_command_timeout);
+DECLARE_int32(task_manager_task_check_command_timeout);
 DECLARE_int32(task_manager_loop_wait_interval);
 DECLARE_int32(task_manager_task_max_fail_retry_times);
-DECLARE_string(appworker_default_user);
 
 namespace baidu {
 namespace galaxy {
@@ -62,7 +63,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
         context.process_id = task->task_id + "_deploy_0";
         context.src_path = task->desc.exe_package().package().source_path();
         context.dst_path = task->desc.exe_package().package().dest_path();
-        context.version = task->desc.exe_package().package().version();
+        context.version = boost::replace_all_copy(task->desc.exe_package().package().version(), " ", "");
         context.work_dir = task->env.workspace_path;
         context.package = context.work_dir + "/" + context.process_id
                           + "." + context.version + ".tar.gz";
@@ -86,7 +87,7 @@ int TaskManager::DeployTask(const std::string& task_id) {
                                  + boost::lexical_cast<std::string>(i + 1);
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
-            context.version = task->desc.data_package().packages(i).version();
+            context.version = boost::replace_all_copy(task->desc.data_package().packages(i).version(), " ", "");
             context.work_dir = task->env.workspace_path;
             context.package = context.work_dir + "/" + context.process_id
                               + "." + context.version + ".tar.gz";
@@ -131,7 +132,7 @@ int TaskManager::DoStartTask(const std::string& task_id) {
         MakeProcessEnv(task, env);
 
         if (0 != process_manager_.CreateProcess(env, &context)) {
-            LOG(WARNING) << "command execute fail,command: " << context.cmd;
+            LOG(WARNING) << "command execute fail, command: " << context.cmd;
             return -1;
         }
     }
@@ -355,7 +356,7 @@ int TaskManager::ClearTasks() {
     return 0;
 }
 
-int TaskManager::ReloadDeployTask(const std::string& task_id,
+int TaskManager::DeployReloadTask(const std::string& task_id,
                                   const TaskDescription& task_desc) {
     MutexLock lock(&mutex_);
     LOG(INFO) << "reload deploy task: " << task_id;
@@ -369,7 +370,7 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
     // 1.replace desc
     Task* task = it->second;
     task->desc.CopyFrom(task_desc);
-    LOG(INFO) << task_id << " desc replaced ok";
+    LOG(INFO) << "task desc replaced ok, task: " << task_id;
 
     // 2.deploy data packages
     LOG(INFO) << "reload deplay task start, task: " << task_id;
@@ -382,7 +383,7 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
                                  + boost::lexical_cast<std::string>(i + 1);
             context.src_path = task->desc.data_package().packages(i).source_path();
             context.dst_path = task->desc.data_package().packages(i).dest_path();
-            context.version = task->desc.data_package().packages(i).version();
+            context.version = boost::replace_all_copy(task->desc.data_package().packages(i).version(), " ", "");
             context.work_dir = task->env.workspace_path;
             context.package = context.work_dir + "/" + context.process_id
                                   + "." + context.version +  ".tar.gz";
@@ -406,8 +407,7 @@ int TaskManager::ReloadDeployTask(const std::string& task_id,
     return 0;
 }
 
-int TaskManager::ReloadStartTask(const std::string& task_id,
-                                 const TaskDescription& task_desc) {
+int TaskManager::StartReloadTask(const std::string& task_id) {
     MutexLock lock(&mutex_);
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
 
@@ -445,7 +445,7 @@ int TaskManager::ReloadStartTask(const std::string& task_id,
 }
 
 // check reload task status
-int TaskManager::ReloadCheckTask(const std::string& task_id,
+int TaskManager::CheckReloadTask(const std::string& task_id,
                                  Task& task) {
     MutexLock lock(&mutex_);
     std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
@@ -521,6 +521,98 @@ int TaskManager::ReloadCheckTask(const std::string& task_id,
     }
 
     task.reload_status = it->second->reload_status;
+
+    return 0;
+}
+
+int TaskManager::StartTaskHealthCheck(const std::string& task_id) {
+    MutexLock lock(&mutex_);
+    LOG(INFO) << "start task health check, task: " << task_id;
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+
+    if (it == tasks_.end()) {
+        LOG(WARNING) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    LOG(INFO) << "start create health check process for task: " << task_id;
+    Task* task = it->second;
+
+    if (task->desc.has_exe_package()
+            && task->desc.exe_package().has_health_cmd()) {
+        ProcessContext context;
+        context.process_id = task->task_id + "_check";
+        context.cmd = task->desc.exe_package().health_cmd();
+        context.work_dir = task->env.workspace_path;
+
+        ProcessEnv env;
+        MakeProcessEnv(task, env);
+
+        if (0 != process_manager_.CreateProcess(env, &context)) {
+            LOG(WARNING) << "command execute fail, command: " << context.cmd;
+            return -1;
+        }
+
+        task->check_timeout_point = common::timer::now_time()\
+                                    + FLAGS_task_manager_task_check_command_timeout;
+    }
+
+    return 0;
+}
+
+int TaskManager::CheckTaskHealth(const std::string& task_id, Task& task) {
+    MutexLock lock(&mutex_);
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+
+    if (it == tasks_.end()) {
+        LOG(WARNING) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    LOG(INFO) << "check health task, task: " << task_id;
+
+    if (!(it->second->desc.has_exe_package()
+            && it->second->desc.exe_package().has_health_cmd())) {
+        task.status = proto::kTaskFinished;
+        return 0;
+    }
+
+    std::string process_id = task_id + "_check";
+    Process process;
+
+    if (0 != process_manager_.QueryProcess(process_id, process)) {
+        LOG(WARNING) << "query health process: " << process_id << " fail";
+        return -1;
+    }
+
+    if (process.status == proto::kProcessRunning) {
+        int32_t now_time = common::timer::now_time();
+        if (it->second->check_timeout_point < now_time) {
+            LOG(INFO) << "check command timeout";
+            process_manager_.KillProcess(process_id);
+            task.status = proto::kTaskFailed;
+        } else {
+            task.status = proto::kTaskRunning;
+        }
+    } else {
+        if (0 == process.exit_code) {
+            task.status = proto::kTaskFinished;
+            LOG(INFO) << "check process finished";
+        } else {
+            task.status = proto::kTaskFailed;
+            LOG(INFO) << "check process failed";
+        }
+    }
+
+    return 0;
+}
+
+int TaskManager::ClearTaskHealthCheck(const std::string& task_id) {
+    MutexLock lock(&mutex_);
+
+    LOG(INFO) << "clear task health check, task: " << task_id;
+    std::string process_id = task_id + "_check";
+    process_manager_.KillProcess(process_id);
 
     return 0;
 }

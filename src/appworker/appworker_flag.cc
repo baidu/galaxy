@@ -32,10 +32,11 @@ DEFINE_int32(pod_manager_change_pod_status_interval, 500, "pod manager check pod
 
 // task_manager
 DEFINE_int32(task_manager_background_thread_pool_size, 10, "task manager background thread pool size");
-DEFINE_int32(task_manager_task_stop_command_timeout, 100, "task manager stop command run timeout second");
+DEFINE_int32(task_manager_task_stop_command_timeout, 30, "task manager stop command run timeout, second");
+DEFINE_int32(task_manager_task_check_command_timeout, 5, "task manager check command run timeout, second");
 DEFINE_int32(task_manager_task_max_fail_retry_times, 10, "task fail retry times limit");
 
 // process_manager
 DEFINE_int32(process_manager_loop_wait_interval, 500, "process manager loop wait processes interval");
 DEFINE_int32(process_manager_download_retry_times, 3, "process nmanager download package fail retry times limit");
-DEFINE_int32(process_manager_download_timeout, 300, "process manager download package timeout");
+DEFINE_int32(process_manager_download_timeout, 300, "process manager download package timeout, second");
