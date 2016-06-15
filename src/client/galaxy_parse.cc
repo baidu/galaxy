@@ -47,9 +47,14 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
     deploy->tag = deploy_json["tag"].GetString();
     boost::trim(deploy->tag);
 
-    std::vector<std::string> pools;
+    if (!deploy_json.HasMember("pools")) {
+        fprintf(stderr, "pools is needed in deploy\n");
+        return -1;
+    }
     std::string str_pools = deploy_json["pools"].GetString();
     boost::trim(str_pools);
+
+    std::vector<std::string> pools;
     ::baidu::common::SplitString(str_pools, ",", &pools);
     if (pools.size() == 0) {
         fprintf(stderr, "pools are needed in deploy\n");
@@ -468,7 +473,6 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
                }
            }
         }
-
     }
 
     if (!task_json.HasMember("exec_package")) {

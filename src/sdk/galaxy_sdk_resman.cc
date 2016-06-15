@@ -1301,8 +1301,8 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
     }
     quota->set_ssd(request.quota.ssd);
 
-    if (request.quota.replica <= 0 || request.quota.replica >= 10000) {
-        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+    if (request.quota.replica <= 0) {
+        fprintf(stderr, "assign replica must be greater than 0\n");
         return false;
     }
     quota->set_replica(request.quota.replica);

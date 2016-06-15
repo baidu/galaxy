@@ -143,7 +143,7 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
         pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobPause);
     } else {
         fprintf(stderr, "update operation must be kUpdateJobStart, \
-                    kUpdateJobContinue, kUpdateJobRollback, kUpdateJobDefault\n");
+                    kUpdateJobContinue, kUpdateJobRollback, kUpdateJobPause\n");
         return false;
     }
 
