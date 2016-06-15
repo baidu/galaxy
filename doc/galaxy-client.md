@@ -132,7 +132,7 @@ Options:
         service信息：serviceinfo
         
 ```
-base infomation
+<font color=blue> base infomation</font>
   id                          status   create_time          update_time        
 ---------------------------------------------------------------------------------
   job_20160612_192152_72_ts3  Running  2016-06-12 19:21:52  2016-06-12 19:39:16
