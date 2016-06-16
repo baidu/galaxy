@@ -324,9 +324,9 @@ containers infomation
 ```
 
 ### safemode 安全模式命令
-    #### enter_safemode 进入安全模式, 表示galaxy不再接受新提交的job，但进入安全模式之前的job正常运行
+#### enter_safemode 进入安全模式, 表示galaxy不再接受新提交的job，但进入安全模式之前的job正常运行
         用法: ./galaxy_res_client enter_safemode
-    #### leave_safemode 离开安全模式
+#### leave_safemode 离开安全模式
         用法: ./galaxy_res_client leave_safemode
 
 ### status galaxy的整体情况
