@@ -9,7 +9,6 @@
 DEFINE_string(nexus_root, "/galaxy3", "root prefix on nexus");
 DEFINE_string(nexus_addr, "", "nexus server list");
 DEFINE_string(resman_path, "/resman", "resman path on nexus");
-DEFINE_string(appmaster_path, "/appmaster", "appmaster path on nexus");
 DEFINE_string(username, "default", "username");
 DEFINE_string(token, "default", "token");
 
@@ -198,7 +197,7 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
 
     bool ret = resman_->ListContainerGroups(request, &response);
     if (ret) {
-        std::string array_headers[4] = {"", "id", "replica", "stat(r/a/p)"};
+        std::string array_headers[4] = {"", "id", "replica", "r/a/p"};
         std::vector<std::string> headers(array_headers, array_headers + 4);
         if (find(options.begin(), options.end(), "cpu") != options.end()) {
             headers.push_back("cpu(a/u)");

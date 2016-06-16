@@ -29,7 +29,7 @@ galaxy_client
     2. SendRequest fail:RPC_ERROR_RESOLVE_ADDRESS
 ```
 
-#galaxy用法
+#galaxy_client使用方法
 运行./galaxy_client获取运行方法
 ```
 galaxy_client.
@@ -75,11 +75,11 @@ Options:
         回滚：./galaxy_client update -i jobid -o rollback
 
 ### stop 停止一个job
-    参数：-i指定需要更新的jobid
+    参数：-i指定需要停止的jobid
     用法：./galaxy_client stop -i jobid
 
 ### remove 删除一个job
-    参数：-i指定需要更新的jobid
+    参数：-i指定需要删除的jobid
     用法：./galaxy_client remove -i jobid
 
 ### list 列出所有的job
