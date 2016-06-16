@@ -391,7 +391,7 @@ xxxx3:6666
   1  hlf      
 ```
 
-#### pool机器池相关命令
+### pool机器池相关命令
     参数:
         1. -e（必选）指定endpoint，形如ip:port
     用法:
