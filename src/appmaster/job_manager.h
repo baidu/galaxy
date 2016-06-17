@@ -7,11 +7,6 @@
 #include <set>
 #include <map>
 #include <vector>
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/unordered_map.hpp>
 #include <thread_pool.h>
 #include "ins_sdk.h"
 #include "protocol/resman.pb.h"
