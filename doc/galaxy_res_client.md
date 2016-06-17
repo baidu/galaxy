@@ -237,7 +237,7 @@ containers infomation
     用法:
         ./galaxy_res_client online_agent -e xxxx:6666
 
-#### offline_agent 下线一条机器
+#### offline_agent 下线一台机器
     参数:
         -e endpoint，形如ip:port
     用法:
@@ -438,7 +438,7 @@ jobs assigned quota infomation
 ------------------------------------------------
   95.000  514.344G  31.177T  151.000G  33     
 ```
-#### grant_user 赋予某pool机器池的权限给用户
+#### grant_user 赋某pool机器池的权限给用户
     参数: 
        1. -u（必选）用户名
        2. -p（必选）机器池名称
