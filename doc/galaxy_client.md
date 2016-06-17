@@ -212,14 +212,17 @@ services infomation
     
 ### json 生成一json格式的job配置文件
     参数：
-        1. -n(可选) 指定jobname，默认为example
-        2. -t(可选) 指定task数，默认1
-        3. -d(可选) 指定data_volums数，默认1
-        4. -p(可选) 指定port数，默认1
-        5. -a(可选) 指定data package数，默认1
-        6. -s(可选) 指定services数，默认1
+        1. -i(可选) 指定jobid, 可生成指定jobid的job配置
+        2. -n(可选) 指定jobname，默认为example
+        3. -t(可选) 指定task数，默认1
+        4. -d(可选) 指定data_volums数，默认1
+        5. -p(可选) 指定port数，默认1
+        6. -a(可选) 指定data package数，默认1
+        7. -s(可选) 指定services数，默认1
     用法:
+        ./galaxy_client json -i jobid
         ./galaxy_client json
+        ./galaxy_client json -n example -d 2
     说明:
         1. type的value必须为kJobMonitor, kJobService, kJobBatch, kJobBestEffort中的一个
         2. json中的deploy配置中的每一项都需要, 但tag的value可以为空,如"tag": ""

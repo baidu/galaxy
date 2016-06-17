@@ -27,10 +27,12 @@ public:
     bool ListJobs(const std::string& soptions);
     bool ShowJob(const std::string& jobid, const std::string& soptions);
     bool ExecuteCmd(const std::string& jobid, const std::string& cmd);
+    bool GenerateJson(const std::string& jobid);
 
 private:
     bool Init();
     bool InitResman();
+    std::string StringUnit(int64_t num);
     static void* ListContainers(void* param);
     static void* ListJobs(void* param);
     static void* ShowJob(void* param);
