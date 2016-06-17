@@ -411,9 +411,33 @@ xxxx3:6666
 #### list_users 列出所有用户
     参数：无
     用法: ./galaxy_res_client list_users
+```
+  -  user       
+------------------
+  0  abc        
+  2  hlf        
+```
 #### show_user 展示指定的用户信息
     参数: -u（必选）用户名
     用法: ./galaxy_res_client show_user
+```
+authority infomation
+  -  pool      authority                
+------------------------------------------
+  0  test      kAuthorityCreateContainer
+  -  -         kAuthorityRemoveContainer
+  -  -         kAuthorityUpdateContainer
+
+quota infomation
+  cpu       memory   disk      ssd     replica
+------------------------------------------------
+  8000.000  15.000T  100.000T  8.000T  3000   
+
+jobs assigned quota infomation
+  cpu     memory    disk     ssd       replica
+------------------------------------------------
+  95.000  514.344G  31.177T  151.000G  33     
+```
 #### grant_user 赋予某pool机器池的权限给用户
     参数: 
        1. -u（必选）用户名
