@@ -450,6 +450,7 @@ jobs assigned quota infomation
         ./galaxy_res_client grant_user -u galaxy -p test -o remove -a remove_job
 #### assign_quota 分配quota给用户
 quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ssd大小，内存大小
+
     参数:
         1. -u（必选）用户名
         2. -c（必选） cpu核数*1000,如2000
