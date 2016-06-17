@@ -91,7 +91,7 @@ Options:
 
 ## 使用说明
 ### container容器相关命令
-container相关命令中id指的是容器id，容器id就是jobid
+container相关命令中id指的是容器id，容器组id就是jobid
 #### create_container 创建容器组
     参数：-f(必选)指定job描述配置文件，文件格式是json格式
     用法：galaxy_res_client create_container -f job.json
@@ -396,3 +396,42 @@ xxxx3:6666
         1. -e（必选）指定endpoint，形如ip:port
     用法:
        galaxy_res_client list_pools -e xxxx:6666 
+
+### user用户相关命令
+#### add_user 添加用户
+    参数：
+        1. -u（必选）用户名
+        2. -t（必选）token
+    用法:
+        galaxy_res_client add_user -u galaxy -t galaxy
+#### remove_user 删除用户
+    参数: -u（必选）用户名
+    用法：
+        galaxy_res_client remove_user -u galaxy
+#### list_users 列出所有用户
+    参数：无
+    用法: ./galaxy_res_client list_users
+#### show_user 展示指定的用户信息
+    参数: -u（必选）用户名
+    用法: ./galaxy_res_client show_user
+#### grant_user 赋予某pool机器池的权限给用户
+    参数: 
+       1. -u（必选）用户名
+       2. -p（必选）机器池名称
+       3. -o（必选）权限操作类型：add/remove/set/clear
+       4. -a (必选）权限类型: create_container,remove_container,update_container,
+                              list_containers,submit_job,remove_job,update_job,list_jobs
+    用法:
+        ./galaxy_res_client grant_user -u galaxy -p test -o add -a create_container
+        ./galaxy_res_client grant_user -u galaxy -p test -o remove -a remove_job
+#### assign_quota 分配quota给用户
+quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ssd大小，内存大小
+    参数:
+        1. -u（必选）用户名
+        2. -c（必选） cpu核数*1000,如2000
+        3. -d（必选）disk大小, 单位有K, M, G, T, B, Z
+        4. -s（必选）ssd大小, 单位有K, M, G, T, B, Z
+        5. -m（必选）内存大小, 单位有K, M, G, T, B, Z
+        6. -r （必选）副本数量
+    用法:
+        galaxy_res_client assign_quota -u galaxy -c 1000 -d 1G -s 800M -m 1G -r 10000
