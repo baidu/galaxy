@@ -8,10 +8,16 @@
 #include "boost/thread/thread_time.hpp"
 #include "boost/filesystem/operations.hpp"
 
+#include "glog/logging.h"
+
 #include <sys/mount.h>
 
 #include <string>
 #include <fstream>
+
+#ifndef MS_REC
+#define MS_REC 0x4000 /* 16384: Recursive loopback */
+#endif
 
 namespace baidu {
 namespace galaxy {
@@ -59,10 +65,12 @@ baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::st
         return ERRORCODE(-1, "target(%s) is not directory", target.c_str());
     }
 
-    if (0 != ::mount(source.c_str(), target.c_str(), "", MS_BIND, NULL)) {
+    if (0 != ::mount(source.c_str(), target.c_str(), "", MS_BIND | MS_REC, NULL)) {
+        LOG(WARNING) << "mount failed: " << source << "->" << target;
         return PERRORCODE(-1, errno, "mount %s to %s failed", source.c_str(), target.c_str());
     }
 
+    LOG(INFO) << "mount ok: " << source << "->" << target;
     return ERRORCODE_OK;
 }
 
@@ -87,30 +95,45 @@ baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t si
         return PERRORCODE(-1, errno, "mount tmpfs to %s failed", target.c_str());
     }
 
+    LOG(INFO) << "mount tmpfs ok: " << target;
+
     return ERRORCODE_OK;
 }
 
 
 baidu::galaxy::util::ErrorCode Umount(const std::string& target_path)
 {
+    VLOG(10) << "to umount " << target_path;
     std::map<std::string, boost::shared_ptr<Mounter> > mounters;
     ListMounters(mounters);
     std::map<std::string, boost::shared_ptr<Mounter> >::iterator iter = mounters.find(target_path);
 
     if (mounters.end() == iter) {
+        VLOG(10) << target_path << " umount donot exists in /proc/mounts, return ok";
         return ERRORCODE_OK;
     }
 
-    if (0 != ::umount(target_path.c_str())) {
+    //int n = 0;
+    if (0 != ::umount2(target_path.c_str(), MNT_FORCE)) {
         return PERRORCODE(-1, errno, "umount path %s failed", target_path.c_str());
     }
 
-    return ERRORCODE_OK;
+    mounters.clear();
+    ListMounters(mounters);
+    iter =  mounters.find(target_path);
+    if (iter == mounters.end()) {
+        LOG(INFO) << "umount successful " << target_path;
+        return ERRORCODE_OK;
+    }
+
+    return ERRORCODE(-1, "umount path %s failed, which still exists",
+                target_path.c_str());
 
 }
 
 baidu::galaxy::util::ErrorCode ListMounters(std::map<std::string, boost::shared_ptr<Mounter> >& mounters)
 {
+    mounters.clear();
     std::ifstream inf("/proc/mounts", std::ios::in);
 
     if (!inf.is_open()) {

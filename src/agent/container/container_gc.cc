@@ -93,7 +93,7 @@ void ContainerGc::GcRoutine() {
                 baidu::galaxy::util::ErrorCode ec = DoGc(iter->first);
 
                 if (ec.Code() != 0) {
-                    LOG(WARNING) << iter->first << " gc failed";
+                    LOG(WARNING) << iter->first << " gc failed: " << ec.Message();
                     iter++;
                     continue;
                 }
@@ -114,6 +114,7 @@ void ContainerGc::GcRoutine() {
 }
 
 baidu::galaxy::util::ErrorCode ContainerGc::DoGc(const std::string& path) {
+
     boost::system::error_code ec;
 
     if (!boost::filesystem::exists(path, ec)) {
@@ -127,19 +128,45 @@ baidu::galaxy::util::ErrorCode ContainerGc::DoGc(const std::string& path) {
         boost::filesystem::remove_all(path, ec);
         if (ec.value() != 0) {
             return ERRORCODE(-1, "remove %s failed: %s",
-                        p.string().c_str(),
+                        path.c_str(),
                         ec.message().c_str());
         } 
         return ERRORCODE_OK;
     }
 
-    baidu::galaxy::file::InputStreamFile f(p.string());
+    std::vector<std::string> gc_paths;
+    baidu::galaxy::util::ErrorCode err = ListGcPath(p.string(), gc_paths);
+    if (err.Code() != 0) {
+        return ERRORCODE(-1, err.Message().c_str());
+    }
+
+    for (size_t i = 0; i < gc_paths.size(); i++) {
+        err = Remove(gc_paths[i]);
+        if (err.Code() != 0) {
+            return ERRORCODE(-1, "remove %s failed: %s", gc_paths[i].c_str(), err.Message().c_str());
+        }
+        //LOG(INFO) << "succees in removing " << gc_paths[i] << std::endl;
+    }
+
+    boost::filesystem::remove_all(path, ec);
+    if (ec.value() != 0) {
+        return ERRORCODE(-1, "remove %s failed: ",
+                    path.c_str(),
+                    ec.message().c_str());
+    }
+    return ERRORCODE_OK;
+}
+
+
+baidu::galaxy::util::ErrorCode ContainerGc::ListGcPath(const std::string& property, 
+            std::vector<std::string>& paths) {
+
+    baidu::galaxy::file::InputStreamFile f(property);
     if (!f.IsOpen()) {
         baidu::galaxy::util::ErrorCode err = f.GetLastError();
         return ERRORCODE(-1, "open property failed: %s", err.Message().c_str());
     }
 
-    baidu::galaxy::util::ErrorCode err = ERRORCODE_OK;
     while (!f.Eof()) {
         std::string line;
         f.ReadLine(line);
@@ -154,37 +181,29 @@ baidu::galaxy::util::ErrorCode ContainerGc::DoGc(const std::string& path) {
             
             if (v.size() == 2) {
                 boost::trim(v[1]);
-                if (boost::filesystem::exists(v[1], ec)) {
-                    boost::filesystem::remove_all(v[1], ec);
-                    if (0 != ec.value()) {
-                        err = ERRORCODE(-1, "remove %s failed: %s", 
-                                    v[1].c_str(),
-                                    ec.message().c_str());
-                        LOG(WARNING) << "remove " << v[1] << " failed: "  << ec.message();
-                    }
-                    else {
-                        LOG(INFO) << "remova" << v[1] << " suceessfully";
-                    }
-                } else {
-                    LOG(INFO) << "donot exist " << v[1];;
-                }
+                paths.push_back(v[1]);
             } else {
                 LOG(WARNING) << "bad format: " << line << " " << v.size();
             }
         }
     }
-
-    if (err.Code() != 0) {
-        return err;
-    }
-
-    boost::filesystem::remove_all(path, ec);
-    if (ec.value() != 0) {
-        return ERRORCODE(-1, "remove %s failed: ",
-                    path.c_str(),
-                    ec.message().c_str());
-    }
     return ERRORCODE_OK;
+
+
+}
+
+baidu::galaxy::util::ErrorCode ContainerGc::Remove(const std::string& path) {
+    boost::system::error_code ec;
+    if (boost::filesystem::exists(path, ec)) {
+        boost::filesystem::remove_all(path, ec);
+        if (0 != ec.value()) {
+            return ERRORCODE(-1, "remove %s failed: %s", 
+                        path.c_str(),
+                        ec.message().c_str());
+        } 
+    } 
+    return ERRORCODE_OK;
+
 }
 
 }

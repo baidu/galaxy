@@ -127,6 +127,9 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
         ::google::protobuf::Closure* done)
 {
     LOG(INFO) << "recv create container request: " << request->DebugString();
+    int64_t x = baidu::common::timer::get_micros();
+    std::cerr <<x<< "create " << request->id() << std::endl;
+    
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
 
@@ -149,6 +152,7 @@ void AgentImpl::RemoveContainer(::google::protobuf::RpcController* controller,
 {
 
     LOG(INFO) << "recv remove container request: " << request->DebugString();
+    std::cerr << "recv remove container request: " << request->DebugString() << std::endl;
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
     baidu::galaxy::util::ErrorCode ret = cm_->ReleaseContainer(id);

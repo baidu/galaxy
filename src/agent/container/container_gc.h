@@ -24,6 +24,10 @@ public:
 
 private:
     void GcRoutine();
+    baidu::galaxy::util::ErrorCode Remove(const std::string& path);
+    baidu::galaxy::util::ErrorCode ListGcPath(const std::string& path,
+                std::vector<std::string>& paths);
+
     baidu::galaxy::util::ErrorCode DoGc(const std::string& path);
     std::map<std::string, int64_t> gc_index_;
 

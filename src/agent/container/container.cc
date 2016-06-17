@@ -87,10 +87,10 @@ baidu::galaxy::util::ErrorCode Container::Construct()
 
     if (0 != err.Code()) {
         ec = status_.EnterError();
-        LOG(WARNING) << "construct contaier " << id_.CompactId() << " failed";
+        LOG(WARNING) << "construct container " << id_.CompactId() << " failed";
 
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
-            LOG(FATAL) << "contaner " << id_.CompactId() << ": " << ec.Message();
+            LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
         }
     } else {
         ec = status_.EnterReady();
@@ -136,6 +136,7 @@ baidu::galaxy::util::ErrorCode Container::Destroy()
             LOG(FATAL) << "destroy container " << id_.CompactId() << " failed: " << ec.Message();
         }
         destroy_time_ = baidu::common::timer::get_micros();
+        LOG(INFO) << "destroy container " << id_.CompactId() << " sucessful";
     }
 
     return ret;
@@ -323,7 +324,7 @@ int Container::RunRoutine(void*)
 {
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
-        std::cout << "mount root fs failed" << std::endl;
+        std::cerr << "mount root fs failed" << std::endl;
         return -1;
     }
 
@@ -332,7 +333,7 @@ int Container::RunRoutine(void*)
     std::cout << "succed in mounting root fs\n";
     // change root
     if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str())) {
-        std::cout << "chroot failed: " << strerror(errno) << std::endl;
+        std::cerr << "chroot failed: " << strerror(errno) << std::endl;
         return -1;
     }
     std::cout << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId()) << std::endl;
@@ -362,7 +363,7 @@ int Container::RunRoutine(void*)
 
     ExportEnv();
     ::execv("/bin/sh", argv);
-    std::cout << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
+    std::cerr << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
     return -1;
 }
 
@@ -418,7 +419,7 @@ baidu::galaxy::proto::ContainerStatus Container::Status()
 void Container::KeepAlive()
 {
     int64_t now = baidu::common::timer::get_micros();
-    if (now - created_time_ < 2000000L) {
+    if (now - created_time_ < 10000000L) {
         return;
     }
 
@@ -449,15 +450,14 @@ void Container::KeepAlive()
             }
 
         }
-    } else {
-        LOG(INFO) << "i am alive ...";
-    }
+    } 
 }
 
 bool Container::Alive()
 {
     int pid = (int)process_->Pid();
     if (pid <= 0) {
+        LOG(WARNING) << "process id is le 0 " << id_.CompactId();
         return false;
     }
 
@@ -465,7 +465,8 @@ bool Container::Alive()
     path << "/proc/" << (int)pid << "/environ";
     FILE* file = fopen(path.str().c_str(), "rb");
     if (NULL == file) {
-        LOG(WARNING) << "failed in openning file " << path.str() << ": " << strerror(errno);
+        LOG(WARNING) << id_.CompactId() << " failed in openning file " 
+            << path.str() << ": " << strerror(errno);
         return false;
     }
 
@@ -501,6 +502,7 @@ bool Container::Alive()
         }
     }
 
+    LOG(WARNING) << "donot find env " << id_.CompactId();
     return false;
 }
 

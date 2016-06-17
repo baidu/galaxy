@@ -104,7 +104,7 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
             return ERRORCODE(-1,
                     "failed in destroying data volum: %s",
                     ec.Message().c_str());
-        }
+        } 
     }
 
     if (workspace_volum_.get() != NULL) { 
@@ -115,6 +115,27 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy()
                         ec.Message().c_str());
         }
     }
+
+    // rm empty dir
+    // /home/diskx/galaxy/container_id/
+    for (size_t i = 0; i < data_volum_.size(); i++) {
+        ec = data_volum_[i]->Gc();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in gc data volum: %s",
+                        ec.Message().c_str());
+        }
+    }
+
+    if (workspace_volum_.get() != NULL) { 
+        ec = workspace_volum_->Gc();
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                        "failed in gc workspace volum: %s",
+                        ec.Message().c_str());
+        }
+    }
+
 
     // mv container root dir to gc_dir
     std::string container_root_path
@@ -218,32 +239,39 @@ int VolumGroup::MountRootfs()
         path.append(vm[i]);
 
         if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
-            LOG(WARNING) << "create_directories failed: " << path.string() << ": " << ec.message();
+            //LOG(WARNING) << "create_directories failed: " << path.string() << ": " << ec.message();
+            std::cerr << "create_directories failed: " << path.string() << ": " << ec.message() << std::endl;
             return -1;
         }
 
         if (boost::filesystem::is_directory(path, ec)) {
-            LOG(INFO) << "create_directories sucessfully: " << path.string();
+            //LOG(INFO) << "create_directories sucessfully: " << path.string();
+            std::cout << "create_directories sucessfully: " << path.string() << std::endl;
         }
 
         if ("/proc" == vm[i]) {
             baidu::galaxy::util::ErrorCode errc = MountProc(path.string());
 
             if (0 != errc.Code()) {
-                LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
+                //LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
+                std::cerr << "mount " << vm[i] << "for container " 
+                    << container_id_ << " failed " << errc.Message() << std::endl;
                 return -1;
             }
 
-            LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
+            //LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
+            std::cout << "mount successfully: " << vm[i] << " -> " << path.string() << std::endl;
         } else {
             baidu::galaxy::util::ErrorCode errc = MountDir(vm[i], path.string());
 
             if (0 != errc.Code()) {
-                LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
+                //LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
+                std::cerr << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message() << std::endl;
                 return -1;
             }
 
-            LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
+            //LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
+            std::cout << "mount successfully: " << vm[i] << " -> " << path.string() << std::endl;
         }
     }
 

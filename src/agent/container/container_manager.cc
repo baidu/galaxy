@@ -89,6 +89,8 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer(const Container
         return ERRORCODE_OK;
     }
 
+    LOG(INFO) << "create container : " << id.CompactId();
+
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
         LOG(WARNING) << "container " << id.CompactId() << " enter create stage failed: " << ec.Message();
         return ERRORCODE(-1, "stage err");
@@ -122,12 +124,15 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer(const Container
     baidu::galaxy::util::ErrorCode ret = CreateContainer_(id, desc);
 
     if (0 != ret.Code()) {
+        LOG(WARNING) <<  id.CompactId() << " create container failed " << ret.Message(); 
         ec = res_man_->Release(desc);
         if (ec.Code() != 0) {
             LOG(FATAL) << "failed in releasing resource for container "
                        << id.CompactId() << ", detail reason is: "
                        << ec.Message();
         }
+    } else {
+        LOG(INFO) << "success in creating container " << id.CompactId();
     }
 
     return ret;
@@ -136,6 +141,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer(const Container
 baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const ContainerId& id)
 {
     // enter destroying stage, only one thread do releasing at a moment
+    
     ScopedDestroyingStage lock_stage(stage_, id.SubId());
     baidu::galaxy::util::ErrorCode ec = lock_stage.GetLastError();
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
@@ -149,6 +155,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
                      << ", reason: " << ec.Message();
         return ERRORCODE(-1, "stage err");
     }
+    LOG(INFO) << "do release container " << id.CompactId();
 
     // judge container existence
     boost::shared_ptr<baidu::galaxy::container::Container> ctn;
