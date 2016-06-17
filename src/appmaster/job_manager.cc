@@ -510,7 +510,7 @@ PodInfo* JobManager::CreatePod(Job* job,
     job->pods_[podid] = podinfo;
     pod_checker_.DelayTask(FLAGS_master_pod_check_interval * 1000,
         boost::bind(&JobManager::CheckPodAlive, this, podinfo, job));
-    LOG(INFO) << "DEBUG: CreatePod " << podinfo->DebugString()
+    VLOG(10) << "DEBUG: CreatePod " << podinfo->DebugString()
     << "END DEBUG";
     return podinfo;
 }
@@ -603,7 +603,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
             rlt_code = kSuspend;
         }
     }
-    LOG(INFO) << __FUNCTION__ << " code : " << rlt_code;
+    LOG(INFO) << __FUNCTION__ << " pod : " << request->podid() << " code : " << rlt_code;
     return rlt_code;
 }
 
@@ -724,7 +724,7 @@ void JobManager::RefreshService(ServiceList* src, PodInfo* pod) {
                 if (!IsSerivceSame(src_serv, pod->services(j))) {
                     pod->mutable_services(j)->CopyFrom(src_serv);
                     need_refresh_naming = true;
-                    LOG(INFO) << "refresh service : "
+                    VLOG(10) << "refresh service : "
                     << " name : " << pod->services(j).name()
                     << " ip : " << pod->services(j).ip()
                     << " port : " << pod->services(j).port()
@@ -764,13 +764,13 @@ void JobManager::RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
     podinfo->set_reload_status(request->reload_status());
     ReduceUpdateList(job, podinfo->podid(), request->status(), request->reload_status());
     if (request->services().size() != 0) {
-        LOG(INFO) << "DEBUG servie msg : "
+        VLOG(10) << "DEBUG servie msg : "
         << request->DebugString();
         RefreshService(request->mutable_services(), podinfo);
     } else {
         DestroyService(podinfo->mutable_services());
     }
-    LOG(INFO) << "DEBUG: PodHeartBeat "
+    VLOG(10) << "DEBUG: PodHeartBeat "
             << "refresh pod id : " << request->podid() << " status :"
             << podinfo->status() << " heartbeat time : " << podinfo->heartbeat_time()
             << " last_normal_time : " << podinfo->last_normal_time()
@@ -1048,7 +1048,7 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
         PodInfo* pod = pod_it->second;
         job_info->add_pods()->CopyFrom(*pod);
     }
-    LOG(INFO) << "DEBUG GetJobInfo: " << job_info->DebugString()
+    VLOG(10) << "DEBUG GetJobInfo: " << job_info->DebugString()
         << "DEBUG END";
     return kOk;
 }

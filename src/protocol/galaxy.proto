@@ -253,6 +253,9 @@ message Service {
     optional string service_name = 1;  // must be uniq, which is guaranteed by user
     optional string port_name = 2;     // name
     optional bool use_bns = 3;
+    optional string tag = 4;
+    optional health_check_type = 5;
+    optional health_check_script = 6;
 }
 
 message ServiceInfo {
@@ -260,6 +263,7 @@ message ServiceInfo {
     optional string port = 2;
     optional string ip = 3;
     optional Status status = 4;
+    optional string deploy_path = 5;
 }
 
 message TaskDescription {

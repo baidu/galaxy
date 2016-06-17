@@ -274,13 +274,13 @@ void AppMasterImpl::RollbackContainerGroupCallBack(proto::UpdateJobResponse* rol
     if (status != proto::kOk) {
         rollback_response->mutable_error_code()->set_status(status);
         rollback_response->mutable_error_code()->set_reason("appmaster rollback update job error");
-        LOG(INFO) << rollback_response->DebugString();
+        VLOG(10) << rollback_response->DebugString();
         done->Run();
         return;
     }
     rollback_response->mutable_error_code()->set_status(status);
     rollback_response->mutable_error_code()->set_reason("rollback job ok");
-    LOG(INFO) << rollback_response->DebugString();
+    VLOG(10) << rollback_response->DebugString();
     done->Run();
     return;
 }
@@ -308,13 +308,13 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
             response->mutable_error_code()->set_reason("appmaster continue update job error");
-            LOG(INFO) << response->DebugString();
+            VLOG(10) << response->DebugString();
             done->Run();
             return;
         }
         response->mutable_error_code()->set_status(status);
         response->mutable_error_code()->set_reason("continue job ok");
-        LOG(INFO) << response->DebugString();
+        VLOG(10) << response->DebugString();
         done->Run();
         return;
     } else if (request->has_operate() && request->operate() == kUpdateJobRollback) {
@@ -358,13 +358,13 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
             response->mutable_error_code()->set_reason("appmaster pause update job error");
-            LOG(INFO) << response->DebugString();
+            VLOG(10) << response->DebugString();
             done->Run();
             return;
         }
         response->mutable_error_code()->set_status(status);
         response->mutable_error_code()->set_reason("pause job ok");
-        LOG(INFO) << response->DebugString();
+        VLOG(10) << response->DebugString();
         done->Run();
         return;
     }
