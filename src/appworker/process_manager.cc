@@ -102,7 +102,10 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
         return -1;
     } else if (child_pid == 0) {
-        // 1.setpgid  & chdir
+        std::string now_str_time;
+        GetStrFTime(&now_str_time);
+
+        // 1.setpgid & chdir
         pid_t my_pid = ::getpid();
         process::PrepareChildProcessEnvStep1(my_pid,
                                              context->work_dir.c_str());
@@ -119,11 +122,16 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             bool ok = file::Write(path, content);
 
             if (!ok) {
-                fprintf(stdout, "atttach pid to cgroup fail, err: %d, %s\n",
-                        errno, strerror(errno));
+                fprintf(stdout, "[%s] atttach pid to cgroup fail, err: %d, %s\n",
+                        now_str_time.c_str(), errno, strerror(errno));
                 fflush(stdout);
                 assert(0);
             }
+        }
+
+        // set user
+        if (!user::Su(env.user)) {
+            assert(0);
         }
 
         std::string cmd = context->cmd;
@@ -133,22 +141,22 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
         if (NULL != download_context) {
             cmd = "mkdir -p " + download_context->dst_path
-                  + " && tar -xzf " +download_context->package
-                  + " -C " + download_context->dst_path;
+                  + " && tar -xzf " + download_context->package
+                  + " -C " + download_context->dst_path
+                  + " || (rm -rf " + download_context->package + " && exit 1)";
 
             // if package exist
             if (!file::IsExists(download_context->package)) {
-                cmd = "wget -t " + boost::lexical_cast<std::string>(FLAGS_process_manager_download_retry_times)
-                      + " --timeout=" + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
+                cmd = "wget --timeout=" + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
                       + " -O " + download_context->package
                       + " " + download_context->src_path
                       + " && " + cmd;
             }
         }
 
-        // set user
-        if (!user::Su(env.user)) {
-            assert(0);
+        // add delay time
+        if (context->delay_time > 0) {
+            cmd = "sleep " + boost::lexical_cast<std::string>(context->delay_time) + " && " + cmd;
         }
 
         // 5.prepare argv
@@ -159,7 +167,8 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
             NULL
         };
 
-        fprintf(stdout, "cmd: %s, user: %s\n", cmd.c_str(), env.user.c_str());
+        fprintf(stdout, "[%s] cmd: %s, user: %s\n",
+                now_str_time.c_str(), cmd.c_str(), env.user.c_str());
         fflush(stdout);
 
         // 6.prepare envs
@@ -172,8 +181,8 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
         // 7.do exec
         ::execve("/bin/sh", argv, envs);
-        fprintf(stdout, "execve %s err[%d: %s]\n",
-                cmd.c_str(), errno, strerror(errno));
+        fprintf(stdout, "[%s] execve %s err[%d: %s]\n",
+                now_str_time.c_str(), cmd.c_str(), errno, strerror(errno));
         fflush(stdout);
         assert(0);
     }
@@ -229,6 +238,7 @@ int ProcessManager::QueryProcess(const std::string& process_id,
     process.pid = it->second->pid;
     process.status = it->second->status;
     process.exit_code = it->second->exit_code;
+    process.fail_retry_times = it->second->fail_retry_times;
 
     return 0;
 }
@@ -247,6 +257,40 @@ int ProcessManager::ClearProcesses() {
     }
 
     return 0;
+}
+
+int ProcessManager::RecreateProcess(const ProcessEnv& env,
+                                    const ProcessContext* context) {
+    int32_t fail_retry_times = 0;
+    // get fail_retry_times
+    {
+        MutexLock scope_lock(&mutex_);
+        std::map<std::string, Process*>::iterator it = \
+                processes_.find(context->process_id);
+
+        if (it != processes_.end()) {
+            fail_retry_times = it->second->fail_retry_times + 1;
+            LOG(WARNING)
+                    << "process retry times increase, "
+                    << "process: " << context->process_id << ", "
+                    << "retry_times: " << fail_retry_times;
+        }
+    }
+
+    // recrete process and set process fail_retry_times
+    int ret = CreateProcess(env, context);
+    if (0 == ret) {
+        {
+            MutexLock scope_lock(&mutex_);
+            std::map<std::string, Process*>::iterator it = \
+                processes_.find(context->process_id);
+            if (it != processes_.end()) {
+                it->second->fail_retry_times = fail_retry_times;
+            }
+        }
+    }
+
+    return ret;
 }
 
 void ProcessManager::LoopWaitProcesses() {

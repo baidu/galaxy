@@ -16,6 +16,8 @@ DECLARE_int32(task_manager_task_stop_command_timeout);
 DECLARE_int32(task_manager_task_check_command_timeout);
 DECLARE_int32(task_manager_loop_wait_interval);
 DECLARE_int32(task_manager_task_max_fail_retry_times);
+DECLARE_int32(process_manager_download_retry_times);
+DECLARE_int32(process_manager_process_retry_delay);
 
 namespace baidu {
 namespace galaxy {
@@ -213,8 +215,37 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
 
             if (process.status > proto::kProcessFinished) {
                 LOG(WARNING) << "deploy process " << process_id << " failed";
-                it->second->status = proto::kTaskFailed;
-                process_status = process.status;
+                if (process.fail_retry_times < FLAGS_process_manager_download_retry_times) {
+                    // process env
+                    ProcessEnv env;
+                    MakeProcessEnv(it->second, env);
+                    DownloadProcessContext context;
+                    context.delay_time = FLAGS_process_manager_process_retry_delay;
+
+                    if (0 == i) {
+                        context.process_id = process_id;
+                        context.src_path = it->second->desc.exe_package().package().source_path();
+                        context.dst_path = it->second->desc.exe_package().package().dest_path();
+                        context.version = boost::replace_all_copy(it->second->desc.exe_package().package().version(), " ", "");
+                        context.work_dir = it->second->env.workspace_path;
+                        context.package = context.work_dir + "/" + context.process_id
+                                          + "." + context.version +  ".tar.gz";
+                    } else {
+                        context.process_id = process_id;
+                        context.src_path = it->second->desc.data_package().packages(i - 1).source_path();
+                        context.dst_path = it->second->desc.data_package().packages(i - 1).dest_path();
+                        context.version = boost::replace_all_copy(it->second->desc.data_package().packages(i - 1).version(), " ", "");
+                        context.work_dir = it->second->env.workspace_path;
+                        context.package = context.work_dir + "/" + context.process_id
+                                          + "." + context.version +  ".tar.gz";
+                    }
+
+                    process_manager_.RecreateProcess(env, &context);
+                    process_status = proto::kProcessRunning;
+                } else {
+                    it->second->status = proto::kTaskFailed;
+                    process_status = process.status;
+                }
                 break;
             }
 
