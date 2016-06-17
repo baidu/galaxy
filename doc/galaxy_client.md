@@ -212,7 +212,7 @@ services infomation
     
 ### json 生成一json格式的job配置文件
     参数：
-        1. -i(可选) 指定jobid
+        1. -i(可选) 指定jobid, 可生成指定jobid的job配置
         2. -n(可选) 指定jobname，默认为example
         3. -t(可选) 指定task数，默认1
         4. -d(可选) 指定data_volums数，默认1
