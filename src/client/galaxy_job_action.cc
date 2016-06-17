@@ -4,6 +4,12 @@
 
 #include <thread.h>
 #include <tprinter.h>
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/filewritestream.h"
+
+
 #include "galaxy_job_action.h"
 
 DEFINE_string(nexus_root, "/galaxy3", "root prefix on nexus");
@@ -905,6 +911,248 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     }
     return ret;
 }
+
+std::string JobAction::StringUnit(int64_t num) {
+    std::string input = HumanReadableString(num);
+    size_t pos = input.rfind(".");
+    std::string result(input, 0, pos);
+    result += input[input.size()-1];
+    return result;
+}
+
+bool JobAction::GenerateJson(const std::string& jobid) {
+
+    if (jobid.empty()) {
+        fprintf(stderr, "jobid is needed\n");
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+
+    ::baidu::galaxy::sdk::ShowJobRequest request;
+    ::baidu::galaxy::sdk::ShowJobResponse response;
+    request.user = user_;
+    request.jobid = jobid;
+    
+    bool ret =app_master_->ShowJob(request, &response);
+    if (!ret) {
+        printf("Show job failed for reason %s:%s\n",
+                StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+        return false;
+    }
+
+    rapidjson::Document document;
+    rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
+   
+    //设置临时字符串使用
+    rapidjson::Value obj_str(rapidjson::kStringType);
+
+    //根节点
+    rapidjson::Value root(rapidjson::kObjectType);
+    
+    obj_str.SetString(response.job.desc.name.c_str(), allocator);
+    root.AddMember("name", obj_str, allocator);
+
+    obj_str.SetString(StringJobType(response.job.desc.type).c_str(), allocator);
+    root.AddMember("type", obj_str, allocator);
+
+    //deploy节点
+    rapidjson::Value deploy(rapidjson::kObjectType);
+    const ::baidu::galaxy::sdk::JobDescription& job = response.job.desc;
+    deploy.AddMember("replica", job.deploy.replica, allocator);
+    deploy.AddMember("step", job.deploy.step, allocator);
+    deploy.AddMember("interval", job.deploy.interval, allocator);
+    deploy.AddMember("max_per_host", job.deploy.max_per_host, allocator);
+    obj_str.SetString(job.deploy.tag.c_str(), allocator);
+    deploy.AddMember("tag", obj_str, allocator);
+
+    std::string pools;
+    for (uint32_t i = 0; i < job.deploy.pools.size(); ++i) {
+        pools += job.deploy.pools[i];
+        if (i < job.deploy.pools.size() - 1) {
+            pools += ",";
+        }
+    }
+    obj_str.SetString(pools.c_str(), allocator);
+    deploy.AddMember("pools", obj_str, allocator);
+
+    root.AddMember("deploy", deploy, allocator);
+
+    //pod节点
+    rapidjson::Value pod(rapidjson::kObjectType);
+    rapidjson::Value workspace_volum(rapidjson::kObjectType);
+
+    obj_str.SetString(StringUnit(job.pod.workspace_volum.size).c_str(), allocator);
+    workspace_volum.AddMember("size", obj_str, allocator);
+
+    obj_str.SetString(StringVolumType(job.pod.workspace_volum.type).c_str(), allocator);
+    workspace_volum.AddMember("type", obj_str, allocator);
+
+    obj_str.SetString(StringVolumMedium(job.pod.workspace_volum.medium).c_str(), allocator);
+    workspace_volum.AddMember("medium", obj_str, allocator);
+
+    obj_str.SetString(job.pod.workspace_volum.dest_path.c_str(), allocator);
+    workspace_volum.AddMember("dest_path", obj_str, allocator);
+
+    workspace_volum.AddMember("readonly", job.pod.workspace_volum.readonly, allocator);
+    workspace_volum.AddMember("exclusive", job.pod.workspace_volum.exclusive, allocator);
+    workspace_volum.AddMember("use_symlink", job.pod.workspace_volum.use_symlink, allocator);
+    
+    pod.AddMember("workspace_volum", workspace_volum, allocator);
+
+    rapidjson::Value data_volums(rapidjson::kArrayType);
+    for (uint32_t i = 0; i < job.pod.data_volums.size(); ++i) {
+    
+        const ::baidu::galaxy::sdk::VolumRequired& sdk_data_volums = job.pod.data_volums[i];
+        rapidjson::Value data_volum(rapidjson::kObjectType);
+
+        obj_str.SetString(StringUnit(sdk_data_volums.size).c_str(), allocator);
+        data_volum.AddMember("size", obj_str, allocator);
+
+        obj_str.SetString(StringVolumType(sdk_data_volums.type).c_str(), allocator);
+        data_volum.AddMember("type", obj_str, allocator);
+
+        obj_str.SetString(StringVolumMedium(sdk_data_volums.medium).c_str(), allocator);
+        data_volum.AddMember("medium", obj_str, allocator);
+
+        obj_str.SetString(sdk_data_volums.dest_path.c_str(), allocator);
+        data_volum.AddMember("dest_path", obj_str, allocator);
+
+        data_volum.AddMember("readonly", sdk_data_volums.readonly, allocator);
+        data_volum.AddMember("exclusive", sdk_data_volums.exclusive, allocator);
+        data_volum.AddMember("use_symlink", sdk_data_volums.use_symlink, allocator);
+
+        data_volums.PushBack(data_volum, allocator);
+    }
+    pod.AddMember("data_volums", data_volums, allocator);
+
+    rapidjson::Value tasks(rapidjson::kArrayType);
+    for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
+        const ::baidu::galaxy::sdk::TaskDescription& sdk_task = job.pod.tasks[i];
+        rapidjson::Value cpu(rapidjson::kObjectType);
+        cpu.AddMember("millicores", sdk_task.cpu.milli_core, allocator); 
+        cpu.AddMember("excess", sdk_task.cpu.excess, allocator); 
+
+        rapidjson::Value mem(rapidjson::kObjectType);
+        obj_str.SetString(StringUnit(sdk_task.memory.size).c_str(), allocator);
+        mem.AddMember("size", obj_str, allocator);
+        mem.AddMember("excess", sdk_task.memory.excess, allocator);
+
+        rapidjson::Value tcp(rapidjson::kObjectType);
+        obj_str.SetString(StringUnit(sdk_task.tcp_throt.recv_bps_quota).c_str(), allocator);
+        tcp.AddMember("recv_bps_quota", obj_str, allocator);
+
+        tcp.AddMember("recv_bps_excess", sdk_task.tcp_throt.recv_bps_excess, allocator);
+
+        obj_str.SetString(StringUnit(sdk_task.tcp_throt.send_bps_quota).c_str(), allocator);
+        tcp.AddMember("send_bps_quota", obj_str, allocator);
+
+        tcp.AddMember("send_bps_excess", sdk_task.tcp_throt.send_bps_excess, allocator);
+
+        rapidjson::Value blkio(rapidjson::kObjectType);
+        blkio.AddMember("weight", sdk_task.blkio.weight, allocator);
+
+        rapidjson::Value ports(rapidjson::kArrayType);
+        for (uint32_t j = 0; j < sdk_task.ports.size(); ++j) {
+            rapidjson::Value port(rapidjson::kObjectType);
+            const ::baidu::galaxy::sdk::PortRequired& sdk_port = sdk_task.ports[j];
+            obj_str.SetString(sdk_port.port_name.c_str(), allocator);
+            port.AddMember("name", obj_str, allocator);
+
+            obj_str.SetString(sdk_port.port.c_str(), allocator);
+            port.AddMember("port", obj_str, allocator);
+
+            ports.PushBack(port, allocator);
+        }
+        
+        rapidjson::Value package(rapidjson::kObjectType);
+        
+        obj_str.SetString(sdk_task.exe_package.package.source_path.c_str(), allocator);
+        package.AddMember("source_path", obj_str, allocator);
+
+        obj_str.SetString(sdk_task.exe_package.package.dest_path.c_str(), allocator);
+        package.AddMember("dest_path", obj_str, allocator);
+
+        obj_str.SetString(sdk_task.exe_package.package.version.c_str(), allocator);
+        package.AddMember("version", obj_str, allocator);
+
+        rapidjson::Value exec_package(rapidjson::kObjectType);
+
+        obj_str.SetString(sdk_task.exe_package.start_cmd.c_str(), allocator);
+        exec_package.AddMember("start_cmd", obj_str, allocator);
+
+        obj_str.SetString(sdk_task.exe_package.stop_cmd.c_str(), allocator);
+        exec_package.AddMember("stop_cmd", obj_str, allocator);
+
+        obj_str.SetString(sdk_task.exe_package.health_cmd.c_str(), allocator);
+        exec_package.AddMember("health_cmd", "", allocator);
+        exec_package.AddMember("package", package, allocator);
+
+        rapidjson::Value data_packages(rapidjson::kArrayType);
+        for (uint32_t j = 0; j < sdk_task.data_package.packages.size(); ++j) {
+
+            rapidjson::Value package(rapidjson::kObjectType);
+            const ::baidu::galaxy::sdk::Package& sdk_package = sdk_task.data_package.packages[j];
+
+            obj_str.SetString(sdk_package.source_path.c_str(), allocator);
+            package.AddMember("source_path", obj_str, allocator);
+
+            obj_str.SetString(sdk_package.dest_path.c_str(), allocator);
+            package.AddMember("dest_path", obj_str, allocator);
+
+            obj_str.SetString(sdk_package.version.c_str(), allocator);
+            package.AddMember("version", obj_str, allocator);
+
+            data_packages.PushBack(package, allocator);
+
+        }
+
+        rapidjson::Value data_package(rapidjson::kObjectType);
+        obj_str.SetString(sdk_task.data_package.reload_cmd.c_str(), allocator);
+        data_package.AddMember("reload_cmd", obj_str, allocator);
+        data_package.AddMember("packages", data_packages, allocator);
+
+        rapidjson::Value services(rapidjson::kArrayType);
+        for (uint32_t j = 0; j < sdk_task.services.size(); ++j) {
+            rapidjson::Value service(rapidjson::kObjectType);
+            const ::baidu::galaxy::sdk::Service& sdk_service = sdk_task.services[j];
+            obj_str.SetString(sdk_service.service_name.c_str(), allocator);
+            service.AddMember("service_name", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.port_name.c_str(), allocator);
+            service.AddMember("port_name", obj_str, allocator);
+
+            service.AddMember("user_bns", sdk_service.use_bns, allocator);
+            services.PushBack(service, allocator);
+        }
+
+        rapidjson::Value task(rapidjson::kObjectType);
+        task.AddMember("cpu", cpu, allocator);
+        task.AddMember("mem", mem, allocator);
+        task.AddMember("tcp", tcp, allocator);
+        task.AddMember("blkio", blkio, allocator);
+        task.AddMember("ports", ports, allocator);
+        task.AddMember("exec_package", exec_package, allocator);
+        task.AddMember("data_package", data_package, allocator);
+        task.AddMember("services", services, allocator);
+
+        tasks.PushBack(task, allocator);
+        
+    }
+
+    pod.AddMember("tasks", tasks, allocator);
+    root.AddMember("pod", pod, allocator);
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    root.Accept(writer);
+    std::string str_json = buffer.GetString();
+    fprintf(stdout, "%s\n", str_json.c_str());
+    return true;
+}
+
 
 } // end namespace client
 } // end namespace galaxy

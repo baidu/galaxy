@@ -358,8 +358,8 @@ bool FillImagePackage(const ImagePackage& sdk_image,
 
 bool FilldataPackage(const DataPackage& sdk_data, ::baidu::galaxy::proto::DataPackage* data) {
     bool ok = true;
-    if (sdk_data.reload_cmd.empty()) {
-        fprintf(stderr, "package reload_cmd must not be empty\n");
+    if (sdk_data.packages.size() > 0 && sdk_data.reload_cmd.empty()) {
+        fprintf(stderr, "package reload_cmd must not be empty if size of packages in data_package is greater than 0\n");
         return false;
     }
     data->set_reload_cmd(sdk_data.reload_cmd);
@@ -552,13 +552,13 @@ bool FillPodDescription(const PodDescription& sdk_pod,
 
 bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy) {
     if (sdk_deploy.replica < 0 || sdk_deploy.replica >= 10000) {
-        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+        fprintf(stderr, "deploy replica must be greater than or equal to 0 and less than 10000\n");
         return false;
     }
     deploy->set_replica(sdk_deploy.replica);
 
     if (sdk_deploy.step < 0) {
-        fprintf(stderr, "deploy step must be greater than 0 \n");
+        fprintf(stderr, "deploy step must be greater or and equal to 0 \n");
         return false;
     }
     deploy->set_step(sdk_deploy.step);
