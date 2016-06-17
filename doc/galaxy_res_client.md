@@ -93,12 +93,12 @@ Options:
 ### container容器相关命令
 container相关命令中id指的是容器id，容器组id就是jobid
 #### create_container 创建容器组
-    参数：-f(必选)指定job描述配置文件，文件格式是json格式
+    参数：-f(必选)指定job描述配置文件，文件格式是json格式，可用命令./galaxy_client json命令生成样例
     用法：galaxy_res_client create_container -f job.json
 
 #### update_container 更新容器组
     参数：
-        1. -f（必选）指定job描述配置文件 ，文件格式是json格式
+        1. -f（必选）指定job描述配置文件 ，文件格式是json格式，用命令./galaxy_client json命令生成样例
         2. -i（必选）指定需要更新容器组的id, 也就是jobid
     用法:
         ./galaxy_res_client update_container -f job.json -i jobid
