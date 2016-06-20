@@ -414,6 +414,10 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
     response->desc.cmd_line = pb_response.desc().cmd_line();
     response->desc.max_per_host = pb_response.desc().max_per_host();
     response->desc.tag = pb_response.desc().tag();
+    for (int i = 0; i < pb_response.desc().pool_names().size(); ++i) {
+        response->desc.pool_names.push_back(pb_response.desc().pool_names(i));
+    }
+
     response->desc.workspace_volum.size = pb_response.desc().workspace_volum().size();
     response->desc.workspace_volum.type = (VolumType)pb_response.desc().workspace_volum().type();
     response->desc.workspace_volum.medium = (VolumMedium)pb_response.desc().workspace_volum().medium();
