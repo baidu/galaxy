@@ -234,14 +234,14 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
                 pod->heartbeat_time() << "] now[" <<  ::baidu::common::timer::get_micros()
                 <<"] dead & remove. " << __FUNCTION__;
             DestroyService(pod->mutable_services());
-            if (job->deploying_pods_.find(pod->podid()) != job->deploying_pods_.end()) {
-                job->deploying_pods_.erase(pod->podid());   
-            }
+            //if (job->deploying_pods_.find(pod->podid()) != job->deploying_pods_.end()) {
+            //    job->deploying_pods_.erase(pod->podid());   
+            //}
             pod_checker_.DelayTask(60 * 1000, boost::bind(&JobManager::CheckDeployingAlive, 
                                     this, pod->podid(), job));
-            //if(job->reloading_pods_.find(pod->podid()) != job->reloading_pods_.end()) {
-              //  job->reloading_pods_.erase(pod->podid());
-            //}
+            if(job->reloading_pods_.find(pod->podid()) != job->reloading_pods_.end()) {
+                job->reloading_pods_.erase(pod->podid());
+            }
             delete pod;
         }
         return;
@@ -631,7 +631,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
 
 Status JobManager::TryRebuild(Job* job, PodInfo* podinfo) {
     if (job->deploying_pods_.find(podinfo->podid()) != job->deploying_pods_.end()) {
-        LOG(INFO) << "DEBUG: TryRebuild suspend "
+        LOG(INFO) << "DEBUG: TryRebuild ok "
         << " deploying: " << job->deploying_pods_.size()
         << " step: " << job->desc_.deploy().step();
         return kOk;
