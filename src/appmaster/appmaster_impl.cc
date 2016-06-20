@@ -19,6 +19,7 @@ DECLARE_string(nexus_root);
 DECLARE_string(nexus_addr);
 DECLARE_string(jobs_store_path);
 DECLARE_string(appworker_cmdline);
+DECLARE_int32(safe_interval);
 
 const std::string sMASTERLock = "/appmaster_lock";
 const std::string sMASTERAddr = "/appmaster";
@@ -38,6 +39,11 @@ AppMasterImpl::~AppMasterImpl() {
     delete resman_watcher_;
 }
 
+void AppMasterImpl::RunMaster() {
+    running_ = true;
+    job_manager_.Run();
+    return;
+}
 void AppMasterImpl::Init() {
     if (!resman_watcher_->Init(boost::bind(&AppMasterImpl::HandleResmanChange, this, _1),
                                         FLAGS_nexus_addr, FLAGS_nexus_root, sRESMANPath)) {
@@ -47,7 +53,8 @@ void AppMasterImpl::Init() {
     LOG(INFO) << "init resource manager watcher successfully";
     job_manager_.Start();
     ReloadAppInfo();
-    running_ = true;
+    worker_.DelayTask(FLAGS_safe_interval * 1000,
+                boost::bind(&AppMasterImpl::RunMaster, this));
     return;
 }
 
@@ -406,7 +413,8 @@ void AppMasterImpl::RemoveContainerGroupCallBack(::baidu::galaxy::proto::RemoveJ
                                           bool failed, int) {
     boost::scoped_ptr<const proto::RemoveContainerGroupRequest> request_ptr(request);
     boost::scoped_ptr<proto::RemoveContainerGroupResponse> response_ptr(response);
-    if (failed || response_ptr->error_code().status() != kOk) {
+    if (failed || (response_ptr->error_code().status() != kOk && 
+        response_ptr->error_code().status() != kJobNotFound)) {
         LOG(WARNING) << "fail to remove container group";
         remove_response->mutable_error_code()->set_status(response_ptr->error_code().status());
         remove_response->mutable_error_code()->set_reason(response_ptr->error_code().reason());
@@ -497,12 +505,6 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
     VLOG(10) << "DEBUG: FetchTask"
     << request->DebugString() 
     <<"DEBUG END";
-    if (!running_) {
-        response->mutable_error_code()->set_status(kError);
-        response->mutable_error_code()->set_reason("AM not running");
-        done->Run();
-        return;
-    }
     Status status = job_manager_.HandleFetch(request, response);
     if (status != kOk) {
         LOG(WARNING) << "FetchTask failed, code:" << Status_Name(status) << ", method:" << __FUNCTION__;
