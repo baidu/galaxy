@@ -1123,8 +1123,8 @@ bool JobAction::GenerateJson(const std::string& jobid) {
 
             obj_str.SetString(sdk_service.port_name.c_str(), allocator);
             service.AddMember("port_name", obj_str, allocator);
-
             service.AddMember("use_bns", sdk_service.use_bns, allocator);
+            
             services.PushBack(service, allocator);
         }
 
