@@ -566,7 +566,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
         it = container_groups_.find(request->id());
         if (it == container_groups_.end()) {
-            response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+            response->mutable_error_code()->set_status(proto::kJobNotFound);
             response->mutable_error_code()->set_reason("no such group");
             done->Run();
             return;
