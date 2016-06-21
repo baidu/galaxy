@@ -24,7 +24,7 @@ namespace galaxy {
 namespace sched {
 
 const int sMaxPort = 9999;
-const int sMinPort = 1025;
+const int sMinPort = 1026;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
