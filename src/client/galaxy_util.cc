@@ -571,7 +571,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
 
         data_volums.PushBack(data_volum, allocator);
     }
-    pod.AddMember("data_volums", data_volums, allocator);
+    if (num_data_volums > 0) {
+        pod.AddMember("data_volums", data_volums, allocator);
+    }
 
     rapidjson::Value tasks(rapidjson::kArrayType);
     if (num_tasks < 1) {
@@ -671,10 +673,20 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         task.AddMember("mem", mem, allocator);
         task.AddMember("tcp", tcp, allocator);
         task.AddMember("blkio", blkio, allocator);
-        task.AddMember("ports", ports, allocator);
+        
+        if (num_ports > 0) {
+            task.AddMember("ports", ports, allocator);
+        }
+
         task.AddMember("exec_package", exec_package, allocator);
-        task.AddMember("data_package", data_package, allocator);
-        task.AddMember("services", services, allocator);
+        
+        if (num_data_packages > 0) {
+            task.AddMember("data_package", data_package, allocator);
+        }
+
+        if (num_services > 0) {
+            task.AddMember("services", services, allocator);
+        }
 
         tasks.PushBack(task, allocator);
         
