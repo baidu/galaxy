@@ -41,7 +41,7 @@ Usage:
       galaxy list [-o cpu,mem,volums]
       galaxy show -i id [-o cpu,mem,volums]
       galaxy exec -i id -c cmd
-      galaxy json [-n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
+      galaxy json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
 Options: 
       -f specify config file, job config file or label config file.
       -c specify cmd.
@@ -233,7 +233,10 @@ services infomation
         7. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
         8. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
 
+        提交job的json配置文件中tag, ports, data_volums, data_packages, stop_cmd, health_cmd, data_package, services这些选项如果不需要可以不写
+
 ```
+标准模板
 {
     "name": "example",
     "type": "kJobService",
@@ -318,6 +321,61 @@ services infomation
                         "user_bns": false
                     }
                 ]
+            }
+        ]
+    }
+}
+```
+
+```
+最简模板
+{
+    "name": "example",
+    "type": "kJobService",
+    "deploy": {
+        "replica": 1,
+        "step": 1,
+        "interval": 1,
+        "max_per_host": 1,
+        "pools": "test"
+    },
+    "pod": {
+        "workspace_volum": {
+            "size": "300M",
+            "type": "kEmptyDir",
+            "medium": "kDisk",
+            "dest_path": "/home/work",
+            "readonly": false,
+            "exclusive": false,
+            "use_symlink": false
+        },
+        "tasks": [
+            {
+                "cpu": {
+                    "millicores": 1000,
+                    "excess": false
+                },
+                "mem": {
+                    "size": "800M",
+                    "excess": false
+                },
+                "tcp": {
+                    "recv_bps_quota": "30M",
+                    "recv_bps_excess": false,
+                    "send_bps_quota": "30M",
+                    "send_bps_excess": false
+                },
+                "blkio": {
+                    "weight": 500
+                },
+                "exec_package": {
+                    "start_cmd": "sh app_start.sh",
+                    "package": {
+                        "source_path": "ftp://***.baidu.com/home/users/***/exec/0/linkbase.tar.gz",
+                        "dest_path": "/home/spider/0",
+                        "version": "1.0.0"
+                    }
+                }
             }
         ]
     }
