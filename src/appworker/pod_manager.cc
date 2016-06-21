@@ -220,7 +220,7 @@ int PodManager::DoCreatePod() {
             p_it = pod_.env.task_ports[i].find(port_name);
 
             if (pod_.env.task_ports[i].end() == p_it) {
-                LOG(WARNING) << "### not found: " << port_name;
+                LOG(WARNING) << "### port not found: " << port_name;
                 continue;
             }
 
@@ -229,11 +229,13 @@ int PodManager::DoCreatePod() {
             service_info.set_port(p_it->second);
             service_info.set_ip(pod_.env.ip);
             service_info.set_status(proto::kError);
+            service_info.set_deploy_path(pod_.env.workspace_abspath);
             pod_.services.push_back(service_info);
             LOG(INFO)
                     << "create task: " << i << ", "
                     << "service: " << service_info.name() << ", "
-                    << "port: " << service_info.port();
+                    << "port: " << service_info.port() << ", "
+                    << "deploy_path: " << service_info.deploy_path();
         }
     }
 
