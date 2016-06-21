@@ -98,12 +98,14 @@ private:
     void ReloadAppInfo();
     static void OnMasterLockChange(const ::galaxy::ins::sdk::WatchParam& param,
                             ::galaxy::ins::sdk::SDKError err);
+    void RunMaster();
 
 
 private:
     JobManager job_manager_;
     RpcClient rpc_client_;
     InsSDK *nexus_;
+    ThreadPool worker_;
     std::string resman_endpoint_;
     Watcher* resman_watcher_;
     Mutex resman_mutex_;

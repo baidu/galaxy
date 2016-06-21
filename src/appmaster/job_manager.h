@@ -94,6 +94,7 @@ struct Job {
     int64_t create_time_;
     int64_t update_time_;
     int64_t rollback_time_;
+    uint32_t updated_cnt_;
 };
 
 typedef boost::function<Status (Job* job, void* arg)> TransFunc;
@@ -121,6 +122,7 @@ public:
     void SetResmanEndpoint(std::string new_endpoint);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
     JobDescription GetLastDesc(const JobId jonid);
+    void Run();
     JobManager();
     ~JobManager();
 private:
@@ -162,13 +164,16 @@ private:
                             PodStatus reload_status);
     bool ReachBreakpoint(Job* job);
     void RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
-                                PodInfo* podinfo,
-                                Job* job);
+                    PodInfo* podinfo,
+                    Job* job);
 
     bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
     void RefreshService(ServiceList* src, PodInfo* pod);
     void DestroyService(ServiceList* services);
     void EraseFormDeployList(Job* job, std::string podid);
+    void RebuildPods(Job* job,
+                    const ::baidu::galaxy::proto::FetchTaskRequest* request);
+    void CheckDeployingAlive(std::string id, Job* job);
 
 private:
     std::map<JobId, Job*> jobs_;
@@ -189,6 +194,7 @@ private:
     typedef boost::function<void (Job* job)> AgingFunc;
     std::map<std::string, DispatchFunc> dispatch_;
     std::map<std::string, AgingFunc> aging_;
+    bool running_;
 };
 
 }
