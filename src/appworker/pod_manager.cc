@@ -25,6 +25,7 @@ PodManager::PodManager() :
         background_pool_(10) {
     pod_.status = proto::kPodPending;
     pod_.reload_status = proto::kPodPending;
+    pod_.stage = kPodStageCreating;
     pod_.fail_count = 0;
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
