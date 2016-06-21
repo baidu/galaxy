@@ -18,7 +18,7 @@ DEFINE_string(o, "", "operation");
 
 DECLARE_string(flagfile);
 
-const std::string kGalaxyUsage = "galaxy.\n"
+const std::string kGalaxyUsage = "galaxy_client.\n"
                                  "Usage:\n"
                                  "      galaxy submit -f <jobconfig>\n"
                                  "      galaxy update -f <jobconfig> -i id [-t breakpoint -o pause|continue|rollback]\n"
@@ -27,7 +27,7 @@ const std::string kGalaxyUsage = "galaxy.\n"
                                  "      galaxy list [-o cpu,mem,volums]\n"
                                  "      galaxy show -i id [-o cpu,mem,volums]\n"
                                  "      galaxy exec -i id -c cmd\n"
-                                 "      galaxy json [-n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
+                                 "      galaxy json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
                                  "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
@@ -101,13 +101,17 @@ int main(int argc, char** argv) {
         }
         ok = jobAction->ExecuteCmd(FLAGS_i, FLAGS_c);
     } else if (strcmp(argv[1], "json") == 0) { 
-        ok = ::baidu::galaxy::client::GenerateJson(FLAGS_t, 
-                                                   FLAGS_d,
-                                                   FLAGS_p, 
-                                                   FLAGS_a, 
-                                                   FLAGS_s,
-                                                   FLAGS_n
-                                                  ); 
+        if (FLAGS_i.empty()) {
+            ok = ::baidu::galaxy::client::GenerateJson(FLAGS_t, 
+                                                       FLAGS_d,
+                                                       FLAGS_p, 
+                                                       FLAGS_a, 
+                                                       FLAGS_s,
+                                                       FLAGS_n
+                                                      ); 
+        } else {
+            ok = jobAction->GenerateJson(FLAGS_i);
+        }
     }else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;

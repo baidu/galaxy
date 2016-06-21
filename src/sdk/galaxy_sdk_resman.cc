@@ -414,6 +414,10 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
     response->desc.cmd_line = pb_response.desc().cmd_line();
     response->desc.max_per_host = pb_response.desc().max_per_host();
     response->desc.tag = pb_response.desc().tag();
+    for (int i = 0; i < pb_response.desc().pool_names().size(); ++i) {
+        response->desc.pool_names.push_back(pb_response.desc().pool_names(i));
+    }
+
     response->desc.workspace_volum.size = pb_response.desc().workspace_volum().size();
     response->desc.workspace_volum.type = (VolumType)pb_response.desc().workspace_volum().type();
     response->desc.workspace_volum.medium = (VolumMedium)pb_response.desc().workspace_volum().medium();
@@ -1301,8 +1305,8 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
     }
     quota->set_ssd(request.quota.ssd);
 
-    if (request.quota.replica <= 0 || request.quota.replica >= 10000) {
-        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+    if (request.quota.replica <= 0) {
+        fprintf(stderr, "assign replica must be greater than 0\n");
         return false;
     }
     quota->set_replica(request.quota.replica);

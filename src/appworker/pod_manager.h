@@ -20,6 +20,7 @@ namespace galaxy {
 typedef proto::PodDescription PodDescription;
 typedef proto::PodStatus PodStatus;
 typedef proto::ServiceInfo ServiceInfo;
+typedef proto::Status Status;
 
 struct PodEnv {
     std::string user;
@@ -52,6 +53,7 @@ struct Pod {
     PodDescription desc;
     int32_t fail_count;
     std::vector<ServiceInfo> services;
+    Status health;
 };
 
 class PodManager {
@@ -72,18 +74,24 @@ private:
     int DoStopPod();
     int DoClearPod();
     // reload
-    int DoReloadDeployPod();
-    int DoReloadStartPod();
-
+    int DoDeployReloadPod();
+    int DoStartReloadPod();
+    // loop
     void LoopChangePodStatus();
     void LoopChangePodReloadStatus();
-    void LoopCheckPodServiceStatus();
+    void LoopCheckPodService();
+    void LoopCheckPodHealth();
+    // health check
+    int DoStartPodHealthCheck();
+    int DoClearPodHealthCheck();
+    // status check
     void PendingPodCheck();
     void ReadyPodCheck();
     void DeployingPodCheck();
     void StartingPodCheck();
     void StoppingPodCheck();
     void RunningPodCheck();
+    void PodHealthCheck();
 
 private:
     Mutex mutex_;
@@ -95,4 +103,4 @@ private:
 } // ending namespace galaxy
 } // ending namespace baidu
 
-#endif  // BAIDU_GALAXY_POD_MANAGER_H
+#endif // BAIDU_GALAXY_POD_MANAGER_H
