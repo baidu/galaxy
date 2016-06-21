@@ -41,7 +41,7 @@ Usage:
       galaxy list [-o cpu,mem,volums]
       galaxy show -i id [-o cpu,mem,volums]
       galaxy exec -i id -c cmd
-      galaxy json [-n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
+      galaxy json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
 Options: 
       -f specify config file, job config file or label config file.
       -c specify cmd.
