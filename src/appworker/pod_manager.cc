@@ -175,7 +175,6 @@ int PodManager::DoCreatePod() {
     }
 
     pod_.pod_id = pod_.env.pod_id;
-    pod_.status = proto::kPodReady;
     pod_.stage = kPodStageCreating;
     pod_.fail_count = 0;
     LOG(INFO) << "create pod, task size: " << tasks_size;
@@ -262,6 +261,7 @@ int PodManager::DoDeployPod() {
         if (0 != task_manager_.DeployTask(task_id)) {
             LOG(WARNING) << "create task deploy process fail, task: " << task_id;
             DoClearPod();
+            pod_.status = proto::kPodPending;
             return -1;
         }
 
