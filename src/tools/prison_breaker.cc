@@ -86,9 +86,9 @@ int main(int argc, char *argv[])
       errExit("setns");
 
 
-    char* mounts[] = {"/proc", NULL};
+    const char* mounts[] = {"/proc", NULL};
     int i = 0;
-    char* x = mounts[i];
+    const char* x = mounts[i];
     while (x != NULL) {
         if (strcmp(mounts[i], "/proc") != 0) {
             std::string target = root_path + mounts[i];
@@ -113,8 +113,8 @@ int main(int argc, char *argv[])
     pid_t pid = fork();
 
     if (pid == 0) {
-        char* cmd[] = {"sh", "-c", "/bin/sh -l", NULL};
-        execv("/bin/sh", cmd);
+        const char* cmd[] = {"sh", "-c", "/bin/sh -l", NULL};
+        execv("/bin/sh", (char**)cmd);
         perror("hh");
     } else if (pid > 0) {
         waitpid(pid, NULL, 0);
