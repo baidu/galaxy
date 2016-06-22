@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
         } else {
             ok = jobAction->GenerateJson(FLAGS_i);
         }
-    }else {
+    } else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;
     }

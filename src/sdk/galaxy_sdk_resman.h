@@ -24,6 +24,9 @@ public:
 
     //Status
     virtual bool Status(const StatusRequest& request, StatusResponse* response) = 0;
+    virtual bool MasterEndpoint(const std::string& appmaster_path, 
+                          std::string* appmaster_endpoint, 
+                          std::string* resman_endpoint) = 0;
 
     //Container
     virtual bool CreateContainerGroup(const CreateContainerGroupRequest& request, 

@@ -447,6 +447,7 @@ jobs assigned quota infomation
                               list_containers,submit_job,remove_job,update_job,list_jobs
     用法:
         ./galaxy_res_client grant_user -u galaxy -p test -o add -a create_container
+        ./galaxy_res_client grant_user -u galaxy -p test -o add -a create_container,remove_container
         ./galaxy_res_client grant_user -u galaxy -p test -o remove -a remove_job
 #### assign_quota 分配quota给用户
 quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ssd大小，内存大小
@@ -454,9 +455,9 @@ quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ss
     参数:
         1. -u（必选）用户名
         2. -c（必选） cpu核数*1000,如2000
-        3. -d（必选）disk大小, 单位有K, M, G, T, B, Z
-        4. -s（必选）ssd大小, 单位有K, M, G, T, B, Z
-        5. -m（必选）内存大小, 单位有K, M, G, T, B, Z
+        3. -d（必选）disk大小, 单位有K, M, G, T, P, E
+        4. -s（必选）ssd大小, 单位有K, M, G, T, P, E
+        5. -m（必选）内存大小, 单位有K, M, G, T, P, E
         6. -r （必选）副本数量
     用法:
         galaxy_res_client assign_quota -u galaxy -c 1000 -d 1G -s 800M -m 1G -r 10000

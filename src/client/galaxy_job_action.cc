@@ -913,11 +913,18 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
 }
 
 std::string JobAction::StringUnit(int64_t num) {
-    std::string input = HumanReadableString(num);
-    size_t pos = input.rfind(".");
-    std::string result(input, 0, pos);
-    result += input[input.size()-1];
-    return result;
+    static const int max_shift = 6;
+    static const char* const prefix[max_shift + 1] = {"", "K", "M", "G", "T", "P", "E"};
+    int shift = 0;
+    int64_t v = num;
+    while ((num>>=10) > 0 && shift < max_shift) {
+        if (v % 1024 != 0) {
+            break;
+        }
+        v /= 1024;
+        shift++;
+    }   
+    return ::baidu::common::NumToString(v) + prefix[shift];
 }
 
 bool JobAction::GenerateJson(const std::string& jobid) {

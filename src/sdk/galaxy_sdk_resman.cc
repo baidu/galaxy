@@ -32,6 +32,10 @@ public:
     }
 
     bool GetStub();
+    bool MasterEndpoint(const std::string& appmaster_path, 
+             std::string* appmaster_endpoint, 
+             std::string* resman_endpoint);
+
     bool EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response);
     bool LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response);
     bool Status(const StatusRequest& request, StatusResponse* response);
@@ -74,19 +78,36 @@ private:
     ::baidu::galaxy::RpcClient* rpc_client_;
     ::baidu::galaxy::proto::ResMan_Stub* res_stub_;
     std::string full_key_;
+    std::string endpoint_;
 };
 
-bool ResourceManagerImpl::GetStub() {
-    std::string endpoint;
+bool ResourceManagerImpl::MasterEndpoint(const std::string& appmaster_path, 
+             std::string* appmaster_endpoint, 
+             std::string* resman_endpoint) {
+    if (appmaster_endpoint == NULL || resman_endpoint == NULL) {
+        return false;
+    }
     ::galaxy::ins::sdk::SDKError err;
-    bool ok = nexus_->Get(full_key_, &endpoint, &err);
+    bool ok = nexus_->Get(appmaster_path, appmaster_endpoint, &err);
     if (!ok || err != ::galaxy::ins::sdk::kOK) {
-        fprintf(stderr, "get appmaster endpoint from nexus failed: %s\n",
+        fprintf(stderr, "get appmaster endpoint from nexus failed: %s\n", 
                 ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
         return false;
     }
-    if(!rpc_client_->GetStub(endpoint, &res_stub_)) {
-        fprintf(stderr, "connect resmanager fail, resmanager: %s\n", endpoint.c_str());
+    *resman_endpoint = endpoint_;
+    return true;
+}
+
+bool ResourceManagerImpl::GetStub() {
+    ::galaxy::ins::sdk::SDKError err;
+    bool ok = nexus_->Get(full_key_, &endpoint_, &err);
+    if (!ok || err != ::galaxy::ins::sdk::kOK) {
+        fprintf(stderr, "get resmananager endpoint from nexus failed: %s\n",
+                ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        return false;
+    }
+    if(!rpc_client_->GetStub(endpoint_, &res_stub_)) {
+        fprintf(stderr, "connect resmanager fail, resmanager: %s\n", endpoint_.c_str());
         return false;
     }
     return true;
