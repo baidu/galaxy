@@ -12,8 +12,9 @@ galaxy_res_client
 --nexus_addr=xxx1:8888,xxx2:8888
 --nexus_root=xxx
 --resman_path=xxx 
+--appmaster_path=xxx
 ```
-注：--nexus_root和--resman_path不需要强制配置，可以使用默认值
+注：--nexus_root, --resman_path 和--appmaster_path不需要强制配置，可以使用默认值
 
 测试配置是否正确
 ```
@@ -243,6 +244,13 @@ containers infomation
     用法:
         ./galaxy_res_client offline_agent -e xxxx:6666
 
+#### preempt 抢占式调度
+    参数:
+        1. -i（必选） 容器组id(jobid) 
+        2. -e（必选）endpoint, ip:port形式
+    用法：
+        galaxy_res_client preempt -i container_group_id -e endpoint
+
 #### show_agent 展示agent上的所有容器信息
     参数:
         1. -e（必选）endpoint
@@ -332,6 +340,12 @@ containers infomation
 ### status galaxy的整体情况
     用法：./galaxy_res_client status
 ```
+master infomation
+      master     addr                                
+---------------------------------------------------
+    appmaster    xxxx:xxx
+      resman     xxxx:xxx
+
 cluster agent infomation
   total  alive  dead
 ----------------------
