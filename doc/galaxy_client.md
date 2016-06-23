@@ -59,6 +59,9 @@ Options:
 ### submit 提交一个job
     参数：-f(必选)指定job描述配置文件，文件格式是json格式
     用法：./galaxy_client submit -f job.json
+    说明:
+        1. job的name只支持字母和数字，如果是其他特殊字符，则会被替换成下划线"_", 超过16个字符会被截断
+        2. json配置文件的生成见 * json 生成json格式的job配置文件 *
 
 ### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
     参数：
@@ -210,7 +213,7 @@ services infomation
     用法：
         ./galaxy_client -i jobid -c cmd
     
-### json 生成一json格式的job配置文件
+### json 生成json格式的job配置文件
     参数：
         1. -i(可选) 指定jobid, 可生成指定jobid的job配置
         2. -n(可选) 指定jobname，默认为example
