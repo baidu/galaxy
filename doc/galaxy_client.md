@@ -1,7 +1,6 @@
 Galaxy客户端使用
 ===================
 
-[TOC]
 #客户端名称
 galaxy_client
 
