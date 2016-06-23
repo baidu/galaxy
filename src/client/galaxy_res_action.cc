@@ -9,6 +9,7 @@
 DEFINE_string(nexus_root, "/galaxy3", "root prefix on nexus");
 DEFINE_string(nexus_addr, "", "nexus server list");
 DEFINE_string(resman_path, "/resman", "resman path on nexus");
+DEFINE_string(appmaster_path, "/appmaster", "appmaster path on nexus");
 DEFINE_string(username, "default", "username");
 DEFINE_string(token, "default", "token");
 
@@ -1207,9 +1208,25 @@ bool ResAction::Status() {
     ::baidu::galaxy::sdk::StatusRequest request;
     ::baidu::galaxy::sdk::StatusResponse response;
     request.user = user_;
-
-    bool ret = resman_->Status(request, &response);
+    
+    std::string resman_endpoint;
+    std::string appmaster_endpoint;
+    std::string path = FLAGS_nexus_root + FLAGS_appmaster_path;
+    bool ret = resman_->MasterEndpoint(path, &appmaster_endpoint, &resman_endpoint);
+    if (!ret) {
+        fprintf(stderr, "get master endpoint failed\n");
+        return false;
+    }
+    
+    ret = resman_->Status(request, &response);
     if (ret) {
+        printf("master infomation\n");
+        baidu::common::TPrinter master(2);
+        master.AddRow(2, "master", "addr");
+        master.AddRow(2, "appmaster", appmaster_endpoint.c_str());
+        master.AddRow(2, "resman", resman_endpoint.c_str());
+        printf("%s\n", master.ToString().c_str());
+
         printf("cluster agent infomation\n");
         ::baidu::common::TPrinter agent(3); 
         agent.AddRow(3, "total", "alive", "dead");
@@ -1620,7 +1637,7 @@ bool ResAction::AssignQuota(const std::string& user,
     ::baidu::galaxy::sdk::AssignQuotaRequest request;
     ::baidu::galaxy::sdk::AssignQuotaResponse response;
     request.admin = user_;
-    request.user.user  = user;
+    request.user.user = user;
     request.quota = quota;
 
     bool ret = resman_->AssignQuota(request, &response);

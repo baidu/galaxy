@@ -427,8 +427,8 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     subfix_table['M'] = 2;
     subfix_table['G'] = 3;
     subfix_table['T'] = 4;
-    subfix_table['B'] = 5;
-    subfix_table['Z'] = 6;
+    subfix_table['P'] = 5;
+    subfix_table['E'] = 6;
 
     int64_t num = 0;
     char subfix = 0;
@@ -442,7 +442,7 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     if (matched == 2) {
         std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
         if (it == subfix_table.end()) {
-            fprintf(stderr, "unit is error, it must be in [K, M, G, T, B, Z]\n");
+            fprintf(stderr, "unit is error, it must be in [K, M, G, T, P, E]\n");
             return -1;
         }
         shift = it->second;
