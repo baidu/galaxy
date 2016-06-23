@@ -1,6 +1,7 @@
 Galaxy客户端使用
 ===================
 
+[TOC]
 #客户端名称
 galaxy_client
 
@@ -61,7 +62,7 @@ Options:
     用法：./galaxy_client submit -f job.json
     说明:
         1. job的name只支持字母和数字，如果是其他特殊字符，则会被替换成下划线"_", 超过16个字符会被截断
-        2. json配置文件的生成见 * json 生成json格式的job配置文件 *
+        2. json配置文件的生成见 **json 生成json格式的job配置文件**
 
 ### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
     参数：
