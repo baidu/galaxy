@@ -230,6 +230,7 @@ void AppWorkerImpl::PrepareEnvs() {
     env.workspace_path = workspace_path;
     env.workspace_abspath = workspace_abspath;
     env.ip = ip_;
+    env.hostname = hostname_;
     env.job_id = job_id_;
     env.pod_id = pod_id_;
     env.task_ids = task_ids;
@@ -246,6 +247,7 @@ void AppWorkerImpl::Init() {
     PrepareEnvs();
     LOG(INFO)
             << "appworker start, endpoint: " << endpoint_ << ", "
+            << "hostname: " << hostname_ << ", "
             << "job_id: " << job_id_ << ", pod_id: " << pod_id_;
 
     return;

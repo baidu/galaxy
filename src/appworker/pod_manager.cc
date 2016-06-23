@@ -226,6 +226,7 @@ int PodManager::DoCreatePod() {
 
             ServiceInfo service_info;
             service_info.set_name(service.service_name());
+            service_info.set_hostname(pod_.env.hostname);
             service_info.set_port(p_it->second);
             service_info.set_ip(pod_.env.ip);
             service_info.set_status(proto::kError);
@@ -235,6 +236,7 @@ int PodManager::DoCreatePod() {
                     << "create task: " << i << ", "
                     << "service: " << service_info.name() << ", "
                     << "port: " << service_info.port() << ", "
+                    << "hostname: " << service_info.hostname() << ", "
                     << "deploy_path: " << service_info.deploy_path();
         }
     }

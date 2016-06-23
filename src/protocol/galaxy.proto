@@ -264,6 +264,7 @@ message ServiceInfo {
     optional string ip = 3;
     optional Status status = 4;
     optional string deploy_path = 5;
+    optional string hostname = 6;
 }
 
 message TaskDescription {
