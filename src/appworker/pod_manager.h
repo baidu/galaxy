@@ -29,6 +29,7 @@ struct PodEnv {
     std::string job_id;
     std::string pod_id;
     std::string ip;
+    std::string hostname;
     std::vector<std::string> task_ids;
     std::vector<std::string> cgroup_subsystems;
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
