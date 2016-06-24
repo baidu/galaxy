@@ -59,6 +59,9 @@ Options:
 ### submit 提交一个job
     参数：-f(必选)指定job描述配置文件，文件格式是json格式
     用法：./galaxy_client submit -f job.json
+    说明:
+        1. job的name只支持字母和数字，如果是其他特殊字符，则会被替换成下划线"_", 超过16个字符会被截断
+        2. json配置文件的生成见 **json 生成json格式的job配置文件**
 
 ### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
     参数：
@@ -210,7 +213,7 @@ services infomation
     用法：
         ./galaxy_client -i jobid -c cmd
     
-### json 生成一json格式的job配置文件
+### json 生成json格式的job配置文件
     参数：
         1. -i(可选) 指定jobid, 可生成指定jobid的job配置
         2. -n(可选) 指定jobname，默认为example
@@ -225,13 +228,12 @@ services infomation
         ./galaxy_client json -n example -d 2
     说明:
         1. type的value必须为kJobMonitor, kJobService, kJobBatch, kJobBestEffort中的一个
-        2. json中的deploy配置中的每一项都需要, 但tag的value可以为空,如"tag": ""
-        3. volum中medium的value必须为kSsd, kDisk, kBfs, kTmpfs中的一个
-        4. volum中type的value:kEmptyDir, kHostDir
-        5. 所有volums中的dest_path的value不能重复
-        6. 配置中所有size以及recv_bps_quota, send_bps_quota的value支持的单位有K, M, G, T, P, E, 如1G
-        7. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
-        8. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
+        2. volum中medium的value必须为kSsd, kDisk, kBfs, kTmpfs中的一个
+        3. volum中type的value:kEmptyDir, kHostDir
+        4. 所有volums中的dest_path的value不能重复
+        5. 配置中所有size以及recv_bps_quota, send_bps_quota的value支持的单位有K, M, G, T, P, E, 如1G
+        6. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
+        7. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
 
         提交job的json配置文件中tag, ports, data_volums, data_packages, stop_cmd, health_cmd, data_package, services这些选项如果不需要可以不写
 
