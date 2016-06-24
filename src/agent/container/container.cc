@@ -52,6 +52,7 @@ Container::Container(const ContainerId& id, const baidu::galaxy::proto::Containe
     id_(id),
     status_(id.SubId()),
     created_time_(0L),
+    destroy_time_(0L),
     force_kill_time_(-1L)
 {
 }
@@ -60,34 +61,36 @@ Container::~Container()
 {
 }
 
-ContainerId Container::Id() const
+const ContainerId& Container::Id() const
 {
     return id_;
 }
 
-int Container::Construct()
+baidu::galaxy::util::ErrorCode Container::Construct()
 {
     baidu::galaxy::util::ErrorCode ec = status_.EnterAllocating();
 
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << ec.Message();
-        return 0;
+        return ERRORCODE_OK;
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
         LOG(WARNING) << "construct failed " << id_.CompactId() << ": " << ec.Message();
-        return -1;
+        return ERRORCODE(-1, "state machine error");
     }
     
     created_time_ = baidu::common::timer::get_micros();
-    int ret = Construct_();
 
-    if (0 != ret) {
+    // err && ec, return err not ec, ec is just a temporary var
+    baidu::galaxy::util::ErrorCode err = Construct_();
+
+    if (0 != err.Code()) {
         ec = status_.EnterError();
-        LOG(WARNING) << "construct contaier " << id_.CompactId() << " failed";
+        LOG(WARNING) << "construct container " << id_.CompactId() << " failed";
 
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
-            LOG(FATAL) << "contaner " << id_.CompactId() << ": " << ec.Message();
+            LOG(FATAL) << "container " << id_.CompactId() << ": " << ec.Message();
         }
     } else {
         ec = status_.EnterReady();
@@ -96,31 +99,31 @@ int Container::Construct()
         }
     }
 
-    if (0 == ret) {
+    if (0 == err.Code()) {
         LOG(INFO) << "sucess in constructing container " << id_.CompactId();
     } else {
         LOG(INFO) << "failed to construct container " << id_.CompactId();
     }
-    return ret;
+    return err;
 }
 
-int Container::Destroy()
+baidu::galaxy::util::ErrorCode Container::Destroy()
 {
     baidu::galaxy::util::ErrorCode ec = status_.EnterDestroying();
 
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << "container  " << id_.CompactId() << " is in kContainerDestroying status: " << ec.Message();
-        return 0;
+        ERRORCODE_OK;
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
         LOG(WARNING) << "destroy container " << id_.CompactId() << " failed: " << ec.Message();
-        return -1;
+        return ERRORCODE(-1, "status machine");
     }
 
-    int ret = Destroy_();
+    baidu::galaxy::util::ErrorCode ret = Destroy_();
 
-    if (0 != ret) {
+    if (0 != ret.Code()) {
         ec = status_.EnterError();
 
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
@@ -132,12 +135,14 @@ int Container::Destroy()
         if (ec.Code() != baidu::galaxy::util::kErrorOk) {
             LOG(FATAL) << "destroy container " << id_.CompactId() << " failed: " << ec.Message();
         }
+        destroy_time_ = baidu::common::timer::get_micros();
+        LOG(INFO) << "destroy container " << id_.CompactId() << " sucessful";
     }
 
     return ret;
 }
 
-int Container::Construct_()
+baidu::galaxy::util::ErrorCode Container::Construct_()
 {
     assert(!id_.Empty());
     // cgroup
@@ -146,14 +151,14 @@ int Container::Construct_()
     int ret = ConstructCgroup();
     if (0 != ret) {
         LOG(WARNING) << "failed in constructing cgroup for contanier " << id_.CompactId();
-        return -1;
+        return ERRORCODE(-1, "cgroup failed");
     }
     LOG(INFO) << "succeed in constructing cgroup for contanier " << id_.CompactId();
    
     ret = ConstructVolumGroup();
     if (0 != ret) {
         LOG(WARNING) << "failed in constructing volum group for container " << id_.CompactId();
-        return -1;
+        return ERRORCODE(-1, "volum failed");
     }
     LOG(INFO) << "succeed in constructing volum group for container " << id_.CompactId();
 
@@ -162,17 +167,17 @@ int Container::Construct_()
     ret = ConstructProcess();
     if (0 != ret) {
         LOG(WARNING) << "failed in constructing process for container " << id_.CompactId();
-        return -1;
+        return ERRORCODE(-1, "clone failed");
     }    
     LOG(INFO) << "succeed in construct process (whose pid is " << process_->Pid()
               << ") for container " << id_.CompactId();
-    return 0;
+
+    return ERRORCODE_OK;
 }
 
 
 int Container::Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
     assert(!id_.Empty());
-    
     created_time_ = meta->created_time();
     status_.EnterAllocating();
     int ret = ConstructCgroup();
@@ -279,7 +284,7 @@ int Container::ConstructProcess() {
 }
     
     
-int Container::Destroy_()
+baidu::galaxy::util::ErrorCode Container::Destroy_()
 {
     // kill appwork
     pid_t pid = process_->Pid();
@@ -288,7 +293,7 @@ int Container::Destroy_()
         if (ec.Code() != 0) {
             LOG(WARNING) << "failed in killing appwork for container "
                 << id_.CompactId() << ": " << ec.Message();
-            return -1;
+            return ERRORCODE(-1, "kill appworker");
         }
     }
     LOG(INFO) << "container " << id_.CompactId() << " suceed in killing appwork whose pid is " << pid;
@@ -299,7 +304,7 @@ int Container::Destroy_()
         if (0 != ec.Code()) {
             LOG(WARNING) << "container " << id_.CompactId()
                          << " failed in destroying cgroup: " << ec.Message();
-            return -1;
+            return ERRORCODE(-1, "cgroup");
         }
         LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy cgroup";
     }
@@ -309,18 +314,17 @@ int Container::Destroy_()
     if (0 != ec.Code()) {
         LOG(WARNING) << "failed in destroying volum group in container " << id_.CompactId()
             << " " << ec.Message();
-        return -1;
+        return ERRORCODE(-1, "volum");
     }
     LOG(INFO) << "container " << id_.CompactId() << " suceed in destroy volum";
-    // mv to gc queue
-    return 0;
+    return ERRORCODE_OK;
 }
 
 int Container::RunRoutine(void*)
 {
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
-        std::cout << "mount root fs failed" << std::endl;
+        std::cerr << "mount root fs failed" << std::endl;
         return -1;
     }
 
@@ -329,7 +333,7 @@ int Container::RunRoutine(void*)
     std::cout << "succed in mounting root fs\n";
     // change root
     if (0 != ::chroot(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str())) {
-        std::cout << "chroot failed: " << strerror(errno) << std::endl;
+        std::cerr << "chroot failed: " << strerror(errno) << std::endl;
         return -1;
     }
     std::cout << "chroot successfully:" << baidu::galaxy::path::ContainerRootPath(Id().SubId()) << std::endl;
@@ -359,7 +363,7 @@ int Container::RunRoutine(void*)
 
     ExportEnv();
     ::execv("/bin/sh", argv);
-    std::cout << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
+    std::cerr << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
     return -1;
 }
 
@@ -415,7 +419,7 @@ baidu::galaxy::proto::ContainerStatus Container::Status()
 void Container::KeepAlive()
 {
     int64_t now = baidu::common::timer::get_micros();
-    if (now - created_time_ < 2000000L) {
+    if (now - created_time_ < 10000000L) {
         return;
     }
 
@@ -446,15 +450,14 @@ void Container::KeepAlive()
             }
 
         }
-    } else {
-        LOG(INFO) << "i am alive ...";
-    }
+    } 
 }
 
 bool Container::Alive()
 {
     int pid = (int)process_->Pid();
     if (pid <= 0) {
+        LOG(WARNING) << "process id is le 0 " << id_.CompactId();
         return false;
     }
 
@@ -462,7 +465,8 @@ bool Container::Alive()
     path << "/proc/" << (int)pid << "/environ";
     FILE* file = fopen(path.str().c_str(), "rb");
     if (NULL == file) {
-        LOG(WARNING) << "failed in openning file " << path.str() << ": " << strerror(errno);
+        LOG(WARNING) << id_.CompactId() << " failed in openning file " 
+            << path.str() << ": " << strerror(errno);
         return false;
     }
 
@@ -498,6 +502,7 @@ bool Container::Alive()
         }
     }
 
+    LOG(WARNING) << "donot find env " << id_.CompactId();
     return false;
 }
 
@@ -572,6 +577,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta(
     ret->set_created_time(created_time_);
     ret->set_pid(process_->Pid());
     ret->mutable_container()->CopyFrom(desc_);
+    ret->set_destroy_time(destroy_time_);
     return ret;
 }
 
@@ -589,8 +595,10 @@ boost::shared_ptr<ContainerProperty> Container::Property() {
     property->workspace_volum_.phy_gc_path = wv->SourceGcPath();
     property->workspace_volum_.medium = baidu::galaxy::proto::VolumMedium_Name(wv->Description()->medium());
     property->workspace_volum_.quota = wv->Description()->size();
+    property->workspace_volum_.phy_gc_root_path = wv->SourceGcRootPath();
+
+
     // 
-    
     for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
         ContainerProperty::Volum cv;
         const boost::shared_ptr<baidu::galaxy::volum::Volum> v = volum_group_->DataVolum(i);
@@ -598,6 +606,7 @@ boost::shared_ptr<ContainerProperty> Container::Property() {
         cv.phy_source_path = v->SourcePath();
         cv.container_rel_path = v->Description()->dest_path();
         cv.phy_gc_path = v->SourceGcPath();
+        cv.phy_gc_root_path = v->SourceGcRootPath();
         cv.medium = baidu::galaxy::proto::VolumMedium_Name(v->Description()->medium());
         cv.quota = v->Description()->size();
         property->data_volums_.push_back(cv);
@@ -626,6 +635,23 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMet
     cm->set_time(baidu::common::timer::get_micros());
     return cm;
 }
+
+int64_t Container::DestroyTimeInSecond() {
+    return destroy_time_/1000000L;
+}
+
+int64_t Container::ConstructTimeInSecond() {
+    return created_time_/1000000L;
+}
+
+std::string Container::ContainerGcPath() {
+    return volum_group_->ContainerGcPath();
+}
+
+std::string ContainerWorkPath() {
+    return "";
+}
+
 
 } //namespace container
 } //namespace galaxy

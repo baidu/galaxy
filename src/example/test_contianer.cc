@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 
     baidu::galaxy::container::ContainerId id("group_id", "container_id");
     baidu::galaxy::container::Container container(id, cd);
-    if (0 != container.Construct()) {
+    if (0 != container.Construct().Code()) {
         std::cout << "construct container fail" << std::endl;
         //container.Destroy();
         return -1;

@@ -19,9 +19,9 @@ public:
         std::string phy_source_path;
         std::string container_abs_path;
         std::string phy_gc_path;
+        std::string phy_gc_root_path;
         int64_t quota;
         std::string medium;
-
         std::string ToString() const;
     };
 
@@ -29,6 +29,7 @@ public:
     std::vector<Volum> data_volums_;
     int pid_;
     int32_t created_time_;
+    int32_t destroy_time_;
     std::string group_id_;
     std::string container_id_;
 

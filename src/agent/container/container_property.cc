@@ -18,12 +18,13 @@ namespace baidu {
 namespace galaxy {
 namespace container {
 
-std::string container_rel_path;
-std::string phy_source_path;
-std::string container_abs_path;
-std::string phy_gc_path;
-int64_t size;
-std::string medium;
+//std::string container_rel_path;
+//std::string phy_source_path;
+//std::string container_abs_path;
+//std::string phy_gc_path;
+//std::string phy_gc_root_path;
+//int64_t size;
+//std::string medium;
 
 std::string ContainerProperty::Volum::ToString() const {
     std::stringstream ss;
@@ -31,6 +32,7 @@ std::string ContainerProperty::Volum::ToString() const {
     GENPROPERTY(ss, "container_abs_path", container_abs_path);
     GENPROPERTY(ss, "phy_source_path", phy_source_path);
     GENPROPERTY(ss, "phy_gc_path", phy_gc_path);
+    GENPROPERTY(ss, "phy_gc_root_path", phy_gc_root_path);
     GENPROPERTY(ss, "quota", quota);
     GENPROPERTY(ss, "medium", medium);
     return ss.str();

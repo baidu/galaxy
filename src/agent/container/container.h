@@ -99,30 +99,31 @@ public:
     void AddEnv(const std::string& key, const std::string& value);
     void AddEnv(const std::map<std::string, std::string>& env);
 
-    ContainerId Id() const;
-    int Construct();
-    int Destroy();
+    const ContainerId& Id() const;
+    baidu::galaxy::util::ErrorCode Construct();
+    baidu::galaxy::util::ErrorCode Destroy();
     int Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
-
     baidu::galaxy::proto::ContainerStatus Status();
     const baidu::galaxy::proto::ContainerDescription& Description();
     boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info);
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta();
     boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> ContainerMetrix();
     boost::shared_ptr<ContainerProperty> Property();
+    std::string ContainerGcPath();
+    std::string ContainerWorkPath();
     void KeepAlive();
     bool Alive();
+    int64_t DestroyTimeInSecond();
+    int64_t ConstructTimeInSecond();
 
     // container will be killed after rel_sec seconds
     void SetExpiredTimeIfAbsent(int32_t rel_sec);
-
     bool Expired();
-
     bool TryKill();
 
 private:
-    int Construct_();
-    int Destroy_();
+    baidu::galaxy::util::ErrorCode Construct_();
+    baidu::galaxy::util::ErrorCode Destroy_();
 
     int ConstructCgroup();
     int ConstructVolumGroup();
@@ -139,6 +140,7 @@ private:
     ContainerId id_;
     baidu::galaxy::container::ContainerStatus status_;
     int64_t created_time_;
+    int64_t destroy_time_;
     int64_t force_kill_time_;
 
 };

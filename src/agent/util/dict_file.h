@@ -13,6 +13,10 @@ namespace baidu {
 namespace galaxy {
 namespace file {
 
+static const int kNotFound = 1;
+static const int kError = -1;
+static const int kOk = 0;
+
 class DictFile {
 public:
     class Kv {
@@ -27,6 +31,9 @@ public:
     baidu::galaxy::util::ErrorCode GetLastError();
 
     baidu::galaxy::util::ErrorCode Write(const std::string& key, const std::string& value);
+
+    // if not exist return kNotFound, value is empty
+    baidu::galaxy::util::ErrorCode Read(const std::string& key, std::string& value);
     baidu::galaxy::util::ErrorCode Delete(const std::string& key);
     baidu::galaxy::util::ErrorCode Scan(const std::string& begin_key, 
                 const std::string& end_key,

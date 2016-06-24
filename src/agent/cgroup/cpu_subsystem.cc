@@ -57,14 +57,6 @@ baidu::galaxy::util::ErrorCode CpuSubsystem::Construct()
         if (err.Code() != 0) {
             return ERRORCODE(-1, "%s", err.Message().c_str());
         }
-
-        err = baidu::galaxy::cgroup::Attach(cpu_share.c_str(),
-                MilliCoreToShare(cgroup_->cpu().milli_core()),
-                false);
-
-        if (err.Code() != 0) {
-            return ERRORCODE(-1, "%s", err.Message().c_str());
-        }
     } else {
         boost::filesystem::path cpu_cfs(cpu_path);
         cpu_cfs.append("cpu.cfs_quota_us");

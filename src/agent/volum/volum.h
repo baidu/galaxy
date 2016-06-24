@@ -20,9 +20,11 @@ public:
     Volum();
     virtual ~Volum();
 
+    std::string SourceRootPath();
     std::string SourcePath();
     std::string TargetPath();
 
+    std::string SourceGcRootPath();
     std::string SourceGcPath();
     std::string TargetGcPath();
 

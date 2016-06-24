@@ -342,6 +342,7 @@ message ContainerMeta {
     optional string container_id = 3;
     optional int64 created_time = 4;
     optional int32 pid = 5;
+    optional int64 destroy_time = 6;
 }
 
 enum ContainerStatus {
