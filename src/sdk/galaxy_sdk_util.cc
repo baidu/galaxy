@@ -245,17 +245,19 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         fprintf(stderr, "run_user must not be empty\n");
         return false;
     }
-    container->set_run_user(sdk_container.run_user);
-    if (sdk_container.version.empty()) {
+    
+    //container->set_run_user(sdk_container.run_user);
+    container->set_run_user("galaxy");
+    /*if (sdk_container.version.empty()) {
         fprintf(stderr, "version must not be empty\n");
         return false;
-    }
+    }*/
     container->set_version(sdk_container.version);
 
-    if (sdk_container.tag.empty()) {
+    /*if (sdk_container.tag.empty()) {
         fprintf(stderr, "tag must not be empty\n");
         return false;
-    }
+    }*/
     container->set_tag(sdk_container.tag);
 
     container->set_cmd_line(sdk_container.cmd_line); //不用
@@ -266,10 +268,15 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
     }
     container->set_max_per_host(sdk_container.max_per_host);
 
+    if (sdk_container.pool_names.size() == 0) {
+        fprintf(stderr, "pools size is 0\n");
+        return false;
+    }
+
     bool ok = true;
     for (size_t i = 0; i < sdk_container.pool_names.size(); ++i) {
         if (sdk_container.pool_names[i].empty()) {
-            fprintf(stderr, "pool must not be empty\n");
+            fprintf(stderr, "pool[%d] must not be empty\n", (int)i);
             ok = false;
             break;
         }
@@ -577,10 +584,15 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     
     deploy->set_tag(sdk_deploy.tag);
 
+    if (sdk_deploy.pools.size() == 0) {
+        fprintf(stderr, "deploy pools size is 0\n");
+        return false;
+    }
+
     bool ok = true;
     for (size_t i = 0; i < sdk_deploy.pools.size(); ++i) {
         if (sdk_deploy.pools[i].empty()) {
-            fprintf(stderr, "deploy pools must not be empty\n");
+            fprintf(stderr, "deploy pools[%d] must not be empty\n", (int)i);
             ok = false;
             break;
         }

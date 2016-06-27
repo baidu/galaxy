@@ -97,13 +97,15 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
     }
 
 
+
     collector_.reset(new CgroupCollector());
     collector_->SetCpuacctPath(cpu_acct_->Path() + "/cpuacct.stat");
     collector_->SetMemoryPath(memory_->Path() + "/memory.usage_in_bytes");
     collector_->SetCycle(5);
     collector_->SetName(container_id_ + "_cgroup");
     collector_->Enable(true);
-    baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(collector_);
+    baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(collector_, true);
+    VLOG(10) << "register cgroup collector: " << container_id_ << " " << (int64_t)this;
     return ERRORCODE_OK;
 }
 
@@ -113,6 +115,7 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
     boost::mutex::scoped_lock lock(mutex_);
 
     if (collector_.get() != NULL) {
+        VLOG(10) << "disable cgroup collector: " << container_id_ << " " << (int64_t)this;
         collector_->Enable(false);
     }
 

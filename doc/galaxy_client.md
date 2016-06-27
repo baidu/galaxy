@@ -41,7 +41,7 @@ Usage:
       galaxy list [-o cpu,mem,volums]
       galaxy show -i id [-o cpu,mem,volums]
       galaxy exec -i id -c cmd
-      galaxy json [-n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
+      galaxy json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
 Options: 
       -f specify config file, job config file or label config file.
       -c specify cmd.
@@ -59,6 +59,62 @@ Options:
 ### submit 提交一个job
     参数：-f(必选)指定job描述配置文件，文件格式是json格式
     用法：./galaxy_client submit -f job.json
+    说明:
+        1. job的name只支持字母和数字，如果是其他特殊字符，则会被替换成下划线"_", 超过16个字符会被截断
+        2. json配置文件的生成见 **json 生成json格式的job配置文件**
+        3. job的需要的资源选项包括cpu(必选), mem(必选), tcp(必选), blkio(必选), ports(可选); 其中cpu, mem, tcp选项中如果excess为false表示硬限，为true则为软限
+        4. ports选项中name命名端口名称，port指定端口号，端口可以由galaxy动态分配(dynamic)或者指定具体的端口号，galaxy中可使用的端口范围是1025-9999, 10000以上的端口号很容易冲突 
+        5. 如果用户程序需要使用到端口，请在配置文件中加上ports配置，在使用到port的services中，注明使用的端口名称port_name, 否则会出现端口绑定失败，程序运行不起来
+        6. 如果使用多个端口，端口号必须连续，dynamic不能在两个具体端口号的中间
+        7. 端口名称必须唯一
+        8. workspace_volum和data_volums配置中, dest_path的值在本配置中必须唯一
+        9. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
+
+```
+端口范例1:
+ "ports": [
+    {
+        "name": "example_port00",
+        "port": "1025"
+    },
+    {
+        "name": "example_port01",
+        "port": "1026"
+    }
+]
+
+端口范例2:
+ "ports": [
+    {   
+        "name": "example_port00",
+        "port": "1025"
+    },
+    {   
+        "name": "example_port01",
+        "port": "1026"
+    },
+    {   
+        "name": "example_port02",
+        "port": "dynamic"
+    }, 
+]
+
+端口范例3:
+ "ports": [
+    {   
+        "name": "example_port00",
+        "port": "dynamic"
+    },
+    {   
+        "name": "example_port01",
+        "port": "dynamic"
+    },
+    {   
+        "name": "example_port02",
+        "port": "dynamic"
+    }, 
+]
+```
 
 ### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
     参数：
@@ -210,7 +266,7 @@ services infomation
     用法：
         ./galaxy_client -i jobid -c cmd
     
-### json 生成一json格式的job配置文件
+### json 生成json格式的job配置文件
     参数：
         1. -i(可选) 指定jobid, 可生成指定jobid的job配置
         2. -n(可选) 指定jobname，默认为example
@@ -225,15 +281,17 @@ services infomation
         ./galaxy_client json -n example -d 2
     说明:
         1. type的value必须为kJobMonitor, kJobService, kJobBatch, kJobBestEffort中的一个
-        2. json中的deploy配置中的每一项都需要, 但tag的value可以为空,如"tag": ""
-        3. volum中medium的value必须为kSsd, kDisk, kBfs, kTmpfs中的一个
-        4. volum中type的value:kEmptyDir, kHostDir
-        5. 所有volums中的dest_path的value不能重复
-        6. 配置中所有size以及recv_bps_quota, send_bps_quota的value支持的单位有K, M, G, T, B, Z,如1G
-        7. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
-        8. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
+        2. volum中medium的value必须为kSsd, kDisk, kBfs, kTmpfs中的一个
+        3. volum中type的value:kEmptyDir, kHostDir
+        4. 所有volums中的dest_path的value不能重复
+        5. 配置中所有size以及recv_bps_quota, send_bps_quota的value支持的单位有K, M, G, T, P, E, 如1G
+        6. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
+        7. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
+
+        提交job的json配置文件中tag, ports, data_volums, data_packages, stop_cmd, health_cmd, data_package, services这些选项如果不需要可以不写
 
 ```
+标准模板
 {
     "name": "example",
     "type": "kJobService",
@@ -318,6 +376,61 @@ services infomation
                         "user_bns": false
                     }
                 ]
+            }
+        ]
+    }
+}
+```
+
+```
+最简模板
+{
+    "name": "example",
+    "type": "kJobService",
+    "deploy": {
+        "replica": 1,
+        "step": 1,
+        "interval": 1,
+        "max_per_host": 1,
+        "pools": "test"
+    },
+    "pod": {
+        "workspace_volum": {
+            "size": "300M",
+            "type": "kEmptyDir",
+            "medium": "kDisk",
+            "dest_path": "/home/work",
+            "readonly": false,
+            "exclusive": false,
+            "use_symlink": false
+        },
+        "tasks": [
+            {
+                "cpu": {
+                    "millicores": 1000,
+                    "excess": false
+                },
+                "mem": {
+                    "size": "800M",
+                    "excess": false
+                },
+                "tcp": {
+                    "recv_bps_quota": "30M",
+                    "recv_bps_excess": false,
+                    "send_bps_quota": "30M",
+                    "send_bps_excess": false
+                },
+                "blkio": {
+                    "weight": 500
+                },
+                "exec_package": {
+                    "start_cmd": "sh app_start.sh",
+                    "package": {
+                        "source_path": "ftp://***.baidu.com/home/users/***/exec/0/linkbase.tar.gz",
+                        "dest_path": "/home/spider/0",
+                        "version": "1.0.0"
+                    }
+                }
             }
         ]
     }

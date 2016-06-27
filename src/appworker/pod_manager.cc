@@ -25,6 +25,7 @@ PodManager::PodManager() :
         background_pool_(10) {
     pod_.status = proto::kPodPending;
     pod_.reload_status = proto::kPodPending;
+    pod_.stage = kPodStageCreating;
     pod_.fail_count = 0;
     background_pool_.DelayTask(
         FLAGS_pod_manager_change_pod_status_interval,
@@ -174,7 +175,6 @@ int PodManager::DoCreatePod() {
     }
 
     pod_.pod_id = pod_.env.pod_id;
-    pod_.status = proto::kPodReady;
     pod_.stage = kPodStageCreating;
     pod_.fail_count = 0;
     LOG(INFO) << "create pod, task size: " << tasks_size;
@@ -226,6 +226,7 @@ int PodManager::DoCreatePod() {
 
             ServiceInfo service_info;
             service_info.set_name(service.service_name());
+            service_info.set_hostname(pod_.env.hostname);
             service_info.set_port(p_it->second);
             service_info.set_ip(pod_.env.ip);
             service_info.set_status(proto::kError);
@@ -235,6 +236,7 @@ int PodManager::DoCreatePod() {
                     << "create task: " << i << ", "
                     << "service: " << service_info.name() << ", "
                     << "port: " << service_info.port() << ", "
+                    << "hostname: " << service_info.hostname() << ", "
                     << "deploy_path: " << service_info.deploy_path();
         }
     }
@@ -261,6 +263,7 @@ int PodManager::DoDeployPod() {
         if (0 != task_manager_.DeployTask(task_id)) {
             LOG(WARNING) << "create task deploy process fail, task: " << task_id;
             DoClearPod();
+            pod_.status = proto::kPodPending;
             return -1;
         }
 

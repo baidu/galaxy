@@ -427,8 +427,8 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     subfix_table['M'] = 2;
     subfix_table['G'] = 3;
     subfix_table['T'] = 4;
-    subfix_table['B'] = 5;
-    subfix_table['Z'] = 6;
+    subfix_table['P'] = 5;
+    subfix_table['E'] = 6;
 
     int64_t num = 0;
     char subfix = 0;
@@ -442,7 +442,7 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     if (matched == 2) {
         std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
         if (it == subfix_table.end()) {
-            fprintf(stderr, "unit is error, it must be in [K, M, G, T, B, Z]\n");
+            fprintf(stderr, "unit is error, it must be in [K, M, G, T, P, E]\n");
             return -1;
         }
         shift = it->second;
@@ -571,7 +571,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
 
         data_volums.PushBack(data_volum, allocator);
     }
-    pod.AddMember("data_volums", data_volums, allocator);
+    if (num_data_volums > 0) {
+        pod.AddMember("data_volums", data_volums, allocator);
+    }
 
     rapidjson::Value tasks(rapidjson::kArrayType);
     if (num_tasks < 1) {
@@ -671,10 +673,20 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         task.AddMember("mem", mem, allocator);
         task.AddMember("tcp", tcp, allocator);
         task.AddMember("blkio", blkio, allocator);
-        task.AddMember("ports", ports, allocator);
+        
+        if (num_ports > 0) {
+            task.AddMember("ports", ports, allocator);
+        }
+
         task.AddMember("exec_package", exec_package, allocator);
-        task.AddMember("data_package", data_package, allocator);
-        task.AddMember("services", services, allocator);
+        
+        if (num_data_packages > 0) {
+            task.AddMember("data_package", data_package, allocator);
+        }
+
+        if (num_services > 0) {
+            task.AddMember("services", services, allocator);
+        }
 
         tasks.PushBack(task, allocator);
         

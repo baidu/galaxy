@@ -12,8 +12,9 @@ galaxy_res_client
 --nexus_addr=xxx1:8888,xxx2:8888
 --nexus_root=xxx
 --resman_path=xxx 
+--appmaster_path=xxx
 ```
-注：--nexus_root和--resman_path不需要强制配置，可以使用默认值
+注：--nexus_root, --resman_path 和--appmaster_path不需要强制配置，可以使用默认值
 
 测试配置是否正确
 ```
@@ -243,6 +244,13 @@ containers infomation
     用法:
         ./galaxy_res_client offline_agent -e xxxx:6666
 
+#### preempt 抢占式调度
+    参数:
+        1. -i（必选） 容器组id(jobid) 
+        2. -e（必选）endpoint, ip:port形式
+    用法：
+        galaxy_res_client preempt -i container_group_id -e endpoint
+
 #### show_agent 展示agent上的所有容器信息
     参数:
         1. -e（必选）endpoint
@@ -332,6 +340,12 @@ containers infomation
 ### status galaxy的整体情况
     用法：./galaxy_res_client status
 ```
+master infomation
+      master     addr                                
+---------------------------------------------------
+    appmaster    xxxx:xxx
+      resman     xxxx:xxx
+
 cluster agent infomation
   total  alive  dead
 ----------------------
@@ -447,6 +461,7 @@ jobs assigned quota infomation
                               list_containers,submit_job,remove_job,update_job,list_jobs
     用法:
         ./galaxy_res_client grant_user -u galaxy -p test -o add -a create_container
+        ./galaxy_res_client grant_user -u galaxy -p test -o add -a create_container,remove_container
         ./galaxy_res_client grant_user -u galaxy -p test -o remove -a remove_job
 #### assign_quota 分配quota给用户
 quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ssd大小，内存大小
@@ -454,9 +469,9 @@ quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ss
     参数:
         1. -u（必选）用户名
         2. -c（必选） cpu核数*1000,如2000
-        3. -d（必选）disk大小, 单位有K, M, G, T, B, Z
-        4. -s（必选）ssd大小, 单位有K, M, G, T, B, Z
-        5. -m（必选）内存大小, 单位有K, M, G, T, B, Z
+        3. -d（必选）disk大小, 单位有K, M, G, T, P, E
+        4. -s（必选）ssd大小, 单位有K, M, G, T, P, E
+        5. -m（必选）内存大小, 单位有K, M, G, T, P, E
         6. -r （必选）副本数量
     用法:
         galaxy_res_client assign_quota -u galaxy -c 1000 -d 1G -s 800M -m 1G -r 10000

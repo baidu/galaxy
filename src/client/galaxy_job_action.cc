@@ -913,11 +913,18 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
 }
 
 std::string JobAction::StringUnit(int64_t num) {
-    std::string input = HumanReadableString(num);
-    size_t pos = input.rfind(".");
-    std::string result(input, 0, pos);
-    result += input[input.size()-1];
-    return result;
+    static const int max_shift = 6;
+    static const char* const prefix[max_shift + 1] = {"", "K", "M", "G", "T", "P", "E"};
+    int shift = 0;
+    int64_t v = num;
+    while ((num>>=10) > 0 && shift < max_shift) {
+        if (v % 1024 != 0) {
+            break;
+        }
+        v /= 1024;
+        shift++;
+    }   
+    return ::baidu::common::NumToString(v) + prefix[shift];
 }
 
 bool JobAction::GenerateJson(const std::string& jobid) {
@@ -1026,7 +1033,10 @@ bool JobAction::GenerateJson(const std::string& jobid) {
 
         data_volums.PushBack(data_volum, allocator);
     }
-    pod.AddMember("data_volums", data_volums, allocator);
+
+    if (job.pod.data_volums.size() > 0) {
+        pod.AddMember("data_volums", data_volums, allocator);
+    }
 
     rapidjson::Value tasks(rapidjson::kArrayType);
     for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
@@ -1083,11 +1093,16 @@ bool JobAction::GenerateJson(const std::string& jobid) {
         obj_str.SetString(sdk_task.exe_package.start_cmd.c_str(), allocator);
         exec_package.AddMember("start_cmd", obj_str, allocator);
 
-        obj_str.SetString(sdk_task.exe_package.stop_cmd.c_str(), allocator);
-        exec_package.AddMember("stop_cmd", obj_str, allocator);
+        if (!sdk_task.exe_package.stop_cmd.empty()) {
+            obj_str.SetString(sdk_task.exe_package.stop_cmd.c_str(), allocator);
+            exec_package.AddMember("stop_cmd", obj_str, allocator);
+        }
 
-        obj_str.SetString(sdk_task.exe_package.health_cmd.c_str(), allocator);
-        exec_package.AddMember("health_cmd", "", allocator);
+        if (!sdk_task.exe_package.health_cmd.empty()) {
+            obj_str.SetString(sdk_task.exe_package.health_cmd.c_str(), allocator);
+            exec_package.AddMember("health_cmd", "", allocator);
+        }
+        
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
@@ -1133,10 +1148,20 @@ bool JobAction::GenerateJson(const std::string& jobid) {
         task.AddMember("mem", mem, allocator);
         task.AddMember("tcp", tcp, allocator);
         task.AddMember("blkio", blkio, allocator);
-        task.AddMember("ports", ports, allocator);
+
+        if (sdk_task.ports.size() > 0) {
+            task.AddMember("ports", ports, allocator);
+        }
+
         task.AddMember("exec_package", exec_package, allocator);
-        task.AddMember("data_package", data_package, allocator);
-        task.AddMember("services", services, allocator);
+
+        if (sdk_task.data_package.packages.size() > 0) {
+            task.AddMember("data_package", data_package, allocator);
+        }
+
+        if (sdk_task.services.size() > 0) {
+            task.AddMember("services", services, allocator);
+        }
 
         tasks.PushBack(task, allocator);
         
