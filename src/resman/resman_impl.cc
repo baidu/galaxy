@@ -675,10 +675,8 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     } else {
         new_meta.mutable_desc()->set_version(old_version);
     }
-    if (replica_changed) {
-        scheduler_->ChangeReplica(new_meta.id(),
-                                  new_meta.replica());
-    }
+    scheduler_->ChangeReplica(new_meta.id(),
+                              new_meta.replica());
     {
         MutexLock lock(&mu_);
         container_groups_[new_meta.id()] = new_meta;
