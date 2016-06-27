@@ -62,6 +62,59 @@ Options:
     说明:
         1. job的name只支持字母和数字，如果是其他特殊字符，则会被替换成下划线"_", 超过16个字符会被截断
         2. json配置文件的生成见 **json 生成json格式的job配置文件**
+        3. job的需要的资源选项包括cpu(必选), mem(必选), tcp(必选), blkio(必选), ports(可选); 其中cpu, mem, tcp选项中如果excess为false表示硬限，为true则为软限
+        4. ports选项中name命名端口名称，port指定端口号，端口可以由galaxy动态分配(dynamic)或者指定具体的端口号，galaxy中可使用的端口范围是1025-9999, 10000以上的端口号很容易冲突 
+        5. 如果用户程序需要使用到端口，请在配置文件中加上ports配置，在使用到port的services中，注明使用的端口名称port_name, 否则会出现端口绑定失败，程序运行不起来
+        6. 如果使用多个端口，端口号必须连续，dynamic不能在两个具体端口号的中间
+        7. 端口名称必须唯一
+        8. workspace_volum和data_volums配置中, dest_path的值在本配置中必须唯一
+        9. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
+
+```
+端口范例1:
+ "ports": [
+    {
+        "name": "example_port00",
+        "port": "1025"
+    },
+    {
+        "name": "example_port01",
+        "port": "1026"
+    }
+]
+
+端口范例2:
+ "ports": [
+    {   
+        "name": "example_port00",
+        "port": "1025"
+    },
+    {   
+        "name": "example_port01",
+        "port": "1026"
+    },
+    {   
+        "name": "example_port02",
+        "port": "dynamic"
+    }, 
+]
+
+端口范例3:
+ "ports": [
+    {   
+        "name": "example_port00",
+        "port": "dynamic"
+    },
+    {   
+        "name": "example_port01",
+        "port": "dynamic"
+    },
+    {   
+        "name": "example_port02",
+        "port": "dynamic"
+    }, 
+]
+```
 
 ### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
     参数：
