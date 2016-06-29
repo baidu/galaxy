@@ -315,6 +315,11 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         return false;
     }
 
+    if (sdk_container.cgroups.size() == 0) {
+        fprintf(stderr, "task size is zero\n");
+        return false;
+    }
+
     std::vector<std::string> cgroups_vec_port_names; //端口名重复检测
     std::vector<std::string> cgroups_vec_ports; //端口号重复检测
     for (uint32_t i = 0; i < sdk_container.cgroups.size(); ++i) {
@@ -539,6 +544,11 @@ bool FillPodDescription(const PodDescription& sdk_pod,
         vec_des_path.push_back(sdk_pod.data_volums[i].dest_path);
     }
     if (!ok) {
+        return false;
+    }
+
+    if (sdk_pod.tasks.size() == 0) {
+        fprintf(stderr, "task size is zero\n");
         return false;
     }
 
