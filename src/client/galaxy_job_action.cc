@@ -792,7 +792,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
                     }
                     values.push_back(svolums);
                     values.push_back(pod_start_time);
-                    values.push_back(pod_start_time);     
+                    values.push_back(pod_update_time);     
                 } else {
                     int base_size = sizeof(array_headers) / sizeof(std::string);
                     for (int base_it = 0; base_it < base_size; ++base_it) {
