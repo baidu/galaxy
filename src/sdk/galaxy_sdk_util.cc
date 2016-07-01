@@ -792,6 +792,10 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
             service.service_name = pb_job.pod().tasks(i).services(j).service_name(); 
             service.port_name = pb_job.pod().tasks(i).services(j).port_name(); 
             service.use_bns = pb_job.pod().tasks(i).services(j).use_bns(); 
+            service.tag = pb_job.pod().tasks(i).services(j).tag();
+            service.health_check_type = pb_job.pod().tasks(i).services(j).health_check_type();
+            service.health_check_script = pb_job.pod().tasks(i).services(j).health_check_script();
+            //service.token = pb_job.pod().tasks(i).services(j).token(); 
             task.services.push_back(service);
         }
         job->pod.tasks.push_back(task);

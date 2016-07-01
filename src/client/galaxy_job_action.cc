@@ -696,13 +696,16 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
          printf("%s\n", packages.ToString().c_str());
 
          printf("job description pod task [%u] services infomation\n", i);
-         ::baidu::common::TPrinter services(4);
-         services.AddRow(4, "", "name", "port_name", "use_bns");
+         ::baidu::common::TPrinter services(7);
+         services.AddRow(7, "", "name", "port_name", "use_bns", "tag", "health_check_type", "health_check_script");
          for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].services.size(); ++j) {
-             services.AddRow(4, ::baidu::common::NumToString(j).c_str(),
+             services.AddRow(7, ::baidu::common::NumToString(j).c_str(),
                                 response.job.desc.pod.tasks[i].services[j].service_name.c_str(),
                                 response.job.desc.pod.tasks[i].services[j].port_name.c_str(),
-                                StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str()
+                                StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str(),
+                                response.job.desc.pod.tasks[i].services[j].tag.c_str(),
+                                response.job.desc.pod.tasks[i].services[j].health_check_type.c_str(),
+                                response.job.desc.pod.tasks[i].services[j].health_check_script.c_str()
                             );
          }
          printf("%s\n", services.ToString().c_str());
