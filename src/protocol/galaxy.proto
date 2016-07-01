@@ -256,6 +256,7 @@ message Service {
     optional string tag = 4;
     optional string health_check_type = 5;
     optional string health_check_script = 6;
+    optional string token = 7;
 }
 
 message ServiceInfo {

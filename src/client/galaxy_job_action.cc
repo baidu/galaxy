@@ -1143,7 +1143,19 @@ bool JobAction::GenerateJson(const std::string& jobid) {
             obj_str.SetString(sdk_service.port_name.c_str(), allocator);
             service.AddMember("port_name", obj_str, allocator);
             service.AddMember("use_bns", sdk_service.use_bns, allocator);
-            
+
+            obj_str.SetString(sdk_service.tag.c_str(), allocator);
+            service.AddMember("tag", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.health_check_type.c_str(), allocator);
+            service.AddMember("health_check_type", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.health_check_script.c_str(), allocator);
+            service.AddMember("health_check_script", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.token.c_str(), allocator);
+            service.AddMember("token", obj_str, allocator);
+
             services.PushBack(service, allocator);
         }
 

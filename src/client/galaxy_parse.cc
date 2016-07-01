@@ -327,6 +327,22 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
         service->use_bns = service_json["use_bns"].GetBool();
     }
 
+    if (service_json.HasMember("tag")) {
+        service->tag = service_json["tag"].GetString();
+    }
+    
+    if (service_json.HasMember("health_check_type")) {
+        service->health_check_type = service_json["health_check_type"].GetString();
+    }
+
+    if (service_json.HasMember("health_check_script")) {
+        service->health_check_script = service_json["health_check_script"].GetString();
+    }
+    
+    if (service_json.HasMember("token")) {
+        service->token = service_json["token"].GetString();
+    }
+
     return 0;
 
 }
@@ -673,7 +689,7 @@ int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescrip
     rapidjson::Document doc;
     doc.ParseStream<0>(frs);
     if (!doc.IsObject()) {
-        fprintf(stderr, "invalid config file\n");
+        fprintf(stderr, "invalid config file, %s is not a correct json format file\n", conf.c_str());
         fclose(fd);
         return -1;
     }

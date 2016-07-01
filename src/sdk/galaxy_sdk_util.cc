@@ -399,8 +399,18 @@ bool FillService(const Service& sdk_service,
         return false;
     }
 
+    if (sdk_service.use_bns && sdk_service.token.empty()) {
+        fprintf(stderr, "service token must not be empty\n");
+        return false; 
+    }
+
     service->set_port_name(sdk_service.port_name);
     service->set_use_bns(sdk_service.use_bns);
+    service->set_tag(sdk_service.tag);
+    service->set_health_check_type(sdk_service.health_check_type);
+    service->set_health_check_script(sdk_service.health_check_script);
+    service->set_token(sdk_service.token);
+
     return true;
 }
 
