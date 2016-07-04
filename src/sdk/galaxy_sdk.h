@@ -187,6 +187,10 @@ struct Service {
     std::string service_name;
     std::string port_name;
     bool use_bns;
+    std::string tag;
+    std::string health_check_type;
+    std::string health_check_script;
+    std::string token;
 };
 struct TaskDescription {
     std::string id;

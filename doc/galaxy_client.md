@@ -287,6 +287,7 @@ services infomation
         5. 配置中所有size以及recv_bps_quota, send_bps_quota的value支持的单位有K, M, G, T, P, E, 如1G
         6. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
         7. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
+        8. services中tag, health_check_type, health_check_script, token均为注册bns时需要的参数, use_bns为true时，token不能为空
 
         提交job的json配置文件中tag, ports, data_volums, data_packages, stop_cmd, health_cmd, data_package, services这些选项如果不需要可以不写
 
@@ -373,7 +374,11 @@ services infomation
                     {
                         "service_name": "example_service00",
                         "port_name": "example_port00",
-                        "user_bns": false
+                        "user_bns": false,
+                        "tag": "",
+                        "health_check_type": "",
+                        "health_check_script": "",
+                        "token": ""
                     }
                 ]
             }

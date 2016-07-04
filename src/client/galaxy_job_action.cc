@@ -218,12 +218,14 @@ struct ListContainerParams {
     JobAction* action;
     ::baidu::galaxy::sdk::ListContainerGroupsRequest request;
     std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>* containers;
+    bool* ret;
 };
 
 struct ListJobParams {
     JobAction* action;
     ::baidu::galaxy::sdk::ListJobsRequest request;
     std::vector< ::baidu::galaxy::sdk::JobOverview>* jobs;
+    bool* ret; 
 };
 
 void* JobAction::ListContainers(void* param) {
@@ -238,6 +240,7 @@ void* JobAction::ListContainers(void* param) {
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             container_params->containers->insert(make_pair(response.containers[i].id, response.containers[i]));
         }
+        *container_params->ret = true; 
     } else {
         printf("List containers failed for reason %s:%s\n", 
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
@@ -257,6 +260,7 @@ void* JobAction::ListJobs(void* param) {
         for (uint32_t i = 0; i < response.jobs.size(); ++i) {
             job_params->jobs->push_back(response.jobs[i]);
         }
+        *job_params->ret = true; 
     } else {
         printf("List jobs failed for reason %s:%s\n", 
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
@@ -274,7 +278,9 @@ bool JobAction::ListJobs(const std::string& soptions) {
 
     ListContainerParams list_containers_params;
     ::baidu::common::Thread container_thread;
+    bool list_container = false;
     list_containers_params.action = this;
+    list_containers_params.ret = &list_container; 
     list_containers_params.containers = &containers;
     list_containers_params.request = resman_request;
     
@@ -286,22 +292,20 @@ bool JobAction::ListJobs(const std::string& soptions) {
 
     ListJobParams list_job_params;
     ::baidu::common::Thread job_thread;
+    bool list_job = false;
     list_job_params.action = this;
     list_job_params.jobs = &jobs;
+    list_job_params.ret = &list_job; 
     list_job_params.request = request;
     job_thread.Start(ListJobs, &list_job_params);
     
     job_thread.Join();
     container_thread.Join();
     
-    if (containers.size() == 0) {
+    if (!list_job || !list_container) {
         return false;
     }
 
-    if (jobs.size() == 0) {
-        return false;
-    }
- 
     std::string array_headers[7] = {"", "id", "name", "type","status", "r/p/d/die/f", "repli"};
     std::vector<std::string> headers(array_headers, array_headers + 7);
 
@@ -692,13 +696,16 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
          printf("%s\n", packages.ToString().c_str());
 
          printf("job description pod task [%u] services infomation\n", i);
-         ::baidu::common::TPrinter services(4);
-         services.AddRow(4, "", "name", "port_name", "use_bns");
+         ::baidu::common::TPrinter services(7);
+         services.AddRow(7, "", "name", "port_name", "use_bns", "tag", "health_check_type", "health_check_script");
          for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].services.size(); ++j) {
-             services.AddRow(4, ::baidu::common::NumToString(j).c_str(),
+             services.AddRow(7, ::baidu::common::NumToString(j).c_str(),
                                 response.job.desc.pod.tasks[i].services[j].service_name.c_str(),
                                 response.job.desc.pod.tasks[i].services[j].port_name.c_str(),
-                                StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str()
+                                StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str(),
+                                response.job.desc.pod.tasks[i].services[j].tag.c_str(),
+                                response.job.desc.pod.tasks[i].services[j].health_check_type.c_str(),
+                                response.job.desc.pod.tasks[i].services[j].health_check_script.c_str()
                             );
          }
          printf("%s\n", services.ToString().c_str());
@@ -1139,7 +1146,19 @@ bool JobAction::GenerateJson(const std::string& jobid) {
             obj_str.SetString(sdk_service.port_name.c_str(), allocator);
             service.AddMember("port_name", obj_str, allocator);
             service.AddMember("use_bns", sdk_service.use_bns, allocator);
-            
+
+            obj_str.SetString(sdk_service.tag.c_str(), allocator);
+            service.AddMember("tag", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.health_check_type.c_str(), allocator);
+            service.AddMember("health_check_type", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.health_check_script.c_str(), allocator);
+            service.AddMember("health_check_script", obj_str, allocator);
+
+            obj_str.SetString(sdk_service.token.c_str(), allocator);
+            service.AddMember("token", obj_str, allocator);
+
             services.PushBack(service, allocator);
         }
 

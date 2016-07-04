@@ -664,6 +664,10 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
             obj_str.SetString(str.c_str(), allocator);
             service.AddMember("port_name", obj_str, allocator);
             service.AddMember("use_bns", false, allocator);
+            service.AddMember("tag", "", allocator);
+            service.AddMember("health_check_type", "", allocator);
+            service.AddMember("health_check_script", "", allocator);
+            service.AddMember("token", "", allocator);
             
             services.PushBack(service, allocator);
         }
