@@ -98,9 +98,10 @@ int TaskManager::Init() {
             InitTcpthrotEnv();
             cgroup_funcs_.insert(std::make_pair("tcp_throt",
                         boost::bind(&TaskManager::HandleInitTaskTcpCgroup, this, sub_systems[i], _1)));
-        } else if (sub_systems[i] == "blkio") {
-            cgroup_funcs_.insert(std::make_pair("blkio",
-                        boost::bind(&TaskManager::HandleInitTaskBlkioCgroup, this, sub_systems[i], _1)));
+// TODO release the blkio limit
+//        } else if (sub_systems[i] == "blkio") {
+//            cgroup_funcs_.insert(std::make_pair("blkio",
+//                        boost::bind(&TaskManager::HandleInitTaskBlkioCgroup, this, sub_systems[i], _1)));
         } else {
             cgroup_funcs_.insert(std::make_pair(sub_systems[i], 
              boost::bind(&TaskManager::HandleInitTaskComCgroup, this, sub_systems[i], _1)));
