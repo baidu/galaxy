@@ -23,10 +23,11 @@ DEFINE_string(m, "", "specify memory size");
 DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "galaxy_res_client.\n"
+                                 "galaxy_res_client [--flagfile=flagfile]\n"
                                  "Usage:\n"
                                  "  container usage:\n"
-                                 "      galaxy_res_client create_container -f <jobconfig>\n"
-                                 "      galaxy_res_client update_container -f <jobconfig> -i id\n"
+                                 "      galaxy_res_client create_container -f jobconfig(json format)\n"
+                                 "      galaxy_res_client update_container -f jobconfig(json format) -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
                                  "      galaxy_res_client list_containers [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client show_container -i id\n\n"
@@ -71,14 +72,51 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      -r specify replica, such as 100\n"
                                  "      -d specify disk size, such as 1G\n"
                                  "      -s specify ssd size, such as 1G\n"
-                                 "      -m specify memory size, such as 1G\n";
+                                 "      -m specify memory size, such as 1G\n"
+                                 "      --flagfile specify flag file, default ./galaxy.flag\n";
 
 
 int main(int argc, char** argv) {
     bool ok = true;
-    FLAGS_flagfile = "./galaxy.flag";
+    std::vector<char*> vec_argv;
+    bool has_flagfile = false;
     ::google::SetUsageMessage(kGalaxyUsage);
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    for (int i = 0; i < argc; ++i) {
+        if (strncmp(argv[i], "--flagfile", 10) == 0) {
+            has_flagfile = true;
+            std::string strargv = argv[i];
+            size_t pos = strargv.find_first_of("=");
+            if (pos == std::string::npos || strargv.size() <= pos + 1) { //value is empty
+                fprintf(stderr, "--flagfile= have no value\n");
+                return -1;
+            }
+        }
+        vec_argv.push_back(argv[i]);
+    }
+
+    if (!has_flagfile) {
+        vec_argv.push_back("--flagfile=./galaxy.flag");
+
+        char** new_argv = new char*[vec_argv.size() + 1];
+
+        std::vector<char*>::iterator it = vec_argv.begin();
+        for (int i = 0; it != vec_argv.end(); ++it, ++i) {
+            char* temp = new char[strlen(*it) + 1];
+            int length = strlen(strcpy(temp, *it));
+            if (length <= 0) {
+                fprintf(stderr, "params copy error\n");
+                return -1; 
+            }
+            new_argv[i] = temp;
+        }
+        new_argv[vec_argv.size()] = '\0';
+        argc = vec_argv.size();
+
+        ::google::ParseCommandLineFlags(&argc, &new_argv, true);
+    } else {
+        ::google::ParseCommandLineFlags(&argc, &argv, true);
+    }
+
     if (argc < 2) {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;

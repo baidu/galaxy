@@ -18,7 +18,7 @@ galaxy_res_client
 
 测试配置是否正确
 ```
-./galaxy_client list_tags
+./galaxy_res_client list_tags
   -  tag      
 ----------------
 ```
@@ -29,14 +29,23 @@ galaxy_res_client
     2. SendRequest fail:RPC_ERROR_RESOLVE_ADDRESS
 ```
 
+若直接运行./galaxy_res_client命令且当前目录没有galaxy.flag文件则会出现
+```
+./galaxy.flag: No such file or directory
+```
+两种方法：
+1. 在当前目录按照**配置galaxy.flag**中的方法构造galaxy.flag文件
+2. 按照**配置galaxy.flag**中的方法构造flag文件，并使用--flagfile=选项指明
+
 #galaxy_res_client使用方法
-运行./galaxy_res_client获取运行方法
+运行./galaxy_res_client获取运行方法, flagfile的默认值是./galaxy.flag, 若需要指定别的flag文件，运行时加上--flagfile=选项
 ```
 galaxy_res_client.
+galaxy_res_client [--flagfile=flagfile]
 Usage:
   container usage:
-      galaxy_res_client create_container -f <jobconfig>
-      galaxy_res_client update_container -f <jobconfig> -i id
+      galaxy_res_client create_container -f jobconfig(json format)
+      galaxy_res_client update_container -f jobconfig(json format) -i id
       galaxy_res_client remove_container -i id
       galaxy_res_client list_containers [-o cpu,mem,volums]
       galaxy_res_client show_container -i id
