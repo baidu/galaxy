@@ -102,8 +102,8 @@ int main(int argc, char** argv) {
         std::vector<char*>::iterator it = vec_argv.begin();
         for (int i = 0; it != vec_argv.end(); ++it, ++i) {
             char* temp = new char[strlen(*it) + 1];
-            int length = strlen(strcpy(temp, *it));
-            if (length <= 0) {
+            uint32_t length = strlen(strcpy(temp, *it));
+            if (length != strlen(*it)) {
                 fprintf(stderr, "params copy error\n");
                 return -1; 
             }
