@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     }
 
     if (!has_flagfile) {
-        vec_argv.push_back("--flagfile=./galaxy.flag");
+        vec_argv.push_back(const_cast<char*>("--flagfile=./galaxy.flag"));
 
         char** new_argv = new char*[vec_argv.size() + 1];
 
