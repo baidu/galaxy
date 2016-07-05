@@ -29,19 +29,29 @@ galaxy_client
     2. SendRequest fail:RPC_ERROR_RESOLVE_ADDRESS
 ```
 
+若直接运行./galaxy_res_client命令且当前目录没有galaxy.flag文件则会出现
+```
+./galaxy.flag: No such file or directory
+```
+
+两种方法：
+1. 在当前目录按照**配置galaxy.flag**中的方法构造galaxy.flag文件
+2. 按照**配置galaxy.flag**中的方法构造flag文件，并使用--flagfile=选项指明
+
 #galaxy_client使用方法
-运行./galaxy_client获取运行方法
+运行./galaxy_client获取运行方法, flagfile的默认值是./galaxy.flag, 若需要指定别的flag文件，运行时加上--flagfile=选项
 ```
 galaxy_client.
+galaxy_client [--flagfile=flagfile]
 Usage:
-      galaxy submit -f <jobconfig>
-      galaxy update -f <jobconfig> -i id [-t breakpoint -o pause|continue|rollback]
-      galaxy stop -i id
-      galaxy remove -i id
-      galaxy list [-o cpu,mem,volums]
-      galaxy show -i id [-o cpu,mem,volums]
-      galaxy exec -i id -c cmd
-      galaxy json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
+      galaxy_client submit -f jobconfig(json format)
+      galaxy_client update -f jobconfig(json format) -i id [-t breakpoint -o pause|continue|rollback]
+      galaxy_client stop -i id
+      galaxy_client remove -i id
+      galaxy_client list [-o cpu,mem,volums]
+      galaxy_client show -i id [-o cpu,mem,volums]
+      galaxy_client exec -i id -c cmd
+      galaxy_client json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
 Options: 
       -f specify config file, job config file or label config file.
       -c specify cmd.
@@ -53,12 +63,17 @@ Options:
       -s specify service num, default 1
       -n specify job name
       -o specify operation.
+      --flagfile specify flag file, default ./galaxy.flag
 ```
 
 ## 使用说明
 ### submit 提交一个job
-    参数：-f(必选)指定job描述配置文件，文件格式是json格式
-    用法：./galaxy_client submit -f job.json
+    参数：
+        1. -f(必选)指定job描述配置文件，文件格式是json格式
+        2. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
+    用法：
+        ./galaxy_client submit -f job.json
+        ./galaxy_client submit -f job.json --flagfile=./conf/galaxy_yq.flag
     说明:
         1. job的name只支持字母和数字，如果是其他特殊字符，则会被替换成下划线"_", 超过16个字符会被截断
         2. json配置文件的生成见 **json 生成json格式的job配置文件**
@@ -118,10 +133,11 @@ Options:
 
 ### update 更新一个job，支持容器、副本多断点更新；支持更新暂停，回滚
     参数：
-        1. -f（必选）指定job描述配置文件 ，文件格式是json格式
-        2. -i（必选）指定需要更新的jobid, 当仅需要批量更新job，不考虑暂停点，则-f和-i两个参数足够了
-        3. -t指定暂停点，更新job时，job更新的副本数达到这个值时则暂停更新
-        4. -o指定更新job时的操作，pause表示暂停，continue表示继续，rollback表示回滚
+        1. -f (必选) 指定job描述配置文件 ，文件格式是json格式
+        2. -i (必选) 指定需要更新的jobid, 当仅需要批量更新job，不考虑暂停点，则-f和-i两个参数足够了
+        3. -t (可选) 指定暂停点，更新job时，job更新的副本数达到这个值时则暂停更新
+        4. -o (可选) 指定更新job时的操作，pause表示暂停，continue表示继续，rollback表示回滚
+        5. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法:
         批量更新：./galaxy_client update -i jobid -f job.json  
         断点更新：./galaxy_client update -i jobid -f job.json -t 5
@@ -131,19 +147,26 @@ Options:
         回滚：./galaxy_client update -i jobid -o rollback
 
 ### stop 停止一个job
-    参数：-i指定需要停止的jobid
+    参数：
+        1. -i (必选) 指定需要停止的jobid
+        2. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法：./galaxy_client stop -i jobid
 
 ### remove 删除一个job
-    参数：-i指定需要删除的jobid
+    参数：
+        1. -i (必选) 指定需要删除的jobid
+        2. --flagfile(可选)，指定flag文件，默认是./galaxy.flag 
     用法：./galaxy_client remove -i jobid
 
 ### list 列出所有的job
-    参数: -o（可选） 值为cpu,mem,volums(用逗号分隔)
+    参数: 
+        1. -o（可选） 值为cpu,mem,volums(用逗号分隔)
             * 当不加这个参数时，会列出cpu、mem、volums的信息；
             * 当-o others(非cpu,mem,volums)则不会列出cpu、mem、volums的信息，仅列出基本信息
+        2. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法：
         ./galaxy_client list
+        ./galaxy_client --flagfile=./conf/galaxy_yq.flag list
         ./galaxy_client list -o cpu
         ./galaxy_client list -o base
     说明：
@@ -179,6 +202,7 @@ Options:
     参数：  
         1. -i（必选）指定需要更新的jobid
         2. -o（可选） 值为cpu,mem,volums(用逗号分隔)
+        3. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法:
         ./galaxy_client show -i job_20160612_192152_72_ts3 -o cpu
     说明:
@@ -263,6 +287,7 @@ services infomation
     参数:
         1. -i（必选） 指定jobid
         2. -c（必选）指定要执行的命令
+        3. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法：
         ./galaxy_client -i jobid -c cmd
     
@@ -275,6 +300,7 @@ services infomation
         5. -p(可选) 指定port数，默认1
         6. -a(可选) 指定data package数，默认1
         7. -s(可选) 指定services数，默认1
+        8. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法:
         ./galaxy_client json -i jobid
         ./galaxy_client json

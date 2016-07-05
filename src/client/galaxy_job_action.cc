@@ -579,12 +579,13 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
             pools += ",";
         }
     }
-    ::baidu::common::TPrinter desc_deploy(6);
-    desc_deploy.AddRow(6, "replica", "step", "interval", "max_per_host", "tag", "pools");
-    desc_deploy.AddRow(6, ::baidu::common::NumToString(response.job.desc.deploy.replica).c_str(),
+    ::baidu::common::TPrinter desc_deploy(7);
+    desc_deploy.AddRow(7, "replica", "step", "interval", "max_per_host", "break_point", "tag", "pools");
+    desc_deploy.AddRow(7, ::baidu::common::NumToString(response.job.desc.deploy.replica).c_str(),
                         ::baidu::common::NumToString(response.job.desc.deploy.step).c_str(),
                         ::baidu::common::NumToString(response.job.desc.deploy.interval).c_str(),
                         ::baidu::common::NumToString(response.job.desc.deploy.max_per_host).c_str(),
+                        ::baidu::common::NumToString(response.job.desc.deploy.update_break_count).c_str(),
                         response.job.desc.deploy.tag.c_str(),
                         pools.c_str()
                     );

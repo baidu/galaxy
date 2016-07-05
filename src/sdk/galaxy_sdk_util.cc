@@ -729,6 +729,7 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     job->deploy.interval = pb_job.deploy().interval();
     job->deploy.max_per_host = pb_job.deploy().max_per_host();
     job->deploy.tag = pb_job.deploy().tag();
+    job->deploy.update_break_count = pb_job.deploy().update_break_count(); 
     for (int i = 0; i < pb_job.deploy().pools().size(); ++i) {
         job->deploy.pools.push_back(pb_job.deploy().pools(i));
     }
