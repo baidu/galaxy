@@ -385,6 +385,7 @@ void Container::ExportEnv()
         if (0 != ret) {
             LOG(FATAL) << "set env failed for container " << id_.CompactId();
         }
+        LOG(INFO) << "set env: " << boost::to_upper_copy(iter->first).c_str() << "=" << iter->second.c_str();
 
         iter++;
     }
