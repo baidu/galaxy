@@ -152,8 +152,8 @@ std::string StringJobStatus(const ::baidu::galaxy::sdk::JobStatus& status) {
     case ::baidu::galaxy::sdk::kJobUpdating:
         result = "Updating";
         break;
-    case ::baidu::galaxy::sdk::kJobBatchUpdate:
-        result = "BatchUpdate";
+    case ::baidu::galaxy::sdk::kJobUpdatePaused:
+        result = "UpdatePaused";
         break;
     default:
         result = "";
@@ -321,8 +321,8 @@ std::string StringStatus(const ::baidu::galaxy::sdk::Status& status) {
 std::string StringAgentStatus(const ::baidu::galaxy::sdk::AgentStatus& status) {
     std::string result;
     switch(status) {
-    case ::baidu::galaxy::sdk::kAgentUnkown:
-        result = "Unkown";
+    case ::baidu::galaxy::sdk::kAgentUnknown:
+        result = "Unknown";
         break;
     case ::baidu::galaxy::sdk::kAgentAlive:
         result = "Alive";
@@ -416,7 +416,7 @@ bool GetHostname(std::string* hostname) {
     return true;
 }
 
-//单位转换
+//单位转换 1K => 1024
 int UnitStringToByte(const std::string& input, int64_t* output) {
     if (output == NULL) {
         return -1;
@@ -427,8 +427,8 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     subfix_table['M'] = 2;
     subfix_table['G'] = 3;
     subfix_table['T'] = 4;
-    subfix_table['B'] = 5;
-    subfix_table['Z'] = 6;
+    subfix_table['P'] = 5;
+    subfix_table['E'] = 6;
 
     int64_t num = 0;
     char subfix = 0;
@@ -442,7 +442,7 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     if (matched == 2) {
         std::map<char, int32_t>::iterator it = subfix_table.find(subfix);
         if (it == subfix_table.end()) {
-            fprintf(stderr, "unit is error, it must be in [K, M, G, T, B, Z]\n");
+            fprintf(stderr, "unit is error, it must be in [K, M, G, T, P, E]\n");
             return -1;
         }
         shift = it->second;
@@ -454,6 +454,19 @@ int UnitStringToByte(const std::string& input, int64_t* output) {
     }
     *output = num;
     return 0;
+}
+
+//单位转换 1024 => 1K
+std::string HumanReadableString(int64_t num) {
+    static const int max_shift = 6;
+    static const char* const prefix[max_shift + 1] = {"", "K", "M", "G", "T", "P", "E"};
+    int shift = 0;
+    double v = num;
+    while ((num>>=10) > 0 && shift < max_shift) {
+        v /= 1024;
+        shift++;
+    }
+    return ::baidu::common::NumToString(v) + prefix[shift];
 }
 
 //读取endpoint
@@ -493,7 +506,13 @@ bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::s
     return true;
 }
 
-bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_data_packages, int num_services) {
+bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, 
+                  int num_data_packages, int num_services, const std::string& jobname) {
+
+    std::string name = jobname;
+    if (name.empty()) {
+        name = "example";
+    }
 
     rapidjson::Document document;
     rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
@@ -502,11 +521,11 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     rapidjson::Value obj_str(rapidjson::kStringType);
     std::string str;
 
-    
     //根节点
     rapidjson::Value root(rapidjson::kObjectType);
     
-    root.AddMember("name", "example", allocator);
+    obj_str.SetString(name.c_str(), allocator);
+    root.AddMember("name", obj_str, allocator);
     root.AddMember("type", "kJobService", allocator);
     //root.AddMember("version", "1.0.0", allocator);
     //root.AddMember("run_user", "galaxy", allocator);
@@ -518,7 +537,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     deploy.AddMember("interval", 1, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
     deploy.AddMember("tag", "", allocator);
-    deploy.AddMember("pools", "example1,test", allocator);
+    deploy.AddMember("pools", "example,test", allocator);
 
     root.AddMember("deploy", deploy, allocator);
 
@@ -532,7 +551,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
     workspace_volum.AddMember("dest_path", "/home/work", allocator);
     workspace_volum.AddMember("readonly", false, allocator);
     workspace_volum.AddMember("exclusive", false, allocator);
-    workspace_volum.AddMember("use_symlink", true, allocator);
+    workspace_volum.AddMember("use_symlink", false, allocator);
     
     pod.AddMember("workspace_volum", workspace_volum, allocator);
 
@@ -552,9 +571,14 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
 
         data_volums.PushBack(data_volum, allocator);
     }
-    pod.AddMember("data_volums", data_volums, allocator);
+    if (num_data_volums > 0) {
+        pod.AddMember("data_volums", data_volums, allocator);
+    }
 
     rapidjson::Value tasks(rapidjson::kArrayType);
+    if (num_tasks < 1) {
+        num_tasks = 1;
+    }
     for (int i = 0; i < num_tasks; ++i) {
 
         rapidjson::Value cpu(rapidjson::kObjectType);
@@ -577,7 +601,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         rapidjson::Value ports(rapidjson::kArrayType);
         for (int j = 0; j < num_ports; ++j) {
             rapidjson::Value port(rapidjson::kObjectType);
-            str = "port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             port.AddMember("name", obj_str, allocator);
 
@@ -601,8 +625,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         package.AddMember("version", "1.0.0", allocator);
 
         rapidjson::Value exec_package(rapidjson::kObjectType);
-        exec_package.AddMember("start_cmd", "sh_start.sh", allocator);
-        exec_package.AddMember("stop_cmd", "sh app_stop.sh", allocator);
+        exec_package.AddMember("start_cmd", "sh app_start.sh", allocator);
+        exec_package.AddMember("stop_cmd", "", allocator);
+        exec_package.AddMember("health_cmd", "", allocator);
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
@@ -625,20 +650,25 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         }
 
         rapidjson::Value data_package(rapidjson::kObjectType);
-        data_package.AddMember("reload_cmd", "sh -x reload.sh", allocator);
+        data_package.AddMember("reload_cmd", "", allocator);
         data_package.AddMember("packages", data_packages, allocator);
 
         rapidjson::Value services(rapidjson::kArrayType);
         for (int j = 0; j < num_services; ++j) {
             rapidjson::Value service(rapidjson::kObjectType);
-            str = "service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_service" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             service.AddMember("service_name", obj_str, allocator);
 
-            str = "port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
+            str = name + "_port" + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             service.AddMember("port_name", obj_str, allocator);
-            service.AddMember("user_bns", false, allocator);
+            service.AddMember("use_bns", false, allocator);
+            service.AddMember("tag", "", allocator);
+            service.AddMember("health_check_type", "", allocator);
+            service.AddMember("health_check_script", "", allocator);
+            service.AddMember("token", "", allocator);
+            
             services.PushBack(service, allocator);
         }
 
@@ -647,10 +677,20 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports, int num_dat
         task.AddMember("mem", mem, allocator);
         task.AddMember("tcp", tcp, allocator);
         task.AddMember("blkio", blkio, allocator);
-        task.AddMember("ports", ports, allocator);
+        
+        if (num_ports > 0) {
+            task.AddMember("ports", ports, allocator);
+        }
+
         task.AddMember("exec_package", exec_package, allocator);
-        task.AddMember("data_package", data_package, allocator);
-        task.AddMember("services", services, allocator);
+        
+        if (num_data_packages > 0) {
+            task.AddMember("data_package", data_package, allocator);
+        }
+
+        if (num_services > 0) {
+            task.AddMember("services", services, allocator);
+        }
 
         tasks.PushBack(task, allocator);
         

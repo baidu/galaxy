@@ -7,8 +7,9 @@
 
 DEFINE_string(f, "", "specify config file");
 DEFINE_string(i, "", "specify job id");
+DEFINE_string(n, "", "specify job name");
 DEFINE_string(c, "", "specify cmd");
-DEFINE_int32(t, 1, "specify task num");
+DEFINE_int32(t, 0, "specify task num or update breakpoint");
 DEFINE_int32(d, 1, "specify data_volums num");
 DEFINE_int32(p, 1, "specify port num");
 DEFINE_int32(a, 1, "specify packages num in data_package");
@@ -17,35 +18,72 @@ DEFINE_string(o, "", "operation");
 
 DECLARE_string(flagfile);
 
-const std::string kGalaxyUsage = "galaxy.\n"
+const std::string kGalaxyUsage = "galaxy_client.\n"
+                                 "galaxy_client [--flagfile=flagfile]\n"
                                  "Usage:\n"
-                                 "      galaxy submit -f <jobconfig>\n"
-                                 "      galaxy update -f <jobconfig> -i id [-o start(need -f -t breakpoint)|continue|rollback|default(need -f)]\n"
-                                 "      galaxy stop -i id\n"
-                                 "      galaxy remove -i id\n"
-                                 "      galaxy list [-o cpu,mem,volums]\n"
-                                 "      galaxy show -i id [-o cpu,mem,volums]\n"
-                                 "      galaxy exec -i id -c cmd\n"
-                                 "      galaxy json [-t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
-                                 "Optionss: \n"
+                                 "      galaxy_client submit -f jobconfig(json format)\n"
+                                 "      galaxy_client update -f jobconfig(json format) -i id [-t breakpoint -o pause|continue|rollback]\n"
+                                 "      galaxy_client stop -i id\n"
+                                 "      galaxy_client remove -i id\n"
+                                 "      galaxy_client list [-o cpu,mem,volums]\n"
+                                 "      galaxy_client show -i id [-o cpu,mem,volums]\n"
+                                 "      galaxy_client exec -i id -c cmd\n"
+                                 "      galaxy_client json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
+                                 "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
                                  "      -i specify job id.\n"
-                                 "      -t specify specify task num or update breakpoint, default 1.\n"
+                                 "      -t specify specify task num or update breakpoint, default 0.\n"
                                  "      -d spicify data_volums num, default 1\n"
                                  "      -p specify port num, default 1\n"
-                                 "      -a specify specify packages num in data_package, default 1\n"
-                                 "      -s specify specify service num, default 1\n"
-                                 "      -o specify operation.\n";
+                                 "      -a specify packages num in data_package, default 1\n"
+                                 "      -s specify service num, default 1\n"
+                                 "      -n specify job name\n"
+                                 "      -o specify operation.\n"
+                                 "      --flagfile specify flag file, default ./galaxy.flag\n";
 
 int main(int argc, char** argv) {
     bool ok = true;
-    FLAGS_flagfile = "./galaxy.flag";
+    std::vector<char*> vec_argv;
+    bool has_flagfile = false;
     ::google::SetUsageMessage(kGalaxyUsage);
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    for (int i = 0; i < argc; ++i) {
+        if (strncmp(argv[i], "--flagfile", 10) == 0) {
+            has_flagfile = true;
+            std::string strargv = argv[i];
+            size_t pos = strargv.find_first_of("=");
+            if (pos == std::string::npos || strargv.size() <= pos + 1) { //value is empty
+                fprintf(stderr, "--flagfile= have no value\n");
+                return -1;
+            }
+        }
+        vec_argv.push_back(argv[i]);
+    }
+
+    if (!has_flagfile) {
+        vec_argv.push_back(const_cast<char*>("--flagfile=./galaxy.flag"));
+
+        char** new_argv = new char*[vec_argv.size() + 1];
+
+        std::vector<char*>::iterator it = vec_argv.begin();
+        for (int i = 0; it != vec_argv.end(); ++it, ++i) {
+            char* temp = new char[strlen(*it) + 1];
+            uint32_t length = strlen(strcpy(temp, *it));
+            if (length != strlen(*it)) {
+                fprintf(stderr, "params copy error\n");
+                return -1;
+            }
+            new_argv[i] = temp;
+        }
+        new_argv[vec_argv.size()] = '\0';
+        argc = vec_argv.size();
+
+        ::google::ParseCommandLineFlags(&argc, &new_argv, true); 
+    } else {
+        ::google::ParseCommandLineFlags(&argc, &argv, true);
+    }
     if (argc < 2) {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
-        fprintf(stderr, "%d", argc);
         return -1;
     }
 
@@ -99,13 +137,18 @@ int main(int argc, char** argv) {
         }
         ok = jobAction->ExecuteCmd(FLAGS_i, FLAGS_c);
     } else if (strcmp(argv[1], "json") == 0) { 
-        ok = ::baidu::galaxy::client::GenerateJson(FLAGS_t, 
-                                                   FLAGS_d,
-                                                   FLAGS_p, 
-                                                   FLAGS_a, 
-                                                   FLAGS_s
-                                                  ); 
-    }else {
+        if (FLAGS_i.empty()) {
+            ok = ::baidu::galaxy::client::GenerateJson(FLAGS_t, 
+                                                       FLAGS_d,
+                                                       FLAGS_p, 
+                                                       FLAGS_a, 
+                                                       FLAGS_s,
+                                                       FLAGS_n
+                                                      ); 
+        } else {
+            ok = jobAction->GenerateJson(FLAGS_i);
+        }
+    } else {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;
     }

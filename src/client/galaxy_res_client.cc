@@ -23,10 +23,11 @@ DEFINE_string(m, "", "specify memory size");
 DECLARE_string(flagfile);
 
 const std::string kGalaxyUsage = "galaxy_res_client.\n"
+                                 "galaxy_res_client [--flagfile=flagfile]\n"
                                  "Usage:\n"
                                  "  container usage:\n"
-                                 "      galaxy_res_client create_container -f <jobconfig>\n"
-                                 "      galaxy_res_client update_container -f <jobconfig> -i id\n"
+                                 "      galaxy_res_client create_container -f jobconfig(json format)\n"
+                                 "      galaxy_res_client update_container -f jobconfig(json format) -i id\n"
                                  "      galaxy_res_client remove_container -i id\n"
                                  "      galaxy_res_client list_containers [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client show_container -i id\n\n"
@@ -51,10 +52,10 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      galaxy_res_client list_pools -e endpoint\n\n"
                                  "  user usage:\n"
                                  "      galaxy_res_client add_user -u user -t token\n"
-                                 "      galaxy_res_client remove_user -u user -t token\n"
+                                 "      galaxy_res_client remove_user -u user\n"
                                  "      galaxy_res_client list_users\n"
                                  "      galaxy_res_client show_user -u user\n"
-                                 "      galaxy_res_client grant_user -u user -t token -p pool -o [add/remove/set/clear]\n" 
+                                 "      galaxy_res_client grant_user -u user -p pool -o [add/remove/set/clear]\n" 
                                  "                                   -a [create_container,remove_container,update_container,\n"
                                  "                                   list_containers,submit_job,remove_job,update_job,list_jobs] \n"
                                  "      galaxy_res_client assign_quota -u user -c millicores -d disk_size -s ssd_size -m memory_size -r replica\n"
@@ -71,14 +72,51 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      -r specify replica, such as 100\n"
                                  "      -d specify disk size, such as 1G\n"
                                  "      -s specify ssd size, such as 1G\n"
-                                 "      -m specify memory size, such as 1G\n";
+                                 "      -m specify memory size, such as 1G\n"
+                                 "      --flagfile specify flag file, default ./galaxy.flag\n";
 
 
 int main(int argc, char** argv) {
     bool ok = true;
-    FLAGS_flagfile = "./galaxy.flag";
+    std::vector<char*> vec_argv;
+    bool has_flagfile = false;
     ::google::SetUsageMessage(kGalaxyUsage);
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    for (int i = 0; i < argc; ++i) {
+        if (strncmp(argv[i], "--flagfile", 10) == 0) {
+            has_flagfile = true;
+            std::string strargv = argv[i];
+            size_t pos = strargv.find_first_of("=");
+            if (pos == std::string::npos || strargv.size() <= pos + 1) { //value is empty
+                fprintf(stderr, "--flagfile= have no value\n");
+                return -1;
+            }
+        }
+        vec_argv.push_back(argv[i]);
+    }
+
+    if (!has_flagfile) {
+        vec_argv.push_back(const_cast<char*>("--flagfile=./galaxy.flag"));
+
+        char** new_argv = new char*[vec_argv.size() + 1];
+
+        std::vector<char*>::iterator it = vec_argv.begin();
+        for (int i = 0; it != vec_argv.end(); ++it, ++i) {
+            char* temp = new char[strlen(*it) + 1];
+            uint32_t length = strlen(strcpy(temp, *it));
+            if (length != strlen(*it)) {
+                fprintf(stderr, "params copy error\n");
+                return -1; 
+            }
+            new_argv[i] = temp;
+        }
+        new_argv[vec_argv.size()] = '\0';
+        argc = vec_argv.size();
+
+        ::google::ParseCommandLineFlags(&argc, &new_argv, true);
+    } else {
+        ::google::ParseCommandLineFlags(&argc, &argv, true);
+    }
+
     if (argc < 2) {
         fprintf(stderr, "%s", kGalaxyUsage.c_str());
         return -1;
@@ -155,10 +193,10 @@ int main(int argc, char** argv) {
         }
         ok = resAction->RemoveAgent(FLAGS_e);
     } else if (strcmp(argv[1], "list_agents") == 0) {
-        if (!FLAGS_p.empty()) {
+        if (!FLAGS_t.empty()) {
+            ok = resAction->ListAgentsByTag(FLAGS_t, FLAGS_p, FLAGS_o);
+        } else if (!FLAGS_p.empty()) {
             ok = resAction->ListAgentsByPool(FLAGS_p, FLAGS_o);
-        } else if (!FLAGS_t.empty()) {
-            ok = resAction->ListAgentsByTag(FLAGS_t, FLAGS_o);
         } else {
             ok = resAction->ListAgents(FLAGS_o);
         }
@@ -216,11 +254,11 @@ int main(int argc, char** argv) {
         }
         ok = resAction->AddUser(FLAGS_u, FLAGS_t);
     } else if (strcmp(argv[1], "remove_user") == 0) { 
-        if (FLAGS_u.empty() || FLAGS_t.empty()) {
-            fprintf(stderr, "-u and -t are needed\n");
+        if (FLAGS_u.empty()) {
+            fprintf(stderr, "-u are needed\n");
             return -1;
         }
-        ok = resAction->RemoveUser(FLAGS_u, FLAGS_t);
+        ok = resAction->RemoveUser(FLAGS_u);
     } else if (strcmp(argv[1], "list_users") == 0) {
         ok = resAction->ListUsers();
     } else if (strcmp(argv[1], "show_user") == 0) {
@@ -230,8 +268,8 @@ int main(int argc, char** argv) {
         }
         ok = resAction->ShowUser(FLAGS_u);
     } else if (strcmp(argv[1], "grant_user") == 0) {
-        if (FLAGS_u.empty() || FLAGS_t.empty() || FLAGS_p.empty()) {
-            fprintf(stderr, "-u, -t and -p are needed\n");
+        if (FLAGS_u.empty() || FLAGS_p.empty()) {
+            fprintf(stderr, "-u, -p are needed\n");
             return -1;
         }
         
@@ -240,7 +278,7 @@ int main(int argc, char** argv) {
             return -1;
         }
 
-        ok =  resAction->GrantUser(FLAGS_u, FLAGS_t, FLAGS_p, FLAGS_o, FLAGS_a);
+        ok =  resAction->GrantUser(FLAGS_u, FLAGS_p, FLAGS_o, FLAGS_a);
 
     } else if (strcmp(argv[1], "assign_quota") == 0) {
         if (FLAGS_s.empty() || FLAGS_d.empty() || FLAGS_m.empty() || FLAGS_u.empty()) {

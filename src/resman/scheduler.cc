@@ -17,13 +17,14 @@
 
 DECLARE_int64(sched_interval);
 DECLARE_int64(container_group_gc_check_interval);
+DECLARE_bool(check_container_version);
 
 namespace baidu {
 namespace galaxy {
 namespace sched {
 
 const int sMaxPort = 9999;
-const int sMinPort = 1025;
+const int sMinPort = 1026;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -316,6 +317,7 @@ bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
                           std::vector<DevicePath>& devices) {
     typedef std::map<DevicePath, VolumInfo> VolumMap;
     VolumMap volum_free;
+    std::set<DevicePath> path_used;
     BOOST_FOREACH(const VolumMap::value_type& pair, volum_total_) {
         const DevicePath& device_path = pair.first;
         const VolumInfo& volum_info = pair.second;
@@ -328,12 +330,13 @@ bool Agent::SelectDevices(const std::vector<proto::VolumRequired>& volums,
             }
         }
     }
-    return RecurSelectDevices(0, volums, volum_free, devices);
+    return RecurSelectDevices(0, volums, volum_free, devices, path_used);
 }
 
 bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>& volums,
                                std::map<DevicePath, VolumInfo>& volum_free,
-                               std::vector<DevicePath>& devices) {
+                               std::vector<DevicePath>& devices,
+                               std::set<DevicePath>& path_used) {
     if (i >= volums.size()) {
         if (devices.size() == volums.size()) {
             return true;
@@ -352,15 +355,21 @@ bool Agent::RecurSelectDevices(size_t i, const std::vector<proto::VolumRequired>
         if (volum_info.medium != volum_need.medium()) {
             continue;
         }
+        if (volum_need.exclusive() && 
+            path_used.find(device_path) != path_used.end()) {
+            continue;
+        }
         volum_info.size -= volum_need.size();
         volum_info.exclusive = volum_need.exclusive();
         devices.push_back(device_path);
-        if (RecurSelectDevices(i + 1, volums, volum_free, devices)) {
+        path_used.insert(device_path);
+        if (RecurSelectDevices(i + 1, volums, volum_free, devices, path_used)) {
             return true;
         } else {
             volum_info.size += volum_need.size();
             volum_info.exclusive = false;
             devices.pop_back();
+            path_used.erase(device_path);
         }
     }
     return false;
@@ -435,7 +444,9 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         Requirement::Ptr require(new Requirement());    
         const proto::ContainerDescription& container_desc = container_info.container_desc();    
         SetRequirement(require, container_desc);
-
+        if (container_group->require->version == require->version) {
+            require = container_group->require;
+        }
         container->id = container_info.id();
         container->container_group_id = container_info.group_id();
         container->priority = container_desc.priority();
@@ -950,7 +961,9 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         return;
     }
 
-    CheckVersion(agent); //check containers version
+    if (FLAGS_check_container_version) {
+        CheckVersion(agent); //check containers version
+    }
     CheckTagAndPool(agent); //may evict some containers
     //for each container_group checking pending containers, try to put on...
     std::set<ContainerGroup::Ptr, ContainerGroupQueueLess>::iterator jt;
@@ -1116,7 +1129,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             cmd.action = kDestroyContainer;
             commands.push_back(cmd);
             continue;
-        } 
+        }
         const std::string& local_version = it_local->second->require->version;
         const std::string& remote_version = container_remote.container_desc().version();
         if (local_version != remote_version) {
@@ -1127,7 +1140,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             cmd.action = kDestroyContainer;
             commands.push_back(cmd);
             continue;
-        } 
+        }
         remote_status[container_remote.id()] = container_remote.status();
         Container::Ptr container_local = it_local->second;
         container_local->remote_info.set_cpu_used(container_remote.cpu_used());
@@ -1173,6 +1186,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                 } else if (remote_st == kContainerError) {
                     cmd.action = kDestroyContainer;
                     commands.push_back(cmd);
+                    ChangeStatus(container_local, kContainerPending);
                 } else if (remote_st != kContainerReady) {
                     ChangeStatus(container_local, kContainerPending);
                 }

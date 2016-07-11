@@ -158,7 +158,7 @@ enum JobStatus {
    kJobFinished = 3;
    kJobDestroying = 4;
    kJobUpdating = 5;
-   kJobBatchUpdate = 6;
+   kJobUpdatePause = 6;
 }
 
 enum JobEvent {
@@ -167,7 +167,7 @@ enum JobEvent {
     kRemove = 3;
     kRemoveFinish = 4;
     kUpdateFinish = 5;
-    kBatchUpdate = 6;
+    kPauseUpdate = 6;
     kUpdateContinue = 7;
     kUpdateRollback = 8;
 }
@@ -231,6 +231,7 @@ message ImagePackage {
     optional Package package = 1;
     optional string start_cmd = 2;
     optional string stop_cmd = 3;
+    optional string health_cmd = 4;
 }
 
 message DataPackage {
@@ -252,6 +253,10 @@ message Service {
     optional string service_name = 1;  // must be uniq, which is guaranteed by user
     optional string port_name = 2;     // name
     optional bool use_bns = 3;
+    optional string tag = 4;
+    optional string health_check_type = 5;
+    optional string health_check_script = 6;
+    optional string token = 7;
 }
 
 message ServiceInfo {
@@ -259,6 +264,8 @@ message ServiceInfo {
     optional string port = 2;
     optional string ip = 3;
     optional Status status = 4;
+    optional string deploy_path = 5;
+    optional string hostname = 6;
 }
 
 message TaskDescription {
@@ -397,6 +404,7 @@ enum Status {
    kStatusConflict = 19;
    kJobTerminateFail = 20;
    kSuspend = 21;
+   kQuit = 22;
 }
 
 message ErrorCode {
@@ -405,7 +413,7 @@ message ErrorCode {
 }
 
 enum AgentStatus {
-    kAgentUnkown = 0;
+    kAgentUnknown = 0;
     kAgentAlive = 1;
     kAgentDead = 2;
     kAgentOffline = 3;

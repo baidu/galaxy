@@ -41,7 +41,8 @@ namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()),
                            safe_mode_(true),
-                           force_safe_mode_(false) {
+                           force_safe_mode_(false), 
+                           start_time_(0) {
     nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
 
@@ -101,6 +102,7 @@ bool ResManImpl::Init() {
                  << "\n" << container_group_meta.DebugString()
                  << "TRACE END";
     }
+    start_time_ = common::timer::get_micros();
     return true;
 }
 
@@ -297,7 +299,7 @@ void ResManImpl::QueryAgent(const std::string& agent_endpoint, bool is_first_que
              << ",timeout:" << FLAGS_agent_timeout
              << ",now_tm:" << now_tm;
     if (agent.last_heartbeat_time + FLAGS_agent_timeout < now_tm) {
-        LOG(INFO) << "this agent maybe dead:" << agent_endpoint;
+        LOG(WARNING) << "this agent maybe dead:" << agent_endpoint;
         agent.status = proto::kAgentDead;
         scheduler_->RemoveAgent(agent_endpoint);
         query_pool_.DelayTask(FLAGS_agent_query_interval * 1000,
@@ -388,9 +390,13 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         if (!force_safe_mode_ && 
             safe_mode_ && 
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
-            LOG(INFO) << "leave safe mode";
-            safe_mode_ = false;
-            leave_safe_mode_event = true;
+            int64_t running_time = (common::timer::get_micros() - start_time_) / 1000000;
+            LOG(INFO) << "running time: " << running_time << " seconds";
+            if ( running_time > FLAGS_agent_timeout) {
+                LOG(INFO) << "leave safe mode";
+                safe_mode_ = false;
+                leave_safe_mode_event = true;
+            }
         }
     }
     if (leave_safe_mode_event) {
@@ -560,7 +566,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
         it = container_groups_.find(request->id());
         if (it == container_groups_.end()) {
-            response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+            response->mutable_error_code()->set_status(proto::kJobNotFound);
             response->mutable_error_code()->set_reason("no such group");
             done->Run();
             return;
@@ -669,10 +675,8 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     } else {
         new_meta.mutable_desc()->set_version(old_version);
     }
-    if (replica_changed) {
-        scheduler_->ChangeReplica(new_meta.id(),
-                                  new_meta.replica());
-    }
+    scheduler_->ChangeReplica(new_meta.id(),
+                              new_meta.replica());
     {
         MutexLock lock(&mu_);
         container_groups_[new_meta.id()] = new_meta;
@@ -852,7 +856,7 @@ void ResManImpl::ListAgents(::google::protobuf::RpcController* controller,
         }
         std::map<std::string, AgentStat>::iterator jt = agent_stats_.find(endpoint);
         if (jt == agent_stats_.end()) {
-            agent_st->set_status(proto::kAgentUnkown);
+            agent_st->set_status(proto::kAgentUnknown);
             continue;
         }
         agent_st->set_status(jt->second.status);
@@ -1036,6 +1040,7 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
     const std::string& endpoint = request->endpoint();
     const std::string& pool = request->pool();
     proto::AgentMeta agent_meta = agents_[endpoint];
+    std::string old_pool = agent_meta.pool();
     agent_meta.set_pool(pool);
     bool ret = SaveObject(sAgentPrefix + "/" + endpoint, agent_meta);
     if (!ret) {
@@ -1044,7 +1049,10 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
     } else {
         MutexLock lock(&mu_);
         agents_[endpoint].set_pool(pool);
-        pools_[pool].erase(endpoint);
+        if (pools_.find(old_pool) != pools_.end()) {
+            pools_[old_pool].erase(endpoint);
+        }
+        pools_[pool].insert(endpoint);
         scheduler_->SetPool(endpoint, pool);
         response->mutable_error_code()->set_status(proto::kOk);
     }

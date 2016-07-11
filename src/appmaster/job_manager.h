@@ -7,11 +7,6 @@
 #include <set>
 #include <map>
 #include <vector>
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/unordered_map.hpp>
 #include <thread_pool.h>
 #include "ins_sdk.h"
 #include "protocol/resman.pb.h"
@@ -42,6 +37,7 @@ using ::baidu::galaxy::proto::kRemoveContainerGroupFail;
 using ::baidu::galaxy::proto::kUpdateContainerGroupFail;
 using ::baidu::galaxy::proto::kRebuild;
 using ::baidu::galaxy::proto::kReload;
+using ::baidu::galaxy::proto::kQuit;
 using ::baidu::galaxy::proto::kStatusConflict;
 using ::baidu::galaxy::proto::kJobTerminateFail;
 using ::baidu::galaxy::proto::kJobPending; 
@@ -49,18 +45,19 @@ using ::baidu::galaxy::proto::kJobRunning;
 using ::baidu::galaxy::proto::kJobFinished; 
 using ::baidu::galaxy::proto::kJobDestroying;
 using ::baidu::galaxy::proto::kJobUpdating;
-using ::baidu::galaxy::proto::kJobBatchUpdate;
+using ::baidu::galaxy::proto::kJobUpdatePause;
 using ::baidu::galaxy::proto::kFetch;
 using ::baidu::galaxy::proto::kUpdate;
 using ::baidu::galaxy::proto::kRemove;
 using ::baidu::galaxy::proto::kRemoveFinish;
 using ::baidu::galaxy::proto::kUpdateFinish;
-using ::baidu::galaxy::proto::kBatchUpdate;
+using ::baidu::galaxy::proto::kPauseUpdate;
 using ::baidu::galaxy::proto::kUpdateContinue;
 using ::baidu::galaxy::proto::kUpdateRollback;
 using ::baidu::galaxy::proto::kActionNull;
 using ::baidu::galaxy::proto::kActionReload;
 using ::baidu::galaxy::proto::kActionRebuild;
+using ::baidu::galaxy::proto::kActionRecreate;
 using ::baidu::galaxy::proto::kPodPending;
 using ::baidu::galaxy::proto::kPodReady;
 using ::baidu::galaxy::proto::kPodDeploying;
@@ -97,6 +94,7 @@ struct Job {
     int64_t create_time_;
     int64_t update_time_;
     int64_t rollback_time_;
+    uint32_t updated_cnt_;
 };
 
 typedef boost::function<Status (Job* job, void* arg)> TransFunc;
@@ -109,10 +107,11 @@ class JobManager {
 public:
     void Start();
     Status Add(const JobId& job_id, const JobDescription& job_desc);
-    Status Update(const JobId& job_id, const JobDescription& job_desc);
-    Status Terminate(const JobId& jobid, const User& user, const std::string hostname);
-    Status BatchUpdate(const JobId& job_id, const JobDescription& job_desc);
-    Status ContinueUpdate(const JobId& job_id);
+    Status Update(const JobId& job_id, const JobDescription& job_desc,
+                    bool container_change);
+    Status Terminate(const JobId& jobid, const User& user);
+    Status PauseUpdate(const JobId& job_id);
+    Status ContinueUpdate(const JobId& job_id, int32_t break_point);
     Status Rollback(const JobId& job_id);
 
 
@@ -122,7 +121,8 @@ public:
     void GetJobsOverview(JobOverviewList* jobs_overview);
     void SetResmanEndpoint(std::string new_endpoint);
     Status GetJobInfo(const JobId& jobid, JobInfo* job_info);
-
+    JobDescription GetLastDesc(const JobId jonid);
+    void Run();
     JobManager();
     ~JobManager();
 private:
@@ -140,14 +140,13 @@ private:
     void CheckClear(Job* job);
     void CheckJobStatus(Job* job);
     void CheckPodAlive(PodInfo* pod, Job* job);
+    void CheckPauseUpdate(Job* job);
     Status StartJob(Job* job, void* arg);
     Status RecoverJob(Job* job, void* arg);
     Status UpdateJob(Job* job, void* arg);
     Status RemoveJob(Job* job, void* arg);
     Status ClearJob(Job* job, void* arg);
-    void RemoveContainerGroupCallBack(const proto::RemoveContainerGroupRequest* request,
-                                  proto::RemoveContainerGroupResponse* response,
-                                  bool failed, int);
+    Status PauseUpdateJob(Job* job, void * arg);
     PodInfo* CreatePod(Job* job,
                 std::string podid,
                 std::string endpoint);
@@ -158,20 +157,23 @@ private:
     bool DeleteFromNexus(const JobId& job_id);
     Status ContinueUpdateJob(Job* job, void* arg);
     Status RollbackJob(Job* job, void* arg);
-    Status BatchUpdatePod(Job* job, void* arg);
-    void CheckBatchUpdate(Job* job);
+    Status PauseUpdatePod(Job* job, void* arg);
     Status TryRebuild(Job* job, PodInfo* podinfo);
     Status TryReload(Job* job, PodInfo* pod);
     void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
                             PodStatus reload_status);
     bool ReachBreakpoint(Job* job);
     void RefreshPod(::baidu::galaxy::proto::FetchTaskRequest* request,
-                                PodInfo* podinfo,
-                                Job* job);
+                    PodInfo* podinfo,
+                    Job* job);
 
     bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
     void RefreshService(ServiceList* src, PodInfo* pod);
     void DestroyService(ServiceList* services);
+    void EraseFormDeployList(Job* job, std::string podid);
+    void RebuildPods(Job* job,
+                    const ::baidu::galaxy::proto::FetchTaskRequest* request);
+    void CheckDeployingAlive(std::string id, Job* job);
 
 private:
     std::map<JobId, Job*> jobs_;
@@ -192,6 +194,7 @@ private:
     typedef boost::function<void (Job* job)> AgingFunc;
     std::map<std::string, DispatchFunc> dispatch_;
     std::map<std::string, AgingFunc> aging_;
+    bool running_;
 };
 
 }

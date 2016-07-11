@@ -40,24 +40,28 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
         return -1;
     }
     deploy->max_per_host = deploy_json["max_per_host"].GetInt();
-    if (!deploy_json.HasMember("tag")) {
-        fprintf(stderr, "tag is needed in deploy\n");
-        return false;
-    } 
-    deploy->tag = deploy_json["tag"].GetString();
-    boost::trim(deploy->tag);
+    
+    //deploy config:tag
+    if (deploy_json.HasMember("tag")) {
+        deploy->tag = deploy_json["tag"].GetString();
+        boost::trim(deploy->tag);
+    }
 
-    std::vector<std::string> pools;
+    if (!deploy_json.HasMember("pools")) {
+        fprintf(stderr, "pools is needed in deploy\n");
+        return -1;
+    }
     std::string str_pools = deploy_json["pools"].GetString();
     boost::trim(str_pools);
+
+    std::vector<std::string> pools;
     ::baidu::common::SplitString(str_pools, ",", &pools);
     if (pools.size() == 0) {
         fprintf(stderr, "pools are needed in deploy\n");
-        return false;
+        return -1;
     }
     deploy->pools.assign(pools.begin(), pools.end());
     return 0;
-
 }
 
 int ParseVolum(const rapidjson::Value& volum_json, ::baidu::galaxy::sdk::VolumRequired* volum) {
@@ -228,12 +232,15 @@ int ParseImagePackage(const rapidjson::Value& image_json, ::baidu::galaxy::sdk::
     image->start_cmd = image_json["start_cmd"].GetString();
     boost::trim(image->start_cmd);
     
-    if (!image_json.HasMember("stop_cmd")) {
-        fprintf(stderr, "stop_cmd is required in exec_package\n");
-        return -1;
+    if (image_json.HasMember("stop_cmd")) {
+        image->stop_cmd = image_json["stop_cmd"].GetString();
+        boost::trim(image->stop_cmd);
     }
-    image->stop_cmd = image_json["stop_cmd"].GetString();
-    boost::trim(image->stop_cmd);
+
+    if (image_json.HasMember("health_cmd")) {
+        image->health_cmd = image_json["health_cmd"].GetString();
+        boost::trim(image->health_cmd);
+    }
     
     if (!image_json.HasMember("package")) {
         fprintf(stderr, "package is required in exec_package\n");
@@ -318,6 +325,22 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
         service->use_bns = false;
     } else {
         service->use_bns = service_json["use_bns"].GetBool();
+    }
+
+    if (service_json.HasMember("tag")) {
+        service->tag = service_json["tag"].GetString();
+    }
+    
+    if (service_json.HasMember("health_check_type")) {
+        service->health_check_type = service_json["health_check_type"].GetString();
+    }
+
+    if (service_json.HasMember("health_check_script")) {
+        service->health_check_script = service_json["health_check_script"].GetString();
+    }
+    
+    if (service_json.HasMember("token")) {
+        service->token = service_json["token"].GetString();
     }
 
     return 0;
@@ -462,7 +485,6 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
                }
            }
         }
-
     }
 
     if (!task_json.HasMember("exec_package")) {
@@ -487,29 +509,21 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
     }
 
     std::vector< ::baidu::galaxy::sdk::Service>& services = task->services;
-    if (!task_json.HasMember("services")) {
-        fprintf(stderr, "services is needed in task\n");
-        return -1;
-    }
-
-    const rapidjson::Value& servers_json = task_json["services"];
-    if (servers_json.Size() <= 0) {
-        fprintf(stderr, "size of services is zero\n");
-        return -1;
-    }
-
-    for(rapidjson::SizeType i = 0; i < servers_json.Size(); ++i) {
-        ::baidu::galaxy::sdk::Service service;
-        ok = ParseService(servers_json[i], &service);
-        if (ok != 0) {
-            break;
-        }
-        services.push_back(service);
-    }
     
-    if (ok != 0) {
-        //fprintf(stderr, "services[%d] is error in task\n", i);
-        return -1;
+    if (task_json.HasMember("services")) {
+        const rapidjson::Value& servers_json = task_json["services"];
+        for(rapidjson::SizeType i = 0; i < servers_json.Size(); ++i) {
+            ::baidu::galaxy::sdk::Service service;
+            ok = ParseService(servers_json[i], &service);
+            if (ok != 0) {
+                break;
+            }
+            services.push_back(service);
+        }
+    
+        if (ok != 0) {
+            return -1;
+        }
     } 
 
     return 0;
@@ -647,7 +661,7 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
     ok = ParseDeploy(deploy_json, &deploy);
     if (ok != 0) {
-        fprintf(stderr, "deploy is required in config\n");
+        fprintf(stderr, "deploy config error\n");
         return -1;
     }
     
@@ -666,12 +680,16 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
 int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job) {
     FILE *fd = fopen(conf.c_str(), "r");
+    if (fd == NULL) {
+        fprintf(stderr, "%s is not existed\n", conf.c_str());
+        return -1;
+    }
     char buf[5120];
     rapidjson::FileReadStream frs(fd, buf, sizeof(buf));
     rapidjson::Document doc;
     doc.ParseStream<0>(frs);
     if (!doc.IsObject()) {
-        fprintf(stderr, "invalid config file\n");
+        fprintf(stderr, "invalid config file, %s is not a correct json format file\n", conf.c_str());
         fclose(fd);
         return -1;
     }

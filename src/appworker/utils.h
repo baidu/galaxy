@@ -64,7 +64,7 @@ bool SymbolLink(const std::string& old_path, const std::string& new_path);
 bool GetDeviceMajorNumberByPath(const std::string& path, int32_t& major_number);
 bool Write(const std::string& path, const std::string& content);
 
-}   // ending namespace file
+} // ending namespace file
 
 namespace md5 {
 

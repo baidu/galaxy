@@ -9,3 +9,4 @@ DEFINE_int32(agent_timeout, 30 , "timeout of agent, in seconds");
 DEFINE_int32(agent_query_interval , 5, "query interval of agent, in seconds");
 DEFINE_int32(container_group_max_replica, 100000, "max replica allowed for one group");
 DEFINE_double(safe_mode_percent, 0.85, "when agent alive percent bigger than this, leave safe mode");
+DEFINE_bool(check_container_version, false, "by default, AM will handle that");

@@ -17,8 +17,9 @@ enum UpdateJobOperate {
     kUpdateJobStart = 1;
     kUpdateJobContinue = 2;
     kUpdateJobRollback = 3;
-    kUpdateJobDefault = 4;
+    kUpdateJobPause = 4;
 }
+
 message UpdateJobRequest {
     optional User user = 1;
     optional string jobid = 2;
@@ -26,6 +27,7 @@ message UpdateJobRequest {
     optional uint32 interval = 4;
     optional JobDescription job = 5;
     optional UpdateJobOperate operate = 6;
+    optional uint32 update_break_count = 7; //continue, mutiple breakpoint
 }
 message UpdateJobResponse {
     optional ErrorCode error_code = 1;
@@ -70,6 +72,7 @@ enum UpdateAction {
     kActionNull = 1;
     kActionRebuild = 2;
     kActionReload = 3;
+    kActionRecreate = 4;
 }
 
 message PodInfo {
@@ -83,8 +86,9 @@ message PodInfo {
     optional int32 fail_count = 8; 
     optional int64 heartbeat_time = 9;
     optional int64 last_normal_time = 10;
-    repeated ServiceInfo services = 11;
-    optional int64 send_rebuild_time = 12;
+    optional int64 send_rebuild_time = 11;
+    repeated ServiceInfo services = 12;
+    optional PodStatus reload_status = 13;
 }
 
 message JobInfo {
