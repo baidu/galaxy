@@ -107,4 +107,7 @@ AppMaster等待AppWorkers的定时汇报；
 2. MDT作为用户日志的Trace系统  
 3. Sofa-PbRPC作为通信基础库  
 
-
+<a href="https://scan.coverity.com/projects/may2016-galaxy">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/9392/badge.svg"/>
+</a>

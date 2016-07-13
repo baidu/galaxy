@@ -509,7 +509,7 @@ void* JobAction::ShowContainerGroup(void* param) {
     return NULL;
 }
 
-bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
+bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, bool show_meta) {
     
     if (jobid.empty()) {
         fprintf(stderr, "jobid is needed\n");
@@ -551,167 +551,169 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions) {
     if (!show_job || !show_container) {
         return false;
     }
+    
+    if (show_meta) {
+        printf("base infomation\n"); 
+        ::baidu::common::TPrinter base(4);
+        base.AddRow(4, "id", "status", "create_time", "update_time");
+        base.AddRow(4, response.job.jobid.c_str(),
+                       StringJobStatus(response.job.status).c_str(),
+                       FormatDate(response.job.create_time).c_str(),
+                       FormatDate(response.job.update_time).c_str()
+                   );
+        printf("%s\n", base.ToString().c_str());
 
-    printf("base infomation\n"); 
-    ::baidu::common::TPrinter base(4);
-    base.AddRow(4, "id", "status", "create_time", "update_time");
-    base.AddRow(4, response.job.jobid.c_str(),
-                   StringJobStatus(response.job.status).c_str(),
-                   FormatDate(response.job.create_time).c_str(),
-                   FormatDate(response.job.update_time).c_str()
-               );
-    printf("%s\n", base.ToString().c_str());
-
-    printf("job description base infomation\n");
-    ::baidu::common::TPrinter desc_base(3);
-    desc_base.AddRow(3, "name", "type", "run_user");
-    desc_base.AddRow(3, response.job.desc.name.c_str(),
-                        StringJobType(response.job.desc.type).c_str(),
-                        response.job.desc.run_user.c_str()
-                    );
-    printf("%s\n", desc_base.ToString().c_str());
+        printf("job description base infomation\n");
+        ::baidu::common::TPrinter desc_base(3);
+        desc_base.AddRow(3, "name", "type", "run_user");
+        desc_base.AddRow(3, response.job.desc.name.c_str(),
+                            StringJobType(response.job.desc.type).c_str(),
+                            response.job.desc.run_user.c_str()
+                        );
+        printf("%s\n", desc_base.ToString().c_str());
      
-    printf("job description deploy infomation\n");
-    std::string pools;
-    for (size_t i = 0; i < response.job.desc.deploy.pools.size(); ++i) {
-        pools += response.job.desc.deploy.pools[i];
-        if (i != response.job.desc.deploy.pools.size() - 1) {
-            pools += ",";
+        printf("job description deploy infomation\n");
+        std::string pools;
+        for (size_t i = 0; i < response.job.desc.deploy.pools.size(); ++i) {
+            pools += response.job.desc.deploy.pools[i];
+            if (i != response.job.desc.deploy.pools.size() - 1) {
+                pools += ",";
+            }
+        }
+        ::baidu::common::TPrinter desc_deploy(7);
+        desc_deploy.AddRow(7, "replica", "step", "interval", "max_per_host", "break_point", "tag", "pools");
+        desc_deploy.AddRow(7, ::baidu::common::NumToString(response.job.desc.deploy.replica).c_str(),
+                              ::baidu::common::NumToString(response.job.desc.deploy.step).c_str(),
+                              ::baidu::common::NumToString(response.job.desc.deploy.interval).c_str(),
+                              ::baidu::common::NumToString(response.job.desc.deploy.max_per_host).c_str(),
+                              ::baidu::common::NumToString(response.job.desc.deploy.update_break_count).c_str(),
+                              response.job.desc.deploy.tag.c_str(),
+                              pools.c_str()
+                         );
+        printf("%s\n", desc_deploy.ToString().c_str());
+
+        printf("job description pod workspace_volum infomation\n");
+        ::baidu::common::TPrinter desc_workspace_volum(7);
+        desc_workspace_volum.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
+        desc_workspace_volum.AddRow(7, HumanReadableString(response.job.desc.pod.workspace_volum.size).c_str(),
+                                       StringVolumType(response.job.desc.pod.workspace_volum.type).c_str(),
+                                       StringVolumMedium(response.job.desc.pod.workspace_volum.medium).c_str(),
+                                       response.job.desc.pod.workspace_volum.dest_path.c_str(),
+                                       StringBool(response.job.desc.pod.workspace_volum.readonly).c_str(),
+                                       StringBool(response.job.desc.pod.workspace_volum.exclusive).c_str(),
+                                       StringBool(response.job.desc.pod.workspace_volum.use_symlink).c_str()
+                                   );  
+        printf("%s\n", desc_workspace_volum.ToString().c_str());
+
+        printf("job description pod data_volums infomation\n");
+        ::baidu::common::TPrinter desc_data_volums(7);
+        desc_data_volums.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
+        for (size_t i = 0; i < response.job.desc.pod.data_volums.size(); ++i) {
+        desc_data_volums.AddRow(7, HumanReadableString(response.job.desc.pod.data_volums[i].size).c_str(),
+                                   StringVolumType(response.job.desc.pod.data_volums[i].type).c_str(),
+                                   StringVolumMedium(response.job.desc.pod.data_volums[i].medium).c_str(),
+                                   response.job.desc.pod.data_volums[i].dest_path.c_str(),
+                                   StringBool(response.job.desc.pod.data_volums[i].readonly).c_str(),
+                                   StringBool(response.job.desc.pod.data_volums[i].exclusive).c_str(),
+                                   StringBool(response.job.desc.pod.data_volums[i].use_symlink).c_str()
+                                );  
+        }
+        printf("%s\n", desc_data_volums.ToString().c_str());
+
+        printf("job description pod task infomation\n");
+        for (uint32_t i = 0; i < response.job.desc.pod.tasks.size(); ++i) {
+            printf("=========================================================\n");
+            printf("job description pod task [%u] base infomation\n", i);
+            ::baidu::common::TPrinter desc_task(7);
+            desc_task.AddRow(7, "", "id", "cpu(cores/excess)", "memory(size/excess)", "tcp_throt(r/re/s/se)", "blkio", "ports(name/port)");
+            std::string scpu = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].cpu.milli_core / 1000.0) + "/"
+                                + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
+            std::string smem = HumanReadableString(response.job.desc.pod.tasks[i].memory.size) + "/"
+                                + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
+            std::string stcp = HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_quota) + "/"
+                                + StringBool(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_excess) + "/"
+                                + HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.send_bps_quota) + "/"
+                                + StringBool(response.job.desc.pod.tasks[i].tcp_throt.send_bps_excess);
+            std::string sblkio;
+            if (response.job.desc.pod.tasks[i].blkio.weight >= 0 && response.job.desc.pod.tasks[i].blkio.weight <= 1000) {
+                 sblkio = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].blkio.weight);
+            }
+
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].ports.size(); ++j) {
+                 std::string sports = response.job.desc.pod.tasks[i].ports[j].port_name + "/"
+                                      + response.job.desc.pod.tasks[i].ports[j].port;
+                                     //+ response.job.desc.pod.tasks[i].ports[j].real_port;
+                if (j == 0) {
+                     desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                                           response.job.desc.pod.tasks[i].id.c_str(),
+                                           scpu.c_str(),
+                                           smem.c_str(),
+                                           stcp.c_str(),
+                                           sblkio.c_str(),
+                                           sports.c_str()
+                                    );
+                } else {
+                     desc_task.AddRow(7, "",
+                                         "",
+                                         "",
+                                         "",
+                                         "",
+                                         "",
+                                         sports.c_str()
+                                    );
+                }
+
+            }
+         
+            if (response.job.desc.pod.tasks[i].ports.size() == 0) {
+                 desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                                      response.job.desc.pod.tasks[i].id.c_str(), 
+                                      scpu.c_str(),
+                                      smem.c_str(),
+                                      stcp.c_str(),
+                                      sblkio.c_str(),
+                                       ""
+                                );
+            }
+            printf("%s\n", desc_task.ToString().c_str());
+
+            printf("job description pod task [%u] exe_package infomation\n", i);
+            printf("-----------------------------------------------\n");
+            printf("start_cmd: %s\n\n", response.job.desc.pod.tasks[i].exe_package.start_cmd.c_str());
+            printf("stop_cmd: %s\n\n", response.job.desc.pod.tasks[i].exe_package.stop_cmd.c_str());
+            printf("dest_path: %s\n\n", response.job.desc.pod.tasks[i].exe_package.package.dest_path.c_str());
+            printf("version: %s\n", response.job.desc.pod.tasks[i].exe_package.package.version.c_str());
+
+            printf("\njob description pod task [%u] data_package infomation\n", i);
+            printf("-----------------------------------------------\n");
+            printf("reload_cmd: %s\n\n", response.job.desc.pod.tasks[i].data_package.reload_cmd.c_str());
+            ::baidu::common::TPrinter packages(3);
+            packages.AddRow(3, "", "version", "dest_path");
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].data_package.packages.size(); ++j) {
+                  packages.AddRow(3, ::baidu::common::NumToString(j).c_str(),
+                                     response.job.desc.pod.tasks[i].data_package.packages[j].version.c_str(),
+                                     response.job.desc.pod.tasks[i].data_package.packages[j].dest_path.c_str()
+                                 );
+            }
+            printf("%s\n", packages.ToString().c_str());
+
+            printf("job description pod task [%u] services infomation\n", i);
+            ::baidu::common::TPrinter services(7);
+            services.AddRow(7, "", "name", "port_name", "use_bns", "tag", "health_check_type", "health_check_script");
+            for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].services.size(); ++j) {
+                 services.AddRow(7, ::baidu::common::NumToString(j).c_str(),
+                                    response.job.desc.pod.tasks[i].services[j].service_name.c_str(),
+                                    response.job.desc.pod.tasks[i].services[j].port_name.c_str(),
+                                    StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str(),
+                                    response.job.desc.pod.tasks[i].services[j].tag.c_str(),
+                                    response.job.desc.pod.tasks[i].services[j].health_check_type.c_str(),
+                                    response.job.desc.pod.tasks[i].services[j].health_check_script.c_str()
+                                );
+            }
+            printf("%s\n", services.ToString().c_str());
+
         }
     }
-    ::baidu::common::TPrinter desc_deploy(7);
-    desc_deploy.AddRow(7, "replica", "step", "interval", "max_per_host", "break_point", "tag", "pools");
-    desc_deploy.AddRow(7, ::baidu::common::NumToString(response.job.desc.deploy.replica).c_str(),
-                        ::baidu::common::NumToString(response.job.desc.deploy.step).c_str(),
-                        ::baidu::common::NumToString(response.job.desc.deploy.interval).c_str(),
-                        ::baidu::common::NumToString(response.job.desc.deploy.max_per_host).c_str(),
-                        ::baidu::common::NumToString(response.job.desc.deploy.update_break_count).c_str(),
-                        response.job.desc.deploy.tag.c_str(),
-                        pools.c_str()
-                    );
-     printf("%s\n", desc_deploy.ToString().c_str());
-
-     printf("job description pod workspace_volum infomation\n");
-     ::baidu::common::TPrinter desc_workspace_volum(7);
-     desc_workspace_volum.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
-     desc_workspace_volum.AddRow(7, HumanReadableString(response.job.desc.pod.workspace_volum.size).c_str(),
-                                    StringVolumType(response.job.desc.pod.workspace_volum.type).c_str(),
-                                    StringVolumMedium(response.job.desc.pod.workspace_volum.medium).c_str(),
-                                    response.job.desc.pod.workspace_volum.dest_path.c_str(),
-                                    StringBool(response.job.desc.pod.workspace_volum.readonly).c_str(),
-                                    StringBool(response.job.desc.pod.workspace_volum.exclusive).c_str(),
-                                    StringBool(response.job.desc.pod.workspace_volum.use_symlink).c_str()
-                                );  
-     printf("%s\n", desc_workspace_volum.ToString().c_str());
-
-     printf("job description pod data_volums infomation\n");
-     ::baidu::common::TPrinter desc_data_volums(7);
-     desc_data_volums.AddRow(7, "size", "type", "medium", "dest_path", "readonly", "exclusive", "use_symlink");
-     for (size_t i = 0; i < response.job.desc.pod.data_volums.size(); ++i) {
-     desc_data_volums.AddRow(7, HumanReadableString(response.job.desc.pod.data_volums[i].size).c_str(),
-                                    StringVolumType(response.job.desc.pod.data_volums[i].type).c_str(),
-                                    StringVolumMedium(response.job.desc.pod.data_volums[i].medium).c_str(),
-                                    response.job.desc.pod.data_volums[i].dest_path.c_str(),
-                                    StringBool(response.job.desc.pod.data_volums[i].readonly).c_str(),
-                                    StringBool(response.job.desc.pod.data_volums[i].exclusive).c_str(),
-                                    StringBool(response.job.desc.pod.data_volums[i].use_symlink).c_str()
-                                );  
-     }
-     printf("%s\n", desc_data_volums.ToString().c_str());
-
-     printf("job description pod task infomation\n");
-     for (uint32_t i = 0; i < response.job.desc.pod.tasks.size(); ++i) {
-         printf("=========================================================\n");
-         printf("job description pod task [%u] base infomation\n", i);
-         ::baidu::common::TPrinter desc_task(7);
-         desc_task.AddRow(7, "", "id", "cpu(cores/excess)", "memory(size/excess)", "tcp_throt(r/re/s/se)", "blkio", "ports(name/port)");
-         std::string scpu = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].cpu.milli_core / 1000.0) + "/"
-                            + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
-         std::string smem = HumanReadableString(response.job.desc.pod.tasks[i].memory.size) + "/"
-                            + StringBool(response.job.desc.pod.tasks[i].cpu.excess);
-         std::string stcp = HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_quota) + "/"
-                            + StringBool(response.job.desc.pod.tasks[i].tcp_throt.recv_bps_excess) + "/"
-                            + HumanReadableString(response.job.desc.pod.tasks[i].tcp_throt.send_bps_quota) + "/"
-                            + StringBool(response.job.desc.pod.tasks[i].tcp_throt.send_bps_excess);
-         std::string sblkio;
-         if (response.job.desc.pod.tasks[i].blkio.weight >= 0 && response.job.desc.pod.tasks[i].blkio.weight <= 1000) {
-             sblkio = ::baidu::common::NumToString(response.job.desc.pod.tasks[i].blkio.weight);
-         }
-
-         for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].ports.size(); ++j) {
-             std::string sports = response.job.desc.pod.tasks[i].ports[j].port_name + "/"
-                                 + response.job.desc.pod.tasks[i].ports[j].port;
-                                 //+ response.job.desc.pod.tasks[i].ports[j].real_port;
-             if (j == 0) {
-                 desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
-                                       response.job.desc.pod.tasks[i].id.c_str(),
-                                       scpu.c_str(),
-                                       smem.c_str(),
-                                       stcp.c_str(),
-                                       sblkio.c_str(),
-                                       sports.c_str()
-                                  );
-             } else {
-                 desc_task.AddRow(7, "",
-                                     "",
-                                     "",
-                                     "",
-                                     "",
-                                     "",
-                                     sports.c_str()
-                                  );
-             }
-
-         }
-         
-         if (response.job.desc.pod.tasks[i].ports.size() == 0) {
-             desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
-                                  response.job.desc.pod.tasks[i].id.c_str(), 
-                                  scpu.c_str(),
-                                  smem.c_str(),
-                                  stcp.c_str(),
-                                  sblkio.c_str(),
-                                  ""
-                              );
-         }
-         printf("%s\n", desc_task.ToString().c_str());
-
-         printf("job description pod task [%u] exe_package infomation\n", i);
-         printf("-----------------------------------------------\n");
-         printf("start_cmd: %s\n\n", response.job.desc.pod.tasks[i].exe_package.start_cmd.c_str());
-         printf("stop_cmd: %s\n\n", response.job.desc.pod.tasks[i].exe_package.stop_cmd.c_str());
-         printf("dest_path: %s\n\n", response.job.desc.pod.tasks[i].exe_package.package.dest_path.c_str());
-         printf("version: %s\n", response.job.desc.pod.tasks[i].exe_package.package.version.c_str());
-
-         printf("\njob description pod task [%u] data_package infomation\n", i);
-         printf("-----------------------------------------------\n");
-         printf("reload_cmd: %s\n", response.job.desc.pod.tasks[i].data_package.reload_cmd.c_str());
-         ::baidu::common::TPrinter packages(3);
-         packages.AddRow(3, "", "version", "dest_path");
-         for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].data_package.packages.size(); ++j) {
-              packages.AddRow(3, ::baidu::common::NumToString(j).c_str(),
-                                 response.job.desc.pod.tasks[i].data_package.packages[j].version.c_str(),
-                                 response.job.desc.pod.tasks[i].data_package.packages[j].dest_path.c_str()
-                             );
-         }
-         printf("%s\n", packages.ToString().c_str());
-
-         printf("job description pod task [%u] services infomation\n", i);
-         ::baidu::common::TPrinter services(7);
-         services.AddRow(7, "", "name", "port_name", "use_bns", "tag", "health_check_type", "health_check_script");
-         for (uint32_t j = 0; j < response.job.desc.pod.tasks[i].services.size(); ++j) {
-             services.AddRow(7, ::baidu::common::NumToString(j).c_str(),
-                                response.job.desc.pod.tasks[i].services[j].service_name.c_str(),
-                                response.job.desc.pod.tasks[i].services[j].port_name.c_str(),
-                                StringBool(response.job.desc.pod.tasks[i].services[j].use_bns).c_str(),
-                                response.job.desc.pod.tasks[i].services[j].tag.c_str(),
-                                response.job.desc.pod.tasks[i].services[j].health_check_type.c_str(),
-                                response.job.desc.pod.tasks[i].services[j].health_check_script.c_str()
-                            );
-         }
-         printf("%s\n", services.ToString().c_str());
-
-     }
 
      std::map<std::string, ::baidu::galaxy::sdk::PodInfo> pods;
      for (size_t i = 0; i < response.job.pods.size(); ++i) {
