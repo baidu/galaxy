@@ -3,8 +3,6 @@ compiler: gcc
 install:
     - sudo apt-get update
     - sudo apt-get install scons
-script: 
-    - sh build.sh
 env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
@@ -20,3 +18,7 @@ addons:
     build_command_prepend: "./configure; scons -c"
     build_command:   "scons -j4"
     branch_pattern: galaxy3
+    
+script: 
+    - sh build.sh
+
