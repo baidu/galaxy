@@ -19,4 +19,4 @@ addons:
     notification_email: zmtmei@gmail.com
     build_command_prepend: "./configure; scons -c"
     build_command:   "scons -j4"
-    branch_pattern: coverity_scan
+    branch_pattern: galaxy3
