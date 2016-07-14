@@ -5,4 +5,18 @@ install:
     - sudo apt-get install scons
 script: 
     - sh build.sh
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "rs4m/rsCyb1RB+PwyAuP6pLOuDkZGcEaYOgAPQdjVAyDuGxECvlz8sWwIBBxTVKqZ8+qFbgnj6QXEvynvgQkM1QJ5Amm0IjaaWpjy+nWR7D170/MscaFHbi4GAyc9nz08/C1Y/OL1cMipl6dzuhwQVOV+3NLpN06DFdDE04Gq+vZayl7i6vOVwYth/4Q+cFa2v+6GrEfGz/r00Ko4o2RgkLJFkQksFyrDFs/8hD5vyQDp17nMp8EMHvz6ASFrC0jnBkKCEd1fI5V8nwaQPLvz8AaVlhyYaojJC0jJuBDzf0pSrobmpynyDZ3DWqTKCIIgihobN52PlfbhtZOnhBg8af5Ntyc/lOnhp+63pIL5m9NfZjWscAz2BL09Jj7eZsl0h3uLxJTPDZDNkeU0qyMIgAfy934QCCMlZtihFHTBp3o8fSJNsv163Hzu+PM62a8rbG4T++k9yRpq1mx6jkCs24AuzoX5dY/29NkTyXyGWj50RsQ6VzopuxlBTyhTS3tAVl3k6q5K+Oso+cub47hNAQv7N9LYFSM3hphTZzmM9O9c2mcfFN05GolZcuBSi4hlJgkN0O8yRaEpeTR631vgZKCtPvRkynyXEllxNzDRe23YSdRybqhCFAOY/loTxq2uXkFVpBbFavkpBw02cPQLVOJrY7KhWtwbFRB45MlejQ="
 
+addons:
+  coverity_scan:
+    project:
+      name: "May2016/galaxy"
+      description: "Build submitted via Travis CI"
+    notification_email: zmtmei@gmail.com
+    build_command_prepend: "<Your build preprocessing command here>"
+    build_command:   "scons"
+    branch_pattern: coverity_scan
