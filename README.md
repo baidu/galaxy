@@ -1,5 +1,10 @@
 [![Build Status](https://travis-ci.org/baidu/galaxy.svg?branch=galaxy3)](https://travis-ci.org/baidu/galaxy)
 
+<a href="https://scan.coverity.com/projects/baidu-galaxy">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/9434/badge.svg"/>
+</a>
+
 galaxy 3.0
 
 Galaxy 3.0设计
