@@ -160,6 +160,13 @@ void AppWorkerImpl::PrepareEnvs() {
                  s_cgroup_subsystems,
                  boost::is_any_of(","),
                  boost::token_compress_on);
+    // remove cgroup subsystem net_cls
+    std::vector<std::string>::iterator cs_it = find(cgroup_subsystems.begin(),
+                                                    cgroup_subsystems.end(),
+                                                    "net_cls");
+    if (cs_it != cgroup_subsystems.end()) {
+        cgroup_subsystems.erase(cs_it);
+    }
 
     // 8.task cgroup paths and ports
     std::vector<std::map<std::string, std::string> > task_cgroup_paths;
@@ -480,5 +487,5 @@ void AppWorkerImpl::FetchTaskCallback(const FetchTaskRequest* request,
     return;
 }
 
-}   // ending namespace galaxy
-}   // ending namespace baidu
+} // ending namespace galaxy
+} // ending namespace baidu

@@ -650,6 +650,15 @@ int TaskManager::ClearTaskHealthCheck(const std::string& task_id) {
 
 int MakeProcessEnv(Task* task, ProcessEnv& env) {
     env.user = task->env.user;
+    // set env PATH
+    std::string path = "/usr/local/bin:/bin:/usr/bin";
+    char* c_path = getenv("PATH");
+    if (NULL != c_path) {
+        path = std::string(c_path);
+    }
+    path += ":.";
+    env.envs.push_back("PATH=" + path);
+
     env.envs.push_back("GALAXY_JOB_ID=" + task->env.job_id);
     env.envs.push_back("GALAXY_POD_ID=" + task->env.pod_id);
     env.envs.push_back("GALAXY_TASK_ID=" + task->env.task_id);

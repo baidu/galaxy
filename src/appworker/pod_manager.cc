@@ -799,5 +799,5 @@ void PodManager::LoopCheckPodHealth() {
     return;
 }
 
-}   // ending namespace galaxy
-}   // ending namespace baidu
+} // ending namespace galaxy
+} // ending namespace baidu
