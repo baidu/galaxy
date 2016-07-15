@@ -15,6 +15,7 @@ DEFINE_int32(p, 1, "specify port num");
 DEFINE_int32(a, 1, "specify packages num in data_package");
 DEFINE_int32(s, 1, "specify service num");
 DEFINE_string(o, "", "operation");
+DEFINE_bool(b, false, "show base meta info");
 
 DECLARE_string(flagfile);
 
@@ -26,7 +27,7 @@ const std::string kGalaxyUsage = "galaxy_client.\n"
                                  "      galaxy_client stop -i id\n"
                                  "      galaxy_client remove -i id\n"
                                  "      galaxy_client list [-o cpu,mem,volums]\n"
-                                 "      galaxy_client show -i id [-o cpu,mem,volums]\n"
+                                 "      galaxy_client show -i id [-o cpu,mem,volums -b(show meta)]\n"
                                  "      galaxy_client exec -i id -c cmd\n"
                                  "      galaxy_client json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
                                  "Options: \n"
@@ -40,6 +41,7 @@ const std::string kGalaxyUsage = "galaxy_client.\n"
                                  "      -s specify service num, default 1\n"
                                  "      -n specify job name\n"
                                  "      -o specify operation.\n"
+                                 "      -b specify show base meta info\n"
                                  "      --flagfile specify flag file, default ./galaxy.flag\n";
 
 int main(int argc, char** argv) {
@@ -123,7 +125,7 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-i is needed\n");
             return -1;
         }
-        ok = jobAction->ShowJob(FLAGS_i, FLAGS_o);
+        ok = jobAction->ShowJob(FLAGS_i, FLAGS_o, FLAGS_b);
 
     } else if (strcmp(argv[1], "exec") == 0) {
         if (FLAGS_i.empty()) {

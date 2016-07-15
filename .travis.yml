@@ -3,6 +3,22 @@ compiler: gcc
 install:
     - sudo apt-get update
     - sudo apt-get install scons
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "XNzrkL4p++EFzCG34VNkBw833Y3y9zOZD9Sr0tlRQR+LgQHqudmX1XP0j9KfWZnTb8o1SWW+hHmmdQvDsu2w2jZin1yGXDHXdHW2O8UTJGM9NGydyzVbHJXMFEp5B/Gdsv6GI7nxiJeURcO8UYerSVkaIQ+Xeo0ESLQ1H5npre8="
+
+addons:
+  coverity_scan:
+    project:
+      name: "baidu/galaxy"
+      description: "galaxy"
+    notification_email: yanshiguang02@baidu.com
+    build_command_prepend: "scons -c"
+    build_command:   "scons -j4"
+    branch_pattern: galaxy3
+    
 script: 
     - sh build.sh
 
