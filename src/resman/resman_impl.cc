@@ -583,6 +583,14 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
         done->Run();
         return;
     }
+    std::string top_container_group_id;
+    if (desc.container_type() == proto::kVolumContainer
+        && scheduler_->IsBeingShared(request->id(), top_container_group_id)) {
+        response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+        response->mutable_error_code()->set_reason("shared by: " + top_container_group_id);
+        done->Run();
+        return;
+    }
     bool ret = RemoveObject(sContainerGroupPrefix + "/" + request->id());
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();

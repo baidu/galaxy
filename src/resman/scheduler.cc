@@ -44,6 +44,12 @@ Agent::Agent(const AgentEndpoint& endpoint,
     pool_name_ = pool_name;
 }
 
+ContainerGroupId Agent::ExtractGroupId(const ContainerId& container_id) {
+    size_t idx = container_id.rfind(".");
+    assert(idx != std::string::npos);
+    return container_id.substr(0, idx);
+}
+
 void Agent::SetAssignment(int64_t cpu_assigned,
                           int64_t memory_assigned,
                           const std::map<DevicePath, VolumInfo>& volum_assigned,
@@ -55,10 +61,24 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     port_assigned_ = port_assigned;
     containers_ =  containers;
     container_counts_.clear();
+    volum_jobs_free_.clear();
+
     BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
         const Container::Ptr& container = pair.second;
         container_counts_[container->container_group_id] += 1;
         container->allocated_agent = endpoint_;
+        if (container->require->container_type == proto::kVolumContainer) {
+            volum_jobs_free_[container->container_group_id].insert(container->id);
+        }
+    }
+
+    BOOST_FOREACH(const ContainerMap::value_type& pair, containers) {
+        const Container::Ptr& container = pair.second;
+        for (size_t i = 0; i < container->allocated_volum_containers.size(); i++) {
+            const ContainerId& volum_container_id = container->allocated_volum_containers[i];
+            const ContainerGroupId& volum_job_id = ExtractGroupId(volum_container_id);
+            volum_jobs_free_[volum_job_id].erase(volum_container_id);
+        }
     }
 }
 
@@ -131,6 +151,14 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         err = proto::kPortConflict;
         return false;
     }
+
+    std::vector<ContainerId> volum_containers;
+    if (!container->require->volum_jobs.empty()
+        && !SelectFreeVolumContainers(container->require->volum_jobs, volum_containers)) {
+        err = proto::kNoVolumContainer;
+        return false;
+    }
+
     return true;
 }
 
@@ -185,6 +213,21 @@ void Agent::Put(Container::Ptr container) {
     container->last_res_err = proto::kResOk;
     containers_[container->id] = container;
     container_counts_[container->container_group_id] += 1;
+
+    if (container->require->container_type == proto::kVolumContainer) {
+        volum_jobs_free_[container->container_group_id].insert(container->id);
+    }
+
+    std::vector<ContainerId> volum_containers;
+    if (!container->require->volum_jobs.empty()
+        && SelectFreeVolumContainers(container->require->volum_jobs, volum_containers)) {
+        for (size_t i = 0; i < volum_containers.size(); i++) {
+            const ContainerId& volum_container_id = volum_containers[i];
+            const ContainerGroupId& volum_job_id = ExtractGroupId(volum_container_id);
+            volum_jobs_free_[volum_job_id].erase(volum_container_id);
+            container->allocated_volum_containers.push_back(volum_container_id);
+        }
+    }
 }
 
 bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
@@ -271,6 +314,23 @@ bool Agent::SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
     return true;
 }
 
+bool Agent::SelectFreeVolumContainers(const std::vector<ContainerGroupId>& volum_jobs,
+                                      std::vector<ContainerId>& volum_containers) {
+    std::map<ContainerGroupId, std::set<ContainerId> > volum_jobs_free  
+         = volum_jobs_free_; //copy
+    for (size_t i = 0; i < volum_jobs.size(); i++) {
+        const ContainerGroupId& container_group_id = volum_jobs[i];
+        if (volum_jobs_free.find(container_group_id) != volum_jobs_free.end()) {
+            if (!volum_jobs_free[container_group_id].empty()) {
+                const ContainerId volum_container = *volum_jobs_free[container_group_id].begin();
+                volum_containers.push_back(volum_container);
+                volum_jobs_free[container_group_id].erase(volum_container);
+            }
+        }
+    }
+    return volum_jobs.size() == volum_containers.size();
+}
+
 void Agent::Evict(Container::Ptr container) {
     if (containers_.find(container->id) == containers_.end()) {
         LOG(WARNING) << "invalid evict, no such container:" << container->id;
@@ -310,6 +370,22 @@ void Agent::Evict(Container::Ptr container) {
     container_counts_[container->container_group_id] -= 1;
     if (container_counts_[container->container_group_id] <= 0) {
         container_counts_.erase(container->container_group_id);
+    }
+    if (container->require->container_type == proto::kVolumContainer) {
+        volum_jobs_free_[container->container_group_id].erase(container->id);
+        if (volum_jobs_free_[container->container_group_id].empty()) {
+            volum_jobs_free_.erase(container->container_group_id);
+        }
+    }
+    if (!container->allocated_volum_containers.empty()) {
+        for (size_t i = 0; i < container->allocated_volum_containers.size(); i++) {
+            const ContainerId& volum_container_id = container->allocated_volum_containers[i];
+            const ContainerGroupId& volum_job_id = ExtractGroupId(volum_container_id);
+            if (containers_.find(volum_job_id) != containers_.end()) {
+                volum_jobs_free_[volum_job_id].insert(volum_container_id);
+            }
+        }
+        container->allocated_volum_containers.clear();
     }
 }
 
@@ -402,6 +478,10 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
         require->volums.push_back(container_desc.data_volums(j));
     }
     require->version = container_desc.version();
+    for (int j = 0; j < container_desc.volum_jobs_size(); j++) {
+        require->volum_jobs.push_back(container_desc.volum_jobs(j));
+    }
+    require->container_type = container_desc.container_type();
 }
 
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
@@ -441,6 +521,10 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             }
         }
         
+        container->allocated_ports.clear();
+        container->allocated_volums.clear();
+        container->allocated_volum_containers.clear();
+
         Requirement::Ptr require(new Requirement());    
         const proto::ContainerDescription& container_desc = container_info.container_desc();    
         SetRequirement(require, container_desc);
@@ -498,6 +582,11 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
                 volum_assigned[device_path].exclusive = true;
             }
         }
+        for (int j = 0; j < container_desc.volum_containers_size(); j++) {
+            container->allocated_volum_containers.push_back(
+                container_desc.volum_containers(j)
+            );
+        }
         containers[container->id] = container;
         container_groups_[container->container_group_id]->containers[container->id] = container;
         container->allocated_agent = agent->endpoint_;
@@ -519,10 +608,15 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
     ContainerMap containers = agent->containers_; //copy
     BOOST_FOREACH(ContainerMap::value_type& pair, containers) {
         Container::Ptr container = pair.second;
-        if (container->status == kContainerDestroying) {
+        if (container->status == kContainerDestroying) { // user kill job
             ChangeStatus(container, kContainerTerminated);
-        } else {
-            ChangeStatus(container, kContainerPending);
+        } else { // agent timeout
+            if (container->require->container_type == proto::kVolumContainer) {
+                LOG(INFO) << "will not migrate volum container: "
+                          << container->id;
+            } else {
+                ChangeStatus(container, kContainerPending);
+            }
         }     
     }
     agents_.erase(endpoint);
@@ -832,6 +926,7 @@ void Scheduler::ChangeStatus(ContainerGroup::Ptr container_group,
         }
         container->allocated_volums.clear();
         container->allocated_ports.clear();
+        container->allocated_volum_containers.clear();
         container->require = container_group->require;
         container->remote_info.Clear();
         if (new_status == kContainerPending) {
@@ -1331,6 +1426,10 @@ void Scheduler::SetVolumsAndPorts(const Container::Ptr& container,
             );
         }
     }
+    container_desc.clear_volum_containers();
+    for (size_t i = 0; i < container->allocated_volum_containers.size(); i++) {
+        *container_desc.add_volum_containers() = container->allocated_volum_containers[i];
+    }
 }
 
 bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups) {
@@ -1530,6 +1629,27 @@ void Scheduler::MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota&
     quota.set_memory( (require->MemoryNeed() + require->TmpfsNeed()) * replica);
     quota.set_disk(require->DiskNeed() * replica);
     quota.set_ssd(require->SsdNeed() * replica);
+}
+
+bool Scheduler::IsBeingShared(const ContainerGroupId& container_group_id,
+                              ContainerGroupId& top_container_group_id) {
+    MutexLock lock(&mu_);
+    std::map<ContainerGroupId, ContainerGroup::Ptr>::iterator it;
+    for (it = container_groups_.begin(); it != container_groups_.end(); it++) {
+        ContainerGroup::Ptr& container_group = it->second;
+        std::vector<ContainerGroupId>::iterator jt;
+        for (jt = container_group->require->volum_jobs.begin();
+             jt != container_group->require->volum_jobs.end();
+             jt++) {
+            if (*jt == container_group_id) {
+                top_container_group_id = it->first;
+                LOG(INFO) << container_group_id << " is being shared by "
+                          << top_container_group_id;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 } //namespace sched
