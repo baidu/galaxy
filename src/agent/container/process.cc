@@ -136,6 +136,9 @@ int Process::CloneRoutine(void* param)
     assert(NULL != context->self);
     assert(NULL != context->routine);
 
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+    close(STDIN_FILENO);
     while (::dup2(context->stdout_fd, STDOUT_FILENO) == -1
             && errno == EINTR) {
     }

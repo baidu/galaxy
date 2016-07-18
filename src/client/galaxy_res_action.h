@@ -40,12 +40,11 @@ public:
     bool ListTags();
     bool GetPoolByAgent(const std::string& endpoint);
     bool AddUser(const std::string& user, const std::string& token);
-    bool RemoveUser(const std::string& user, const std::string& token);
+    bool RemoveUser(const std::string& user);
     bool ListUsers();
     bool ShowUser(const std::string& user);
-    bool GrantUser(const std::string& user, const std::string& token, 
-                   const std::string& pool, const std::string& opration, 
-                   const std::string& authority);
+    bool GrantUser(const std::string& user, const std::string& pool, 
+                   const std::string& opration, const std::string& authority);
     bool AssignQuota(const std::string& user,
                      uint32_t millicores,
                      const std::string& memory,

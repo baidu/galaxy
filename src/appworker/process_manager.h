@@ -29,6 +29,8 @@ struct ProcessContext {
     std::string process_id;
     std::string cmd;
     std::string work_dir;
+    int32_t delay_time;
+    ProcessContext(): delay_time(0) {};
     virtual ~ProcessContext() {};
 };
 
@@ -41,10 +43,10 @@ struct DownloadProcessContext : ProcessContext {
 
 struct Process {
     std::string process_id;
-    ProcessEnv env;
     int32_t pid;
     ProcessStatus status;
     int32_t exit_code;
+    int32_t fail_retry_times;
 };
 
 class ProcessManager {
@@ -57,6 +59,8 @@ public:
     int QueryProcess(const std::string& process_id,
                      Process& process);
     int ClearProcesses();
+    int RecreateProcess(const ProcessEnv& env,
+                        const ProcessContext* context);
 
 private:
     void LoopWaitProcesses();

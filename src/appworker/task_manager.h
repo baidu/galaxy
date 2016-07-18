@@ -45,6 +45,7 @@ struct Task {
     int32_t fail_retry_times;
     TaskEnv env;
     int32_t timeout_point;
+    int32_t check_timeout_point;
 };
 
 class TaskManager {
@@ -56,19 +57,17 @@ public:
     int DeployTask(const std::string& task_id);
     int StartTask(const std::string& task_id);
     int StopTask(const std::string& task_id);
-    int ReloadTask(const std::string& task_id,
-                   const TaskDescription& task_desc);
-    int CheckTask(const std::string& task_id,
-                  Task& task);
     int CleanTask(const std::string& task_id);
+    int CheckTask(const std::string& task_id, Task& task);
     int ClearTasks();
     // reload
-    int ReloadDeployTask(const std::string& task_id,
-                         const TaskDescription& task_desc);
-    int ReloadStartTask(const std::string& task_id,
-                        const TaskDescription& task_desc);
-    int ReloadCheckTask(const std::string& task_id,
-                        Task& task);
+    int DeployReloadTask(const std::string& task_id, const TaskDescription& task_desc);
+    int StartReloadTask(const std::string& task_id);
+    int CheckReloadTask(const std::string& task_id, Task& task);
+    // health
+    int StartTaskHealthCheck(const std::string& task_id);
+    int CheckTaskHealth(const std::string& task_id, Task& task);
+    int ClearTaskHealthCheck(const std::string& task_id);
 
 private:
     int DoStartTask(const std::string& task_id);

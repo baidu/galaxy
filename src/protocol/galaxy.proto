@@ -265,7 +265,7 @@ message ServiceInfo {
     optional string ip = 3;
     optional Status status = 4;
     optional string deploy_path = 5;
-    optional string host_name = 6;
+    optional string hostname = 6;
 }
 
 message TaskDescription {
@@ -343,6 +343,7 @@ message ContainerMeta {
     optional string container_id = 3;
     optional int64 created_time = 4;
     optional int32 pid = 5;
+    optional int64 destroy_time = 6;
 }
 
 enum ContainerStatus {

@@ -32,6 +32,10 @@ public:
     }
 
     bool GetStub();
+    bool MasterEndpoint(const std::string& appmaster_path, 
+             std::string* appmaster_endpoint, 
+             std::string* resman_endpoint);
+
     bool EnterSafeMode(const EnterSafeModeRequest& request, EnterSafeModeResponse* response);
     bool LeaveSafeMode(const LeaveSafeModeRequest& request, LeaveSafeModeResponse* response);
     bool Status(const StatusRequest& request, StatusResponse* response);
@@ -74,19 +78,36 @@ private:
     ::baidu::galaxy::RpcClient* rpc_client_;
     ::baidu::galaxy::proto::ResMan_Stub* res_stub_;
     std::string full_key_;
+    std::string endpoint_;
 };
 
-bool ResourceManagerImpl::GetStub() {
-    std::string endpoint;
+bool ResourceManagerImpl::MasterEndpoint(const std::string& appmaster_path, 
+             std::string* appmaster_endpoint, 
+             std::string* resman_endpoint) {
+    if (appmaster_endpoint == NULL || resman_endpoint == NULL) {
+        return false;
+    }
     ::galaxy::ins::sdk::SDKError err;
-    bool ok = nexus_->Get(full_key_, &endpoint, &err);
+    bool ok = nexus_->Get(appmaster_path, appmaster_endpoint, &err);
     if (!ok || err != ::galaxy::ins::sdk::kOK) {
-        fprintf(stderr, "get appmaster endpoint from nexus failed: %s\n",
+        fprintf(stderr, "get appmaster endpoint from nexus failed: %s\n", 
                 ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
         return false;
     }
-    if(!rpc_client_->GetStub(endpoint, &res_stub_)) {
-        fprintf(stderr, "connect resmanager fail, resmanager: %s\n", endpoint.c_str());
+    *resman_endpoint = endpoint_;
+    return true;
+}
+
+bool ResourceManagerImpl::GetStub() {
+    ::galaxy::ins::sdk::SDKError err;
+    bool ok = nexus_->Get(full_key_, &endpoint_, &err);
+    if (!ok || err != ::galaxy::ins::sdk::kOK) {
+        fprintf(stderr, "get resmananager endpoint from nexus failed: %s\n",
+                ::galaxy::ins::sdk::InsSDK::StatusToString(err).c_str());
+        return false;
+    }
+    if(!rpc_client_->GetStub(endpoint_, &res_stub_)) {
+        fprintf(stderr, "connect resmanager fail, resmanager: %s\n", endpoint_.c_str());
         return false;
     }
     return true;
@@ -414,6 +435,10 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
     response->desc.cmd_line = pb_response.desc().cmd_line();
     response->desc.max_per_host = pb_response.desc().max_per_host();
     response->desc.tag = pb_response.desc().tag();
+    for (int i = 0; i < pb_response.desc().pool_names().size(); ++i) {
+        response->desc.pool_names.push_back(pb_response.desc().pool_names(i));
+    }
+
     response->desc.workspace_volum.size = pb_response.desc().workspace_volum().size();
     response->desc.workspace_volum.type = (VolumType)pb_response.desc().workspace_volum().type();
     response->desc.workspace_volum.medium = (VolumMedium)pb_response.desc().workspace_volum().medium();
@@ -1083,7 +1108,7 @@ bool ResourceManagerImpl::AddUser(const AddUserRequest& request, AddUserResponse
         return false;
     }
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1111,12 +1136,13 @@ bool ResourceManagerImpl::RemoveUser(const RemoveUserRequest& request,
     ::baidu::galaxy::proto::RemoveUserRequest pb_request;
     ::baidu::galaxy::proto::RemoveUserResponse pb_response;
 
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    if (request.user.user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(request.user.user);
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1226,12 +1252,13 @@ bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserRe
     ::baidu::galaxy::proto::GrantUserRequest pb_request;
     ::baidu::galaxy::proto::GrantUserResponse pb_response;
 
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    if (request.user.user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(request.user.user);
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1262,12 +1289,13 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
     ::baidu::galaxy::proto::AssignQuotaRequest pb_request;
     ::baidu::galaxy::proto::AssignQuotaResponse pb_response;
     
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    if (request.user.user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(request.user.user);
 
-    if (FillUser(request.admin, pb_request.mutable_admin())) {
+    if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
         return false;
     }
@@ -1298,8 +1326,8 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
     }
     quota->set_ssd(request.quota.ssd);
 
-    if (request.quota.replica <= 0 || request.quota.replica >= 10000) {
-        fprintf(stderr, "deploy replica must be greater than 0 and less than 10000\n");
+    if (request.quota.replica <= 0) {
+        fprintf(stderr, "assign replica must be greater than 0\n");
         return false;
     }
     quota->set_replica(request.quota.replica);

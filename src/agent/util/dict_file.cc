@@ -89,6 +89,19 @@ baidu::galaxy::util::ErrorCode DictFile::Scan(const std::string& begin_key,
     return ERRORCODE_OK;
 }
 
+
+baidu::galaxy::util::ErrorCode DictFile::Read(const std::string& key, std::string& value) {
+    leveldb::ReadOptions ops;
+    leveldb::Status status = db_->Get(ops, key, &value);
+    if (status.IsNotFound()) {
+        return ERRORCODE(kNotFound, "not exist");
+    } else if (!status.ok()) {
+        return ERRORCODE(kError, "read %s failed: ", status.ToString().c_str());
+    }
+    return ERRORCODE(kOk, "ok");
+}
+
+
 }
 }
 }

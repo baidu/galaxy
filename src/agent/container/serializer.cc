@@ -18,16 +18,10 @@ Serializer::Serializer() {
 Serializer::~Serializer() {
 }
 
-std::string Serializer::WorkContainerKey(const std::string& group_id,
+std::string Serializer::WorkKey(const std::string& group_id,
             const std::string& container_id) {
     return "#_" + group_id + "_" + container_id;
 }
-
-std::string GcContainerKey(const std::string& group_id, 
-            const std::string& container_id) {
-    return "!_" + group_id + "_" + container_id;
-}
-
 
 baidu::galaxy::util::ErrorCode Serializer::Setup(const std::string& path) {
     assert(NULL == dictfile_.get());
@@ -44,7 +38,7 @@ baidu::galaxy::util::ErrorCode Serializer::Setup(const std::string& path) {
 baidu::galaxy::util::ErrorCode Serializer::SerializeWork(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
     assert(dictfile_->IsOpen());
     assert(NULL != meta.get());
-    std::string key = Serializer::WorkContainerKey(meta->group_id(),meta->container_id());
+    std::string key = Serializer::WorkKey(meta->group_id(),meta->container_id());
 
     baidu::galaxy::util::ErrorCode ec = dictfile_->Write(key, meta->SerializeAsString());
 
@@ -57,18 +51,25 @@ baidu::galaxy::util::ErrorCode Serializer::SerializeWork(boost::shared_ptr<baidu
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode Serializer::SerializeGc(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
+baidu::galaxy::util::ErrorCode Serializer::DeleteWork(const std::string& group_id,
+            const std::string& container_id) {
+    assert(dictfile_->IsOpen());
+    const std::string key = Serializer::WorkKey(group_id, container_id);
+    baidu::galaxy::util::ErrorCode ec = dictfile_->Delete(key);
+    if (ec.Code() != 0) {
+        return ERRORCODE(-1, "delete work key %s failed: %s",
+                    key.c_str(),
+                    ec.Message().c_str());
+    }
     return ERRORCODE_OK;
 }
 
 
-baidu::galaxy::util::ErrorCode Serializer::DeleteWork(const std::string& group_id, const std::string& container_id) {
-    const std::string key = Serializer::WorkContainerKey(group_id, container_id);
+baidu::galaxy::util::ErrorCode Serializer::Delete(const std::string& key) {
+    assert(dictfile_->IsOpen());
     baidu::galaxy::util::ErrorCode ec = dictfile_->Delete(key);
     if (ec.Code() != 0) {
-        return ERRORCODE(-1, "delete key %s failed: %s",
-                    key.c_str(),
-                    ec.Message().c_str());
+        return ERRORCODE(-1, ec.Message().c_str());
     }
     return ERRORCODE_OK;
 }
@@ -94,10 +95,27 @@ baidu::galaxy::util::ErrorCode Serializer::LoadWork(std::vector<boost::shared_pt
     return ERRORCODE_OK;
 }
 
+baidu::galaxy::util::ErrorCode Serializer::Read(const std::string& key,
+            boost::shared_ptr<baidu::galaxy::proto::ContainerMeta>& meta) {
+    assert(NULL != meta.get());
+    std::string value;
+    baidu::galaxy::util::ErrorCode ec = dictfile_->Read(key, value);
+    if (baidu::galaxy::file::kOk == 0) {
+        if (!meta->ParseFromString(value)) {
+            meta.reset();
+            return ERRORCODE(-1, "parse failed: %d", value.size());
+        }
+    } else if (baidu::galaxy::file::kNotFound == ec.Code()) {
+        meta.reset();
+        return ERRORCODE(0, ec.Message().c_str());
+    } else {
+        meta.reset();
+        return ERRORCODE(-1, ec.Message().c_str());
+    }
 
-baidu::galaxy::util::ErrorCode Serializer::LoadGc(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> >& gc_metas) {
     return ERRORCODE_OK;
 }
+
 
 }
 }

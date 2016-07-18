@@ -198,7 +198,7 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
 
     bool ret = resman_->ListContainerGroups(request, &response);
     if (ret) {
-        std::string array_headers[4] = {"", "id", "replica", "stat(r/a/p)"};
+        std::string array_headers[4] = {"", "id", "replica", "r/a/p"};
         std::vector<std::string> headers(array_headers, array_headers + 4);
         if (find(options.begin(), options.end(), "cpu") != options.end()) {
             headers.push_back("cpu(a/u)");
@@ -1208,9 +1208,25 @@ bool ResAction::Status() {
     ::baidu::galaxy::sdk::StatusRequest request;
     ::baidu::galaxy::sdk::StatusResponse response;
     request.user = user_;
-
-    bool ret = resman_->Status(request, &response);
+    
+    std::string resman_endpoint;
+    std::string appmaster_endpoint;
+    std::string path = FLAGS_nexus_root + FLAGS_appmaster_path;
+    bool ret = resman_->MasterEndpoint(path, &appmaster_endpoint, &resman_endpoint);
+    if (!ret) {
+        fprintf(stderr, "get master endpoint failed\n");
+        return false;
+    }
+    
+    ret = resman_->Status(request, &response);
     if (ret) {
+        printf("master infomation\n");
+        baidu::common::TPrinter master(2);
+        master.AddRow(2, "master", "addr");
+        master.AddRow(2, "appmaster", appmaster_endpoint.c_str());
+        master.AddRow(2, "resman", resman_endpoint.c_str());
+        printf("%s\n", master.ToString().c_str());
+
         printf("cluster agent infomation\n");
         ::baidu::common::TPrinter agent(3); 
         agent.AddRow(3, "total", "alive", "dead");
@@ -1385,8 +1401,9 @@ bool ResAction::AddUser(const std::string& user, const std::string& token) {
 
 }
 
-bool ResAction::RemoveUser(const std::string& user, const std::string& token) {
-    if (user.empty() || token.empty()) {
+bool ResAction::RemoveUser(const std::string& user) {
+    if (user.empty()) {
+        fprintf(stderr, "user is needed\n");
         return false;
     }
     if(!this->Init()) {
@@ -1397,7 +1414,6 @@ bool ResAction::RemoveUser(const std::string& user, const std::string& token) {
     ::baidu::galaxy::sdk::RemoveUserResponse response;
     request.admin = user_;
     request.user.user  = user;
-    request.user.token = token;
 
     bool ret = resman_->RemoveUser(request, &response);
     if (ret) {
@@ -1511,12 +1527,12 @@ bool ResAction::ShowUser(const std::string& user) {
 }
 
 bool ResAction::GrantUser(const std::string& user, 
-                          const std::string& token, 
                           const std::string& pool, 
                           const std::string& opration,
                           const std::string& authority) {
     
-    if (user.empty() || token.empty() || pool.empty()) {
+    if (user.empty() || pool.empty()) {
+        fprintf(stderr, "user and pool is needed\n");
         return false;
     }
 
@@ -1571,7 +1587,6 @@ bool ResAction::GrantUser(const std::string& user,
     ::baidu::galaxy::sdk::GrantUserResponse response;
     request.admin = user_;
     request.user.user  = user;
-    request.user.token = token;
     request.grant = grant;
 
     bool ret = resman_->GrantUser(request, &response);
@@ -1622,7 +1637,7 @@ bool ResAction::AssignQuota(const std::string& user,
     ::baidu::galaxy::sdk::AssignQuotaRequest request;
     ::baidu::galaxy::sdk::AssignQuotaResponse response;
     request.admin = user_;
-    request.user.user  = user;
+    request.user.user = user;
     request.quota = quota;
 
     bool ret = resman_->AssignQuota(request, &response);

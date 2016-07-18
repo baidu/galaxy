@@ -107,8 +107,8 @@ void PrivatePublicSdk::AddServiceInstance(std::string podid, const ServiceInfo &
     int offset;
     std::string str = ss_offset.str();
     ss_offset >> offset;
-    size_t site = service.host_name().rfind(".baidu.com");
-    std::string host(service.host_name(), 0, site);
+    size_t site = service.hostname().rfind(".baidu.com");
+    std::string host(service.hostname(), 0, site);
 	return;
 }
 

@@ -24,7 +24,7 @@ namespace galaxy {
 namespace sched {
 
 const int sMaxPort = 9999;
-const int sMinPort = 1025;
+const int sMinPort = 1026;
 const std::string kDynamicPort = "dynamic";
 
 Agent::Agent(const AgentEndpoint& endpoint,
@@ -1186,6 +1186,7 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
                 } else if (remote_st == kContainerError) {
                     cmd.action = kDestroyContainer;
                     commands.push_back(cmd);
+                    ChangeStatus(container_local, kContainerPending);
                 } else if (remote_st != kContainerReady) {
                     ChangeStatus(container_local, kContainerPending);
                 }

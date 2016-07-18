@@ -6,6 +6,8 @@
 
 #ifdef TEST_CONTAINER_STATUS_ON
 #include "agent/container/container_status.h"
+#include "agent/container/container.h"
+#include <map>
 
 class TestContainerStatus : public testing::Test {
 protected:
@@ -53,6 +55,13 @@ TEST_F(TestContainerStatus, EnterAllocating) {
 }
 
 TEST_F(TestContainerStatus, EnterReady) {
+    baidu::galaxy::container::ContainerId id("job_20160616_230218_396_diting",
+                "job_20160616_230218_396_diting.pod_14");
+
+    std::map<baidu::galaxy::container::ContainerId, int> m;
+    m[id] = 1;
+    std::map<baidu::galaxy::container::ContainerId, int>::iterator iter = m.find(id);
+    EXPECT_TRUE(iter != m.end());
 }
 
 #endif

@@ -5,6 +5,7 @@
 #include "protocol/galaxy.pb.h"
 #include "mounter.h"
 #include "util/user.h"
+#include "glog/logging.h"
 #include "collector/collector_engine.h"
 
 #include <boost/filesystem/path.hpp>
@@ -100,6 +101,21 @@ baidu::galaxy::util::ErrorCode BindVolum::Destroy()
     }
 
     boost::filesystem::path gc_source_path(SourceGcPath());
+    if (boost::filesystem::exists(gc_source_path, ec)) {
+        boost::filesystem::remove_all(source_path, ec);
+        LOG(INFO) << "gc source path exist, remove source path directly: " << source_path.string();
+        if (ec.value() == 0) {
+            return ERRORCODE_OK;
+        } else {
+            return ERRORCODE(-1, "remove %s failed", source_path.string().c_str());
+        }
+    }
+
+    if (!boost::filesystem::exists(gc_source_path.parent_path(), ec)) {
+        boost::filesystem::create_directories(gc_source_path.parent_path(), ec);
+    }
+
+
     boost::filesystem::rename(source_path, gc_source_path, ec);
     if (0 != ec.value()) {
         return ERRORCODE(-1, "failed in renaming %s -> %s: %s",
@@ -116,6 +132,24 @@ int64_t BindVolum::Used()
         return vc_->Size();
     }
     return 0L;
+}
+
+baidu::galaxy::util::ErrorCode BindVolum::Gc() {
+    boost::filesystem::path source_root_path(SourceRootPath());
+    boost::system::error_code ec;
+    if (!boost::filesystem::exists(source_root_path), ec) {
+        return ERRORCODE_OK;
+    }
+
+    boost::filesystem::remove_all(source_root_path, ec);
+    if (ec.value() != 0) {
+        return ERRORCODE(-1, 
+                    "remove %s failed: %s", 
+                    source_root_path.c_str(), 
+                    ec.message().c_str());
+    }
+
+    return ERRORCODE_OK;
 }
 
 std::string BindVolum::ToString()

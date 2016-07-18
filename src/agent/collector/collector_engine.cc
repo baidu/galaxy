@@ -34,7 +34,7 @@ boost::shared_ptr<CollectorEngine> CollectorEngine::GetInstance()
     return instance_;
 }
 
-baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Collector> collector)
+baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Collector> collector, bool fast)
 {
     assert(NULL != collector.get());
     boost::mutex::scoped_lock lock(mutex_);
@@ -47,6 +47,8 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
     }
 
     boost::shared_ptr<CollectorEngine::RuntimeCollector> rc(new CollectorEngine::RuntimeCollector(collector));
+    rc->SetFast(fast);
+
     collectors_.push_back(rc);
     return ERRORCODE_OK;
 }
@@ -68,6 +70,7 @@ baidu::galaxy::util::ErrorCode CollectorEngine::Register(boost::shared_ptr<Colle
 int CollectorEngine::Setup()
 {
     assert(!running_);
+//return 0;
 
     int ret = -1;
     if (main_collect_thread_.Start(boost::bind(&CollectorEngine::CollectMainThreadRoutine, this))) {
@@ -89,9 +92,10 @@ void CollectorEngine::CollectMainThreadRoutine()
         int64_t now = baidu::common::timer::get_micros();
         {
             boost::mutex::scoped_lock lock(mutex_);
-
+            VLOG(10) << "collector size: " << collectors_.size();
             std::list<boost::shared_ptr<RuntimeCollector> >::iterator iter = collectors_.begin();
             for (; iter != collectors_.end(); iter++) {
+                VLOG(10) << (*iter)->ToString();
                 if (!(*iter)->Enabled()) {
                     continue;
                 }
@@ -109,9 +113,22 @@ void CollectorEngine::CollectMainThreadRoutine()
                         continue;
                     }
 
-                    (*iter)->SetRunning(true);
-                    collector_pool_.AddTask(boost::bind(&CollectorEngine::CollectRoutine, this, *iter));
-                    (*iter)->UpdateNextRuntime();
+                    if ((*iter)->Fast()) {
+                        (*iter)->SetRunning(true);
+                        fast_collector_pool_.AddTask(boost::bind(&CollectorEngine::CollectRoutine, this, *iter));
+                        (*iter)->UpdateNextRuntime();
+                        VLOG(10) << (*iter)->Name() << " set fast running true";
+                    } else {
+                        if (collector_pool_.PendingNum() == 0){
+                            collector_pool_.AddTask(boost::bind(&CollectorEngine::CollectRoutine,
+                                            this, 
+                                            *iter));
+                            (*iter)->UpdateNextRuntime();
+                            VLOG(10) << (*iter)->Name() << " set slow running true";
+                        } else {
+                            LOG(INFO) << "no thread for slow collector: " << (*iter)->Name();
+                        }
+                    }
                 }
             }
 
@@ -133,8 +150,12 @@ void CollectorEngine::CollectMainThreadRoutine()
 
 void CollectorEngine::CollectRoutine(boost::shared_ptr<CollectorEngine::RuntimeCollector> rc)
 {
+    int64_t t0 = baidu::common::timer::get_micros();
+    VLOG(10) << "begin collect " << rc->Name();
     rc->GetCollector()->Collect();
     rc->SetRunning(false);
+    int64_t t1 = baidu::common::timer::get_micros();
+    VLOG(10) << rc->Name() << " set running false: " << t1 - t0;
 }
 
 }

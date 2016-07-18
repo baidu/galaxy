@@ -566,7 +566,7 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
         std::map<std::string, proto::ContainerGroupMeta>::iterator it;
         it = container_groups_.find(request->id());
         if (it == container_groups_.end()) {
-            response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+            response->mutable_error_code()->set_status(proto::kJobNotFound);
             response->mutable_error_code()->set_reason("no such group");
             done->Run();
             return;
@@ -675,10 +675,8 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     } else {
         new_meta.mutable_desc()->set_version(old_version);
     }
-    if (replica_changed) {
-        scheduler_->ChangeReplica(new_meta.id(),
-                                  new_meta.replica());
-    }
+    scheduler_->ChangeReplica(new_meta.id(),
+                              new_meta.replica());
     {
         MutexLock lock(&mu_);
         container_groups_[new_meta.id()] = new_meta;
@@ -1042,6 +1040,7 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
     const std::string& endpoint = request->endpoint();
     const std::string& pool = request->pool();
     proto::AgentMeta agent_meta = agents_[endpoint];
+    std::string old_pool = agent_meta.pool();
     agent_meta.set_pool(pool);
     bool ret = SaveObject(sAgentPrefix + "/" + endpoint, agent_meta);
     if (!ret) {
@@ -1050,7 +1049,10 @@ void ResManImpl::AddAgentToPool(::google::protobuf::RpcController* controller,
     } else {
         MutexLock lock(&mu_);
         agents_[endpoint].set_pool(pool);
-        pools_[pool].erase(endpoint);
+        if (pools_.find(old_pool) != pools_.end()) {
+            pools_[old_pool].erase(endpoint);
+        }
+        pools_[pool].insert(endpoint);
         scheduler_->SetPool(endpoint, pool);
         response->mutable_error_code()->set_status(proto::kOk);
     }

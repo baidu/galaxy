@@ -57,12 +57,16 @@ const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Volum::Description(
     return vr_;
 }
 
-
-std::string Volum::SourcePath()
-{
+std::string Volum::SourceRootPath() {
     boost::filesystem::path path(vr_->source_path());
     path.append("galaxy");
     path.append(container_id_);
+    return path.string();
+}
+
+std::string Volum::SourcePath()
+{
+    boost::filesystem::path path(SourceRootPath());
     path.append(vr_->dest_path());
     return path.string();
 }
@@ -74,12 +78,21 @@ std::string Volum::TargetPath()
     return path.string();
 }
 
+
+std::string Volum::SourceGcRootPath() {
+    assert(gc_index_ >= 0);
+    boost::filesystem::path path(vr_->source_path());
+    path.append("galaxy_gc");
+    path.append(container_id_ + "." + boost::lexical_cast<std::string>(gc_index_));
+    return path.string();
+}
+
 std::string Volum::SourceGcPath()
 {
     assert(gc_index_ >= 0);
-    boost::filesystem::path path(SourcePath());
-    path.append("x");
-    return path.parent_path().string() + "." + boost::lexical_cast<std::string>(gc_index_);
+    boost::filesystem::path path(SourceGcRootPath());
+    path.append(vr_->dest_path());
+    return path.string();
 }
 
 std::string Volum::TargetGcPath()
