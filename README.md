@@ -1,5 +1,10 @@
 [![Build Status](https://travis-ci.org/baidu/galaxy.svg?branch=galaxy3)](https://travis-ci.org/baidu/galaxy)
 
+<a href="https://scan.coverity.com/projects/baidu-galaxy">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/9434/badge.svg"/>
+</a>
+
 galaxy 3.0
 
 Galaxy 3.0设计
@@ -106,5 +111,4 @@ AppMaster等待AppWorkers的定时汇报；
 1. Nexus作为寻址和元信息保存  
 2. MDT作为用户日志的Trace系统  
 3. Sofa-PbRPC作为通信基础库  
-
 
