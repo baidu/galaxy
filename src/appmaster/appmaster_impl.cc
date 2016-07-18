@@ -104,7 +104,6 @@ void AppMasterImpl::OnLockChange(std::string lock_session_id) {
     std::string self_session_id = nexus_->GetSessionID();
     if (self_session_id != lock_session_id) {
         LOG(FATAL) << "master lost lock , die.";
-        abort();
     }
 }
 

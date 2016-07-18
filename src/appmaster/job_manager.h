@@ -13,6 +13,7 @@
 #include "protocol/appmaster.pb.h"
 #include "protocol/galaxy.pb.h"
 #include "rpc/rpc_client.h"
+#include "naming/private_sdk.h"
 
 namespace baidu {
 namespace galaxy {
@@ -90,11 +91,13 @@ struct Job {
     JobId id_;
     std::set<PodId> deploying_pods_;
     std::set<PodId> reloading_pods_;
+    std::set<PodId> recreate_pods_;
     UpdateAction action_type_;
     int64_t create_time_;
     int64_t update_time_;
     int64_t rollback_time_;
     uint32_t updated_cnt_;
+    std::map<std::string, PublicSdk*> naming_sdk_;
 };
 
 typedef boost::function<Status (Job* job, void* arg)> TransFunc;
@@ -160,6 +163,7 @@ private:
     Status PauseUpdatePod(Job* job, void* arg);
     Status TryRebuild(Job* job, PodInfo* podinfo);
     Status TryReload(Job* job, PodInfo* pod);
+    Status TryReCreate(Job* job, PodInfo* pod);
     void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
                             PodStatus reload_status);
     bool ReachBreakpoint(Job* job);
@@ -168,12 +172,13 @@ private:
                     Job* job);
 
     bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
-    void RefreshService(ServiceList* src, PodInfo* pod);
-    void DestroyService(ServiceList* services);
-    void EraseFormDeployList(Job* job, std::string podid);
+    void RefreshService(Job* job, ServiceList* src, PodInfo* pod);
+    void DestroyService(Job* job, PodInfo* pod);
+    void EraseFormDeployList(JobId jobid, std::string podid);
+    void EraseFormReCreateList(JobId jobid, std::string podid);
     void RebuildPods(Job* job,
                     const ::baidu::galaxy::proto::FetchTaskRequest* request);
-    void CheckDeployingAlive(std::string id, Job* job);
+    void CheckDeployingAlive(std::string id, JobId jobid);
 
 private:
     std::map<JobId, Job*> jobs_;
