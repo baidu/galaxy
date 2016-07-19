@@ -975,6 +975,18 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     obj_str.SetString(StringJobType(response.job.desc.type).c_str(), allocator);
     root.AddMember("type", obj_str, allocator);
 
+    std::string volum_jobs;
+    for (uint32_t i = 0; i < response.job.desc.volum_jobs.size(); ++i) {
+        volum_jobs += response.job.desc.volum_jobs[i];
+        if (i < response.job.desc.volum_jobs.size() - 1) {
+            volum_jobs += ",";
+        }
+    }
+    obj_str.SetString(volum_jobs.c_str(), allocator);
+    if (response.job.desc.volum_jobs.size() > 0) {
+        root.AddMember("volum_jobs", obj_str, allocator);
+    }
+
     //deploy节点
     rapidjson::Value deploy(rapidjson::kObjectType);
     const ::baidu::galaxy::sdk::JobDescription& job = response.job.desc;

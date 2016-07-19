@@ -650,6 +650,19 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     boost::trim(job->run_user);*/
     job->run_user = "galaxy";
 
+    if (doc.HasMember("volum_jobs")) {
+        std::string str_jobs = doc["volum_jobs"].GetString();
+        boost::trim(str_jobs);
+
+        std::vector<std::string> volum_jobs;
+        ::baidu::common::SplitString(str_jobs, ",", &volum_jobs);
+        if (volum_jobs.size() == 0) {
+            fprintf(stderr, "volum_jobs are needed in config, if you don't want this item, please wipe off\n");
+            return -1;
+        }   
+    job->volum_jobs.assign(volum_jobs.begin(), volum_jobs.end());
+    }
+
     ::baidu::galaxy::sdk::Deploy& deploy = job->deploy;
 
     //deploy

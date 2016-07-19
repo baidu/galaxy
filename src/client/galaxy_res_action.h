@@ -18,8 +18,8 @@ class ResAction {
 public:
     ResAction();
     ~ResAction();
-    bool CreateContainerGroup(const std::string& json_file);
-    bool UpdateContainerGroup(const std::string& json_file, const std::string& id);
+    bool CreateContainerGroup(const std::string& json_file, const std::string& container_type);
+    bool UpdateContainerGroup(const std::string& json_file, const std::string& id, const std::string& container_type);
     bool RemoveContainerGroup(const std::string& id);
     bool ListContainerGroups(const std::string& soptions);
     bool ShowContainerGroup(const std::string& id);

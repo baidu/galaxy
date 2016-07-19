@@ -361,7 +361,7 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
         return false;
     }
         
-    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
+    response->error_code.status = (baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;

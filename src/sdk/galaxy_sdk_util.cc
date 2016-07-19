@@ -286,6 +286,19 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         return false;
     }
 
+    if(sdk_container.container_type == kVolumContainer) {
+        container->set_container_type(::baidu::galaxy::proto::kVolumContainer);
+    } else if (sdk_container.container_type == kNormalContainer) {
+        container->set_container_type(::baidu::galaxy::proto::kNormalContainer);
+    } else {
+        fprintf(stderr, "container type must be kVolumContainer or kNormalContainer\n");
+        return false;
+    }
+
+    if (!ok) {
+        return false;
+    }
+
     if (!FillVolumRequired(sdk_container.workspace_volum, container->mutable_workspace_volum())) {
         return false;
     }
@@ -643,6 +656,16 @@ bool FillJobDescription(const JobDescription& sdk_job,
         fprintf(stderr, "job type must be kJobService, kJobBatch, kJobBestEffort\n");
         return false;
     }
+    
+    for (size_t i = 0; i < sdk_job.volum_jobs.size(); ++i) {
+        if (sdk_job.volum_jobs[i].empty()) {
+            fprintf(stderr, "volum_jobs[%d] must not be empty\n", (int)i);
+            return false;
+        }
+        job->add_volum_jobs(sdk_job.volum_jobs[i]); 
+    }
+
+
     if (!FillDeploy(sdk_job.deploy, job->mutable_deploy())) {
         return false;
     }

@@ -26,8 +26,8 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "galaxy_res_client [--flagfile=flagfile]\n"
                                  "Usage:\n"
                                  "  container usage:\n"
-                                 "      galaxy_res_client create_container -f jobconfig(json format)\n"
-                                 "      galaxy_res_client update_container -f jobconfig(json format) -i id\n"
+                                 "      galaxy_res_client create_container -f jobconfig(json format) [-t volum|normal]\n"
+                                 "      galaxy_res_client update_container -f jobconfig(json format) -i id [-t volum|normal]\n"
                                  "      galaxy_res_client remove_container -i id\n"
                                  "      galaxy_res_client list_containers [-o cpu,mem,volums]\n"
                                  "      galaxy_res_client show_container -i id\n\n"
@@ -65,7 +65,7 @@ const std::string kGalaxyUsage = "galaxy_res_client.\n"
                                  "      -p specify agent pool.\n"
                                  "      -e specify endpoint.\n"
                                  "      -u specity user.\n"
-                                 "      -t specify agent tag or token.\n"
+                                 "      -t specify agent tag or token or contaier type.\n"
                                  "      -o specify operation [cpu,mem,volums].\n"
                                  "      -a specify authority split by ,\n"
                                  "      -c specify millicores, such as 1000\n"
@@ -129,7 +129,10 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-f is needed\n");
             return -1;
         }
-        ok = resAction->CreateContainerGroup(FLAGS_f);
+        if (FLAGS_t.empty()) {
+            FLAGS_t = "normal";
+        }
+        ok = resAction->CreateContainerGroup(FLAGS_f, FLAGS_t);
     } else if (strcmp(argv[1], "update_container") == 0) {
         if (FLAGS_f.empty()) {
             fprintf(stderr, "-f is needed\n");
@@ -140,8 +143,10 @@ int main(int argc, char** argv) {
             fprintf(stderr, "-i is needed\n");
             return -1;
         }
-
-        ok = resAction->UpdateContainerGroup(FLAGS_f, FLAGS_i);
+        if (FLAGS_t.empty()) {
+            FLAGS_t = "normal";
+        }
+        ok = resAction->UpdateContainerGroup(FLAGS_f, FLAGS_i, FLAGS_t);
     } else if (strcmp(argv[1], "remove_container") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");

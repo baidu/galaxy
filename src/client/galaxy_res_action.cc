@@ -37,7 +37,7 @@ bool ResAction::Init() {
     return true;
 }
 
-bool ResAction::CreateContainerGroup(const std::string& json_file) {
+bool ResAction::CreateContainerGroup(const std::string& json_file, const std::string& container_type) {
     if (json_file.empty()) {
         fprintf(stderr, "json_file and jobid are needed\n");
         return false;
@@ -67,6 +67,15 @@ bool ResAction::CreateContainerGroup(const std::string& json_file) {
     //request.desc.cmd_line = "sh appworker.sh";
     request.desc.tag = job.deploy.tag;
     request.desc.pool_names.assign(job.deploy.pools.begin(), job.deploy.pools.end());
+
+    if (container_type.compare("normal") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kNormalContainer;
+    } else if (container_type.compare("volum") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kVolumContainer;
+    } else {
+        fprintf(stderr, "container_type must be normal or volum\n");
+        return false;
+    }
     
     for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
@@ -96,10 +105,9 @@ bool ResAction::CreateContainerGroup(const std::string& json_file) {
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
-
 }
 
-bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::string& id) {
+bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::string& id, const std::string& container_type) {
     if (json_file.empty() || id.empty()) {
         fprintf(stderr, "json_file and id are needed\n");
         return false;
@@ -131,6 +139,15 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
     //request.desc.cmd_line = "sh appworker.sh";
     request.desc.tag = job.deploy.tag;
     request.desc.pool_names.assign(job.deploy.pools.begin(), job.deploy.pools.end());
+
+    if (container_type.compare("normal") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kNormalContainer;
+    } else if (container_type.compare("volum") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kVolumContainer;
+    } else {
+        fprintf(stderr, "container_type must be normal or volum\n");
+        return false;
+    }
 
     for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
         ::baidu::galaxy::sdk::Cgroup cgroup;
