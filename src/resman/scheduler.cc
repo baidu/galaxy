@@ -67,8 +67,13 @@ void Agent::SetAssignment(int64_t cpu_assigned,
         const Container::Ptr& container = pair.second;
         container_counts_[container->container_group_id] += 1;
         container->allocated_agent = endpoint_;
+        VLOG(10) << "agent: " << endpoint_ << " has container: " << container->id
+                 << " with type: " << proto::ContainerType_Name(container->require->container_type);
         if (container->require->container_type == proto::kVolumContainer) {
             volum_jobs_free_[container->container_group_id].insert(container->id);
+            VLOG(10) << "free volum container: " << container->id << " of: "
+                     << container->container_group_id << " on agent:"
+                     << endpoint_;
         }
     }
 
@@ -226,6 +231,8 @@ void Agent::Put(Container::Ptr container) {
             const ContainerGroupId& volum_job_id = ExtractGroupId(volum_container_id);
             volum_jobs_free_[volum_job_id].erase(volum_container_id);
             container->allocated_volum_containers.push_back(volum_container_id);
+            VLOG(10) << container->id << " use volum container: " << volum_container_id
+                     << " of job: " << volum_job_id;
         }
     }
 }
@@ -381,8 +388,10 @@ void Agent::Evict(Container::Ptr container) {
         for (size_t i = 0; i < container->allocated_volum_containers.size(); i++) {
             const ContainerId& volum_container_id = container->allocated_volum_containers[i];
             const ContainerGroupId& volum_job_id = ExtractGroupId(volum_container_id);
-            if (containers_.find(volum_job_id) != containers_.end()) {
+            if (containers_.find(volum_container_id) != containers_.end()) {
                 volum_jobs_free_[volum_job_id].insert(volum_container_id);
+                VLOG(10) << container->id << " free volum container: " << volum_container_id
+                         << " of job: " << volum_job_id;
             }
         }
         container->allocated_volum_containers.clear();
@@ -725,7 +734,7 @@ void Scheduler::Reload(const proto::ContainerGroupMeta& container_group_meta) {
     MutexLock lock(&mu_);
     Requirement::Ptr req(new Requirement());
     ContainerGroup::Ptr container_group(new ContainerGroup());
-
+    VLOG(10) << "reload desc:" << container_group_meta.desc().DebugString();
     SetRequirement(req, container_group_meta.desc());
     container_group->require = req;
     container_group->id = container_group_meta.id();
@@ -1305,6 +1314,9 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     mu_.AssertHeld();
     if (v1 == v2) {//same object 
         return false;
+    }
+    if (v1->container_type != v2->container_type) {
+        return true;
     }
     if (v1->tag != v2->tag) {
         return true;
