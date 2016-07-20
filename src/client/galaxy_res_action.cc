@@ -61,6 +61,7 @@ bool ResAction::CreateContainerGroup(const std::string& json_file, const std::st
     request.desc.priority = job.type;
     request.desc.run_user = user_.user;
     request.desc.version = job.version;
+    request.desc.volum_jobs.assign(job.volum_jobs.begin(), job.volum_jobs.end()); //attemp new
     request.desc.max_per_host = job.deploy.max_per_host;
     request.desc.workspace_volum = job.pod.workspace_volum;
     request.desc.data_volums.assign(job.pod.data_volums.begin(), job.pod.data_volums.end());
@@ -134,6 +135,7 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
     request.desc.priority = job.type;
     request.desc.run_user = user_.user;
     request.desc.version = job.version;
+    request.desc.volum_jobs.assign(job.volum_jobs.begin(), job.volum_jobs.end()); //attemp new
     request.desc.workspace_volum = job.pod.workspace_volum;
     request.desc.data_volums.assign(job.pod.data_volums.begin(), job.pod.data_volums.end());
     //request.desc.cmd_line = "sh appworker.sh";
@@ -565,7 +567,7 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                 
         printf("containers infomation\n");
         ::baidu::common::TPrinter containers(8);
-        containers.AddRow(8, "", "id", "endpoint", "status", "cpu(a/u)", "mem(a/u)", "volums(id/medium/a/u)", "last_error");
+        containers.AddRow(8, "", "id", "endpoint", "status", "last_error", "cpu(a/u)", "mem(a/u)", "volums(id/medium/a/u)");
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             size_t pos = response.containers[i].id.rfind("."); 
             std::string id(response.containers[i].id, pos + 1, response.containers[i].id.size()- (pos + 1));
@@ -591,10 +593,10 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                                          id.c_str(),
                                          response.containers[i].endpoint.c_str(),
                                          StringContainerStatus(response.containers[i].status).c_str(),
+                                         StringResourceError(response.containers[i].last_res_err).c_str(),
                                          scpu.c_str(),
                                          smem.c_str(),
-                                         svolums.c_str(),
-                                         StringResourceError(response.containers[i].last_res_err).c_str()
+                                         svolums.c_str()
                                      );
 
                 } else {
@@ -604,8 +606,8 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                                          "",
                                          "",
                                          "",
-                                         svolums.c_str(),
-                                         ""
+                                         "",
+                                         svolums.c_str()
                                      );
                 }
             }
@@ -615,10 +617,10 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                                      id.c_str(),
                                      response.containers[i].endpoint.c_str(),
                                      ::baidu::common::NumToString(response.containers[i].status).c_str(),
+                                     StringResourceError(response.containers[i].last_res_err).c_str(),
                                      scpu.c_str(),
                                      smem.c_str(),
-                                     "",
-                                     StringResourceError(response.containers[i].last_res_err).c_str()
+                                     ""
                                  );
             }
         }
@@ -1217,6 +1219,12 @@ bool ResAction::OfflineAgent(const std::string& endpoint) {
     return ret;
 }
 
+struct resource {
+        ::baidu::galaxy::sdk::Resource cpu;
+        ::baidu::galaxy::sdk::Resource memory;
+        std::map< ::baidu::galaxy::sdk::VolumMedium, ::baidu::galaxy::sdk::Resource> volums;
+};
+
 bool ResAction::Status() {
     if(!this->Init()) {
         return false;
@@ -1236,76 +1244,182 @@ bool ResAction::Status() {
     }
     
     ret = resman_->Status(request, &response);
-    if (ret) {
-        printf("master infomation\n");
-        baidu::common::TPrinter master(2);
-        master.AddRow(2, "master", "addr");
-        master.AddRow(2, "appmaster", appmaster_endpoint.c_str());
-        master.AddRow(2, "resman", resman_endpoint.c_str());
-        printf("%s\n", master.ToString().c_str());
-
-        printf("cluster agent infomation\n");
-        ::baidu::common::TPrinter agent(3); 
-        agent.AddRow(3, "total", "alive", "dead");
-        agent.AddRow(3, baidu::common::NumToString(response.total_agents).c_str(), 
-                        baidu::common::NumToString(response.alive_agents).c_str(),
-                        baidu::common::NumToString(response.dead_agents).c_str());
-        printf("%s\n", agent.ToString().c_str());
-
-        printf("cluster cpu infomation\n");
-        ::baidu::common::TPrinter cpu(3);
-        cpu.AddRow(3, "total", "assigned", "used");
-        cpu.AddRow(3, ::baidu::common::NumToString(response.cpu.total / 1000.0).c_str(), 
-                        ::baidu::common::NumToString(response.cpu.assigned / 1000.0).c_str(),
-                        ::baidu::common::NumToString(response.cpu.used / 1000.0).c_str());
-        printf("%s\n", cpu.ToString().c_str());
-
-        printf("cluster memory infomation\n");
-        ::baidu::common::TPrinter mem(3);
-        mem.AddRow(3, "total", "assigned", "used");
-        mem.AddRow(3, HumanReadableString(response.memory.total).c_str(), 
-                      HumanReadableString(response.memory.assigned).c_str(),
-                      HumanReadableString(response.memory.used).c_str());
-        printf("%s\n", mem.ToString().c_str());
-
-        printf("cluster volumes infomation\n");
-        ::baidu::common::TPrinter volum(6);
-        volum.AddRow(6, "", "medium", "total", "assigned", "used", "device_path");
-        for (uint32_t i = 0; i < response.volum.size(); ++i) {
-            volum.AddRow(6, ::baidu::common::NumToString(i).c_str(),  
-                            StringVolumMedium(response.volum[i].medium).c_str(), 
-                            //::baidu::common::NumToString(response.volum[i].medium).c_str(), 
-                            HumanReadableString(response.volum[i].volum.total).c_str(),
-                            HumanReadableString(response.volum[i].volum.assigned).c_str(),
-                            HumanReadableString(response.volum[i].volum.used).c_str(),
-                            response.volum[i].device_path.c_str());
-        }
-        printf("%s\n", volum.ToString().c_str());
-
-        printf("cluster pools infomation\n");
-        ::baidu::common::TPrinter pool(4);
-        pool.AddRow(4, "", "name", "total", "alive");
-        for (uint32_t i = 0; i < response.pools.size(); ++i) {
-            pool.AddRow(4, ::baidu::common::NumToString(i).c_str(),
-                           response.pools[i].name.c_str(), 
-                           ::baidu::common::NumToString(response.pools[i].total_agents).c_str(),
-                           ::baidu::common::NumToString(response.pools[i].alive_agents).c_str());
-        }
-        printf("%s\n", pool.ToString().c_str());
-
-        printf("cluster other infomation\n");
-        ::baidu::common::TPrinter other(3);
-        other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
-        other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
-                        ::baidu::common::NumToString(response.total_containers).c_str(),
-                        StringBool(response.in_safe_mode).c_str());
-        printf("%s\n", other.ToString().c_str());
-
-    } else {
+    if (!ret) {
         printf("Get Status failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+        return false;
+
     }
-    return ret;
+    
+    ::baidu::galaxy::sdk::ListAgentsRequest list_request;
+    ::baidu::galaxy::sdk::ListAgentsResponse list_response;
+    list_request.user = user_;
+
+    ret = resman_->ListAgents(list_request, &list_response);
+    if (!ret) {
+        printf("List Agents failed for reason %s:%s\n",
+                StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+        return false;
+    }
+
+    printf("master infomation\n");
+    baidu::common::TPrinter master(2);
+    master.AddRow(2, "master", "addr");
+    master.AddRow(2, "appmaster", appmaster_endpoint.c_str());
+    master.AddRow(2, "resman", resman_endpoint.c_str());
+    printf("%s\n", master.ToString().c_str());
+
+    printf("cluster agent infomation\n");
+    ::baidu::common::TPrinter agent(3); 
+    agent.AddRow(3, "total", "alive", "dead");
+    agent.AddRow(3, baidu::common::NumToString(response.total_agents).c_str(), 
+                    baidu::common::NumToString(response.alive_agents).c_str(),
+                    baidu::common::NumToString(response.dead_agents).c_str());
+    printf("%s\n", agent.ToString().c_str());
+
+    printf("cluster cpu infomation\n");
+    ::baidu::common::TPrinter cpu(3);
+    cpu.AddRow(3, "total", "assigned", "used");
+    cpu.AddRow(3, ::baidu::common::NumToString(response.cpu.total / 1000.0).c_str(), 
+                    ::baidu::common::NumToString(response.cpu.assigned / 1000.0).c_str(),
+                    ::baidu::common::NumToString(response.cpu.used / 1000.0).c_str());
+    printf("%s\n", cpu.ToString().c_str());
+
+    printf("cluster memory infomation\n");
+    ::baidu::common::TPrinter mem(3);
+    mem.AddRow(3, "total", "assigned", "used");
+    mem.AddRow(3, HumanReadableString(response.memory.total).c_str(), 
+                  HumanReadableString(response.memory.assigned).c_str(),
+                  HumanReadableString(response.memory.used).c_str());
+    printf("%s\n", mem.ToString().c_str());
+
+    printf("cluster volumes infomation\n");
+    ::baidu::common::TPrinter volum(6);
+    volum.AddRow(6, "", "medium", "total", "assigned", "used", "device_path");
+    for (uint32_t i = 0; i < response.volum.size(); ++i) {
+        volum.AddRow(6, ::baidu::common::NumToString(i).c_str(),  
+                        StringVolumMedium(response.volum[i].medium).c_str(), 
+                        //::baidu::common::NumToString(response.volum[i].medium).c_str(), 
+                        HumanReadableString(response.volum[i].volum.total).c_str(),
+                        HumanReadableString(response.volum[i].volum.assigned).c_str(),
+                        HumanReadableString(response.volum[i].volum.used).c_str(),
+                        response.volum[i].device_path.c_str());
+    }
+    printf("%s\n", volum.ToString().c_str());
+
+    std::map<std::string, resource> resource_stat;
+
+    for (uint32_t i = 0; i < list_response.agents.size(); ++i) {
+        std::string temp_pool = list_response.agents[i].pool;
+
+        bool no_repeat = false;
+        if (resource_stat.count(temp_pool) == 0) {
+            no_repeat = true;
+        }
+
+        resource& resource_temp = resource_stat[temp_pool];
+        if (no_repeat) {
+            //cpu
+            resource_temp.cpu.total = 0;
+            resource_temp.cpu.assigned = 0;
+            resource_temp.cpu.used = 0;
+            //mem
+            resource_temp.memory.total = 0; 
+            resource_temp.memory.assigned = 0;
+            resource_temp.memory.used = 0;
+        }
+
+        //cpu
+        resource_temp.cpu.total += list_response.agents[i].cpu.total;
+        resource_temp.cpu.assigned += list_response.agents[i].cpu.assigned;
+        resource_temp.cpu.used += list_response.agents[i].cpu.used;
+        
+        //mem
+        resource_temp.memory.total += list_response.agents[i].memory.total;
+        resource_temp.memory.assigned += list_response.agents[i].memory.assigned;
+        resource_temp.memory.used += list_response.agents[i].memory.used;
+        //disk
+        for (uint32_t j = 0; j < list_response.agents[i].volums.size(); ++j) {
+            ::baidu::galaxy::sdk::VolumMedium media_type = list_response.agents[i].volums[j].medium;
+            ::baidu::galaxy::sdk::Resource& volum_temp = resource_temp.volums[media_type];
+
+            if (no_repeat) {
+                volum_temp.total = 0;
+                volum_temp.assigned = 0;
+                volum_temp.used = 0;
+            }
+
+            volum_temp.total += list_response.agents[i].volums[j].volum.total;
+            volum_temp.assigned += list_response.agents[i].volums[j].volum.assigned;
+            volum_temp.used += list_response.agents[i].volums[j].volum.used;
+        }
+
+    }
+
+    printf("cluster pools infomation\n");
+    ::baidu::common::TPrinter pool(7);
+    pool.AddRow(7, "", "name", "total", "alive", "cpu(t/a/u)", "mem(t/a/u)", "vol(t/a/u)");
+    for (uint32_t i = 0; i < response.pools.size(); ++i) {
+        std::string temp_pool = response.pools[i].name;
+        std::string cpu_stat = ::baidu::common::NumToString(resource_stat[temp_pool].cpu.total/1000.0) + "/" +
+                               ::baidu::common::NumToString(resource_stat[temp_pool].cpu.assigned/1000.0) + "/" +
+                               ::baidu::common::NumToString(resource_stat[temp_pool].cpu.used/1000.0);
+        std::string mem_stat = HumanReadableString(resource_stat[temp_pool].memory.total) + "/" +
+                               HumanReadableString(resource_stat[temp_pool].memory.assigned) + "/" +
+                               HumanReadableString(resource_stat[temp_pool].memory.used);
+
+        std::map< ::baidu::galaxy::sdk::VolumMedium, ::baidu::galaxy::sdk::Resource> ::iterator it
+                    = resource_stat[temp_pool].volums.begin();
+        for (; it != resource_stat[temp_pool].volums.end(); ++it) {
+            const ::baidu::galaxy::sdk::Resource& volum_temp = it->second;
+            std::string volum_stat = StringVolumMedium(it->first) + " " +
+                                     HumanReadableString(volum_temp.total) + "/" +
+                                     HumanReadableString(volum_temp.assigned) + "/" +
+                                     HumanReadableString(volum_temp.used);
+            if (it == resource_stat[temp_pool].volums.begin()) {
+                pool.AddRow(7, ::baidu::common::NumToString(i).c_str(),
+                               response.pools[i].name.c_str(), 
+                               ::baidu::common::NumToString(response.pools[i].total_agents).c_str(),
+                               ::baidu::common::NumToString(response.pools[i].alive_agents).c_str(),
+                               cpu_stat.c_str(),
+                               mem_stat.c_str(),
+                               volum_stat.c_str());
+            } else {
+                pool.AddRow(7, "",
+                               "", 
+                               "",
+                               "",
+                               "",
+                               "",
+                               volum_stat.c_str());
+
+            }
+                                        
+        }
+
+        if (resource_stat[temp_pool].volums.size() == 0) {
+
+            pool.AddRow(7, ::baidu::common::NumToString(i).c_str(),
+                           response.pools[i].name.c_str(), 
+                           ::baidu::common::NumToString(response.pools[i].total_agents).c_str(),
+                           ::baidu::common::NumToString(response.pools[i].alive_agents).c_str(),
+                           cpu_stat.c_str(),
+                           mem_stat.c_str(),
+                           "");
+                        
+        }
+    }
+    printf("%s\n", pool.ToString().c_str());
+
+    printf("cluster other infomation\n");
+    ::baidu::common::TPrinter other(3);
+    other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
+    other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
+                    ::baidu::common::NumToString(response.total_containers).c_str(),
+                    StringBool(response.in_safe_mode).c_str());
+    printf("%s\n", other.ToString().c_str());
+
+    return true;
 
 }
 

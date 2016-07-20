@@ -14,6 +14,9 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
+AppMaster::~AppMaster() {
+}
+
 class AppMasterImpl : public AppMaster {
 public:
     AppMasterImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
@@ -120,7 +123,7 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
     pb_request.set_jobid(request.jobid);
 
     if (request.operate == kUpdateJobStart) {
-        if (request.job.deploy.update_break_count < 0 
+        if (request.job.deploy.update_break_count < 0U 
                 || request.job.deploy.update_break_count > request.job.deploy.replica) {
             fprintf(stderr, "deploy update_break_count must be greater than 0 and less than replica\n");
             return false;
@@ -131,7 +134,7 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
         pb_request.mutable_job()->mutable_deploy()->set_update_break_count(request.job.deploy.update_break_count);
         pb_request.set_operate(::baidu::galaxy::proto::kUpdateJobStart);
     } else if (request.operate == kUpdateJobContinue) {
-        if (request.update_break_count < 0) {
+        if (request.update_break_count < 0U) {
             fprintf(stderr, "update_break_count must not be less than 0\n");
             return false;
         }

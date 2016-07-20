@@ -14,6 +14,9 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
+ResourceManager::~ResourceManager() {
+}
+
 class ResourceManagerImpl : public ResourceManager {
 public:
     ResourceManagerImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
@@ -319,7 +322,7 @@ bool ResourceManagerImpl::UpdateContainerGroup(const UpdateContainerGroupRequest
     }
     pb_request.set_id(request.id);
 
-    if (request.interval < 0 || request.interval > 3600) {
+    if (request.interval < 0U || request.interval > 3600) {
         fprintf(stderr, "deploy interval must be greater than or equal to 0 and less than 3600\n");
         return false;
     }

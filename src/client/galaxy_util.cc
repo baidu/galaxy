@@ -375,6 +375,9 @@ std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error
     case ::baidu::galaxy::sdk::kTooManyPods:
         result = "kTooManyPods";
         break;
+    case ::baidu::galaxy::sdk::kNoVolumContainer:
+        result = "kNoVolumContainer";
+        break;
     default:
         result = "";
     }
@@ -527,6 +530,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     obj_str.SetString(name.c_str(), allocator);
     root.AddMember("name", obj_str, allocator);
     root.AddMember("type", "kJobService", allocator);
+    root.AddMember("volum_jobs", "", allocator);
     //root.AddMember("version", "1.0.0", allocator);
     //root.AddMember("run_user", "galaxy", allocator);
 

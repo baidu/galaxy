@@ -294,10 +294,21 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         fprintf(stderr, "container type must be kVolumContainer or kNormalContainer\n");
         return false;
     }
+    
+    //begin new attemp
+    for (size_t i = 0; i < sdk_container.volum_jobs.size(); ++i) {
+        if (sdk_container.volum_jobs[i].empty()) {
+            fprintf(stderr, "volum_jobs[%d] must not be empty\n", (int)i);
+            ok = false;
+            break;
+        }
+        container->add_volum_jobs(sdk_container.volum_jobs[i]); 
+    }
 
     if (!ok) {
         return false;
     }
+    // end new attemp
 
     if (!FillVolumRequired(sdk_container.workspace_volum, container->mutable_workspace_volum())) {
         return false;
@@ -597,19 +608,19 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
     }
     deploy->set_replica(sdk_deploy.replica);
 
-    if (sdk_deploy.step < 0) {
+    if (sdk_deploy.step < 0U) {
         fprintf(stderr, "deploy step must be greater or and equal to 0 \n");
         return false;
     }
     deploy->set_step(sdk_deploy.step);
 
-    if (sdk_deploy.interval < 0 || sdk_deploy.interval > 3600) {
+    if (sdk_deploy.interval < 0U || sdk_deploy.interval > 3600) {
         fprintf(stderr, "deploy interval must be greater than or equal to 0 and less than 3600\n");
         return false;
     }
     deploy->set_interval(sdk_deploy.interval);
 
-    if (sdk_deploy.max_per_host <= 0 || sdk_deploy.max_per_host >= 30) {
+    if (sdk_deploy.max_per_host <= 0U || sdk_deploy.max_per_host >= 30) {
         fprintf(stderr, "deploy max_per_host must be greater than 0 and less than 30\n");
         return false;
     }
