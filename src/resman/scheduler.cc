@@ -621,7 +621,9 @@ void Scheduler::RemoveAgent(const AgentEndpoint& endpoint) {
             ChangeStatus(container, kContainerTerminated);
         } else { // agent timeout
             if (container->require->container_type == proto::kVolumContainer) {
-                LOG(INFO) << "will not migrate volum container: "
+                ChangeStatus(container, kContainerTerminated);
+                LOG(INFO) << "agent removed " << endpoint
+                          << ", but will not migrate volum container: "
                           << container->id;
             } else {
                 ChangeStatus(container, kContainerPending);
@@ -1317,6 +1319,14 @@ bool Scheduler::RequireHasDiff(const Requirement* v1, const Requirement* v2) {
     }
     if (v1->container_type != v2->container_type) {
         return true;
+    }
+    if (v1->volum_jobs.size() != v2->volum_jobs.size()) {
+        return true;
+    }
+    for (size_t i = 0; i < v1->volum_jobs.size(); i++) {
+        if (v1->volum_jobs[i] != v2->volum_jobs[i]) {
+            return true;
+        }
     }
     if (v1->tag != v2->tag) {
         return true;
