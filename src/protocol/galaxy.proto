@@ -306,6 +306,7 @@ message JobDescription {
     optional string run_user = 6;
     optional string tag = 7;
     repeated string pool_names = 8;
+    repeated string volum_jobs = 9;
 }
 
 
@@ -335,6 +336,7 @@ message ContainerDescription {
     optional int32 max_per_host = 8;
     optional string tag = 9;
     repeated string pool_names = 10;
+    repeated string volum_jobs = 11;
 }
 
 message ContainerMeta {

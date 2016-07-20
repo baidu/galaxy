@@ -19,7 +19,7 @@ public:
     ContainerGc();
     ~ContainerGc();
     baidu::galaxy::util::ErrorCode Reload();
-    baidu::galaxy::util::ErrorCode Gc(const std::string& path, int64_t destroy_time);
+    baidu::galaxy::util::ErrorCode Gc(const std::string& path);
     baidu::galaxy::util::ErrorCode Setup();
 
 private:

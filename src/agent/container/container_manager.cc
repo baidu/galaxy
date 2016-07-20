@@ -173,13 +173,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
 
     // wait appworker exist
     assert(NULL != ctn.get());
-    
-    ctn->SetExpiredTimeIfAbsent(30);
-    if (!ctn->Expired() && ctn->Alive() && ctn->TryKill()) {
-        LOG(INFO) << ctn->Id().CompactId() << " try kill appworker";
-        return ERRORCODE_OK;
-    }
-
+   
     // do releasing
     // Fix me: should delete meta first, what happend when delete meta failed???
     baidu::galaxy::util::ErrorCode ret = iter->second->Destroy();
@@ -208,7 +202,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
             LOG(INFO) << "succeed in deleting container meta for container " << id.CompactId();
         }
 
-        ec = container_gc_->Gc(ctn->ContainerGcPath(), ctn->DestroyTimeInSecond());
+        ec = container_gc_->Gc(ctn->ContainerGcPath());
         // ec is ok always
         if (ec.Code() != 0) {
             LOG(WARNING) << id.CompactId() << " gc failed: " << ec.Message();
@@ -311,8 +305,9 @@ int ContainerManager::Reload() {
             return -1;
         }
         boost::shared_ptr<Container> container(new Container(id, metas[i]->container()));
-        if (0 != container->Reload(metas[i])) {
-            LOG(WARNING) << "failed in reaload container " << id.CompactId();
+        ec = container->Reload(metas[i]);
+        if (0 != ec.Code()) {
+            LOG(WARNING) << id.CompactId() <<" failed in reaload container " << ec.Message();
             return -1;
         }
         work_containers_[id] = container;
