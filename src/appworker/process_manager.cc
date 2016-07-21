@@ -245,16 +245,7 @@ int ProcessManager::QueryProcess(const std::string& process_id,
 
 int ProcessManager::ClearProcesses() {
     MutexLock scope_lock(&mutex_);
-    std::map<std::string, Process*>::iterator it = processes_.begin();
-
-    for (; it != processes_.end(); ++it) {
-
-        if (NULL != it->second) {
-            delete it->second;
-        }
-
-        processes_.erase(it);
-    }
+    processes_.clear();
 
     return 0;
 }
