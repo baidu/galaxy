@@ -377,10 +377,11 @@ cluster volumes infomation
   1  kDisk   214.469T  604.074G  0.000  -          
 
 cluster pools infomation
-  -  name      total  alive
------------------------------
-  0  haolifei  1      1    
-  1  test      15     15   
+ -  name            total  alive  cpu(t/a/u)                mem(t/a/u)             vol(t/a/u)                 
+-----------------------------------------------------------------------------------------------------------------
+  0  appmaster_pool  1      1      24.000/0.000/0.000        103.000G/0.000/0.000   kDisk 3.525T/0.000/0.000   
+  1  test            20     20     480.000/190.000/0.000     2.012T/760.000G/0.000  kSsd 16.496T/14.453T/0.000 
+  -  -               -      -      -                         -                      kDisk 153.326T/0.000/0.000 
 
 cluster other infomation
   total_cgroups  total_containers  in_safe_mode

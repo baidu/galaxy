@@ -202,7 +202,8 @@ Options:
     参数：  
         1. -i（必选）指定需要更新的jobid
         2. -o（可选） 值为cpu,mem,volums(用逗号分隔)
-        3. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
+        3. -b（可选） 有则表示显示job的meta信息
+        4. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法:
         ./galaxy_client show -i job_20160612_192152_72_ts3 -o cpu
     说明:

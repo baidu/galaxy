@@ -1682,6 +1682,7 @@ bool ResAction::GrantUser(const std::string& user,
     } else if (opration.compare("clear") == 0) {
         grant.action = ::baidu::galaxy::sdk::kActionClear;
     } else {
+        fprintf(stderr, "action must be in [add|remove|set|clear]\n");
         return false;
     }
 
