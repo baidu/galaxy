@@ -577,6 +577,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         baidu::galaxy::proto::Volum* vr = ret->add_volum_used();
         vr->set_used_size(wv->Used());
         vr->set_path(wv->Description()->dest_path());
+        vr->set_device_path(wv->Description()->source_path());
     }
 
     for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
@@ -584,6 +585,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         boost::shared_ptr<baidu::galaxy::volum::Volum> dv = volum_group_->DataVolum(i);
         vr->set_used_size(dv->Used());
         vr->set_path(dv->Description()->dest_path());
+        vr->set_device_path(dv->Description()->source_path());
     }
 
     return ret;
