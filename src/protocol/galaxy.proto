@@ -47,6 +47,7 @@ enum ResourceError {
     kNoMemoryForTmpfs = 8;
     kPoolMismatch = 9;
     kTooManyPods = 10;
+    kNoVolumContainer = 11;
 }
 
 enum AuthorityAction {
@@ -54,6 +55,11 @@ enum AuthorityAction {
     kActionRemove = 2;
     kActionSet = 3;
     kActionClear = 4;
+}
+
+enum ContainerType {
+    kNormalContainer = 1;
+    kVolumContainer = 2;
 }
 
 message Grant {
@@ -306,6 +312,7 @@ message JobDescription {
     optional string run_user = 6;
     optional string tag = 7;
     repeated string pool_names = 8;
+    repeated string volum_jobs = 9;
 }
 
 
@@ -335,6 +342,9 @@ message ContainerDescription {
     optional int32 max_per_host = 8;
     optional string tag = 9;
     repeated string pool_names = 10;
+    repeated string volum_jobs = 11; // set by user: dependent volum jobs' id 
+    repeated string volum_containers = 12; //set by Resman
+    optional ContainerType container_type = 13 [default = kNormalContainer];
 }
 
 message ContainerMeta {

@@ -153,6 +153,12 @@ void JobManager::CheckDestroying(Job* job) {
     if (job->pods_.size() != 0) {
         return;
     }
+    for (std::map<std::string, PublicSdk*>::iterator it = job->naming_sdk_.begin();
+            it != job->naming_sdk_.end(); it++) {
+        if (it->second->IsRunning()) {
+            return;
+        }
+    }
     std::string fsm_key = BuildFsmKey(job->status_, kRemoveFinish);
     std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
     if (fsm_it != fsm_.end()) {
@@ -258,9 +264,10 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
     return;
 }
 
-Status JobManager::Add(const JobId& job_id, const JobDescription& job_desc) { 
+Status JobManager::Add(const JobId& job_id, const JobDescription& job_desc, const User& user) { 
     Job* job = new Job();
     job->status_ = kJobPending;
+    job->user_.CopyFrom(user);
     job->desc_.CopyFrom(job_desc);
     job->id_ = job_id;
     // add default version
@@ -500,7 +507,7 @@ Status JobManager::UpdateJob(Job* job, void* arg) {
                     LOG(INFO) << "job : " << job->id_ << "set act_type : rebuild" << __FUNCTION__;
                 } else if (desc->pod().tasks(i).data_package().packages_size() !=
                     job->desc_.pod().tasks(j).data_package().packages_size()) {
-                    job->action_type_ = kActionRebuild;
+                    job->action_type_ = kActionReload;
                     LOG(INFO) << "job : " << job->id_ << "set act_type : rebuild" << __FUNCTION__; 
                 } else {
                     for (int k = 0; k < job->desc_.pod().tasks(j).data_package().packages_size();
@@ -537,6 +544,7 @@ Status JobManager::RollbackJob(Job* job, void* arg) {
     mutex_.AssertHeld();
     job->update_time_ = job->rollback_time_;
     job->updated_cnt_ = 0;
+    job->desc_.mutable_deploy()->set_update_break_count(0);
     job->desc_.CopyFrom(job->last_desc_);
     return kOk;
 }
@@ -549,13 +557,19 @@ Status JobManager::RemoveJob(Job* job, void* arg) {
     mutex_.AssertHeld();
     for (std::map<std::string, PublicSdk*>::iterator it = job->naming_sdk_.begin();
             it != job->naming_sdk_.end(); it++) {
-            delete it->second;
+        it->second->Finish();
     }
-    job->naming_sdk_.clear();
     return kOk;
 }
 
 Status JobManager::ClearJob(Job* job, void* arg) {
+    mutex_.AssertHeld();
+    for (std::map<std::string, PublicSdk*>::iterator it = job->naming_sdk_.begin();
+            it != job->naming_sdk_.end(); it++) {
+        job->naming_sdk_.erase(it);
+        delete it->second;
+    }
+    job->naming_sdk_.clear();
     return kOk;
 }
 
@@ -569,7 +583,7 @@ PodInfo* JobManager::CreatePod(Job* job,
     podinfo->set_status(kPodDeploying);
     podinfo->set_reload_status(kPodFinished);
     podinfo->set_start_time(::baidu::common::timer::get_micros());
-    podinfo->set_update_time(0);
+    podinfo->set_update_time(job->update_time_);
     podinfo->set_heartbeat_time(::baidu::common::timer::get_micros());
     podinfo->set_fail_count(0);
     podinfo->set_last_normal_time(::baidu::common::timer::get_micros());
@@ -1170,6 +1184,8 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         overview->set_deploying_num(state_stat[kPodDeploying] + state_stat[kPodStarting] + state_stat[kPodReady]);
         overview->set_death_num(state_stat[kPodFinished] + state_stat[kPodFailed] + state_stat[kPodStopping] +
             state_stat[kPodTerminated] + job->history_pods_.size());
+        int32_t pending = job->desc_.deploy().replica() - overview->deploying_num() - overview->death_num() - overview->running_num();
+        pending = (pending < 0) ? 0 : pending;
         overview->set_pending_num(job->desc_.deploy().replica() - 
             overview->deploying_num() - overview->death_num() - overview->running_num());
         overview->set_create_time(job->create_time_);
@@ -1189,6 +1205,7 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
     }
     Job* job = job_it->second;
     job_info->set_jobid(jobid);
+    job_info->mutable_user()->CopyFrom(job->user_);
     job_info->set_status(job->status_);
     job_info->set_create_time(job->create_time_);
     job_info->set_update_time(job->update_time_);

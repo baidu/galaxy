@@ -124,5 +124,18 @@ void PrivatePublicSdk::DelServiceInstance(const std::string podid) {
 	return;
 }
 
+void PrivatePublicSdk::Finish() {
+    MutexLock lock(&mutex_);
+    return;
+}
+
+bool PrivatePublicSdk::IsRunning() {
+    MutexLock lock(&mutex_);
+    if (init_) {
+        return true;
+    }
+    return false;
+}
+
 }
 }

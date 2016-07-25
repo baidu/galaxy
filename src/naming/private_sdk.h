@@ -82,6 +82,10 @@ public:
 
     void UpdateServiceInstance(const ServiceInfo & service);
 
+    void Finish();
+
+    bool IsRunning();
+
 private:
 	ThreadPool* curl_worker_;
 	Mutex mutex_;

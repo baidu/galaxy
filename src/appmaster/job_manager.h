@@ -72,6 +72,7 @@ using ::baidu::galaxy::proto::kPodTerminated;
 using ::baidu::galaxy::proto::ResMan_Stub;
 using ::baidu::galaxy::proto::User;
 using ::baidu::galaxy::proto::ServiceInfo;
+using ::baidu::galaxy::proto::User;
 
 typedef std::string JobId;
 typedef std::string Version;
@@ -109,7 +110,7 @@ struct FsmTrans {
 class JobManager {
 public:
     void Start();
-    Status Add(const JobId& job_id, const JobDescription& job_desc);
+    Status Add(const JobId& job_id, const JobDescription& job_desc, const User& user);
     Status Update(const JobId& job_id, const JobDescription& job_desc,
                     bool container_change);
     Status Terminate(const JobId& jobid, const User& user);

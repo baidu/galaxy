@@ -33,6 +33,10 @@ public:
     virtual void AddServiceInstance(std::string podid, const ServiceInfo& service) = 0;
 
     virtual void DelServiceInstance(const std::string service_name) = 0;
+
+    virtual void Finish() = 0;
+
+    virtual bool IsRunning() = 0;
 };
 
 }
