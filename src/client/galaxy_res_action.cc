@@ -1306,6 +1306,14 @@ bool ResAction::Status() {
                         response.volum[i].device_path.c_str());
     }
     printf("%s\n", volum.ToString().c_str());
+    
+    printf("cluster containers infomation\n");
+    ::baidu::common::TPrinter other(3);
+    other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
+    other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
+                    ::baidu::common::NumToString(response.total_containers).c_str(),
+                    StringBool(response.in_safe_mode).c_str());
+    printf("%s\n", other.ToString().c_str());
 
     std::map<std::string, resource> resource_stat;
 
@@ -1410,15 +1418,6 @@ bool ResAction::Status() {
         }
     }
     printf("%s\n", pool.ToString().c_str());
-
-    printf("cluster other infomation\n");
-    ::baidu::common::TPrinter other(3);
-    other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
-    other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
-                    ::baidu::common::NumToString(response.total_containers).c_str(),
-                    StringBool(response.in_safe_mode).c_str());
-    printf("%s\n", other.ToString().c_str());
-
     return true;
 
 }

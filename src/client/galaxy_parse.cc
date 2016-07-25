@@ -314,12 +314,17 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
     service->service_name = service_json["service_name"].GetString();
     boost::trim(service->service_name);
 
-    if (!service_json.HasMember("port_name")) {
+    /*if (!service_json.HasMember("port_name")) {
         fprintf(stderr, "port_name is needed in service\n");
         return -1;
     }
     service->port_name = service_json["port_name"].GetString();
-    boost::trim(service->port_name);
+    boost::trim(service->port_name);*/
+
+    if (service_json.HasMember("port_name")) {
+        service->port_name = service_json["port_name"].GetString();
+        boost::trim(service->port_name);
+    }
 
     if (!service_json.HasMember("use_bns")) {
         service->use_bns = false;

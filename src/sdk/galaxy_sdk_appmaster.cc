@@ -74,11 +74,12 @@ bool AppMasterImpl::SubmitJob(const SubmitJobRequest& request, SubmitJobResponse
         return false;
     }
 
-    if (request.hostname.empty()) {
+    std::string hostname = Strim(request.hostname);
+    if (hostname.empty()) {
         fprintf(stderr, "hostname must not be empty\n");
         return false;
     }
-    pb_request.set_hostname(request.hostname);
+    pb_request.set_hostname(hostname);
 
     if (!FillJobDescription(request.job, pb_request.mutable_job())) {
         return false;
@@ -110,17 +111,19 @@ bool AppMasterImpl::UpdateJob(const UpdateJobRequest& request, UpdateJobResponse
         return false;
     }
     
-    if (request.hostname.empty()) {
+    std::string hostname = Strim(request.hostname);
+    if (hostname.empty()) {
         fprintf(stderr, "hostname must not be empty\n");
         return false;
     }
-    pb_request.set_hostname(request.hostname);
+    pb_request.set_hostname(hostname);
 
-    if (request.jobid.empty()) {
+    std::string jobid = Strim(request.jobid);
+    if (jobid.empty()) {
         fprintf(stderr, "jobid must not be empty\n");
         return false;
     }
-    pb_request.set_jobid(request.jobid);
+    pb_request.set_jobid(jobid);
 
     if (request.operate == kUpdateJobStart) {
         if (request.job.deploy.update_break_count < 0U 
@@ -175,17 +178,19 @@ bool AppMasterImpl::StopJob(const StopJobRequest& request, StopJobResponse* resp
         return false;
     }
     
-    if (request.hostname.empty()) {
+    std::string hostname = Strim(request.hostname);
+    if (hostname.empty()) {
         fprintf(stderr, "hostname must not be empty\n");
         return false;
     }
-    pb_request.set_hostname(request.hostname);
+    pb_request.set_hostname(hostname);
 
-    if (request.jobid.empty()) {
+    std::string jobid = Strim(request.jobid);
+    if (jobid.empty()) {
         fprintf(stderr, "jobid must not be empty\n");
         return false;
     }
-    pb_request.set_jobid(request.jobid);
+    pb_request.set_jobid(jobid);
 
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::StopJob,
@@ -210,17 +215,19 @@ bool AppMasterImpl::RemoveJob(const RemoveJobRequest& request, RemoveJobResponse
         return false;
     }
     
-    if (request.hostname.empty()) {
+    std::string hostname = Strim(request.hostname);
+    if (hostname.empty()) {
         fprintf(stderr, "hostname must not be empty\n");
         return false;
     }
-    pb_request.set_hostname(request.hostname);
+    pb_request.set_hostname(hostname);
 
-    if (request.jobid.empty()) {
+    std::string jobid = Strim(request.jobid);
+    if (jobid.empty()) {
         fprintf(stderr, "jobid must not be empty\n");
         return false;
     }
-    pb_request.set_jobid(request.jobid);
+    pb_request.set_jobid(jobid);
 
     bool ok = rpc_client_->SendRequest(appmaster_stub_, 
                                         &::baidu::galaxy::proto::AppMaster_Stub::RemoveJob,
@@ -286,11 +293,12 @@ bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* resp
         return false;
     }
 
-    if (request.jobid.empty()) {
+    std::string jobid = Strim(request.jobid);
+    if (jobid.empty()) {
         fprintf(stderr, "jobid must not be empty\n");
         return false;
     }
-    pb_request.set_jobid(request.jobid);
+    pb_request.set_jobid(jobid);
 
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::ShowJob,
@@ -344,17 +352,19 @@ bool AppMasterImpl::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdRespo
         return false;
     }
 
-    if (request.jobid.empty()) {
+    std::string jobid = Strim(request.jobid);
+    if (jobid.empty()) {
         fprintf(stderr, "jobid must not be empty\n");
         return false;
     }
-    pb_request.set_jobid(request.jobid);
+    pb_request.set_jobid(jobid);
 
-    if (request.cmd.empty()) {
+    std::string cmd = Strim(request.cmd);
+    if (cmd.empty()) {
         fprintf(stderr, "cmd must not be empty\n");
         return false;
     }
-    pb_request.set_cmd(request.cmd);
+    pb_request.set_cmd(cmd);
 
     bool ok = rpc_client_->SendRequest(appmaster_stub_,
                                         &::baidu::galaxy::proto::AppMaster_Stub::ExecuteCmd,
