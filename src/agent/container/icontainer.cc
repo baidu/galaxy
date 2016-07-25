@@ -20,7 +20,8 @@ namespace baidu {
             boost::shared_ptr<IContainer> IContainer::NewContainer(const ContainerId& id,
                         const baidu::galaxy::proto::ContainerDescription& desc) {
                 boost::shared_ptr<IContainer> ret;
-                if (desc.volum_jobs_size() > 0) {
+                if (desc.has_container_type() 
+                            && baidu::galaxy::proto::kVolumContainer == desc.container_type()) {
                     ret.reset(new VolumContainer(id, desc));
                 } else {
                     ret.reset(new Container(id, desc));

@@ -60,7 +60,8 @@ int TaskManager::DeployTask(const std::string& task_id) {
     Task* task = it->second;
     task->packages_size = 0;
 
-    if (task->desc.has_exe_package()) {
+    if (task->desc.has_exe_package()
+            && task->desc.exe_package().has_package()) {
         DownloadProcessContext context;
         context.process_id = task->task_id + "_deploy_0";
         context.src_path = task->desc.exe_package().package().source_path();
@@ -371,16 +372,7 @@ int TaskManager::CleanTask(const std::string& task_id) {
 int TaskManager::ClearTasks() {
     MutexLock lock(&mutex_);
     LOG(INFO) << "clear all tasks";
-    std::map<std::string, Task*>::iterator it = tasks_.begin();
-
-    for (; it != tasks_.end(); ++it) {
-
-        if (NULL != it->second) {
-            delete it->second;
-        }
-
-        tasks_.erase(it);
-    }
+    tasks_.clear();
 
     process_manager_.ClearProcesses();
 
@@ -650,6 +642,15 @@ int TaskManager::ClearTaskHealthCheck(const std::string& task_id) {
 
 int MakeProcessEnv(Task* task, ProcessEnv& env) {
     env.user = task->env.user;
+    // set env PATH
+    std::string path = "/usr/local/bin:/bin:/usr/bin";
+    char* c_path = getenv("PATH");
+    if (NULL != c_path) {
+        path = std::string(c_path);
+    }
+    path += ":.";
+    env.envs.push_back("PATH=" + path);
+
     env.envs.push_back("GALAXY_JOB_ID=" + task->env.job_id);
     env.envs.push_back("GALAXY_POD_ID=" + task->env.pod_id);
     env.envs.push_back("GALAXY_TASK_ID=" + task->env.task_id);

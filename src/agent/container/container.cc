@@ -124,6 +124,10 @@ baidu::galaxy::util::ErrorCode Container::Destroy()
     LOG(INFO) << Id().CompactId() << " try kill appworker";
     if (!Expired() && Alive() && TryKill()) {
         if (Alive()) {
+            ec = status_.EnterReady();
+            if (ec.Code() != 0) {
+                LOG(WARNING) << Id().CompactId() << "enter ready failed: " << ec.Message();
+            }
             return ERRORCODE(-1, "try kill appwork failed");
         }
     }
@@ -330,6 +334,13 @@ int Container::RunRoutine(void*)
     // mount root fs
     if (0 != volum_group_->MountRootfs()) {
         std::cerr << "mount root fs failed" << std::endl;
+        return -1;
+    }
+
+
+    baidu::galaxy::util::ErrorCode ec = volum_group_->MountSharedVolum(dependent_volums_);
+    if (ec.Code() != 0) {
+        std::cerr << "mount depent volum failed: " << ec.Message() << std::endl;
         return -1;
     }
 

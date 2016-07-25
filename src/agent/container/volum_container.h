@@ -30,6 +30,7 @@ namespace baidu {
                 boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> ContainerMetrix();
                 boost::shared_ptr<ContainerProperty> Property();
                 std::string ContainerGcPath();
+                void KeepAlive() {}
                 
             private:
                 baidu::galaxy::container::ContainerStatus status_;

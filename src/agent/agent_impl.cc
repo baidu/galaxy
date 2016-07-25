@@ -208,7 +208,6 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
         //r->set_used();
     }
 
-    //std::cerr << ai->DebugString() << std::endl;
 
     bool full_report = false;
     if (request->has_full_report() && request->full_report()) {
@@ -225,7 +224,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
     ec->set_status(baidu::galaxy::proto::kOk);
-
+    std::cerr << response->DebugString() << std::endl;
     //LOG(INFO) << "query:" << response->DebugString();
     //std::cout << "query:" << response->DebugString() << std::endl;
     done->Run();

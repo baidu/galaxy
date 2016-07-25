@@ -25,7 +25,7 @@ public:
     bool StopJob(const std::string& jobid);
     bool RemoveJob(const std::string& jobid);
     bool ListJobs(const std::string& soptions);
-    bool ShowJob(const std::string& jobid, const std::string& soptions);
+    bool ShowJob(const std::string& jobid, const std::string& soptions, bool show_meta);
     bool ExecuteCmd(const std::string& jobid, const std::string& cmd);
     bool GenerateJson(const std::string& jobid);
 

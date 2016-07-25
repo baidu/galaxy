@@ -2,19 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "agent_impl.h"
+#include "setting_utils.h"
+
+#include <sofa/pbrpc/pbrpc.h>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <assert.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <vector>
-#include <sofa/pbrpc/pbrpc.h>
-#include <glog/logging.h>
-#include <gflags/gflags.h>
-
-#include "agent_impl.h"
-#include "setting_utils.h"
 
 DECLARE_string(agent_port);
 
@@ -37,6 +42,8 @@ void SigChldHandler(int /*sig*/)
 
 int main(int argc, char* argv[])
 {
+    // set umask
+    umask(22);
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("agent");

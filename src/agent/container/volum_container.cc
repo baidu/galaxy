@@ -46,7 +46,7 @@ namespace baidu {
                     assert(ec.Code() == baidu::galaxy::util::kErrorOk);
                     return ERRORCODE(-1, "construct volum group failed");
                 } else {
-                    LOG(WARNING) << id_.CompactId() << " construct volum group successfully: ";
+                    LOG(INFO) << id_.CompactId() << " construct volum group successfully: ";
                     ec = status_.EnterReady();
                     assert(ec.Code() == baidu::galaxy::util::kErrorOk);
                 }

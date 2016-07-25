@@ -21,7 +21,7 @@ public:
     }
 
     bool Empty() {
-        return (group_id_.empty() || container_id_.empty());
+        return (container_id_.empty());
     }
 
     ContainerId& SetGroupId(const std::string& id) {
@@ -57,23 +57,23 @@ public:
     }
 
     friend bool operator < (const ContainerId& l, const ContainerId& r) {
-        if (l.group_id_ == r.GroupId()) {
-            return (l.container_id_ < r.container_id_);
-        } else {
-            return l.group_id_ < r.group_id_;
-        }
+        //if (l.group_id_ == r.GroupId()) {
+        //    return (l.container_id_ < r.container_id_);
+        //} else {
+        //    return l.group_id_ < r.group_id_;
+        //}
+        return l.container_id_ < r.container_id_;
     }
 
     friend bool operator == (const ContainerId& l, const ContainerId& r) {
-        return (l.group_id_ == r.group_id_ && l.container_id_ == r.container_id_);
+        //return (l.group_id_ == r.group_id_ && l.container_id_ == r.container_id_);
+        return (l.container_id_ == r.container_id_);
     }
 private:
     std::string group_id_;
     std::string container_id_;
 
 };
-
-
 
 class IContainer {
 public:
@@ -84,14 +84,16 @@ public:
     
     static boost::shared_ptr<IContainer> NewContainer(const ContainerId& id,
             const baidu::galaxy::proto::ContainerDescription& desc);
-    
     const ContainerId& Id() const;
-
     const baidu::galaxy::proto::ContainerDescription& Description() const;
+    void  SetDependentVolums(std::map<std::string, std::string>& dvs) {
+        dependent_volums_ = dvs;
+    }
 
     virtual baidu::galaxy::util::ErrorCode Construct() = 0;
     virtual baidu::galaxy::util::ErrorCode Destroy() = 0;
     virtual baidu::galaxy::util::ErrorCode Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) = 0;
+    virtual void KeepAlive() = 0;
 
     virtual boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ContainerMeta() = 0;
     virtual boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ContainerInfo(bool full_info) = 0;
@@ -101,6 +103,7 @@ public:
 protected:
     ContainerId id_;
     const baidu::galaxy::proto::ContainerDescription desc_;
+    std::map<std::string, std::string> dependent_volums_;
 };
 
 }

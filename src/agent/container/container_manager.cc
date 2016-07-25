@@ -69,7 +69,7 @@ void ContainerManager::KeepAliveRoutine() {
     while (running_) {
         {
             boost::mutex::scoped_lock lock(mutex_);
-            std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter = work_containers_.begin();
+            std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> >::iterator iter = work_containers_.begin();
             while (iter != work_containers_.end()) {
                 iter->second->KeepAlive();
                 iter++;
@@ -99,7 +99,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer(const Container
     // judge container exist or not
     {
         boost::mutex::scoped_lock lock(mutex_);
-        std::map<ContainerId, boost::shared_ptr<Container> >::const_iterator iter
+        std::map<ContainerId, boost::shared_ptr<IContainer> >::const_iterator iter
             = work_containers_.find(id);
 
         if (work_containers_.end() != iter) {
@@ -158,8 +158,8 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
     LOG(INFO) << "do release container " << id.CompactId();
 
     // judge container existence
-    boost::shared_ptr<baidu::galaxy::container::Container> ctn;
-    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter;
+    boost::shared_ptr<baidu::galaxy::container::IContainer> ctn;
+    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> >::iterator iter;
     {
         boost::mutex::scoped_lock lock(mutex_);
         iter = work_containers_.find(id);
@@ -216,10 +216,27 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer_(const Containe
         const baidu::galaxy::proto::ContainerDescription& desc)
 {
 
-    boost::shared_ptr<baidu::galaxy::container::Container>
-    container(new baidu::galaxy::container::Container(id, desc));
-    
-    baidu::galaxy::util::ErrorCode err = container->Construct();
+    boost::shared_ptr<baidu::galaxy::container::IContainer> container
+        = IContainer::NewContainer(id, desc);
+
+    // dependent volum
+    std::map<std::string, std::string> depend_volums;
+    baidu::galaxy::util::ErrorCode err = DependentVolums(desc, depend_volums);
+    if (err.Code() != 0) {
+        LOG(WARNING) << id.CompactId() << " get dependent volums failed: " << err.Message();
+        return ERRORCODE(-1, "Dependent volums");
+    }
+
+    // log
+    std::map<std::string, std::string>::const_iterator iter = depend_volums.begin();
+    while (iter != depend_volums.end()) {
+        LOG(INFO) << id.CompactId() << " depend volum: " << iter->first << "->" << iter->second;
+        iter++;
+    }
+
+    container->SetDependentVolums(depend_volums);
+
+    err = container->Construct();
     if (0 != err.Code()) {
         LOG(WARNING) << "fail in constructing container " << id.CompactId() << " " << err.Message();
         container->Destroy();
@@ -244,7 +261,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer_(const Containe
 }
 
 
-void ContainerManager::DumpProperty(boost::shared_ptr<Container> container) {
+void ContainerManager::DumpProperty(boost::shared_ptr<IContainer> container) {
     boost::shared_ptr<ContainerProperty> property = container->Property();
     std::string path = baidu::galaxy::path::ContainerPropertyPath(container->Id().SubId());
     baidu::galaxy::file::OutputStreamFile of(path, "w");
@@ -279,7 +296,7 @@ void ContainerManager::DumpProperty(boost::shared_ptr<Container> container) {
 void ContainerManager::ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo)
 {
     boost::mutex::scoped_lock lock(mutex_);
-    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> >::iterator iter =  work_containers_.begin();
+    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> >::iterator iter =  work_containers_.begin();
     while (iter != work_containers_.end()) {
         boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> ci = iter->second->ContainerInfo(fullinfo);
         cis.push_back(ci);
@@ -304,7 +321,8 @@ int ContainerManager::Reload() {
                 << " reason is:" << ec.Message();
             return -1;
         }
-        boost::shared_ptr<Container> container(new Container(id, metas[i]->container()));
+
+        boost::shared_ptr<IContainer> container = IContainer::NewContainer(id, metas[i]->container());
         ec = container->Reload(metas[i]);
         if (0 != ec.Code()) {
             LOG(WARNING) << id.CompactId() <<" failed in reaload container " << ec.Message();
@@ -313,6 +331,94 @@ int ContainerManager::Reload() {
         work_containers_[id] = container;
     }
     return 0;
+}
+
+
+baidu::galaxy::util::ErrorCode ContainerManager::CheckDescription(const baidu::galaxy::proto::ContainerDescription& desc) {
+    if ((desc.has_container_type() 
+                    && desc.container_type() == baidu::galaxy::proto::kVolumContainer)
+                || desc.volum_containers_size() == 0) {
+        return ERRORCODE_OK;
+    }
+
+    int size = desc.volum_containers_size();
+    boost::mutex::scoped_lock lock(mutex_);
+    for (int i = 0; i < size; i++) {
+        //std::string id = desc.volum_containers(i);
+        const ContainerId id;
+        std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> >::iterator iter = work_containers_.find(id);
+
+        if (work_containers_.end() == iter) {
+            return ERRORCODE(-1, "%s donot exist", id.CompactId().c_str());
+        }
+    }
+
+    return ERRORCODE_OK;
+}
+
+
+baidu::galaxy::util::ErrorCode ContainerManager::DependentVolums(const baidu::galaxy::proto::ContainerDescription& desc, 
+            std::map<std::string, std::string>& dv) {
+    if (desc.volum_containers_size() > 0) {
+        std::map<std::string, std::string> check_map;
+        for (int i = 0; i < desc.volum_containers_size(); i++) {
+            ContainerId id("", desc.volum_containers(i));
+            baidu::galaxy::util::ErrorCode ec = DependentVolums(id, dv, check_map);
+            if (ec.Code() != 0) {
+                LOG(WARNING) << "retrieve dependent volum failed: " << ec.Message();
+                return ERRORCODE(-1, "%s", ec.Message().c_str());
+            }
+        }
+    }
+
+    return ERRORCODE_OK;
+}
+
+baidu::galaxy::util::ErrorCode ContainerManager::DependentVolums(const ContainerId& id, 
+            std::map<std::string, std::string>& volums,
+            std::map<std::string, std::string>& check_volums) {
+    boost::mutex::scoped_lock lock(mutex_);
+    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> >::iterator iter = work_containers_.find(id);
+
+    if (work_containers_.end() == iter) {
+        return ERRORCODE(-1, "donot exist");
+    }
+
+    boost::shared_ptr<ContainerProperty> property = iter->second->Property();
+    if (NULL == property.get()) {
+        return ERRORCODE(-1, "get property failed");
+    }
+
+    std::string source = property->workspace_volum_.phy_source_path;
+    std::string target = property->workspace_volum_.container_rel_path;
+
+    std::map<std::string, std::string>::const_iterator citer = check_volums.find(target);
+    if (citer != check_volums.end()) {
+        return ERRORCODE(-1, 
+                    "shared volum(%s) confilict", 
+                    target.c_str());
+    }
+    check_volums[target] = source;
+    volums[source] = target;
+
+    for (size_t i = 0; i < property->data_volums_.size(); i++) {
+         source = property->data_volums_[i].phy_source_path;
+         target = property->data_volums_[i].container_rel_path;
+
+         citer = check_volums.find(target);
+         if (citer != check_volums.end()) {
+              return ERRORCODE(-1,
+                          "shared volum(%s\t%s\t%s) confilict",
+                          citer->first.c_str(),
+                          source.c_str(),
+                          target.c_str());
+         }
+
+         check_volums[target] = source;
+         volums[source] = target;
+    }
+
+    return ERRORCODE_OK;
 }
 
 

@@ -34,7 +34,6 @@ public:
     ~Container();
 
     const ContainerId& Id() const;
-
     baidu::galaxy::util::ErrorCode Construct();
     baidu::galaxy::util::ErrorCode Destroy();
     baidu::galaxy::util::ErrorCode Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
