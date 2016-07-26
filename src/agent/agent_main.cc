@@ -43,7 +43,7 @@ void SigChldHandler(int /*sig*/)
 int main(int argc, char* argv[])
 {
     // set umask
-    umask(22);
+    //umask(22);
     google::ParseCommandLineFlags(&argc, &argv, true);
     google::InitGoogleLogging(argv[0]);
     baidu::galaxy::SetupLog("agent");
