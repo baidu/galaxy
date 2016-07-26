@@ -534,7 +534,7 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
     return 0;
 }
 
-int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescription* pod) {
+int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescription* pod, bool jump_task = false) {
     int ok = 0;
     if (!pod_json.HasMember("workspace_volum")) {
         fprintf(stderr, "workspace_volum is required in pod\n");
@@ -577,6 +577,10 @@ int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescript
         return -1;
     }
 
+    if (jump_task) {
+        return 0;
+    }
+
     std::vector< ::baidu::galaxy::sdk::TaskDescription>& tasks = pod->tasks;
     if (!pod_json.HasMember("tasks")) {
         fprintf(stderr, "tasks is required in pod\n");
@@ -607,7 +611,7 @@ int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescript
 
 }
 
-int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescription* job) {
+int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task = false) {
     int ok = 0;
     //name
     if (!doc.HasMember("name")) {
@@ -692,11 +696,11 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
     ::baidu::galaxy::sdk::PodDescription& pod = job->pod;
     
-    ok = ParsePod(pod_json, &pod);
+    ok = ParsePod(pod_json, &pod, jump_task);
     return ok;
 }
 
-int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job) {
+int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task) {
     FILE *fd = fopen(conf.c_str(), "r");
     if (fd == NULL) {
         fprintf(stderr, "%s is not existed\n", conf.c_str());
@@ -712,7 +716,7 @@ int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescrip
         return -1;
     }
     fclose(fd);
-    return ParseDocument(doc, job);
+    return ParseDocument(doc, job, jump_task);
 }
 
 } //end namespace client

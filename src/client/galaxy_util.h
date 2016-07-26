@@ -37,7 +37,7 @@ int UnitStringToByte(const std::string& input, int64_t* output);
 std::string HumanReadableString(int64_t num);
 
 //job json解析
-int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job);
+int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task = false);
 
 //时间戳转换
 std::string FormatDate(uint64_t datetime);

@@ -296,15 +296,16 @@ services infomation
     参数：
         1. -i(可选) 指定jobid, 可生成指定jobid的job配置
         2. -n(可选) 指定jobname，默认为example
-        3. -t(可选) 指定task数，默认1
+        3. -t(可选) 指定task数，默认0
         4. -d(可选) 指定data_volums数，默认1
         5. -p(可选) 指定port数，默认1
         6. -a(可选) 指定data package数，默认1
         7. -s(可选) 指定services数，默认1
         8. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
     用法:
-        ./galaxy_client json -i jobid
-        ./galaxy_client json
+        ./galaxy_client json -i jobid           ==>jobid对应的json内容
+        ./galaxy_client json                    ==>共享盘容器模板
+        ./galaxy_client json -t 1               ==> 标准模板
         ./galaxy_client json -n example -d 2
     说明:
         1. type的value必须为kJobMonitor, kJobService, kJobBatch, kJobBestEffort中的一个
@@ -315,6 +316,7 @@ services infomation
         6. data_package配置中的reload_cmd不能为空,这一项主要是支持词典的热升级
         7. services中所有的service_name的值是不能重复的且port_name必须是该service所属task中的ports中定义的
         8. services中tag, health_check_type, health_check_script, token均为注册bns时需要的参数, use_bns为true时，token不能为空
+        9. volum_jobs指定依赖共享盘容器的id（此id由管理员提供）, 如果不需要依赖，请去掉此项
 
         提交job的json配置文件中tag, ports, data_volums, data_packages, stop_cmd, health_cmd, data_package, services这些选项如果不需要可以不写
 
@@ -323,6 +325,7 @@ services infomation
 {
     "name": "example",
     "type": "kJobService",
+    "volum_jobs": "",
     "deploy": {
         "replica": 1,
         "step": 1,
@@ -419,6 +422,7 @@ services infomation
 {
     "name": "example",
     "type": "kJobService",
+    "volum_jobs": "",
     "deploy": {
         "replica": 1,
         "step": 1,
