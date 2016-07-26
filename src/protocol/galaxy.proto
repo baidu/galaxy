@@ -415,6 +415,7 @@ enum Status {
    kJobTerminateFail = 20;
    kSuspend = 21;
    kQuit = 22;
+   kPodNotFound = 23;
 }
 
 message ErrorCode {
