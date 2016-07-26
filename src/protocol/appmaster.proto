@@ -153,6 +153,15 @@ message StopJobResponse {
     optional ErrorCode error_code = 1;
 }
 
+message RecoverInstanceRequest {
+    optional string jodid = 1;
+    optional string podid = 2;
+}
+
+message RecoverInstanceResponse {
+    optional ErrorCode error_code = 1;
+}
+
 service AppMaster {
     //for app-worker: report & task assignment
     rpc FetchTask(FetchTaskRequest) returns (FetchTaskResponse);
