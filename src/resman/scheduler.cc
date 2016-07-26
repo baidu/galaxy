@@ -1477,6 +1477,7 @@ bool Scheduler::ListContainerGroups(std::vector<proto::ContainerGroupStatistics>
         group_stat.set_user_name(container_group->user_name);
         group_stat.set_submit_time(container_group->submit_time);
         group_stat.set_update_time(container_group->update_time);
+        group_stat.set_container_type(container_group->require->container_type);
         if (container_group->terminated) {
             group_stat.set_status(proto::kContainerGroupTerminated);
         } else {
