@@ -50,6 +50,7 @@ Usage:
       galaxy_client remove -i id
       galaxy_client list [-o cpu,mem,volums]
       galaxy_client show -i id [-o cpu,mem,volums]
+      galaxy_client recover -i id -I podid
       galaxy_client exec -i id -c cmd
       galaxy_client json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]
 Options: 
@@ -283,6 +284,13 @@ services infomation
   -  podid  service_addr  name  port  status
 ---------------------------------------------
 ```
+
+### recover 重新拉起一个失败的pod
+    参数：
+        1. -i（必选） 指定jobid
+        2. -I（必选） 指定podid
+    用法：
+        ./galaxy_client -i jobid -I podid
 
 ### exec 执行命令
     参数:

@@ -154,8 +154,9 @@ message StopJobResponse {
 }
 
 message RecoverInstanceRequest {
-    optional string jobid = 1;
-    optional string podid = 2;
+    optional User user = 1;
+    optional string jobid = 2;
+    optional string podid = 3;
 }
 
 message RecoverInstanceResponse {

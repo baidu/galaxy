@@ -21,6 +21,7 @@ public:
     virtual bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response) = 0;
     virtual bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response) = 0;
     virtual bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response) = 0;
+    virtual bool RecoverInstance(const RecoverInstanceRequest& request, RecoverInstanceResponse* response) = 0;
     virtual bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) = 0;
 };
 

@@ -897,6 +897,32 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
     return true;
 }
 
+bool JobAction::RecoverInstance(const std::string& jobid, const std::string& podid) {
+    if (jobid.empty() || podid.empty()) {
+        fprintf(stderr, "jobid and podid are needed\n");
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+    
+    baidu::galaxy::sdk::RecoverInstanceRequest request;
+    baidu::galaxy::sdk::RecoverInstanceResponse response;
+    request.user = user_;
+    request.jobid = jobid;
+    request.podid = jobid + "." + podid;
+    bool ret = app_master_->RecoverInstance(request, &response);
+    if (ret) {
+        printf("recover instance %s success\n", jobid.c_str());
+    } else {
+        printf("recover instance %s failed for reason %s:%s\n", 
+                jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
 bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     if (jobid.empty() || cmd.empty()) {
         fprintf(stderr, "jobid and cmd are needed\n");
@@ -914,7 +940,7 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     request.cmd = cmd;
     bool ret = app_master_->ExecuteCmd(request, &response);
     if (ret) {
-        printf("Execute job %s\n success", jobid.c_str());
+        printf("Execute job %s success\n", jobid.c_str());
     } else {
         printf("Execute job %s failed for reason %s:%s\n", 
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());

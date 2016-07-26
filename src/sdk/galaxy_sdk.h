@@ -660,6 +660,16 @@ struct PreemptResponse {
      ErrorCode error_code;
 };
 
+struct RecoverInstanceRequest {
+    User user;
+    std::string jobid;
+    std::string podid;
+};
+
+struct RecoverInstanceResponse {
+    ErrorCode error_code;
+};
+
 } //namespace sdk
 } //namespace galaxy
 } //namespace baidu

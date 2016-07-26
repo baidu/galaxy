@@ -41,6 +41,7 @@ public:
     bool RemoveJob(const RemoveJobRequest& request, RemoveJobResponse* response);
     bool ListJobs(const ListJobsRequest& request, ListJobsResponse* response);
     bool ShowJob(const ShowJobRequest& request, ShowJobResponse* response);
+    bool RecoverInstance(const RecoverInstanceRequest& request, RecoverInstanceResponse* response);
     bool ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response);
 private:
     ::galaxy::ins::sdk::InsSDK* nexus_;
@@ -342,6 +343,45 @@ bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* resp
     }
 
     return true;
+}
+
+bool AppMasterImpl::RecoverInstance(const RecoverInstanceRequest& request, RecoverInstanceResponse* response) {
+    std::string jobid = Strim(request.jobid);
+    if (jobid.empty()) {
+        fprintf(stderr, "jobid must not be empty\n");
+        return false;
+    }
+    std::string podid = Strim(request.podid); 
+    if (podid.empty()){
+        fprintf(stderr, "podid must not be empty\n");
+        return false;
+    }
+
+    ::baidu::galaxy::proto::RecoverInstanceRequest pb_request;
+    ::baidu::galaxy::proto::RecoverInstanceResponse pb_response;
+    
+    if (!FillUser(request.user, pb_request.mutable_user())) {
+        return false;
+    }
+    pb_request.set_jobid(jobid);
+    pb_request.set_podid(podid);
+
+    bool ok = rpc_client_->SendRequest(appmaster_stub_,
+                                        &::baidu::galaxy::proto::AppMaster_Stub::RecoverInstance,
+                                        &pb_request, &pb_response, 5, 1);
+    if (!ok) {
+        response->error_code.reason = "AppMaster Rpc SendRequest failed";
+        return false;
+    }
+
+    response->error_code.status = (Status)pb_response.error_code().status();
+    response->error_code.reason = pb_response.error_code().reason();
+    if (response->error_code.status != kOk) {
+        return false;
+    }
+
+    return true;
+
 }
 
 bool AppMasterImpl::ExecuteCmd(const ExecuteCmdRequest& request, ExecuteCmdResponse* response) {
