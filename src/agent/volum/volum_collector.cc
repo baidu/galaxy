@@ -4,12 +4,16 @@
 #include "volum_collector.h"
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "gflags/gflags.h"
+
+DECLARE_int64(volum_collect_cycle);
+
 namespace baidu {
 namespace galaxy {
 namespace volum {
 VolumCollector::VolumCollector(const std::string& phy_path) :
     enable_(false),
-    cycle_(18000),
+    cycle_(FLAGS_volum_collect_cycle),
     name_(phy_path),
     phy_path_(phy_path),
     size_(0) {

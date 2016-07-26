@@ -221,6 +221,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
             } else {
                 iter->second += cis[i]->volum_used(j).used_size();
             }
+
         }
     }
     
@@ -253,7 +254,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
     ec->set_status(baidu::galaxy::proto::kOk);
     std::cerr << response->DebugString() << std::endl;
-    //LOG(INFO) << "query:" << response->DebugString();
+    VLOG(10) << "query:" << response->DebugString();
     //std::cout << "query:" << response->DebugString() << std::endl;
     done->Run();
 }
