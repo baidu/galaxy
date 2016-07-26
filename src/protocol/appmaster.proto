@@ -154,7 +154,7 @@ message StopJobResponse {
 }
 
 message RecoverInstanceRequest {
-    optional string jodid = 1;
+    optional string jobid = 1;
     optional string podid = 2;
 }
 
@@ -177,7 +177,7 @@ service AppMaster {
     rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse);
     rpc ListJobs(ListJobsRequest)   returns (ListJobsResponse);
     rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
-
+    rpc RecoverInstance(RecoverInstanceRequest) returns(RecoverInstanceResponse);
     //[optional]
     rpc ExecuteCmd(ExecuteCmdRequest) returns (ExecuteCmdResponse); 
     // op
