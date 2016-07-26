@@ -66,6 +66,7 @@ message JobOverview {
     optional int32 fail_count = 8;
     optional int64 create_time = 9;
     optional int64 update_time = 10;
+    optional User user = 11;
 }
 
 enum UpdateAction {
@@ -149,6 +150,15 @@ message StopJobRequest {
 }
 
 message StopJobResponse {
+    optional ErrorCode error_code = 1;
+}
+
+message RecoverInstanceRequest {
+    optional string jodid = 1;
+    optional string podid = 2;
+}
+
+message RecoverInstanceResponse {
     optional ErrorCode error_code = 1;
 }
 

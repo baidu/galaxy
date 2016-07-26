@@ -104,7 +104,6 @@ void AppMasterImpl::OnLockChange(std::string lock_session_id) {
     std::string self_session_id = nexus_->GetSessionID();
     if (self_session_id != lock_session_id) {
         LOG(FATAL) << "master lost lock , die.";
-        abort();
     }
 }
 
@@ -143,7 +142,7 @@ void AppMasterImpl::CreateContainerGroupCallBack(JobDescription job_desc,
         done->Run();
         return;
     }
-    Status status = job_manager_.Add(response->id(), job_desc);
+    Status status = job_manager_.Add(response->id(), job_desc, request->user());
     if (status != proto::kOk) {
         LOG(WARNING) << "fail to add job :" << response->id() 
         << " with status " << Status_Name(status);

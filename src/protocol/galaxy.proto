@@ -313,6 +313,7 @@ message JobDescription {
     optional string run_user = 6;
     optional string tag = 7;
     repeated string pool_names = 8;
+    repeated string volum_jobs = 9;
 }
 
 
