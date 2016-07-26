@@ -60,7 +60,8 @@ int TaskManager::DeployTask(const std::string& task_id) {
     Task* task = it->second;
     task->packages_size = 0;
 
-    if (task->desc.has_exe_package()) {
+    if (task->desc.has_exe_package()
+            && task->desc.exe_package().has_package()) {
         DownloadProcessContext context;
         context.process_id = task->task_id + "_deploy_0";
         context.src_path = task->desc.exe_package().package().source_path();
@@ -371,18 +372,24 @@ int TaskManager::CleanTask(const std::string& task_id) {
 int TaskManager::ClearTasks() {
     MutexLock lock(&mutex_);
     LOG(INFO) << "clear all tasks";
-    std::map<std::string, Task*>::iterator it = tasks_.begin();
-
-    for (; it != tasks_.end(); ++it) {
-
-        if (NULL != it->second) {
-            delete it->second;
-        }
-
-        tasks_.erase(it);
-    }
+    tasks_.clear();
 
     process_manager_.ClearProcesses();
+
+    return 0;
+}
+
+int TaskManager::QueryTaskStatus(const std::string& task_id, TaskStatus& task_status) {
+    MutexLock lock(&mutex_);
+    LOG(INFO) << "query task status: " << task_id;
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+
+    if (it == tasks_.end()) {
+        LOG(WARNING) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    task_status = it->second->status;
 
     return 0;
 }
