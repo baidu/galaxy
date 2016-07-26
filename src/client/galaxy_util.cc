@@ -75,6 +75,21 @@ std::string StringAuthorityAction(const ::baidu::galaxy::sdk::AuthorityAction& a
     return result;
 }
 
+std::string StringContainerType(const ::baidu::galaxy::sdk::ContainerType& type) {
+    std::string result;
+    switch(type) {
+    case ::baidu::galaxy::sdk::kNormalContainer:
+        result = "normal";
+        break;
+    case ::baidu::galaxy::sdk::kVolumContainer:
+        result = "volum";
+        break;
+    default:
+        result = "";
+    }
+    return result;
+}
+
 std::string StringVolumMedium(const ::baidu::galaxy::sdk::VolumMedium& medium) {
     std::string result;
     switch(medium) {

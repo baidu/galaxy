@@ -252,8 +252,6 @@ bool ResourceManagerImpl::CreateContainerGroup(const CreateContainerGroupRequest
         return false;
     }
 
-    fprintf(stderr, "%s\n", pb_request.DebugString().c_str());
-
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                             &::baidu::galaxy::proto::ResMan_Stub::CreateContainerGroup, 
                                             &pb_request, &pb_response, 5, 1);
@@ -445,6 +443,7 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
     response->desc.cmd_line = pb_response.desc().cmd_line();
     response->desc.max_per_host = pb_response.desc().max_per_host();
     response->desc.tag = pb_response.desc().tag();
+    response->desc.container_type = (::baidu::galaxy::sdk::ContainerType)pb_response.desc().container_type();
     for (int i = 0; i < pb_response.desc().pool_names().size(); ++i) {
         response->desc.pool_names.push_back(pb_response.desc().pool_names(i));
     }

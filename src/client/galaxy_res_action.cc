@@ -504,8 +504,8 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
     bool ret = resman_->ShowContainerGroup(request, &response);
     if (ret) {
         printf("base infomation\n");
-        ::baidu::common::TPrinter base(7);
-        base.AddRow(7, "user", "version", "priority", "cmd_line", "max_per_host", "tag", "pools");
+        ::baidu::common::TPrinter base(8);
+        base.AddRow(8, "user", "version", "priority", "type", "cmd_line", "max_per_host", "tag", "pools");
         std::string pools; 
         for (size_t i = 0; i < response.desc.pool_names.size(); ++i) {
             pools += response.desc.pool_names[i];
@@ -513,9 +513,10 @@ bool ResAction::ShowContainerGroup(const std::string& id) {
                 pools += ",";
             }
         }
-        base.AddRow(7,  response.desc.run_user.c_str(),
+        base.AddRow(8,  response.desc.run_user.c_str(),
                         response.desc.version.c_str(),
                         StringJobType((::baidu::galaxy::sdk::JobType)response.desc.priority).c_str(),
+                        StringContainerType(response.desc.container_type).c_str(),
                         response.desc.cmd_line.c_str(),
                         ::baidu::common::NumToString(response.desc.max_per_host).c_str(),
                         response.desc.tag.c_str(),

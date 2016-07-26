@@ -17,6 +17,7 @@ namespace client {
 //初始化字符串映射表
 std::string StringAuthority(const ::baidu::galaxy::sdk::Authority& authority);
 std::string StringAuthorityAction(const ::baidu::galaxy::sdk::AuthorityAction& action);
+std::string StringContainerType(const ::baidu::galaxy::sdk::ContainerType& type);
 std::string StringVolumMedium(const ::baidu::galaxy::sdk::VolumMedium& medium);
 std::string StringVolumType(const ::baidu::galaxy::sdk::VolumType& type);
 std::string StringJobType(const ::baidu::galaxy::sdk::JobType& type);
