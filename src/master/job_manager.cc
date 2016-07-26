@@ -1344,7 +1344,7 @@ void JobManager::BuildPodFsm() {
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStagePending), 
           boost::bind(&JobManager::HandleCleanPod, this, _1, _2)));
     fsm_.insert(std::make_pair(BuildHandlerKey(kStageRemoved, kStageRemoved), 
-          boost::bind(&JobManager::HandleDoNothing, this, _1, _2)));
+          boost::bind(&JobManager::HandleRunningToRemoved, this, _1, _2)));
 
 }
 

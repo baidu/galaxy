@@ -341,6 +341,8 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             fprintf(stderr, "fail to parse pod read_bytes_ps %s\n", pod_require["read_bytes_ps"].GetString());
             return -1;
         }
+    } else {
+        res->read_bytes_ps = 0;
     }
     if (pod_require.HasMember("write_bytes_ps")) {
         ok = ReadableStringToInt(pod_require["write_bytes_ps"].GetString(), &res->write_bytes_ps);
@@ -348,12 +350,18 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
             fprintf(stderr, "fail to parse pod write_bytes_ps %s\n", pod_require["write_bytes_ps"].GetString());
             return -1;
         } 
+    } else {
+        res->write_bytes_ps = 0;
     }
     if (pod_require.HasMember("read_io_ps")) {
         res->read_io_ps = pod_require["read_io_ps"].GetInt();
+    } else {
+        res->read_io_ps = 0;
     }
     if (pod_require.HasMember("write_io_ps")) {
         res->write_io_ps = pod_require["write_io_ps"].GetInt();
+    } else {
+        res->write_io_ps = 0;
     }
 
     int64_t tmpfs_size = 0;
@@ -455,6 +463,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     res->ssds.push_back(task_vol);
                 }
             }
+            res->read_bytes_ps = 0;
             if (tasks_json[i]["requirement"].HasMember("read_bytes_ps")) {
                 ok = ReadableStringToInt(tasks_json[i]["requirement"]["read_bytes_ps"].GetString(), &res->read_bytes_ps);
                 if (ok != 0) {
@@ -462,6 +471,7 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     return -1;
                 }
             }
+            res->write_bytes_ps = 0;
             if (tasks_json[i]["requirement"].HasMember("write_bytes_ps")) {
                 ok = ReadableStringToInt(tasks_json[i]["requirement"]["write_bytes_ps"].GetString(), &res->write_bytes_ps);
                 if (ok != 0) {
@@ -469,12 +479,15 @@ int BuildJobFromConfig(const std::string& config, ::baidu::galaxy::JobDescriptio
                     return -1;
                 }
             }
+            res->read_io_ps = 0;
             if (tasks_json[i]["requirement"].HasMember("read_io_ps")) {
                 res->read_io_ps = tasks_json[i]["requirement"]["read_io_ps"].GetInt64();
             }
+            res->write_io_ps = 0;
             if (tasks_json[i]["requirement"].HasMember("write_io_ps")) {
                 res->write_io_ps = tasks_json[i]["requirement"]["write_io_ps"].GetInt64();
             }
+            res->io_weight = 500;
             if (tasks_json[i]["requirement"].HasMember("io_weight")) {
                 res->io_weight = tasks_json[i]["requirement"]["io_weight"].GetInt();
                 if (res->io_weight < 10 || res->io_weight > 1000) {
