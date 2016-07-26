@@ -89,7 +89,6 @@ void PrivatePublicSdk::Init() {
 	if (init_) {
 		return;
 	}
-    curl_global_init(CURL_GLOBAL_ALL);
     init_ = true;
 	//CheckService();
 	return;
@@ -97,30 +96,11 @@ void PrivatePublicSdk::Init() {
 
 void PrivatePublicSdk::AddServiceInstance(std::string podid, const ServiceInfo &service) {
     MutexLock lock(&mutex_);
-    std::stringstream ss(service.port());
-    int port;
-    ss >> port;
-    //uint32_t ip = Ip2Int(service.ip()); 
-    size_t pod = podid.rfind("_");
-    std::string pod_offset(podid, pod + 1, podid.size() - (pod + 1));
-    std::stringstream ss_offset(pod_offset);
-    int offset;
-    std::string str = ss_offset.str();
-    ss_offset >> offset;
-    size_t site = service.hostname().rfind(".baidu.com");
-    std::string host(service.hostname(), 0, site);
 	return;
 }
 
 void PrivatePublicSdk::DelServiceInstance(const std::string podid) {
     MutexLock lock(&mutex_);
-    size_t pod = podid.rfind("_");
-    std::string pod_offset(podid, pod + 1, podid.size() - (pod + 1));
-    std::stringstream ss;
-    ss << pod_offset;
-    int offset;
-    ss >> offset;
-    LOG(INFO) << __FUNCTION__ << " " << podid;
 	return;
 }
 
