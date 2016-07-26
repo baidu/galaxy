@@ -335,6 +335,10 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         return false;
     }
 
+    if(sdk_container.container_type == kVolumContainer) {
+        return true; //shared volum
+    }
+
     if (sdk_container.cgroups.size() == 0) {
         fprintf(stderr, "task size is zero\n");
         return false;

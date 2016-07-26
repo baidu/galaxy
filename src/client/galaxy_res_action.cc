@@ -47,14 +47,26 @@ bool ResAction::CreateContainerGroup(const std::string& json_file, const std::st
         return false;
     }
     
+    ::baidu::galaxy::sdk::CreateContainerGroupRequest request;
+    ::baidu::galaxy::sdk::CreateContainerGroupResponse response;
+
     baidu::galaxy::sdk::JobDescription job;
-    int ok = BuildJobFromConfig(json_file, &job);
+    int ok = 0;
+    if (container_type.compare("normal") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kNormalContainer;
+        ok = BuildJobFromConfig(json_file, &job);
+    } else if (container_type.compare("volum") == 0) {
+        ok = BuildJobFromConfig(json_file, &job, true);
+        request.desc.container_type = ::baidu::galaxy::sdk::kVolumContainer;
+    } else {
+        fprintf(stderr, "container_type must be normal or volum\n");
+        return false;
+    }
+    
     if (ok != 0) {
         return false;
     }
 
-    ::baidu::galaxy::sdk::CreateContainerGroupRequest request;
-    ::baidu::galaxy::sdk::CreateContainerGroupResponse response;
     request.user = user_;
     request.replica = job.deploy.replica;
     request.name = job.name;
@@ -70,32 +82,25 @@ bool ResAction::CreateContainerGroup(const std::string& json_file, const std::st
     request.desc.pool_names.assign(job.deploy.pools.begin(), job.deploy.pools.end());
 
     if (container_type.compare("normal") == 0) {
-        request.desc.container_type = ::baidu::galaxy::sdk::kNormalContainer;
-    } else if (container_type.compare("volum") == 0) {
-        request.desc.container_type = ::baidu::galaxy::sdk::kVolumContainer;
-    } else {
-        fprintf(stderr, "container_type must be normal or volum\n");
-        return false;
-    }
-    
-    for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
-        ::baidu::galaxy::sdk::Cgroup cgroup;
-        time_t timestamp;
-        time(&timestamp);
-        cgroup.cpu = job.pod.tasks[i].cpu;
-        cgroup.memory = job.pod.tasks[i].memory;
-        cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
-        cgroup.blkio = job.pod.tasks[i].blkio;
+        for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
+            ::baidu::galaxy::sdk::Cgroup cgroup;
+            time_t timestamp;
+            time(&timestamp);
+            cgroup.cpu = job.pod.tasks[i].cpu;
+            cgroup.memory = job.pod.tasks[i].memory;
+            cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
+            cgroup.blkio = job.pod.tasks[i].blkio;
         
-        for (uint32_t j = 0; j < job.pod.tasks[i].ports.size(); ++j) {
-            ::baidu::galaxy::sdk::PortRequired port;
-            port.port_name = job.pod.tasks[i].ports[j].port_name;
-            port.port = job.pod.tasks[i].ports[j].port;
-            port.real_port = job.pod.tasks[i].ports[j].real_port;
-            cgroup.ports.push_back(port);
-        }
+            for (uint32_t j = 0; j < job.pod.tasks[i].ports.size(); ++j) {
+                ::baidu::galaxy::sdk::PortRequired port;
+                port.port_name = job.pod.tasks[i].ports[j].port_name;
+                port.port = job.pod.tasks[i].ports[j].port;
+                port.real_port = job.pod.tasks[i].ports[j].real_port;
+                cgroup.ports.push_back(port);
+            }
 
-        request.desc.cgroups.push_back(cgroup);
+            request.desc.cgroups.push_back(cgroup);
+        }
     }
 
     bool ret = resman_->CreateContainerGroup(request, &response);
@@ -118,14 +123,26 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
         return false;
     }
     
-    baidu::galaxy::sdk::JobDescription job;
-    int ok = BuildJobFromConfig(json_file, &job);
+    ::baidu::galaxy::sdk::UpdateContainerGroupRequest request;
+    ::baidu::galaxy::sdk::UpdateContainerGroupResponse response;
+    
+    ::baidu::galaxy::sdk::JobDescription job;
+    int ok = 0;
+    if (container_type.compare("normal") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kNormalContainer;
+        ok = BuildJobFromConfig(json_file, &job);
+    } else if (container_type.compare("volum") == 0) {
+        request.desc.container_type = ::baidu::galaxy::sdk::kVolumContainer;
+        ok = BuildJobFromConfig(json_file, &job, true);
+    } else {
+        fprintf(stderr, "container_type must be normal or volum\n");
+        return false;
+    }
+    
     if (ok != 0) {
         return false;
     }
 
-    ::baidu::galaxy::sdk::UpdateContainerGroupRequest request;
-    ::baidu::galaxy::sdk::UpdateContainerGroupResponse response;
     request.user = user_;
     request.replica = job.deploy.replica;
     request.id = id;
@@ -142,31 +159,25 @@ bool ResAction::UpdateContainerGroup(const std::string& json_file, const std::st
     request.desc.tag = job.deploy.tag;
     request.desc.pool_names.assign(job.deploy.pools.begin(), job.deploy.pools.end());
 
+   
     if (container_type.compare("normal") == 0) {
-        request.desc.container_type = ::baidu::galaxy::sdk::kNormalContainer;
-    } else if (container_type.compare("volum") == 0) {
-        request.desc.container_type = ::baidu::galaxy::sdk::kVolumContainer;
-    } else {
-        fprintf(stderr, "container_type must be normal or volum\n");
-        return false;
-    }
-
-    for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
-        ::baidu::galaxy::sdk::Cgroup cgroup;
-        cgroup.cpu = job.pod.tasks[i].cpu;
-        cgroup.memory = job.pod.tasks[i].memory;
-        cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
-        cgroup.blkio = job.pod.tasks[i].blkio;
+        for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
+            ::baidu::galaxy::sdk::Cgroup cgroup;
+            cgroup.cpu = job.pod.tasks[i].cpu;
+            cgroup.memory = job.pod.tasks[i].memory;
+            cgroup.tcp_throt = job.pod.tasks[i].tcp_throt;
+            cgroup.blkio = job.pod.tasks[i].blkio;
         
-        for (uint32_t j = 0; j < job.pod.tasks[i].ports.size(); ++j) {
-            ::baidu::galaxy::sdk::PortRequired port;
-            port.port_name = job.pod.tasks[i].ports[j].port_name;
-            port.port = job.pod.tasks[i].ports[j].port;
-            port.real_port = job.pod.tasks[i].ports[j].real_port;
-            cgroup.ports.push_back(port);
-        }
+            for (uint32_t j = 0; j < job.pod.tasks[i].ports.size(); ++j) {
+                ::baidu::galaxy::sdk::PortRequired port;
+                port.port_name = job.pod.tasks[i].ports[j].port_name;
+                port.port = job.pod.tasks[i].ports[j].port;
+                port.real_port = job.pod.tasks[i].ports[j].real_port;
+                cgroup.ports.push_back(port);
+            }
 
-        request.desc.cgroups.push_back(cgroup);
+            request.desc.cgroups.push_back(cgroup);
+        }
     }
 
     bool ret = resman_->UpdateContainerGroup(request, &response);

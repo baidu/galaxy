@@ -44,8 +44,8 @@ galaxy_res_client.
 galaxy_res_client [--flagfile=flagfile]
 Usage:
   container usage:
-      galaxy_res_client create_container -f jobconfig(json format)
-      galaxy_res_client update_container -f jobconfig(json format) -i id
+      galaxy_res_client create_container -f jobconfig(json format) [-t volum|normal]
+      galaxy_res_client update_container -f jobconfig(json format) -i id [-t volum|normal]
       galaxy_res_client remove_container -i id
       galaxy_res_client list_containers [-o cpu,mem,volums]
       galaxy_res_client show_container -i id
@@ -103,15 +103,64 @@ Options:
 ### container容器相关命令
 container相关命令中id指的是容器id，容器组id就是jobid
 #### create_container 创建容器组
-    参数：-f(必选)指定job描述配置文件，文件格式是json格式，可用命令./galaxy_client json命令生成样例
-    用法：galaxy_res_client create_container -f job.json
+    参数：
+        1. -f(必选)指定job描述配置文件，文件格式是json格式，可用命令./galaxy_client json命令生成样例
+        2. -t(可选)指定容器类型，默认是normal; normal 表示普通的容器，volum表示共享盘类的容器
+    用法：
+        galaxy_res_client create_container -f job.json
+        galaxy_res_client create_container -f job.json -t volum
+    说明: 
+        对于指定选项为-t volum，创建容器时，json文件不需要tasks的描述
 
 #### update_container 更新容器组
     参数：
         1. -f（必选）指定job描述配置文件 ，文件格式是json格式，用命令./galaxy_client json命令生成样例
         2. -i（必选）指定需要更新容器组的id, 也就是jobid
+        3. -t(可选)指定容器类型，默认是normal; normal 表示普通的容器，volum表示共享盘类的容器
     用法:
         ./galaxy_res_client update_container -f job.json -i jobid
+        ./galaxy_res_client update_container -f job.json -i jobid -t volum
+    说明: 
+        对于指定选项为-t volum，创建容器时，json文件不需要tasks的描述
+
+```
+{
+    "name": "example",
+    "type": "kJobService",
+    "volum_jobs": "",
+    "deploy": {
+        "replica": 1,
+        "step": 1,
+        "interval": 1,
+        "max_per_host": 1,
+        "tag": "",
+        "pools": "example,test"
+    },
+    "pod": {
+        "workspace_volum": {
+            "size": "300M",
+            "type": "kEmptyDir",
+            "medium": "kDisk",
+            "dest_path": "/home/work",
+            "readonly": false,
+            "exclusive": false,
+            "use_symlink": false
+        },
+        "data_volums": [
+            {
+                "size": "800M",
+                "type": "kEmptyDir",
+                "medium": "kDisk",
+                "dest_path": "/home/data/0",
+                "readonly": false,
+                "exclusive": false,
+                "use_symlink": true
+            }
+        ]
+    }
+}
+```
+
 
 #### remove_container 删除容器组
     参数：-i指定需要删除的容器组id,也就是jobid

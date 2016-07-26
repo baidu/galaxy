@@ -252,6 +252,8 @@ bool ResourceManagerImpl::CreateContainerGroup(const CreateContainerGroupRequest
         return false;
     }
 
+    fprintf(stderr, "%s\n", pb_request.DebugString().c_str());
+
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                             &::baidu::galaxy::proto::ResMan_Stub::CreateContainerGroup, 
                                             &pb_request, &pb_response, 5, 1);
