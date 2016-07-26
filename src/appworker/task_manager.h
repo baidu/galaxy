@@ -60,6 +60,7 @@ public:
     int CleanTask(const std::string& task_id);
     int CheckTask(const std::string& task_id, Task& task);
     int ClearTasks();
+    int QueryTaskStatus(const std::string& task_id, TaskStatus& task_status);
     // reload
     int DeployReloadTask(const std::string& task_id, const TaskDescription& task_desc);
     int StartReloadTask(const std::string& task_id);

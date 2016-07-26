@@ -379,6 +379,21 @@ int TaskManager::ClearTasks() {
     return 0;
 }
 
+int TaskManager::QueryTaskStatus(const std::string& task_id, TaskStatus& task_status) {
+    MutexLock lock(&mutex_);
+    LOG(INFO) << "query task status: " << task_id;
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+
+    if (it == tasks_.end()) {
+        LOG(WARNING) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    task_status = it->second->status;
+
+    return 0;
+}
+
 int TaskManager::DeployReloadTask(const std::string& task_id,
                                   const TaskDescription& task_desc) {
     MutexLock lock(&mutex_);

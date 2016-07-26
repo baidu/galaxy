@@ -272,6 +272,7 @@ message ServiceInfo {
     optional Status status = 4;
     optional string deploy_path = 5;
     optional string hostname = 6;
+    optional string task_id = 7;
 }
 
 message TaskDescription {
