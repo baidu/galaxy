@@ -949,7 +949,9 @@ bool IsPortOpen(int32_t port) {
         }
     } while (0);
 
-    close(sockfd);
+    if (sockfd > 0) {
+        close(sockfd);
+    }
 
     return ret;
 }
