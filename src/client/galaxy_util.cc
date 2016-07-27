@@ -728,6 +728,40 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     return true;
 }
 
+int GetLineNumber(FILE *fd, size_t offset) {
+    int line = 0;
+    char ch;
+    fseek(fd, 0, 0); //back to begin
+    bool pline = true;
+    do {
+        if (ftell(fd) == 0) {
+            pline = false;
+            fprintf(stderr, "%d: ", line + 1);
+        }
+        ch = fgetc(fd);
+        if (ch == '\n') {
+            pline = true;
+            ++line;
+        }
+        
+        fprintf(stderr, "%c", ch);
+        if (pline) {
+            pline = false;
+            fprintf(stderr, "%d: ", line + 1);
+        }
+
+        if (ftell(fd) >= (long)offset) {
+            if (ch != '\n') {
+                ++line;
+            }
+            break;
+        }
+    } while (ch != EOF);
+    
+    return line;
+}
+
+
 } // end namespace client
 } // end namespace galaxy
 } // end namespace baidu

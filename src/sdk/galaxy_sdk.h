@@ -513,6 +513,9 @@ struct ContainerGroupStatistics {
     std::vector<VolumResource> volums;
     int64_t submit_time;
     int64_t update_time;
+    std::string user_name;
+    uint32_t destroying;
+    ContainerType container_type;
 };
 struct ListContainerGroupsResponse {
     ErrorCode error_code;
@@ -590,6 +593,7 @@ struct JobOverview {
     int32_t fail_count;
     int64_t create_time;
     int64_t update_time;
+    std::string user;
 };
 
 struct ListJobsResponse {
@@ -622,11 +626,13 @@ struct PodInfo {
 struct JobInfo {
     std::string jobid;
     JobDescription desc;
+    JobDescription last_desc;
     std::vector<PodInfo> pods;
     JobStatus status;
     std::string version;
     int64_t create_time;
     int64_t update_time;
+    std::string user;
 };
 struct ShowJobResponse {
     ErrorCode error_code;

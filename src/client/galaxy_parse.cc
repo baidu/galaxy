@@ -715,24 +715,9 @@ int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescrip
     if (!doc.IsObject()) {
         fprintf(stderr, "invalid config file, [%s] is not a correct json format file\n", conf.c_str());
         if (doc.HasParseError()) {
-            int line = 0;
-            char ch;
-            fseek(fd, 0, 0); //back to begin
-            do {
-                ch = fgetc(fd);
-                if (ch == '\n') {
-                    ++line;
-                }
-                fprintf(stderr, "%c", ch);
-                if (ftell(fd) >= (long)doc.GetErrorOffset()) {
-                    if (ch != '\n') {
-                        ++line;
-                    }
-                    break;
-                }
-            } while (ch != EOF);
+            int line = GetLineNumber(fd, doc.GetErrorOffset());
             fprintf(stderr, "\n\n[%s] error: %s\n", conf.c_str(), rapidjson::GetParseError_En(doc.GetParseError()));
-            fprintf(stderr, "wrong overview offset [%u], wrong line number [%d]\n", doc.GetErrorOffset(), line);
+            fprintf(stderr, "at overview offset [%u], at line number [%d]\n", doc.GetErrorOffset(), line);
         }
         fclose(fd);
         return -1;

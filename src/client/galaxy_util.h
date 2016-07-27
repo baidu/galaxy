@@ -53,6 +53,9 @@ bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::s
 bool GenerateJson(int num_task, int num_data_volums, int num_port, 
                   int num_data_packages, int num_services, const std::string& jobname);
 
+//根据offset返回文件的行数
+int GetLineNumber(FILE *fd, size_t offset);
+
 } //end namespace client
 } //end namespace galaxy
 } //end namespace baidu

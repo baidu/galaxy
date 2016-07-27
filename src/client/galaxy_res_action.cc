@@ -228,8 +228,8 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
 
     bool ret = resman_->ListContainerGroups(request, &response);
     if (ret) {
-        std::string array_headers[4] = {"", "id", "replica", "r/a/p"};
-        std::vector<std::string> headers(array_headers, array_headers + 4);
+        std::string array_headers[6] = {"", "id", "replica", "type", "user", "r/a/p/d"};
+        std::vector<std::string> headers(array_headers, array_headers + 6);
         if (find(options.begin(), options.end(), "cpu") != options.end()) {
             headers.push_back("cpu(a/u)");
         }
@@ -249,9 +249,10 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
         ::baidu::common::TPrinter containers(headers.size());
         containers.AddRow(headers);
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
-            std::string sstatus = ::baidu::common::NumToString(response.containers[i].ready) + "/" 
-                                  +::baidu::common::NumToString(response.containers[i].allocating) + "/" +
-                                  ::baidu::common::NumToString(response.containers[i].pending);
+            std::string sstatus = ::baidu::common::NumToString(response.containers[i].ready) + "/" +
+                                  ::baidu::common::NumToString(response.containers[i].allocating) + "/" +
+                                  ::baidu::common::NumToString(response.containers[i].pending) + "/" +
+                                  ::baidu::common::NumToString(response.containers[i].destroying);
 
             std::string scpu;
             if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
@@ -278,6 +279,8 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
                         values.push_back(baidu::common::NumToString(i));
                         values.push_back(response.containers[i].id);
                         values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                        values.push_back(StringContainerType(response.containers[i].container_type));
+                        values.push_back(response.containers[i].user_name);
                         values.push_back(sstatus);
                         if (!scpu.empty()) {
                             values.push_back(scpu);
@@ -311,6 +314,8 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
                     values.push_back(baidu::common::NumToString(i));
                     values.push_back(response.containers[i].id);
                     values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                    values.push_back(StringContainerType(response.containers[i].container_type));
+                    values.push_back(response.containers[i].user_name);
                     values.push_back(sstatus);
                     if (!scpu.empty()) {
                         values.push_back(scpu);
@@ -329,6 +334,8 @@ bool ResAction::ListContainerGroups(const std::string& soptions) {
                 values.push_back(baidu::common::NumToString(i));
                 values.push_back(response.containers[i].id);
                 values.push_back(::baidu::common::NumToString(response.containers[i].replica));
+                values.push_back(StringContainerType(response.containers[i].container_type));
+                values.push_back(response.containers[i].user_name);
                 values.push_back(sstatus);
                 if (!scpu.empty()) {
                     values.push_back(scpu);

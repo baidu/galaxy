@@ -381,6 +381,7 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
         container.ready = pb_container.ready();
         container.pending = pb_container.pending();
         container.allocating = pb_container.allocating();
+        container.destroying = pb_container.destroying();
         container.cpu.total = pb_container.cpu().total();
         container.cpu.assigned = pb_container.cpu().assigned();
         container.cpu.used = pb_container.cpu().used();
@@ -401,6 +402,8 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
 
         container.submit_time = pb_container.submit_time();
         container.update_time = pb_container.update_time();
+        container.user_name = pb_container.user_name();
+        container.container_type = (ContainerType)pb_container.container_type();
         response->containers.push_back(container);
     }
     return true;

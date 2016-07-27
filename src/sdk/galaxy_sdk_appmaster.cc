@@ -320,7 +320,11 @@ bool AppMasterImpl::ShowJob(const ShowJobRequest& request, ShowJobResponse* resp
     response->job.create_time = pb_response.job().create_time();
     response->job.update_time = pb_response.job().update_time();
     response->job.status = (JobStatus)pb_response.job().status();
+    response->job.user = pb_response.job().user().user();
     PbJobDescription2SdkJobDescription(pb_response.job().desc(), &response->job.desc);
+    /*if (pb_response.Has_desc()) {
+        PbJobDescription2SdkJobDescription(pb_response.job().last_desc(), &response->job.last_desc);
+    }*/
     for (int32_t i = 0; i < pb_response.job().pods().size(); ++i) {
         PodInfo pod;
         pod.podid = pb_response.job().pods(i).podid();
