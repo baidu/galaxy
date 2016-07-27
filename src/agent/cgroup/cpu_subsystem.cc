@@ -37,7 +37,8 @@ baidu::galaxy::util::ErrorCode CpuSubsystem::Construct()
     boost::filesystem::path path(cpu_path);
     boost::system::error_code ec;
 
-    if (!boost::filesystem::exists(path) && !boost::filesystem::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path) 
+                && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "failed in creating path %s: %s",
                 path.string().c_str(),
                 ec.message().c_str());

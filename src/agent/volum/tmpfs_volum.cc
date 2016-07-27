@@ -56,7 +56,8 @@ baidu::galaxy::util::ErrorCode TmpfsVolum::Construct_()
         return ERRORCODE(-1, "mount another path");
     }
 
-    if (!boost::filesystem::exists(target_path, ec) && !boost::filesystem::create_directories(target_path, ec)) {
+    if (!boost::filesystem::exists(target_path, ec) 
+                && !baidu::galaxy::file::create_directories(target_path, ec)) {
         return ERRORCODE(-1, "failed in creating dirs(%s): %s",
                 target_path.string().c_str(),
                 ec.message().c_str());

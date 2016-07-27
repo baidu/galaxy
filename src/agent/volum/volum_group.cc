@@ -238,7 +238,8 @@ int VolumGroup::MountRootfs()
         boost::filesystem::path path(container_path);
         path.append(vm[i]);
 
-        if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
+        if (!boost::filesystem::exists(path, ec) 
+                    && !baidu::galaxy::file::create_directories(path, ec)) {
             std::cerr << "create_directories failed: " << path.string() << ": " << ec.message() << std::endl;
             return -1;
         }
@@ -282,7 +283,8 @@ int VolumGroup::MountRootfs()
             return ERRORCODE(-1, "%s donot exist", source.c_str());
         }
 
-        if (!boost::filesystem::exists(target, ec) && !boost::filesystem::create_directories(target, ec)) {
+        if (!boost::filesystem::exists(target, ec) 
+                    && !baidu::galaxy::file::create_directories(target, ec)) {
             return ERRORCODE(-1, "%s does not exist, or create failed: %s", ec.message().c_str());
         }
 

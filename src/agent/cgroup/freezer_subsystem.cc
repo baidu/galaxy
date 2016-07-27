@@ -5,7 +5,6 @@
 #include "freezer_subsystem.h"
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
-
 #include <stdio.h>
 
 namespace baidu {
@@ -55,7 +54,8 @@ baidu::galaxy::util::ErrorCode FreezerSubsystem::Construct()
     boost::filesystem::path path(this->Path());
     boost::system::error_code ec;
 
-    if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path, ec) 
+                && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "creat file(%s) failed: %s",
                 path.string().c_str(),
                 ec.message().c_str());

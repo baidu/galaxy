@@ -60,7 +60,8 @@ baidu::galaxy::util::ErrorCode MemorySubsystem::Construct()
     std::string path = this->Path();
     boost::system::error_code ec;
 
-    if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path, ec) 
+                && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "failed in creating file %s: %s",
                 path.c_str(),
                 ec.message().c_str());
