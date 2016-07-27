@@ -32,10 +32,12 @@ galaxy_res_client
 若直接运行./galaxy_res_client命令且当前目录没有galaxy.flag文件则会出现
 ```
 ./galaxy.flag: No such file or directory
-```
+
 两种方法：
-1. 在当前目录按照**配置galaxy.flag**中的方法构造galaxy.flag文件
-2. 按照**配置galaxy.flag**中的方法构造flag文件，并使用--flagfile=选项指明
+    1. 在当前目录按照**配置galaxy.flag**中的方法构造galaxy.flag文件
+    2. 按照**配置galaxy.flag**中的方法构造flag文件，并使用--flagfile=选项指明
+
+```
 
 创建容器和更新容器用到的json文件格式出错时，则会出现如下提示
 ```
