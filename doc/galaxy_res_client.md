@@ -561,6 +561,6 @@ quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ss
         3. -d（必选）disk大小, 单位有K, M, G, T, P, E
         4. -s（必选）ssd大小, 单位有K, M, G, T, P, E
         5. -m（必选）内存大小, 单位有K, M, G, T, P, E
-        6. -r （必选）副本数量
+        6. -r（必选）副本数量
     用法:
         galaxy_res_client assign_quota -u galaxy -c 1000 -d 1G -s 800M -m 1G -r 10000
