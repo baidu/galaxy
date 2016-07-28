@@ -717,7 +717,7 @@ int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescrip
         if (doc.HasParseError()) {
             int line = GetLineNumber(fd, doc.GetErrorOffset());
             fprintf(stderr, "\n\n[%s] error: %s\n", conf.c_str(), rapidjson::GetParseError_En(doc.GetParseError()));
-            fprintf(stderr, "at overview offset [%u], at line number [%d]\n\n", doc.GetErrorOffset(), line);
+            fprintf(stderr, "at overview offset [%zu], at line number [%d]\n\n", doc.GetErrorOffset(), line);
         }
         fclose(fd);
         return -1;
