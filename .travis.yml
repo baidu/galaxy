@@ -1,5 +1,6 @@
 language: cpp
 compiler: gcc
+sudo: false
 install:
     - sudo apt-get update
     - sudo apt-get install scons
