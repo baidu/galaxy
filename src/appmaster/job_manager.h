@@ -33,6 +33,8 @@ using ::baidu::galaxy::proto::kTerminate;
 using ::baidu::galaxy::proto::kAddAgentFail;
 using ::baidu::galaxy::proto::kSuspend;
 using ::baidu::galaxy::proto::kJobNotFound;
+using ::baidu::galaxy::proto::kPodNotFound;
+using ::baidu::galaxy::proto::kUserNotMatch;
 using ::baidu::galaxy::proto::kCreateContainerGroupFail;
 using ::baidu::galaxy::proto::kRemoveContainerGroupFail;
 using ::baidu::galaxy::proto::kUpdateContainerGroupFail;
@@ -121,6 +123,8 @@ public:
 
     Status HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* request,
                      ::baidu::galaxy::proto::FetchTaskResponse* response);
+    Status RecoverPod(const User& user, const std::string jobid, const std::string podid);
+
     void ReloadJobInfo(const JobInfo& job_info);
     void GetJobsOverview(JobOverviewList* jobs_overview);
     void SetResmanEndpoint(std::string new_endpoint);

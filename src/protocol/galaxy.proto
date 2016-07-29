@@ -416,6 +416,7 @@ enum Status {
    kSuspend = 21;
    kQuit = 22;
    kPodNotFound = 23;
+   kUserNotMatch = 24;
 }
 
 message ErrorCode {
