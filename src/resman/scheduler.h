@@ -56,7 +56,9 @@ struct Requirement {
     std::string version;
     std::vector<proto::TcpthrotRequired> tcp_throts;
     std::vector<proto::BlkioRequired> blkios;
-    Requirement() : max_per_host(0) {};
+    std::vector<std::string> volum_jobs;
+    proto::ContainerType container_type;
+    Requirement() : max_per_host(0) , container_type(proto::kNormalContainer) {};
     int64_t CpuNeed() {
         int64_t total = 0;
         for (size_t i = 0; i < cpu.size(); i++) {
@@ -119,6 +121,7 @@ struct Container {
     AgentEndpoint allocated_agent;
     ResourceError last_res_err;
     proto::ContainerInfo remote_info;
+    std::vector<ContainerId> allocated_volum_containers;
     Container() : status(kContainerPending), last_res_err(proto::kResOk) {}
     typedef boost::shared_ptr<Container> Ptr;
 };
@@ -188,6 +191,9 @@ private:
                             std::set<DevicePath>& path_used);
     bool SelectFreePorts(const std::vector<proto::PortRequired>& ports_need,
                          std::vector<std::string>& ports_free);
+    bool SelectFreeVolumContainers(const std::vector<ContainerGroupId>& volum_jobs,
+                                   std::vector<ContainerId>& volum_containers);
+    ContainerGroupId ExtractGroupId(const ContainerId& container_id);
     AgentEndpoint endpoint_;
     std::set<std::string> tags_;
     std::string pool_name_;
@@ -201,6 +207,7 @@ private:
     size_t port_total_;
     std::map<ContainerId, Container::Ptr> containers_;
     std::map<ContainerGroupId, int> container_counts_;
+    std::map<ContainerGroupId, std::set<ContainerId> > volum_jobs_free_;
 };
 
 struct ContainerGroupQueueLess {
@@ -260,6 +267,8 @@ public:
                       const ContainerId& container_id,
                       ContainerStatus new_status);
     void MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota& quota);
+    bool IsBeingShared(const ContainerGroupId& container_group_id,
+                       ContainerGroupId& top_container_group_id);
 private:
     void ChangeStatus(Container::Ptr container,
                       proto::ContainerStatus new_status);
