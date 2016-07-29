@@ -5,6 +5,7 @@
 #ifndef BAIDU_GALAXY_SDK_UTIL_H
 #define BAIDU_GALAXY_SDK_UTIL_H
 
+#include "string_util.h"
 #include "protocol/galaxy.pb.h"
 #include "galaxy_sdk.h"
 
@@ -43,6 +44,8 @@ bool FillJobDescription(const JobDescription& sdk_job,
                         ::baidu::galaxy::proto::JobDescription* job);
 
 void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescription& pb_job, JobDescription* job);
+
+std::string Strim(const std::string& str);
 
 } // end namespace sdk
 } // end namespace galaxy

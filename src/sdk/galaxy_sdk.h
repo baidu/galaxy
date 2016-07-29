@@ -41,6 +41,10 @@ enum AuthorityAction {
     kActionSet = 3,
     kActionClear = 4,
 };
+enum ContainerType {
+    kNormalContainer = 1,
+    kVolumContainer = 2,
+};
 struct Grant {
     std::string pool;
     AuthorityAction action;
@@ -70,6 +74,7 @@ enum ResourceError {
     kNoMemoryForTmpfs = 8,
     kPoolMismatch = 9,
     kTooManyPods = 10,
+    kNoVolumContainer = 11,
 };
 
 struct VolumResource {
@@ -212,6 +217,7 @@ struct JobDescription {
     std::string name;
     JobType type;
     std::string version;
+    std::vector<std::string> volum_jobs;
     Deploy deploy;
     PodDescription pod;
     std::string run_user;
@@ -235,6 +241,8 @@ struct ContainerDescription {
     int32_t max_per_host;
     std::string tag;
     std::vector<std::string> pool_names;
+    std::vector<std::string> volum_jobs; //dependent volum jobs' id 
+    ContainerType container_type;
 };
 enum ContainerStatus {
     kContainerPending = 1,
@@ -249,18 +257,6 @@ enum ContainerGroupStatus {
     kContainerGroupNormal = 1,
     kContainerGroupTerminated = 2,
 };
-/*struct ContainerInfo {
-    std::string id;
-    std::string group_id;
-    int64_t created_time;
-    ContainerStatus status;
-    PodDescription pod_desc;
-    int64_t cpu_used;
-    int64_t memory_used;
-    std::vector<Volum> volum_used;
-    std::vector<std::string> port_used;
-    uint32_t restart_counter;
-};*/
 enum Status {
    kOk = 1,
    kError = 2,
@@ -285,15 +281,6 @@ enum AgentStatus {
     kAgentDead = 2,
     kAgentOffline = 3,
 };
-/*struct AgentInfo {
-    std::string version;
-    int64_t start_time;
-    bool unhealthy;
-    std::vector<ContainerInfo> container_info;
-    Resource cpu_resoruce;
-    Resource memory_resource;
-    std::vector<VolumResource> volum_resources;
-};*/
 
 struct EnterSafeModeRequest {
     User user;
@@ -526,6 +513,9 @@ struct ContainerGroupStatistics {
     std::vector<VolumResource> volums;
     int64_t submit_time;
     int64_t update_time;
+    std::string user_name;
+    uint32_t destroying;
+    ContainerType container_type;
 };
 struct ListContainerGroupsResponse {
     ErrorCode error_code;
@@ -603,6 +593,7 @@ struct JobOverview {
     int32_t fail_count;
     int64_t create_time;
     int64_t update_time;
+    std::string user;
 };
 
 struct ListJobsResponse {
@@ -635,11 +626,13 @@ struct PodInfo {
 struct JobInfo {
     std::string jobid;
     JobDescription desc;
+    JobDescription last_desc;
     std::vector<PodInfo> pods;
     JobStatus status;
     std::string version;
     int64_t create_time;
     int64_t update_time;
+    std::string user;
 };
 struct ShowJobResponse {
     ErrorCode error_code;
@@ -671,6 +664,16 @@ struct PreemptRequest {
 
 struct PreemptResponse {
      ErrorCode error_code;
+};
+
+struct RecoverInstanceRequest {
+    User user;
+    std::string jobid;
+    std::string podid;
+};
+
+struct RecoverInstanceResponse {
+    ErrorCode error_code;
 };
 
 } //namespace sdk

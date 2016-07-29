@@ -32,10 +32,36 @@ galaxy_res_client
 若直接运行./galaxy_res_client命令且当前目录没有galaxy.flag文件则会出现
 ```
 ./galaxy.flag: No such file or directory
-```
+
 两种方法：
-1. 在当前目录按照**配置galaxy.flag**中的方法构造galaxy.flag文件
-2. 按照**配置galaxy.flag**中的方法构造flag文件，并使用--flagfile=选项指明
+    1. 在当前目录按照**配置galaxy.flag**中的方法构造galaxy.flag文件
+    2. 按照**配置galaxy.flag**中的方法构造flag文件，并使用--flagfile=选项指明
+
+```
+
+创建容器和更新容器用到的json文件格式出错时，则会出现如下提示
+```
+./galaxy_res_client create_container -f app.json
+
+invalid config file, [app.json] is not a correct json format file
+1: {
+2:     "name": "example",
+3:     "type": "kJobService",
+4:     "deploy": {
+5:         "replica": 1,
+6:         "step": 1,
+7:         "interval": 1,
+8:         "max_per_host": 1,
+9:         "tag": "",
+10:         "pools": "main_pool"
+11:     },
+12:     "pod": {
+13:         "workspace_volum": 
+14:             "size"
+
+[app.json] error: Missing a comma or '}' after an object member.
+at overview offset [273], at line number [14]
+```
 
 #galaxy_res_client使用方法
 运行./galaxy_res_client获取运行方法, flagfile的默认值是./galaxy.flag, 若需要指定别的flag文件，运行时加上--flagfile=选项
@@ -44,8 +70,8 @@ galaxy_res_client.
 galaxy_res_client [--flagfile=flagfile]
 Usage:
   container usage:
-      galaxy_res_client create_container -f jobconfig(json format)
-      galaxy_res_client update_container -f jobconfig(json format) -i id
+      galaxy_res_client create_container -f jobconfig(json format) [-t volum|normal]
+      galaxy_res_client update_container -f jobconfig(json format) -i id [-t volum|normal]
       galaxy_res_client remove_container -i id
       galaxy_res_client list_containers [-o cpu,mem,volums]
       galaxy_res_client show_container -i id
@@ -103,15 +129,64 @@ Options:
 ### container容器相关命令
 container相关命令中id指的是容器id，容器组id就是jobid
 #### create_container 创建容器组
-    参数：-f(必选)指定job描述配置文件，文件格式是json格式，可用命令./galaxy_client json命令生成样例
-    用法：galaxy_res_client create_container -f job.json
+    参数：
+        1. -f(必选)指定job描述配置文件，文件格式是json格式，可用命令./galaxy_client json命令生成样例
+        2. -t(可选)指定容器类型，默认是normal; normal 表示普通的容器，volum表示共享盘类的容器
+    用法：
+        galaxy_res_client create_container -f job.json
+        galaxy_res_client create_container -f job.json -t volum
+    说明: 
+        对于指定选项为-t volum，创建容器时，json文件不需要tasks的描述
 
 #### update_container 更新容器组
     参数：
         1. -f（必选）指定job描述配置文件 ，文件格式是json格式，用命令./galaxy_client json命令生成样例
         2. -i（必选）指定需要更新容器组的id, 也就是jobid
+        3. -t(可选)指定容器类型，默认是normal; normal 表示普通的容器，volum表示共享盘类的容器
     用法:
         ./galaxy_res_client update_container -f job.json -i jobid
+        ./galaxy_res_client update_container -f job.json -i jobid -t volum
+    说明: 
+        对于指定选项为-t volum，创建容器时，json文件不需要tasks的描述
+
+```
+{
+    "name": "example",
+    "type": "kJobService",
+    "volum_jobs": "",
+    "deploy": {
+        "replica": 1,
+        "step": 1,
+        "interval": 1,
+        "max_per_host": 1,
+        "tag": "",
+        "pools": "example,test"
+    },
+    "pod": {
+        "workspace_volum": {
+            "size": "300M",
+            "type": "kEmptyDir",
+            "medium": "kDisk",
+            "dest_path": "/home/work",
+            "readonly": false,
+            "exclusive": false,
+            "use_symlink": false
+        },
+        "data_volums": [
+            {
+                "size": "800M",
+                "type": "kEmptyDir",
+                "medium": "kDisk",
+                "dest_path": "/home/data/0",
+                "readonly": false,
+                "exclusive": false,
+                "use_symlink": true
+            }
+        ]
+    }
+}
+```
+
 
 #### remove_container 删除容器组
     参数：-i指定需要删除的容器组id,也就是jobid
@@ -126,40 +201,44 @@ container相关命令中id指的是容器id，容器组id就是jobid
         ./galaxy_client list_containers -o cpu
         ./galaxy_client list_containers -o base
     说明：
-        r/a/p:
+        r/a/p/d:
             1. r:处于ready状态的容器数量
             2. a:处于allocating状态的容器数量
             3. p:处于pending状态的容器数量
+            4. d:处于destroying状态的容器数量
+        type:
+            1. normal 普通容器
+            2. volum  共享盘容器
 
 ```
-  -  id                               replica  r/a/p   cpu(a/u)      mem(a/u)           volums(med/a/u)          create_time          update_time        
------------------------------------------------------------------------------------------------------------------------------------------------------------
-  0  job_20160612_192152_72_ts3       15       15/0/0  45.000/0.000  135.000G/294.938M  kSsd/150.000G/0.000      2016-06-12 19:21:52  2016-06-12 19:21:52
-  -  -                                -        -       -             -                  kDisk/600.000G/469.068M  -                    -                  
-  -  -                                -        -       -             -                  kTmpfs/120.000G/0.000    -                    -                  
-  1  job_20160613_174502_536_diting   1        1/0/0   2.000/0.000   1.000G/1022.832M   kSsd/1.000G/120.085G     2016-06-13 17:45:02  2016-06-13 17:45:02
-  -  -                                -        -       -             -                  kDisk/3.000G/720.480G    -                    -                  
-  -  -                                -        -       -             -                  kTmpfs/1.000G/1008.242M  -                    -                  
-  2  job_20160614_154034_885_example  1        0/0/1   0.000/0.000   0.000/0.000        -                        2016-06-14 15:40:34  2016-06-14 15:40:34
-  3  job_20160615_154548_366_test     1        1/0/0   2.000/0.000   1.562G/36.000K     kDisk/1.074G/2.082K      2016-06-15 15:45:48  2016-06-15 15:45:48
-```
-
-```
-  -  id                               replica  r/a/p   cpu(a/u)      create_time          update_time        
----------------------------------------------------------------------------------------------------------------
-  0  job_20160612_192152_72_ts3       15       15/0/0  45.000/0.000  2016-06-12 19:21:52  2016-06-12 19:21:52
-  1  job_20160613_174502_536_diting   1        1/0/0   2.000/0.000   2016-06-13 17:45:02  2016-06-13 17:45:02
-  2  job_20160614_154034_885_example  1        0/0/1   0.000/0.000   2016-06-14 15:40:34  2016-06-14 15:40:34
-  3  job_20160615_154548_366_test     1        1/0/0   2.000/0.000   2016-06-15 15:45:48  2016-06-15 15:45:48
+  -  id                               replica  type    user         r/a/p/d   cpu(a/u)      mem(a/u)           volums(med/a/u)          create_time          update_time        
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  0  job_20160612_192152_72_ts3       15       normal  test         15/0/0/0  45.000/0.000  135.000G/294.938M  kSsd/150.000G/0.000      2016-06-12 19:21:52  2016-06-12 19:21:52
+  -  -                                -                             -       -             -                    kDisk/600.000G/469.068M  -                    -                  
+  -  -                                -                             -       -             -                    kTmpfs/120.000G/0.000    -                    -                  
+  1  job_20160613_174502_536_diting   1        normal  test         1/0/0/0   2.000/0.000   1.000G/1022.832M   kSsd/1.000G/120.085G     2016-06-13 17:45:02  2016-06-13 17:45:02
+  -  -                                -                             -       -             -                    kDisk/3.000G/720.480G    -                    -                  
+  -  -                                -                             -       -             -                    kTmpfs/1.000G/1008.242M  -                    -                  
+  2  job_20160614_154034_885_example  1        volum   test         0/0/1/0   0.000/0.000   0.000/0.000        -                        2016-06-14 15:40:34  2016-06-14 15:40:34
+  3  job_20160615_154548_366_test     1        normal  test         1/0/0/0   2.000/0.000   1.562G/36.000K     kDisk/1.074G/2.082K      2016-06-15 15:45:48  2016-06-15 15:45:48
 ```
 
 ```
-  -  id                               replica  r/a/p   create_time          update_time        
--------------------------------------------------------------------------------------------------
-  0  job_20160612_192152_72_ts3       15       15/0/0  2016-06-12 19:21:52  2016-06-12 19:21:52
-  1  job_20160613_174502_536_diting   1        1/0/0   2016-06-13 17:45:02  2016-06-13 17:45:02
-  2  job_20160614_154034_885_example  1        0/0/1   2016-06-14 15:40:34  2016-06-14 15:40:34
-  3  job_20160615_154548_366_test     1        1/0/0   2016-06-15 15:45:48  2016-06-15 15:45:48
+  -  id                               replica  type   user    r/a/p/d   cpu(a/u)      create_time          update_time        
+-------------------------------------------------------------------------------------------------------------------------------
+  0  job_20160612_192152_72_ts3       15       normal  test   15/0/0/0  45.000/0.000  2016-06-12 19:21:52  2016-06-12 19:21:52
+  1  job_20160613_174502_536_diting   1        normal  test   1/0/0/0   2.000/0.000   2016-06-13 17:45:02  2016-06-13 17:45:02
+  2  job_20160614_154034_885_example  1        normal  test   0/0/1/0   0.000/0.000   2016-06-14 15:40:34  2016-06-14 15:40:34
+  3  job_20160615_154548_366_test     1        normal  test   1/0/0/0   2.000/0.000   2016-06-15 15:45:48  2016-06-15 15:45:48
+```
+
+```
+  -  id                               replica  type   user    r/a/p/d   create_time          update_time        
+-------------------------------------------------------------------------------------------------------------------
+  0  job_20160612_192152_72_ts3       15       normal  test   15/0/0/0  2016-06-12 19:21:52  2016-06-12 19:21:52
+  1  job_20160613_174502_536_diting   1        normal  test   1/0/0/0   2016-06-13 17:45:02  2016-06-13 17:45:02
+  2  job_20160614_154034_885_example  1        normal  test   0/0/1/0   2016-06-14 15:40:34  2016-06-14 15:40:34
+  3  job_20160615_154548_366_test     1        normal  test   1/0/0/0   2016-06-15 15:45:48  2016-06-15 15:45:48
 ```
 
 #### show_container 展示容器组, 列出的信息包括:创建容器时提交的job配置信息，podinfo信息
@@ -377,10 +456,11 @@ cluster volumes infomation
   1  kDisk   214.469T  604.074G  0.000  -          
 
 cluster pools infomation
-  -  name      total  alive
------------------------------
-  0  haolifei  1      1    
-  1  test      15     15   
+ -  name            total  alive  cpu(t/a/u)                mem(t/a/u)             vol(t/a/u)                 
+-----------------------------------------------------------------------------------------------------------------
+  0  appmaster_pool  1      1      24.000/0.000/0.000        103.000G/0.000/0.000   kDisk 3.525T/0.000/0.000   
+  1  test            20     20     480.000/190.000/0.000     2.012T/760.000G/0.000  kSsd 16.496T/14.453T/0.000 
+  -  -               -      -      -                         -                      kDisk 153.326T/0.000/0.000 
 
 cluster other infomation
   total_cgroups  total_containers  in_safe_mode
@@ -481,6 +561,6 @@ quota指的是用户可运行程序的所有副本总数，cpu核数，disk、ss
         3. -d（必选）disk大小, 单位有K, M, G, T, P, E
         4. -s（必选）ssd大小, 单位有K, M, G, T, P, E
         5. -m（必选）内存大小, 单位有K, M, G, T, P, E
-        6. -r （必选）副本数量
+        6. -r（必选）副本数量
     用法:
         galaxy_res_client assign_quota -u galaxy -c 1000 -d 1G -s 800M -m 1G -r 10000

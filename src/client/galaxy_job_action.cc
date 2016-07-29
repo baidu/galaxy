@@ -306,8 +306,8 @@ bool JobAction::ListJobs(const std::string& soptions) {
         return false;
     }
 
-    std::string array_headers[7] = {"", "id", "name", "type","status", "r/p/d/die/f", "repli"};
-    std::vector<std::string> headers(array_headers, array_headers + 7);
+    std::string array_headers[8] = {"", "id", "name", "type", "user", "status", "r/p/d/die/f", "repli"};
+    std::vector<std::string> headers(array_headers, array_headers + 8);
 
     if (find(options.begin(), options.end(), "cpu") != options.end()) {
         headers.push_back("cpu(a/u)");
@@ -368,6 +368,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
                         values.push_back(jobs[i].jobid);
                         values.push_back(jobs[i].desc.name);
                         values.push_back(StringJobType(jobs[i].desc.type));
+                        values.push_back(jobs[i].user);
                         values.push_back(StringJobStatus(jobs[i].status));
                         values.push_back(sstat);
                         values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
@@ -403,6 +404,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
                     values.push_back(jobs[i].jobid);
                     values.push_back(jobs[i].desc.name);
                     values.push_back(StringJobType(jobs[i].desc.type));
+                    values.push_back(jobs[i].user);
                     values.push_back(StringJobStatus(jobs[i].status));
                     values.push_back(sstat);
                     values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
@@ -423,6 +425,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
                 values.push_back(jobs[i].jobid);
                 values.push_back(jobs[i].desc.name);
                 values.push_back(StringJobType(jobs[i].desc.type));
+                values.push_back(jobs[i].user);
                 values.push_back(StringJobStatus(jobs[i].status));
                 values.push_back(sstat);
                 values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
@@ -441,6 +444,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
             values.push_back(jobs[i].jobid);
             values.push_back(jobs[i].desc.name);
             values.push_back(StringJobType(jobs[i].desc.type));
+            values.push_back(jobs[i].user);
             values.push_back(StringJobStatus(jobs[i].status));
             values.push_back(sstat);
             values.push_back(::baidu::common::NumToString(jobs[i].desc.deploy.replica));
@@ -554,9 +558,10 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
     
     if (show_meta) {
         printf("base infomation\n"); 
-        ::baidu::common::TPrinter base(4);
-        base.AddRow(4, "id", "status", "create_time", "update_time");
-        base.AddRow(4, response.job.jobid.c_str(),
+        ::baidu::common::TPrinter base(5);
+        base.AddRow(5, "id", "user", "status", "create_time", "update_time");
+        base.AddRow(5, response.job.jobid.c_str(),
+                        response.job.user.c_str(),
                        StringJobStatus(response.job.status).c_str(),
                        FormatDate(response.job.create_time).c_str(),
                        FormatDate(response.job.update_time).c_str()
@@ -897,6 +902,32 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
     return true;
 }
 
+bool JobAction::RecoverInstance(const std::string& jobid, const std::string& podid) {
+    if (jobid.empty() || podid.empty()) {
+        fprintf(stderr, "jobid and podid are needed\n");
+        return false;
+    }
+
+    if(!this->Init()) {
+        return false;
+    }
+    
+    baidu::galaxy::sdk::RecoverInstanceRequest request;
+    baidu::galaxy::sdk::RecoverInstanceResponse response;
+    request.user = user_;
+    request.jobid = jobid;
+    request.podid = jobid + "." + podid;
+    bool ret = app_master_->RecoverInstance(request, &response);
+    if (ret) {
+        printf("recover instance %s success\n", jobid.c_str());
+    } else {
+        printf("recover instance %s failed for reason %s:%s\n", 
+                jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+    }
+    return ret;
+
+}
+
 bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     if (jobid.empty() || cmd.empty()) {
         fprintf(stderr, "jobid and cmd are needed\n");
@@ -914,7 +945,7 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     request.cmd = cmd;
     bool ret = app_master_->ExecuteCmd(request, &response);
     if (ret) {
-        printf("Execute job %s\n success", jobid.c_str());
+        printf("Execute job %s success\n", jobid.c_str());
     } else {
         printf("Execute job %s failed for reason %s:%s\n", 
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
@@ -974,6 +1005,18 @@ bool JobAction::GenerateJson(const std::string& jobid) {
 
     obj_str.SetString(StringJobType(response.job.desc.type).c_str(), allocator);
     root.AddMember("type", obj_str, allocator);
+
+    std::string volum_jobs;
+    for (uint32_t i = 0; i < response.job.desc.volum_jobs.size(); ++i) {
+        volum_jobs += response.job.desc.volum_jobs[i];
+        if (i < response.job.desc.volum_jobs.size() - 1) {
+            volum_jobs += ",";
+        }
+    }
+    obj_str.SetString(volum_jobs.c_str(), allocator);
+    if (response.job.desc.volum_jobs.size() > 0) {
+        root.AddMember("volum_jobs", obj_str, allocator);
+    }
 
     //deploy节点
     rapidjson::Value deploy(rapidjson::kObjectType);
