@@ -546,6 +546,9 @@ Status JobManager::RollbackJob(Job* job, void* arg) {
     job->updated_cnt_ = 0;
     job->desc_.mutable_deploy()->set_update_break_count(0);
     job->desc_.CopyFrom(job->last_desc_);
+    job->deploying_pods_.clear();
+    job->reloading_pods_.clear();
+    job->recreate_pods_.clear();
     return kOk;
 }
 
@@ -1045,17 +1048,23 @@ Status JobManager::UpdatePod(Job* job, void* arg) {
             rlt_code = kOk;
         } else if (job->action_type_ == kActionRebuild) {
             rlt_code = TryRebuild(job, podinfo);
+            if (rlt_code != kSuspend) {
+                job->updated_cnt_++;
+            }
         } else if (job->action_type_ == kActionRecreate) {
             rlt_code = TryReCreate(job, podinfo);
+            if (rlt_code != kSuspend) {
+                job->updated_cnt_++;
+            }
         } else if (job->action_type_ == kActionReload) {
             rlt_code = TryReload(job, podinfo);
             if (rlt_code != kSuspend) {
                 podinfo->set_send_rebuild_time(job->update_time_);
+                job->updated_cnt_++;
             }
         } 
     } else if (podinfo->update_time() != job->update_time_) {
         podinfo->set_update_time(job->update_time_);
-        job->updated_cnt_++;
     }
     LOG(INFO) << "pod : " << request->podid() << "update status :" 
         << Status_Name(rlt_code) << " " << __FUNCTION__;
@@ -1173,6 +1182,7 @@ void JobManager::GetJobsOverview(JobOverviewList* jobs_overview) {
         overview->mutable_desc()->CopyFrom(job->desc_);
         overview->set_jobid(jobid);
         overview->set_status(job->status_);
+        overview->mutable_user()->CopyFrom(job->user_);
         uint32_t state_stat[kPodTerminated + 1] = {0};
         for (std::map<std::string, PodInfo*>::iterator it = job->pods_.begin();
             it != job->pods_.end(); it++) {
@@ -1279,6 +1289,27 @@ JobDescription JobManager::GetLastDesc(const JobId jobid) {
     }
     Job* job = job_it->second;
     return job->last_desc_;
+}
+
+Status JobManager::RecoverPod(const User& user, const std::string jobid, const std::string podid) {
+    MutexLock lock(&mutex_);
+    LOG(INFO) << __FUNCTION__ << " : " << jobid << " " << podid;
+    std::map<JobId, Job*>::iterator job_it = jobs_.find(jobid);
+    if (job_it == jobs_.end()) {
+        return kJobNotFound;
+    }
+    Job* job = job_it->second;
+    if (job->user_.user() != user.user() || job->user_.token() != user.token()) {
+        return kUserNotMatch;
+    }
+    std::map<std::string, PodInfo*>::iterator it = job->pods_.find(podid);
+    if (it == job->pods_.end()) {
+        return kPodNotFound;
+    }
+    PodInfo* pod = it->second;
+    pod->set_last_normal_time(0);
+    LOG(INFO) << __FUNCTION__ << " : " << podid;
+    return kOk;
 }
 
 }
