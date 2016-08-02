@@ -53,10 +53,10 @@ env.Program('container_meta', container_meta_src)
 
 
 #example
-test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc', 'src/agent/agent_flags.cc']
+test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc', 'src/agent/agent_flags.cc', 'src/agent/util/util.cc']
 env.Program('test_cpu_subsystem', test_cpu_subsystem_src)
 
-test_cgroup_src=Glob('src/agent/cgroup/*.cc') + ['src/example/test_cgroup.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc', 'src/agent/util/input_stream_file.cc', 'src/protocol/agent.pb.cc', 'src/agent/collector/collector_engine.cc']
+test_cgroup_src=Glob('src/agent/cgroup/*.cc') + ['src/example/test_cgroup.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc', 'src/agent/util/input_stream_file.cc', 'src/protocol/agent.pb.cc', 'src/agent/collector/collector_engine.cc', 'src/agent/util/util.cc']
 env.Program('test_cgroup', test_cgroup_src)
 
 test_process_src=['src/example/test_process.cc', 'src/agent/container/process.cc']
