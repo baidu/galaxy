@@ -37,8 +37,8 @@ public:
     }
 
     int Release(uint64_t size) {
+        assert(assigned_ >= size);
         assigned_ -= size;
-        assert(assigned_ >= 0);
         return 0;
     }
 

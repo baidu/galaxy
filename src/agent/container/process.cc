@@ -87,6 +87,7 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
 
     if (-1 == stdout_fd) {
         LOG(WARNING) << "open file failed: " << stdout_path_;
+        delete context;
         return -1;
     }
 
@@ -94,7 +95,7 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
 
     if (-1 == stderr_fd) {
         LOG(WARNING) << "open file failed: " << stderr_path_;
-        ::close(stderr_fd);
+        delete context;
         return -1;
     }
 

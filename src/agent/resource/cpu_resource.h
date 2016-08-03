@@ -35,8 +35,8 @@ public:
     }
 
     int Release(uint64_t milli_cores) {
+        assert(assigned_ >=  milli_cores);
         assigned_ -= milli_cores;
-        assert(assigned_ >= 0);
         return 0;
     }
 
