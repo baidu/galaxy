@@ -329,9 +329,6 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         return;
     } else if (request->has_operate() && request->operate() == kUpdateJobRollback) {
         MutexLock lock(&resman_mutex_);
-        proto::UpdateContainerGroupRequest* container_request = new proto::UpdateContainerGroupRequest();
-        container_request->mutable_user()->CopyFrom(request->user());
-        container_request->set_id(request->jobid());
         JobDescription last_desc = job_manager_.GetLastDesc(request->jobid());
         if (!last_desc.has_name()) {
             response->mutable_error_code()->set_status(kError);
@@ -340,6 +337,11 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
             done->Run();
             return;
         }
+        
+        proto::UpdateContainerGroupRequest* container_request = new proto::UpdateContainerGroupRequest();
+        container_request->mutable_user()->CopyFrom(request->user());
+        container_request->set_id(request->jobid());
+
         container_request->set_interval(last_desc.deploy().interval());
         container_request->set_replica(last_desc.deploy().replica());
         BuildContainerDescription(last_desc, container_request->mutable_desc());

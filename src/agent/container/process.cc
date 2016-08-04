@@ -71,7 +71,6 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
 {
     assert(!stderr_path_.empty());
     assert(!stdout_path_.empty());
-    Context* context = new Context();
     std::vector<int> fds;
     int pid = SelfPid();
 
@@ -80,6 +79,7 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
         return -1;
     }
 
+    Context* context = new Context();
     context->fds.swap(fds);
     const int STD_FILE_OPEN_FLAG = O_CREAT | O_APPEND | O_WRONLY;
     const int STD_FILE_OPEN_MODE = S_IRWXU | S_IRWXG | S_IROTH;
@@ -96,6 +96,7 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     if (-1 == stderr_fd) {
         LOG(WARNING) << "open file failed: " << stderr_path_;
         delete context;
+        ::close(stdout_fd);
         return -1;
     }
 

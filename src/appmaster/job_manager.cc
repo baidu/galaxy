@@ -569,7 +569,6 @@ Status JobManager::ClearJob(Job* job, void* arg) {
     mutex_.AssertHeld();
     for (std::map<std::string, PublicSdk*>::iterator it = job->naming_sdk_.begin();
             it != job->naming_sdk_.end(); it++) {
-        job->naming_sdk_.erase(it);
         delete it->second;
     }
     job->naming_sdk_.clear();

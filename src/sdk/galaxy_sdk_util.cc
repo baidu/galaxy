@@ -775,6 +775,11 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     }
     job->version = pb_job.version();
     job->run_user = pb_job.run_user();
+    
+    for (int i = 0; i < pb_job.volum_jobs().size(); ++i) {
+        job->volum_jobs.push_back(pb_job.volum_jobs(i)); 
+    }
+
     job->deploy.replica = pb_job.deploy().replica();
     job->deploy.step = pb_job.deploy().step();
     job->deploy.interval = pb_job.deploy().interval();
@@ -784,6 +789,7 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     for (int i = 0; i < pb_job.deploy().pools().size(); ++i) {
         job->deploy.pools.push_back(pb_job.deploy().pools(i));
     }
+    
     job->pod.workspace_volum.size = pb_job.pod().workspace_volum().size();
     job->pod.workspace_volum.type = (VolumType)pb_job.pod().workspace_volum().type();
     job->pod.workspace_volum.medium = (VolumMedium)pb_job.pod().workspace_volum().medium();

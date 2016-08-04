@@ -283,16 +283,16 @@ bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
     bool rs = false;
     struct passwd user_passd_info;
     struct passwd* user_passd_rs;
-    char* user_passd_buf = NULL;
-    int user_passd_buf_len = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+    long int user_passd_buf_len_temp = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+    size_t user_passd_buf_len;
+    if (user_passd_buf_len_temp == -1) {
+        return false;
+    } else {
+        user_passd_buf_len = (size_t)user_passd_buf_len_temp;
+    }
 
     for (int i = 0; i < 2; i++) {
-        if (user_passd_buf != NULL) {
-            delete []user_passd_buf;
-            user_passd_buf = NULL;
-        }
-
-        user_passd_buf = new char[user_passd_buf_len];
+        char* user_passd_buf = new char[user_passd_buf_len];
         int ret = ::getpwnam_r(user_name.c_str(), &user_passd_info,
                                user_passd_buf, user_passd_buf_len, &user_passd_rs);
 
@@ -300,17 +300,12 @@ bool GetUidAndGid(const std::string& user_name, uid_t* uid, gid_t* gid) {
             *uid = user_passd_rs->pw_uid;
             *gid = user_passd_rs->pw_gid;
             rs = true;
+            delete[] user_passd_buf;
             break;
         } else if (errno == ERANGE) {
             user_passd_buf_len *= 2;
         }
-
-        break;
-    }
-
-    if (user_passd_buf != NULL) {
-        delete []user_passd_buf;
-        user_passd_buf = NULL;
+        delete[] user_passd_buf;
     }
 
     return rs;
@@ -949,7 +944,7 @@ bool IsPortOpen(int32_t port) {
         }
     } while (0);
 
-    if (sockfd > 0) {
+    if (sockfd >= 0) {
         close(sockfd);
     }
 
