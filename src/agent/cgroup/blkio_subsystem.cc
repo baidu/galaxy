@@ -38,7 +38,8 @@ baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct()
     boost::system::error_code ec;
     boost::filesystem::path path(this->Path());
 
-    if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path, ec) 
+                && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "crate file %s failed:",
                 path.string().c_str(),
                 ec.message().c_str());

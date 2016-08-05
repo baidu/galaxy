@@ -25,6 +25,7 @@ void ContainerStatus::Setup()
     kready_pre_status_.insert(baidu::galaxy::proto::kContainerPending);
     kready_pre_status_.insert(baidu::galaxy::proto::kContainerAllocating);
     kready_pre_status_.insert(baidu::galaxy::proto::kContainerReady);
+    kready_pre_status_.insert(baidu::galaxy::proto::kContainerDestroying); // delay destroy
     // kError
     kerror_pre_status_.insert(baidu::galaxy::proto::kContainerAllocating);
     kerror_pre_status_.insert(baidu::galaxy::proto::kContainerReady);
@@ -76,15 +77,6 @@ baidu::galaxy::util::ErrorCode ContainerStatus::EnterReady()
 {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
-
-    if (baidu::galaxy::proto::kContainerAllocating != status_
-            && baidu::galaxy::proto::kContainerReady != status_) {
-        return ERRORCODE(baidu::galaxy::util::kErrorNotAllowed, "container CANNOT change from %s to %s",
-                baidu::galaxy::proto::ContainerStatus_Name(status_).c_str(),
-                "kContainerReady"
-                                                );
-    }
-
     return Enter(kready_pre_status_, baidu::galaxy::proto::kContainerReady);
 }
 

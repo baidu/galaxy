@@ -46,10 +46,9 @@ namespace galaxy {
 namespace container {
 
 Container::Container(const ContainerId& id, const baidu::galaxy::proto::ContainerDescription& desc) :
-    desc_(desc),
+    IContainer(id, desc),
     volum_group_(new baidu::galaxy::volum::VolumGroup()),
     process_(new Process()),
-    id_(id),
     status_(id.SubId()),
     created_time_(0L),
     destroy_time_(0L),
@@ -113,12 +112,24 @@ baidu::galaxy::util::ErrorCode Container::Destroy()
 
     if (ec.Code() == baidu::galaxy::util::kErrorRepeated) {
         LOG(WARNING) << "container  " << id_.CompactId() << " is in kContainerDestroying status: " << ec.Message();
-        ERRORCODE_OK;
+        ERRORCODE(-1, "repeated destroy");
     }
 
     if (ec.Code() != baidu::galaxy::util::kErrorOk) {
         LOG(WARNING) << "destroy container " << id_.CompactId() << " failed: " << ec.Message();
         return ERRORCODE(-1, "status machine");
+    }
+
+    SetExpiredTimeIfAbsent(30);
+    LOG(INFO) << Id().CompactId() << " try kill appworker";
+    if (!Expired() && Alive() && TryKill()) {
+        if (Alive()) {
+            ec = status_.EnterReady();
+            if (ec.Code() != 0) {
+                LOG(WARNING) << Id().CompactId() << "enter ready failed: " << ec.Message();
+            }
+            return ERRORCODE(-1, "try kill appwork failed");
+        }
     }
 
     baidu::galaxy::util::ErrorCode ret = Destroy_();
@@ -176,29 +187,27 @@ baidu::galaxy::util::ErrorCode Container::Construct_()
 }
 
 
-int Container::Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
+baidu::galaxy::util::ErrorCode Container::Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
     assert(!id_.Empty());
     created_time_ = meta->created_time();
     status_.EnterAllocating();
     int ret = ConstructCgroup();
     if (0 != ret) {
-        LOG(WARNING) << "failed in constructing cgroup for contanier " << id_.CompactId();
         status_.EnterError();
-        return -1;
+        return ERRORCODE(-1, "failed in constructing cgroup");
     }
     LOG(INFO) << "succeed in constructing cgroup for contanier " << id_.CompactId();
     
     ret = ConstructVolumGroup();
     if (0 != ret) {
-        LOG(WARNING) << "failed in constructing volum group for container " << id_.CompactId();
         status_.EnterError();
-        return -1;
+        return ERRORCODE(-1, "failed in constructing volum group");
     }
     LOG(INFO) << "succeed in constructing volum group for container " << id_.CompactId();
     
     process_->Reload(meta->pid());
     status_.EnterReady();
-    return 0;
+    return ERRORCODE_OK;
 }
 
 int Container::ConstructCgroup() {
@@ -328,6 +337,13 @@ int Container::RunRoutine(void*)
         return -1;
     }
 
+
+    baidu::galaxy::util::ErrorCode ec = volum_group_->MountSharedVolum(dependent_volums_);
+    if (ec.Code() != 0) {
+        std::cerr << "mount depent volum failed: " << ec.Message() << std::endl;
+        return -1;
+    }
+
     ::chdir(baidu::galaxy::path::ContainerRootPath(Id().SubId()).c_str());
 
     std::cout << "succed in mounting root fs\n";
@@ -412,10 +428,10 @@ void Container::ExportEnv(std::map<std::string, std::string>& env)
     env["baidu_galaxy_container_user"] = desc_.run_user();
 }
 
-baidu::galaxy::proto::ContainerStatus Container::Status()
+/*baidu::galaxy::proto::ContainerStatus Container::Status()
 {
     return status_.Status();
-}
+}*/
 
 void Container::KeepAlive()
 {
@@ -477,6 +493,9 @@ bool Container::Alive()
 
     while (!feof(file)) {
         int size = fread(buf, 1, sizeof buf, file);
+        if (0 == size || ferror(file)) {
+            break;
+        }
         env_str.append(buf, size);
     }
     fclose(file);
@@ -558,6 +577,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         baidu::galaxy::proto::Volum* vr = ret->add_volum_used();
         vr->set_used_size(wv->Used());
         vr->set_path(wv->Description()->dest_path());
+        vr->set_device_path(wv->Description()->source_path());
     }
 
     for (int i = 0; i < volum_group_->DataVolumsSize(); i++) {
@@ -565,6 +585,7 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
         boost::shared_ptr<baidu::galaxy::volum::Volum> dv = volum_group_->DataVolum(i);
         vr->set_used_size(dv->Used());
         vr->set_path(dv->Description()->dest_path());
+        vr->set_device_path(dv->Description()->source_path());
     }
 
     return ret;
@@ -637,22 +658,9 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerMetrix> Container::ContainerMet
     return cm;
 }
 
-int64_t Container::DestroyTimeInSecond() {
-    return destroy_time_/1000000L;
-}
-
-int64_t Container::ConstructTimeInSecond() {
-    return created_time_/1000000L;
-}
-
 std::string Container::ContainerGcPath() {
     return volum_group_->ContainerGcPath();
 }
-
-std::string ContainerWorkPath() {
-    return "";
-}
-
 
 } //namespace container
 } //namespace galaxy

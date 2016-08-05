@@ -238,14 +238,13 @@ int VolumGroup::MountRootfs()
         boost::filesystem::path path(container_path);
         path.append(vm[i]);
 
-        if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
-            //LOG(WARNING) << "create_directories failed: " << path.string() << ": " << ec.message();
+        if (!boost::filesystem::exists(path, ec) 
+                    && !baidu::galaxy::file::create_directories(path, ec)) {
             std::cerr << "create_directories failed: " << path.string() << ": " << ec.message() << std::endl;
             return -1;
         }
 
         if (boost::filesystem::is_directory(path, ec)) {
-            //LOG(INFO) << "create_directories sucessfully: " << path.string();
             std::cout << "create_directories sucessfully: " << path.string() << std::endl;
         }
 
@@ -253,19 +252,16 @@ int VolumGroup::MountRootfs()
             baidu::galaxy::util::ErrorCode errc = MountProc(path.string());
 
             if (0 != errc.Code()) {
-                //LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
                 std::cerr << "mount " << vm[i] << "for container " 
                     << container_id_ << " failed " << errc.Message() << std::endl;
                 return -1;
             }
 
-            //LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
             std::cout << "mount successfully: " << vm[i] << " -> " << path.string() << std::endl;
         } else {
             baidu::galaxy::util::ErrorCode errc = MountDir(vm[i], path.string());
 
             if (0 != errc.Code()) {
-                //LOG(WARNING) << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message();
                 std::cerr << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message() << std::endl;
                 return -1;
             }
@@ -277,6 +273,53 @@ int VolumGroup::MountRootfs()
 
     return 0;
 }
+
+    baidu::galaxy::util::ErrorCode VolumGroup::MountDir_(const std::string& source, 
+                const std::string& target) {
+
+        boost::system::error_code ec;
+        if (!boost::filesystem::exists(source, ec) 
+                    || !boost::filesystem::is_directory(source, ec)) {
+            return ERRORCODE(-1, "%s donot exist", source.c_str());
+        }
+
+        if (!boost::filesystem::exists(target, ec) 
+                    && !baidu::galaxy::file::create_directories(target, ec)) {
+            return ERRORCODE(-1, "%s does not exist, or create failed: %s", ec.message().c_str());
+        }
+
+        if (!boost::filesystem::is_directory(target, ec)) {
+            return ERRORCODE(-1, "%s isnot directory", target.c_str());
+        }
+
+        baidu::galaxy::util::ErrorCode errc = MountDir(source, target);
+        if (errc.Code() != 0) {
+            return ERRORCODE(-1, "mount %s --> %s failed: %s", 
+                        source.c_str(), 
+                        target.c_str(),
+                        errc.Message().c_str());
+        }
+        return ERRORCODE_OK;
+    }
+
+    baidu::galaxy::util::ErrorCode VolumGroup::MountSharedVolum(const std::map<std::string, std::string>& sv) {
+        std::map<std::string, std::string>::const_iterator iter = sv.begin();
+        while (iter != sv.end()) {
+            std::string source = iter->first;
+            std::string container_path = baidu::galaxy::path::ContainerRootPath(container_id_);
+            boost::filesystem::path path(container_path);
+            path.append(iter->second);
+            std::string target = path.string();
+
+            baidu::galaxy::util::ErrorCode ec = MountDir_(source, target);
+            if (ec.Code() != 0) {
+                return ERRORCODE(-1, "mount shared volum failed: %s", ec.Message().c_str());
+            }
+            std::cout << "mount shared volum successfully: " << source << " --> " << target << std::endl;
+            iter++;
+        }
+        return ERRORCODE_OK;
+    }
 
 }
 }

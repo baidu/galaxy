@@ -31,7 +31,7 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Construct()
     boost::filesystem::path source_path(this->SourcePath());
 
     if (!boost::filesystem::exists(source_path, ec)
-            && !boost::filesystem::create_directories(source_path, ec)) {
+            && !baidu::galaxy::file::create_directories(source_path, ec)) {
         return ERRORCODE(-1, "failed in creating dir(%s): %s",
                 source_path.string().c_str(),
                 ec.message().c_str());
@@ -40,7 +40,7 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Construct()
     boost::filesystem::path target_path(this->TargetPath());
 
     if (!boost::filesystem::exists(target_path.parent_path(), ec)
-            && !boost::filesystem::create_directories(target_path.parent_path(), ec)) {
+            && !baidu::galaxy::file::create_directories(target_path.parent_path(), ec)) {
         return ERRORCODE(-1,
                 "failed in creating dir(%s): %s",
                 target_path.parent_path().string().c_str(),

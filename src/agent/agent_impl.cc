@@ -187,17 +187,54 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     ai->set_start_time(start_time_);
     ai->set_version(version_);
 
+
+    bool full_report = false;
+    if (request->has_full_report() && request->full_report()) {
+        full_report = true;
+    }
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > cis;
+    cm_->ListContainers(cis, full_report);
+
+    for (size_t i = 0; i < cis.size(); i++) {
+        ai->add_container_info()->CopyFrom(*(cis[i]));
+    }
+
+    int64_t cpu_used = 0L;
+    int64_t memory_used = 0L;
+    int64_t memory_volum_used = 0L;
+    // calculate used resource
+
+    std::map<std::string, int64_t> volum_used;
+    for (size_t i = 0; i < cis.size(); i++) {
+        cpu_used += cis[i]->cpu_used();
+        memory_used += cis[i]->memory_used();
+
+        for (int j = 0; j < cis[i]->volum_used_size(); j++) {
+            if (cis[i]->volum_used(j).medium() == baidu::galaxy::proto::kTmpfs) {
+                memory_volum_used += cis[i]->volum_used(j).used_size();
+            }
+
+            std::string dp = cis[i]->volum_used(j).device_path();
+            std::map<std::string, int64_t> ::iterator iter = volum_used.find(dp);
+            if (iter == volum_used.end()) {
+                volum_used[dp] = cis[i]->volum_used(j).used_size();
+            } else {
+                iter->second += cis[i]->volum_used(j).used_size();
+            }
+
+        }
+    }
+    
     baidu::galaxy::proto::Resource* cpu_resource = ai->mutable_cpu_resource();
     cpu_resource->CopyFrom(*(rm_->GetCpuResource()));
-    //cpu_resource->set_used(0);
+    cpu_resource->set_used(cpu_used);
 
     baidu::galaxy::proto::Resource* memory_resource = ai->mutable_memory_resource();
     memory_resource->CopyFrom(*(rm_->GetMemoryResource()));
-    //memory_resource->set_used(0);
+    memory_resource->set_used(memory_used + memory_volum_used);
 
     std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> > vrs;
     rm_->GetVolumResource(vrs);
-
     for (size_t i = 0; i < vrs.size(); i++) {
         baidu::galaxy::proto::VolumResource* vr = ai->add_volum_resources();
         vr->set_device_path(vrs[i]->device_path());
@@ -205,28 +242,19 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
         baidu::galaxy::proto::Resource* r = vr->mutable_volum();
         r->set_total(vrs[i]->volum().total());
         r->set_assigned(vrs[i]->volum().assigned());
-        //r->set_used();
-    }
 
-    //std::cerr << ai->DebugString() << std::endl;
-
-    bool full_report = false;
-    if (request->has_full_report() && request->full_report()) {
-        full_report = true;
-    }
-
-    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > cis;
-    cm_->ListContainers(cis, full_report);
-//    std::cerr << "container size: " << cis.size();
-
-    for (size_t i = 0; i < cis.size(); i++) {
-        ai->add_container_info()->CopyFrom(*(cis[i]));
+        std::map<std::string, int64_t>::const_iterator iter = volum_used.find(vrs[i]->device_path());
+        if (iter != volum_used.end()) {
+            r->set_used(iter->second);
+        } else {
+            r->set_used(0L);
+        }
     }
 
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
     ec->set_status(baidu::galaxy::proto::kOk);
-
-    //LOG(INFO) << "query:" << response->DebugString();
+    std::cerr << response->DebugString() << std::endl;
+    VLOG(10) << "query:" << response->DebugString();
     //std::cout << "query:" << response->DebugString() << std::endl;
     done->Run();
 }

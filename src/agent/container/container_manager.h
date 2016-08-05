@@ -33,15 +33,25 @@ public:
     baidu::galaxy::util::ErrorCode ReleaseContainer(const ContainerId& id);
     void ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo);
 
+    // check dependence
+    baidu::galaxy::util::ErrorCode CheckDescription(const baidu::galaxy::proto::ContainerDescription& desc);
+
 private:
+    baidu::galaxy::util::ErrorCode DependentVolums(const baidu::galaxy::proto::ContainerDescription& desc,
+                 std::map<std::string, std::string>& dv);
+    // key: source path, value: target path
+    baidu::galaxy::util::ErrorCode DependentVolums(const ContainerId& id, 
+                std::map<std::string, std::string>& volums,         // key: source; value: target
+                std::map<std::string, std::string>& check_volums);  // key: targe;  value: source, make sure uniq targe
+
     baidu::galaxy::util::ErrorCode CreateContainer_(const ContainerId& id, 
                 const baidu::galaxy::proto::ContainerDescription& desc);
 
     void KeepAliveRoutine();
     int Reload();
-    void DumpProperty(boost::shared_ptr<Container> container);
+    void DumpProperty(boost::shared_ptr<IContainer> container);
 
-    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::Container> > work_containers_;
+    std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> > work_containers_;
     //boost::scoped_ptr<baidu::common::ThreadPool> check_read_threadpool_;
     boost::shared_ptr<baidu::galaxy::resource::ResourceManager> res_man_;
     boost::mutex mutex_;

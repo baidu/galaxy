@@ -15,6 +15,7 @@
  **/
 
 #include "path_tree.h"
+#include "util/util.h"
 #include "boost/filesystem/path.hpp"
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -36,21 +37,21 @@ void SetRootPath(const std::string& root_path)
 
     boost::system::error_code ec;
     if (!boost::filesystem::exists(path, ec)
-            && !boost::filesystem::create_directories(path, ec)) {
+            && !baidu::galaxy::file::create_directories(path, ec)) {
         LOG(FATAL) << "failed in creating root path: " << path.string() << " " << ec.message();
         exit(1);
     }
 
     std::string work_dir = WorkDir();
     if (!boost::filesystem::exists(work_dir)
-            && !boost::filesystem::create_directories(work_dir, ec)) {
+            && !baidu::galaxy::file::create_directories(work_dir, ec)) {
         LOG(FATAL) << "failed in creating workdir: " << ec.message();
         exit(1);
     }
 
     std::string gc_dir = GcDir();
     if (!boost::filesystem::exists(gc_dir)
-            && !boost::filesystem::create_directories(gc_dir, ec)) {
+            && !baidu::galaxy::file::create_directories(gc_dir, ec)) {
         LOG(FATAL) << "failed in creating workdir: " << ec.message();
         exit(1);
     }

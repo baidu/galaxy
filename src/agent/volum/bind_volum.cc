@@ -5,6 +5,7 @@
 #include "protocol/galaxy.pb.h"
 #include "mounter.h"
 #include "util/user.h"
+#include "util/util.h"
 #include "glog/logging.h"
 #include "collector/collector_engine.h"
 
@@ -47,14 +48,16 @@ baidu::galaxy::util::ErrorCode BindVolum::Construct_()
     boost::system::error_code ec;
     boost::filesystem::path target_path(this->TargetPath());
 
-    if (!boost::filesystem::exists(target_path, ec) && !boost::filesystem::create_directories(target_path, ec)) {
+    if (!boost::filesystem::exists(target_path, ec) 
+                && !baidu::galaxy::file::create_directories(target_path, ec)) {
         return ERRORCODE(-1, "failed in creating dir(%s): %s",
                 target_path.string().c_str(),
                 ec.message().c_str());
     }
 
     boost::filesystem::path source_path(this->SourcePath());
-    if (!boost::filesystem::exists(source_path, ec) && !boost::filesystem::create_directories(source_path, ec)) {
+    if (!boost::filesystem::exists(source_path, ec) 
+                && !baidu::galaxy::file::create_directories(source_path, ec)) {
         return ERRORCODE(-1, "failed in creating dir(%s): %s",
                 source_path.string().c_str(),
                 ec.message().c_str());
@@ -112,7 +115,7 @@ baidu::galaxy::util::ErrorCode BindVolum::Destroy()
     }
 
     if (!boost::filesystem::exists(gc_source_path.parent_path(), ec)) {
-        boost::filesystem::create_directories(gc_source_path.parent_path(), ec);
+        baidu::galaxy::file::create_directories(gc_source_path.parent_path(), ec);
     }
 
 

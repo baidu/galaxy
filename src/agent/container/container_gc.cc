@@ -7,6 +7,7 @@
 #include "util/path_tree.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "timer.h"
 #include "boost/bind.hpp"
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -53,7 +54,8 @@ baidu::galaxy::util::ErrorCode ContainerGc::Reload() {
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode ContainerGc::Gc(const std::string& path, int64_t destroy_time) {
+baidu::galaxy::util::ErrorCode ContainerGc::Gc(const std::string& path) {
+    int64_t destroy_time = baidu::common::timer::get_micros() / 1000000L;
     boost::mutex::scoped_lock lock(mutex_);
     gc_swap_index_[path] = destroy_time + FLAGS_gc_delay_time;
     LOG(INFO) << path << " will be gc in " << destroy_time + FLAGS_gc_delay_time;
