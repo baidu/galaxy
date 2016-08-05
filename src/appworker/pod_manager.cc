@@ -312,7 +312,6 @@ int PodManager::DoStopPod() {
         if (0 != task_manager_.StopTask(task_id)) {
             LOG(WARNING) << "create task stop process fail, task:  " << task_id;
             task_manager_.CleanTask(task_id);
-            return -1;
         }
     }
 
