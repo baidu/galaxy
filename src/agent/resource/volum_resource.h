@@ -20,7 +20,8 @@ public:
     public:
         Volum() :
             total_(0),
-            assigned_(0) {}
+            assigned_(0),
+            medium_(baidu::galaxy::proto::kDisk) {}
 
         int64_t total_;
         int64_t assigned_;
