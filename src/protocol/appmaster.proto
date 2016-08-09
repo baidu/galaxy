@@ -66,6 +66,7 @@ message JobOverview {
     optional int32 fail_count = 8;
     optional int64 create_time = 9;
     optional int64 update_time = 10;
+    optional User user = 11;
 }
 
 enum UpdateAction {
@@ -152,6 +153,16 @@ message StopJobResponse {
     optional ErrorCode error_code = 1;
 }
 
+message RecoverInstanceRequest {
+    optional User user = 1;
+    optional string jobid = 2;
+    optional string podid = 3;
+}
+
+message RecoverInstanceResponse {
+    optional ErrorCode error_code = 1;
+}
+
 service AppMaster {
     //for app-worker: report & task assignment
     rpc FetchTask(FetchTaskRequest) returns (FetchTaskResponse);
@@ -167,7 +178,7 @@ service AppMaster {
     rpc RemoveJob(RemoveJobRequest) returns (RemoveJobResponse);
     rpc ListJobs(ListJobsRequest)   returns (ListJobsResponse);
     rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
-
+    rpc RecoverInstance(RecoverInstanceRequest) returns(RecoverInstanceResponse);
     //[optional]
     rpc ExecuteCmd(ExecuteCmdRequest) returns (ExecuteCmdResponse); 
     // op

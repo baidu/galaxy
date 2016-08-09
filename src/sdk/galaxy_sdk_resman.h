@@ -13,9 +13,11 @@ namespace sdk {
 
 class ResourceManager {
 public:
-    
+
     static ResourceManager* ConnectResourceManager(const std::string& nexus_addr, 
                                                    const std::string& path);
+    virtual ~ResourceManager() = 0; 
+
     //SafeMode
     virtual bool EnterSafeMode(const EnterSafeModeRequest& request, 
                                EnterSafeModeResponse* response) = 0;

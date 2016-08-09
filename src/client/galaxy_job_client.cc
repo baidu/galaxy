@@ -7,6 +7,7 @@
 
 DEFINE_string(f, "", "specify config file");
 DEFINE_string(i, "", "specify job id");
+DEFINE_string(I, "", "specify pod id");
 DEFINE_string(n, "", "specify job name");
 DEFINE_string(c, "", "specify cmd");
 DEFINE_int32(t, 0, "specify task num or update breakpoint");
@@ -24,16 +25,18 @@ const std::string kGalaxyUsage = "galaxy_client.\n"
                                  "Usage:\n"
                                  "      galaxy_client submit -f jobconfig(json format)\n"
                                  "      galaxy_client update -f jobconfig(json format) -i id [-t breakpoint -o pause|continue|rollback]\n"
-                                 "      galaxy_client stop -i id\n"
+                                 //"      galaxy_client stop -i id\n"
                                  "      galaxy_client remove -i id\n"
                                  "      galaxy_client list [-o cpu,mem,volums]\n"
                                  "      galaxy_client show -i id [-o cpu,mem,volums -b(show meta)]\n"
+                                 "      galaxy_client recover -i id -I podid\n"
                                  "      galaxy_client exec -i id -c cmd\n"
                                  "      galaxy_client json [-i jobid -n jobname -t num_task -d num_data_volums -p num_port -a num_packages in data_package -s num_service]\n"
                                  "Options: \n"
                                  "      -f specify config file, job config file or label config file.\n"
                                  "      -c specify cmd.\n"
                                  "      -i specify job id.\n"
+                                 "      -I specify pod id.\n"
                                  "      -t specify specify task num or update breakpoint, default 0.\n"
                                  "      -d spicify data_volums num, default 1\n"
                                  "      -p specify port num, default 1\n"
@@ -126,7 +129,13 @@ int main(int argc, char** argv) {
             return -1;
         }
         ok = jobAction->ShowJob(FLAGS_i, FLAGS_o, FLAGS_b);
-
+    
+    } else if (strcmp(argv[1], "recover") == 0) {
+        if (FLAGS_i.empty() || FLAGS_I.empty()) {
+            fprintf(stderr, "-i or -I needed\n");
+            return false;
+        }
+        ok = jobAction->RecoverInstance(FLAGS_i, FLAGS_I);
     } else if (strcmp(argv[1], "exec") == 0) {
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");

@@ -75,6 +75,21 @@ std::string StringAuthorityAction(const ::baidu::galaxy::sdk::AuthorityAction& a
     return result;
 }
 
+std::string StringContainerType(const ::baidu::galaxy::sdk::ContainerType& type) {
+    std::string result;
+    switch(type) {
+    case ::baidu::galaxy::sdk::kNormalContainer:
+        result = "normal";
+        break;
+    case ::baidu::galaxy::sdk::kVolumContainer:
+        result = "volum";
+        break;
+    default:
+        result = "";
+    }
+    return result;
+}
+
 std::string StringVolumMedium(const ::baidu::galaxy::sdk::VolumMedium& medium) {
     std::string result;
     switch(medium) {
@@ -375,6 +390,9 @@ std::string StringResourceError(const ::baidu::galaxy::sdk::ResourceError& error
     case ::baidu::galaxy::sdk::kTooManyPods:
         result = "kTooManyPods";
         break;
+    case ::baidu::galaxy::sdk::kNoVolumContainer:
+        result = "kNoVolumContainer";
+        break;
     default:
         result = "";
     }
@@ -527,6 +545,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     obj_str.SetString(name.c_str(), allocator);
     root.AddMember("name", obj_str, allocator);
     root.AddMember("type", "kJobService", allocator);
+    root.AddMember("volum_jobs", "", allocator);
     //root.AddMember("version", "1.0.0", allocator);
     //root.AddMember("run_user", "galaxy", allocator);
 
@@ -576,9 +595,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     }
 
     rapidjson::Value tasks(rapidjson::kArrayType);
-    if (num_tasks < 1) {
+    /*if (num_tasks < 1) {
         num_tasks = 1;
-    }
+    }*/
     for (int i = 0; i < num_tasks; ++i) {
 
         rapidjson::Value cpu(rapidjson::kObjectType);
@@ -696,7 +715,9 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         
     }
 
-    pod.AddMember("tasks", tasks, allocator);
+    if (num_tasks > 0) {
+        pod.AddMember("tasks", tasks, allocator);
+    }
     root.AddMember("pod", pod, allocator);
 
     rapidjson::StringBuffer buffer;
@@ -706,6 +727,40 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     fprintf(stdout, "%s\n", str_json.c_str());
     return true;
 }
+
+int GetLineNumber(FILE *fd, size_t offset) {
+    int line = 0;
+    char ch;
+    fseek(fd, 0, 0); //back to begin
+    bool pline = true;
+    do {
+        if (ftell(fd) == 0) {
+            pline = false;
+            fprintf(stderr, "%d: ", line + 1);
+        }
+        ch = fgetc(fd);
+        if (ch == '\n') {
+            pline = true;
+            ++line;
+        }
+        
+        fprintf(stderr, "%c", ch);
+        if (pline) {
+            pline = false;
+            fprintf(stderr, "%d: ", line + 1);
+        }
+
+        if (ftell(fd) >= (long)offset) {
+            if (ch != '\n') {
+                ++line;
+            }
+            break;
+        }
+    } while (ch != EOF);
+    
+    return line;
+}
+
 
 } // end namespace client
 } // end namespace galaxy

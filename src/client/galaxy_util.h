@@ -17,6 +17,7 @@ namespace client {
 //初始化字符串映射表
 std::string StringAuthority(const ::baidu::galaxy::sdk::Authority& authority);
 std::string StringAuthorityAction(const ::baidu::galaxy::sdk::AuthorityAction& action);
+std::string StringContainerType(const ::baidu::galaxy::sdk::ContainerType& type);
 std::string StringVolumMedium(const ::baidu::galaxy::sdk::VolumMedium& medium);
 std::string StringVolumType(const ::baidu::galaxy::sdk::VolumType& type);
 std::string StringJobType(const ::baidu::galaxy::sdk::JobType& type);
@@ -37,7 +38,7 @@ int UnitStringToByte(const std::string& input, int64_t* output);
 std::string HumanReadableString(int64_t num);
 
 //job json解析
-int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job);
+int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task = false);
 
 //时间戳转换
 std::string FormatDate(uint64_t datetime);
@@ -51,6 +52,9 @@ bool LoadAgentEndpointsFromFile(const std::string& file_name, std::vector<std::s
 //自动生成json文件
 bool GenerateJson(int num_task, int num_data_volums, int num_port, 
                   int num_data_packages, int num_services, const std::string& jobname);
+
+//根据offset返回文件的行数
+int GetLineNumber(FILE *fd, size_t offset);
 
 } //end namespace client
 } //end namespace galaxy

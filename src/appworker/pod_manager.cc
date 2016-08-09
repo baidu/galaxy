@@ -210,27 +210,33 @@ int PodManager::DoCreatePod() {
     std::vector<ServiceInfo>(pod_.services).swap(pod_.services);
 
     for (int i = 0; i < tasks_size; ++i) {
+        std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);
         int32_t services_size = pod_.desc.tasks(i).services().size();
         std::map<std::string, std::string>::iterator p_it;
 
         for (int j = 0; j < services_size; ++j) {
             const proto::Service& service = pod_.desc.tasks(i).services(j);
-            std::string port_name = service.port_name();
-            transform(port_name.begin(), port_name.end(), port_name.begin(), toupper);
-            p_it = pod_.env.task_ports[i].find(port_name);
+            std::string port = "-1";
+            if (service.has_port_name() && service.port_name() != "") {
+                std::string port_name = service.port_name();
+                transform(port_name.begin(), port_name.end(), port_name.begin(), toupper);
+                p_it = pod_.env.task_ports[i].find(port_name);
 
-            if (pod_.env.task_ports[i].end() == p_it) {
-                LOG(WARNING) << "### port not found: " << port_name;
-                continue;
+                if (pod_.env.task_ports[i].end() == p_it) {
+                    LOG(WARNING) << "### port not found: " << port_name;
+                    continue;
+                }
+                port = p_it->second;
             }
 
             ServiceInfo service_info;
             service_info.set_name(service.service_name());
             service_info.set_hostname(pod_.env.hostname);
-            service_info.set_port(p_it->second);
+            service_info.set_port(port);
             service_info.set_ip(pod_.env.ip);
             service_info.set_status(proto::kError);
             service_info.set_deploy_path(pod_.env.workspace_abspath);
+            service_info.set_task_id(task_id);
             pod_.services.push_back(service_info);
             LOG(INFO)
                     << "create task: " << i << ", "
@@ -306,7 +312,6 @@ int PodManager::DoStopPod() {
         if (0 != task_manager_.StopTask(task_id)) {
             LOG(WARNING) << "create task stop process fail, task:  " << task_id;
             task_manager_.CleanTask(task_id);
-            return -1;
         }
     }
 
@@ -669,10 +674,20 @@ void PodManager::LoopCheckPodService() {
 
     for (; it != pod_.services.end(); ++it) {
         int32_t port = boost::lexical_cast<int32_t>(it->port());
-        if (net::IsPortOpen(port)) {
-            it->set_status(proto::kOk);
-        } else {
+        // ignore port, service status follow with task.status
+        if (port < 0) {
             it->set_status(proto::kError);
+            TaskStatus task_status = proto::kTaskTerminated;
+            int ret = task_manager_.QueryTaskStatus(it->task_id(), task_status);
+            if (0 == ret && proto::kTaskRunning == task_status) {
+                it->set_status(proto::kOk);
+            }
+        } else {
+            if (net::IsPortOpen(port)) {
+                it->set_status(proto::kOk);
+            } else {
+                it->set_status(proto::kError);
+            }
         }
     }
 

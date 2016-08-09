@@ -25,6 +25,7 @@ using ::baidu::galaxy::proto::kUpdateJobContinue;
 using ::baidu::galaxy::proto::kUpdateJobStart;
 using ::baidu::galaxy::proto::kUpdateJobRollback;
 using ::baidu::galaxy::proto::kUpdateJobPause;
+using ::baidu::galaxy::proto::kNormalContainer;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
 public:
@@ -68,6 +69,10 @@ public:
                   ::google::protobuf::Closure* done);
     bool RegisterOnNexus(const std::string endpoint);
 
+    void RecoverInstance(::google::protobuf::RpcController* controller,
+                        const ::baidu::galaxy::proto::RecoverInstanceRequest* request,
+                        ::baidu::galaxy::proto::RecoverInstanceResponse* response,
+                        ::google::protobuf::Closure* done);
 private:
     void BuildContainerDescription(const JobDescription& job_desc,
                                   ::baidu::galaxy::proto::ContainerDescription* container_desc);

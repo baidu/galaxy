@@ -24,9 +24,8 @@ public:
 
 private:
     std::string path_;
-    FILE* file_;
-    bool opened_;
     int errno_; // last_erro
+    FILE* file_;
 };
 }
 }

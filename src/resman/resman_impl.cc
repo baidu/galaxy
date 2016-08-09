@@ -583,6 +583,14 @@ void ResManImpl::RemoveContainerGroup(::google::protobuf::RpcController* control
         done->Run();
         return;
     }
+    std::string top_container_group_id;
+    if (desc.container_type() == proto::kVolumContainer
+        && scheduler_->IsBeingShared(request->id(), top_container_group_id)) {
+        response->mutable_error_code()->set_status(proto::kRemoveContainerGroupFail);
+        response->mutable_error_code()->set_reason("shared by: " + top_container_group_id);
+        done->Run();
+        return;
+    }
     bool ret = RemoveObject(sContainerGroupPrefix + "/" + request->id());
     if (!ret) {
         proto::ErrorCode* err = response->mutable_error_code();
@@ -672,7 +680,19 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
     if (version_changed) {
         LOG(INFO) << "container version changed: " << new_version;
         new_meta.mutable_desc()->set_version(new_version);
+        if (old_meta.desc().container_type() == proto::kVolumContainer) {
+            response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+            response->mutable_error_code()->set_reason("volum job cant not be updated");
+            done->Run();
+            return;
+        }
     } else {
+        if (new_meta.replica() < old_meta.replica()) {
+            response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
+            response->mutable_error_code()->set_reason("volum job cant not be scale down");
+            done->Run();
+            return;
+        }
         new_meta.mutable_desc()->set_version(old_version);
     }
     scheduler_->ChangeReplica(new_meta.id(),

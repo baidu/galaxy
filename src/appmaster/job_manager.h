@@ -13,6 +13,7 @@
 #include "protocol/appmaster.pb.h"
 #include "protocol/galaxy.pb.h"
 #include "rpc/rpc_client.h"
+#include "naming/private_sdk.h"
 
 namespace baidu {
 namespace galaxy {
@@ -32,6 +33,8 @@ using ::baidu::galaxy::proto::kTerminate;
 using ::baidu::galaxy::proto::kAddAgentFail;
 using ::baidu::galaxy::proto::kSuspend;
 using ::baidu::galaxy::proto::kJobNotFound;
+using ::baidu::galaxy::proto::kPodNotFound;
+using ::baidu::galaxy::proto::kUserNotMatch;
 using ::baidu::galaxy::proto::kCreateContainerGroupFail;
 using ::baidu::galaxy::proto::kRemoveContainerGroupFail;
 using ::baidu::galaxy::proto::kUpdateContainerGroupFail;
@@ -71,6 +74,7 @@ using ::baidu::galaxy::proto::kPodTerminated;
 using ::baidu::galaxy::proto::ResMan_Stub;
 using ::baidu::galaxy::proto::User;
 using ::baidu::galaxy::proto::ServiceInfo;
+using ::baidu::galaxy::proto::User;
 
 typedef std::string JobId;
 typedef std::string Version;
@@ -90,11 +94,13 @@ struct Job {
     JobId id_;
     std::set<PodId> deploying_pods_;
     std::set<PodId> reloading_pods_;
+    std::set<PodId> recreate_pods_;
     UpdateAction action_type_;
     int64_t create_time_;
     int64_t update_time_;
     int64_t rollback_time_;
     uint32_t updated_cnt_;
+    std::map<std::string, PublicSdk*> naming_sdk_;
 };
 
 typedef boost::function<Status (Job* job, void* arg)> TransFunc;
@@ -106,7 +112,7 @@ struct FsmTrans {
 class JobManager {
 public:
     void Start();
-    Status Add(const JobId& job_id, const JobDescription& job_desc);
+    Status Add(const JobId& job_id, const JobDescription& job_desc, const User& user);
     Status Update(const JobId& job_id, const JobDescription& job_desc,
                     bool container_change);
     Status Terminate(const JobId& jobid, const User& user);
@@ -117,6 +123,8 @@ public:
 
     Status HandleFetch(const ::baidu::galaxy::proto::FetchTaskRequest* request,
                      ::baidu::galaxy::proto::FetchTaskResponse* response);
+    Status RecoverPod(const User& user, const std::string jobid, const std::string podid);
+
     void ReloadJobInfo(const JobInfo& job_info);
     void GetJobsOverview(JobOverviewList* jobs_overview);
     void SetResmanEndpoint(std::string new_endpoint);
@@ -160,6 +168,7 @@ private:
     Status PauseUpdatePod(Job* job, void* arg);
     Status TryRebuild(Job* job, PodInfo* podinfo);
     Status TryReload(Job* job, PodInfo* pod);
+    Status TryReCreate(Job* job, PodInfo* pod);
     void ReduceUpdateList(Job* job, std::string podid, PodStatus pod_status,
                             PodStatus reload_status);
     bool ReachBreakpoint(Job* job);
@@ -168,12 +177,13 @@ private:
                     Job* job);
 
     bool IsSerivceSame(const ServiceInfo& src, const ServiceInfo& dest);
-    void RefreshService(ServiceList* src, PodInfo* pod);
-    void DestroyService(ServiceList* services);
-    void EraseFormDeployList(Job* job, std::string podid);
+    void RefreshService(Job* job, ServiceList* src, PodInfo* pod);
+    void DestroyService(Job* job, PodInfo* pod);
+    void EraseFormDeployList(JobId jobid, std::string podid);
+    void EraseFormReCreateList(JobId jobid, std::string podid);
     void RebuildPods(Job* job,
                     const ::baidu::galaxy::proto::FetchTaskRequest* request);
-    void CheckDeployingAlive(std::string id, Job* job);
+    void CheckDeployingAlive(std::string id, JobId jobid);
 
 private:
     std::map<JobId, Job*> jobs_;

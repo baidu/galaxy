@@ -14,6 +14,9 @@ namespace baidu {
 namespace galaxy {
 namespace sdk {
 
+ResourceManager::~ResourceManager() {
+}
+
 class ResourceManagerImpl : public ResourceManager {
 public:
     ResourceManagerImpl(const std::string& nexus_addr, const std::string& path) : rpc_client_(NULL),
@@ -276,11 +279,13 @@ bool ResourceManagerImpl::RemoveContainerGroup(const RemoveContainerGroupRequest
         return false;
     }
 
-    if (request.id.empty()) {
+    std::string id = Strim(request.id);
+
+    if (id.empty()) {
         fprintf(stderr, "container id is needed\n");
         return false;
     }
-    pb_request.set_id(request.id);
+    pb_request.set_id(id);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveContainerGroup, 
@@ -314,12 +319,14 @@ bool ResourceManagerImpl::UpdateContainerGroup(const UpdateContainerGroupRequest
     }
     pb_request.set_replica(request.replica);
     
-    if (request.id.empty()) {
+    std::string id = Strim(request.id);
+    if (id.empty()) {
         fprintf(stderr, "container id is needed\n");
+        return false;
     }
-    pb_request.set_id(request.id);
+    pb_request.set_id(id);
 
-    if (request.interval < 0 || request.interval > 3600) {
+    if (request.interval < 0U || request.interval > 3600) {
         fprintf(stderr, "deploy interval must be greater than or equal to 0 and less than 3600\n");
         return false;
     }
@@ -361,7 +368,7 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
         return false;
     }
         
-    response->error_code.status = (::baidu::galaxy::sdk::Status)pb_response.error_code().status();
+    response->error_code.status = (baidu::galaxy::sdk::Status)pb_response.error_code().status();
     response->error_code.reason = pb_response.error_code().reason();
     if (response->error_code.status != kOk) {
         return false;
@@ -374,6 +381,7 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
         container.ready = pb_container.ready();
         container.pending = pb_container.pending();
         container.allocating = pb_container.allocating();
+        container.destroying = pb_container.destroying();
         container.cpu.total = pb_container.cpu().total();
         container.cpu.assigned = pb_container.cpu().assigned();
         container.cpu.used = pb_container.cpu().used();
@@ -394,6 +402,8 @@ bool ResourceManagerImpl::ListContainerGroups(const ListContainerGroupsRequest& 
 
         container.submit_time = pb_container.submit_time();
         container.update_time = pb_container.update_time();
+        container.user_name = pb_container.user_name();
+        container.container_type = (ContainerType)pb_container.container_type();
         response->containers.push_back(container);
     }
     return true;
@@ -409,11 +419,12 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
         return false;
     }
 
-    if (request.id.empty()) {
+    std::string id = Strim(request.id);
+    if (id.empty()) {
         fprintf(stderr, "container id is needed\n");
         return false;
     }
-    pb_request.set_id(request.id);
+    pb_request.set_id(id);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowContainerGroup, 
@@ -435,6 +446,7 @@ bool ResourceManagerImpl::ShowContainerGroup(const ShowContainerGroupRequest& re
     response->desc.cmd_line = pb_response.desc().cmd_line();
     response->desc.max_per_host = pb_response.desc().max_per_host();
     response->desc.tag = pb_response.desc().tag();
+    response->desc.container_type = (::baidu::galaxy::sdk::ContainerType)pb_response.desc().container_type();
     for (int i = 0; i < pb_response.desc().pool_names().size(); ++i) {
         response->desc.pool_names.push_back(pb_response.desc().pool_names(i));
     }
@@ -527,17 +539,20 @@ bool ResourceManagerImpl::AddAgent(const AddAgentRequest& request,
         return false;
     }
 
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
 
-    if (request.pool.empty()) {
+    std::string pool = Strim(request.pool);
+    if (pool.empty()) {
         fprintf(stderr, "pool is needed\n");
         return false;
     }
-    pb_request.set_pool(request.pool);
+    pb_request.set_pool(pool);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::AddAgent, 
@@ -562,12 +577,14 @@ bool ResourceManagerImpl::ShowAgent(const ShowAgentRequest& request, ShowAgentRe
     if (!FillUser(request.user, pb_request.mutable_user())) {
         return false;
     }
+
+    std::string endpoint = Strim(request.endpoint);
     
-    if (request.endpoint.empty()) {
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ShowAgent,
@@ -623,12 +640,13 @@ bool ResourceManagerImpl::RemoveAgent(const RemoveAgentRequest& request,
     if (!FillUser(request.user, pb_request.mutable_user())) {
         return false;
     }
-    
-    if (request.endpoint.empty()) {
+
+    std::string endpoint = Strim(request.endpoint); 
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveAgent, 
                                         &pb_request, &pb_response, 5, 1);
@@ -653,12 +671,14 @@ bool ResourceManagerImpl::OnlineAgent(const OnlineAgentRequest& request,
     if (!FillUser(request.user, pb_request.mutable_user())) {
         return false;
     }
+
+    std::string endpoint = Strim(request.endpoint);
     
-    if (request.endpoint.empty()) {
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::OnlineAgent, 
@@ -686,11 +706,12 @@ bool ResourceManagerImpl::OfflineAgent(const OfflineAgentRequest& request,
         return false;
     }
 
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::OfflineAgent, 
                                         &pb_request, &pb_response, 5, 1);
@@ -771,19 +792,22 @@ bool ResourceManagerImpl::CreateTag(const CreateTagRequest& request, CreateTagRe
         return false;
     }
 
-    if (request.tag.empty()) {
+    std::string tag = Strim(request.tag);
+
+    if (tag.empty()) {
         fprintf(stderr, "tag is needed\n");
         return false;
     }
-    pb_request.set_tag(request.tag);
+    pb_request.set_tag(tag);
 
     bool ok = true;
     for(size_t i = 0; i < request.endpoint.size(); ++i) {
-        if (request.endpoint[i].empty()) {
+        std::string endpoint = Strim(request.endpoint[i]);
+        if (endpoint.empty()) {
             ok =  false;
             break;
         }
-        pb_request.add_endpoint(request.endpoint[i]);
+        pb_request.add_endpoint(endpoint);
     }
 
     if (!ok) {
@@ -845,11 +869,12 @@ bool ResourceManagerImpl::ListAgentsByTag(const ListAgentsByTagRequest& request,
         return false;
     }
 
-    if (request.tag.empty()) {
+    std::string tag = Strim(request.tag);
+    if (tag.empty()) {
         fprintf(stderr, "tag is needed\n");
         return false;
     }
-    pb_request.set_tag(request.tag);
+    pb_request.set_tag(tag);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByTag, 
@@ -907,11 +932,12 @@ bool ResourceManagerImpl::GetTagsByAgent(const GetTagsByAgentRequest& request,
         return false;
     }
 
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::GetTagsByAgent, 
@@ -943,18 +969,19 @@ bool ResourceManagerImpl::AddAgentToPool(const AddAgentToPoolRequest& request,
         return false;
     }
     
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
     
-    if (request.pool.empty()) {
+    std::string pool = Strim(request.pool);
+    if (pool.empty()) {
         fprintf(stderr, "pool is needed\n");
         return false;
     }
-
-    pb_request.set_pool(request.pool);
+    pb_request.set_pool(pool);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::AddAgentToPool, 
@@ -981,11 +1008,12 @@ bool ResourceManagerImpl::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& 
         return false;
     }
 
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::RemoveAgentFromPool, 
@@ -1013,11 +1041,12 @@ bool ResourceManagerImpl::ListAgentsByPool(const ListAgentsByPoolRequest& reques
         return false;
     }
 
-    if (request.pool.empty()) {
+    std::string pool = Strim(request.pool);
+    if (pool.empty()) {
         fprintf(stderr, "pool is needed\n");
         return false;
     }
-    pb_request.set_pool(request.pool);
+    pb_request.set_pool(pool);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::ListAgentsByPool, 
@@ -1075,11 +1104,12 @@ bool ResourceManagerImpl::GetPoolByAgent(const GetPoolByAgentRequest& request,
         return false;
     }
     
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
     bool ok = rpc_client_->SendRequest(res_stub_, 
                                         &::baidu::galaxy::proto::ResMan_Stub::GetPoolByAgent, 
                                         &pb_request, &pb_response, 5, 1);
@@ -1136,11 +1166,12 @@ bool ResourceManagerImpl::RemoveUser(const RemoveUserRequest& request,
     ::baidu::galaxy::proto::RemoveUserRequest pb_request;
     ::baidu::galaxy::proto::RemoveUserResponse pb_response;
 
-    if (request.user.user.empty()) {
+    std::string user = Strim(request.user.user);
+    if (user.empty()) {
         fprintf(stderr, "user should not be empty\n");
         return false;
     }
-    pb_request.mutable_user()->set_user(request.user.user);
+    pb_request.mutable_user()->set_user(user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
@@ -1198,10 +1229,12 @@ bool ResourceManagerImpl::ShowUser(const ShowUserRequest& request, ShowUserRespo
     ::baidu::galaxy::proto::ShowUserRequest pb_request;
     ::baidu::galaxy::proto::ShowUserResponse pb_response;
 
-    if (!FillUser(request.user, pb_request.mutable_user())) {
-        fprintf(stderr, "user error\n");
+    std::string user = Strim(request.user.user);
+    if(user.empty()) {
+        fprintf(stderr, "user should not be empty\n");
         return false;
     }
+    pb_request.mutable_user()->set_user(user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
@@ -1252,11 +1285,12 @@ bool ResourceManagerImpl::GrantUser(const GrantUserRequest& request, GrantUserRe
     ::baidu::galaxy::proto::GrantUserRequest pb_request;
     ::baidu::galaxy::proto::GrantUserResponse pb_response;
 
-    if (request.user.user.empty()) {
+    std::string user = Strim(request.user.user);
+    if (user.empty()) {
         fprintf(stderr, "user should not be empty\n");
         return false;
     }
-    pb_request.mutable_user()->set_user(request.user.user);
+    pb_request.mutable_user()->set_user(user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
@@ -1289,11 +1323,12 @@ bool ResourceManagerImpl::AssignQuota(const AssignQuotaRequest& request,
     ::baidu::galaxy::proto::AssignQuotaRequest pb_request;
     ::baidu::galaxy::proto::AssignQuotaResponse pb_response;
     
-    if (request.user.user.empty()) {
+    std::string user = Strim(request.user.user);
+    if (user.empty()) {
         fprintf(stderr, "user should not be empty\n");
         return false;
     }
-    pb_request.mutable_user()->set_user(request.user.user);
+    pb_request.mutable_user()->set_user(user);
 
     if (!FillUser(request.admin, pb_request.mutable_admin())) {
         fprintf(stderr, "admin error\n");
@@ -1358,17 +1393,19 @@ bool ResourceManagerImpl::Preempt(const PreemptRequest& request, PreemptResponse
         return false;
     }
     
-    if (request.container_group_id.empty()) {
+    std::string id = Strim(request.container_group_id);
+    if (id.empty()) {
         fprintf(stderr, "container_group_id must not be empty\n");
         return false;
     }
-    pb_request.set_container_group_id(request.container_group_id);
+    pb_request.set_container_group_id(id);
 
-    if (request.endpoint.empty()) {
+    std::string endpoint = Strim(request.endpoint);
+    if (endpoint.empty()) {
         fprintf(stderr, "endpoint must not be empty\n");
         return false;
     }
-    pb_request.set_endpoint(request.endpoint);
+    pb_request.set_endpoint(endpoint);
 
     bool ok = rpc_client_->SendRequest(res_stub_,
                                         &::baidu::galaxy::proto::ResMan_Stub::Preempt,

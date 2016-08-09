@@ -142,7 +142,6 @@ int TaskManager::DoStartTask(const std::string& task_id) {
 
     task->status = proto::kTaskRunning;
     return 0;
-
 }
 
 int TaskManager::StartTask(const std::string& task_id) {
@@ -165,7 +164,8 @@ int TaskManager::StopTask(const std::string& task_id) {
     // save current status, for cleaning
     task->prev_status = task->status;
 
-    if (!task->desc.has_exe_package()) {
+    if (!task->desc.has_exe_package()
+            || !task->desc.exe_package().has_stop_cmd()) {
         return -1;
     }
 
@@ -304,8 +304,32 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
             return -1;
         }
 
+        // stop process has over
         if (process.status != proto::kProcessRunning) {
-            return -1;
+            // when task has no stop_cmd, then return -1
+            if (!it->second->desc.exe_package().has_stop_cmd()
+                    || it->second->desc.exe_package().stop_cmd() == "") {
+                LOG(INFO) << "task has no stop cmd, ignore main process";
+                return -1;
+            }
+
+            // if main_process run over, return -1
+            std::string main_process_id = task_id + "_main";
+            Process main_process;
+            if (0 != process_manager_.QueryProcess(main_process_id, main_process)) {
+                LOG(WARNING) << "query main process: " << main_process_id << " fail";
+                return -1;
+            }
+            if (main_process.status != proto::kProcessRunning) {
+                LOG(INFO) << "stop main process ok";
+                return -1;
+            }
+            // wait main_process for timeout after stop_process has already run over
+            int32_t now_time = common::timer::now_time();
+            if (it->second->timeout_point < now_time) {
+                LOG(WARNING) << "stop main process timeout";
+                return -1;
+            }
         } else {
             int32_t now_time = common::timer::now_time();
 
@@ -375,6 +399,21 @@ int TaskManager::ClearTasks() {
     tasks_.clear();
 
     process_manager_.ClearProcesses();
+
+    return 0;
+}
+
+int TaskManager::QueryTaskStatus(const std::string& task_id, TaskStatus& task_status) {
+    MutexLock lock(&mutex_);
+    LOG(INFO) << "query task status: " << task_id;
+    std::map<std::string, Task*>::iterator it = tasks_.find(task_id);
+
+    if (it == tasks_.end()) {
+        LOG(WARNING) << "task: " << task_id << " not exist";
+        return -1;
+    }
+
+    task_status = it->second->status;
 
     return 0;
 }

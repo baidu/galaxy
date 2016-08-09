@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <errno.h>
 #include <map>
 #include <boost/algorithm/string.hpp>
+#include "rapidjson/error/en.h"
 #include "rapidjson/document.h"
 #include "rapidjson/filereadstream.h"
 #include "galaxy_util.h"
@@ -314,12 +316,17 @@ int ParseService(const rapidjson::Value& service_json, ::baidu::galaxy::sdk::Ser
     service->service_name = service_json["service_name"].GetString();
     boost::trim(service->service_name);
 
-    if (!service_json.HasMember("port_name")) {
+    /*if (!service_json.HasMember("port_name")) {
         fprintf(stderr, "port_name is needed in service\n");
         return -1;
     }
     service->port_name = service_json["port_name"].GetString();
-    boost::trim(service->port_name);
+    boost::trim(service->port_name);*/
+
+    if (service_json.HasMember("port_name")) {
+        service->port_name = service_json["port_name"].GetString();
+        boost::trim(service->port_name);
+    }
 
     if (!service_json.HasMember("use_bns")) {
         service->use_bns = false;
@@ -529,7 +536,7 @@ int ParseTask(const rapidjson::Value& task_json, ::baidu::galaxy::sdk::TaskDescr
     return 0;
 }
 
-int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescription* pod) {
+int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescription* pod, bool jump_task = false) {
     int ok = 0;
     if (!pod_json.HasMember("workspace_volum")) {
         fprintf(stderr, "workspace_volum is required in pod\n");
@@ -572,6 +579,10 @@ int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescript
         return -1;
     }
 
+    if (jump_task) {
+        return 0;
+    }
+
     std::vector< ::baidu::galaxy::sdk::TaskDescription>& tasks = pod->tasks;
     if (!pod_json.HasMember("tasks")) {
         fprintf(stderr, "tasks is required in pod\n");
@@ -602,7 +613,7 @@ int ParsePod(const rapidjson::Value& pod_json, ::baidu::galaxy::sdk::PodDescript
 
 }
 
-int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescription* job) {
+int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task = false) {
     int ok = 0;
     //name
     if (!doc.HasMember("name")) {
@@ -650,6 +661,19 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     boost::trim(job->run_user);*/
     job->run_user = "galaxy";
 
+    if (doc.HasMember("volum_jobs")) {
+        std::string str_jobs = doc["volum_jobs"].GetString();
+        boost::trim(str_jobs);
+
+        std::vector<std::string> volum_jobs;
+        ::baidu::common::SplitString(str_jobs, ",", &volum_jobs);
+        if (volum_jobs.size() == 0) {
+            fprintf(stderr, "volum_jobs are needed in config, if you don't want this item, please wipe off\n");
+            return -1;
+        }   
+    job->volum_jobs.assign(volum_jobs.begin(), volum_jobs.end());
+    }
+
     ::baidu::galaxy::sdk::Deploy& deploy = job->deploy;
 
     //deploy
@@ -674,27 +698,33 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 
     ::baidu::galaxy::sdk::PodDescription& pod = job->pod;
     
-    ok = ParsePod(pod_json, &pod);
+    ok = ParsePod(pod_json, &pod, jump_task);
     return ok;
 }
 
-int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job) {
+int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task) {
     FILE *fd = fopen(conf.c_str(), "r");
     if (fd == NULL) {
-        fprintf(stderr, "%s is not existed\n", conf.c_str());
+        fprintf(stderr, "\nopen file [%s] error: value [%d]-->[%s]\n\n", conf.c_str(), errno, strerror(errno));
         return -1;
     }
     char buf[5120];
     rapidjson::FileReadStream frs(fd, buf, sizeof(buf));
     rapidjson::Document doc;
     doc.ParseStream<0>(frs);
+    
     if (!doc.IsObject()) {
-        fprintf(stderr, "invalid config file, %s is not a correct json format file\n", conf.c_str());
+        fprintf(stderr, "\ninvalid config file, [%s] is not a correct json format file\n", conf.c_str());
+        if (doc.HasParseError()) {
+            int line = GetLineNumber(fd, doc.GetErrorOffset());
+            fprintf(stderr, "\n\n[%s] error: %s\n", conf.c_str(), rapidjson::GetParseError_En(doc.GetParseError()));
+            fprintf(stderr, "at overview offset [%zu], at line number [%d]\n\n", doc.GetErrorOffset(), line);
+        }
         fclose(fd);
         return -1;
     }
     fclose(fd);
-    return ParseDocument(doc, job);
+    return ParseDocument(doc, job, jump_task);
 }
 
 } //end namespace client

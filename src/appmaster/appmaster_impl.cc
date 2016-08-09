@@ -104,7 +104,6 @@ void AppMasterImpl::OnLockChange(std::string lock_session_id) {
     std::string self_session_id = nexus_->GetSessionID();
     if (self_session_id != lock_session_id) {
         LOG(FATAL) << "master lost lock , die.";
-        abort();
     }
 }
 
@@ -143,12 +142,12 @@ void AppMasterImpl::CreateContainerGroupCallBack(JobDescription job_desc,
         done->Run();
         return;
     }
-    Status status = job_manager_.Add(response->id(), job_desc);
+    Status status = job_manager_.Add(response->id(), job_desc, request->user());
     if (status != proto::kOk) {
         LOG(WARNING) << "fail to add job :" << response->id() 
         << " with status " << Status_Name(status);
         submit_response->mutable_error_code()->set_status(status);
-        submit_response->mutable_error_code()->set_reason("appmaster add job error");
+        submit_response->mutable_error_code()->set_reason(Status_Name(status));
         done->Run();
         return;
     }
@@ -169,6 +168,10 @@ void AppMasterImpl::BuildContainerDescription(const ::baidu::galaxy::proto::JobD
     container_desc->set_cmd_line(FLAGS_appworker_cmdline);
     for (int i = 0; i < job_desc.deploy().pools_size(); i++) {
         container_desc->add_pool_names(job_desc.deploy().pools(i));
+    }
+    container_desc->set_container_type(kNormalContainer);
+    for (int i = 0; i < job_desc.volum_jobs_size(); i++) {
+        container_desc->add_volum_jobs(job_desc.volum_jobs(i));
     }
     container_desc->mutable_workspace_volum()->CopyFrom(job_desc.pod().workspace_volum());
     container_desc->mutable_data_volums()->CopyFrom(job_desc.pod().data_volums());
@@ -254,7 +257,7 @@ void AppMasterImpl::UpdateContainerGroupCallBack(JobDescription job_desc,
 
     if (status != proto::kOk) {
         update_response->mutable_error_code()->set_status(status);
-        update_response->mutable_error_code()->set_reason("appmaster update job error");
+        update_response->mutable_error_code()->set_reason(Status_Name(status));
         done->Run();
         return;
     }
@@ -280,7 +283,7 @@ void AppMasterImpl::RollbackContainerGroupCallBack(proto::UpdateJobResponse* rol
     Status status = job_manager_.Rollback(request->id());
     if (status != proto::kOk) {
         rollback_response->mutable_error_code()->set_status(status);
-        rollback_response->mutable_error_code()->set_reason("appmaster rollback update job error");
+        rollback_response->mutable_error_code()->set_reason(Status_Name(status));
         VLOG(10) << rollback_response->DebugString();
         done->Run();
         return;
@@ -314,7 +317,7 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         Status status = job_manager_.ContinueUpdate(request->jobid(), update_break_count);
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
-            response->mutable_error_code()->set_reason("appmaster continue update job error");
+            response->mutable_error_code()->set_reason(Status_Name(status));
             VLOG(10) << response->DebugString();
             done->Run();
             return;
@@ -326,9 +329,6 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         return;
     } else if (request->has_operate() && request->operate() == kUpdateJobRollback) {
         MutexLock lock(&resman_mutex_);
-        proto::UpdateContainerGroupRequest* container_request = new proto::UpdateContainerGroupRequest();
-        container_request->mutable_user()->CopyFrom(request->user());
-        container_request->set_id(request->jobid());
         JobDescription last_desc = job_manager_.GetLastDesc(request->jobid());
         if (!last_desc.has_name()) {
             response->mutable_error_code()->set_status(kError);
@@ -337,6 +337,11 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
             done->Run();
             return;
         }
+        
+        proto::UpdateContainerGroupRequest* container_request = new proto::UpdateContainerGroupRequest();
+        container_request->mutable_user()->CopyFrom(request->user());
+        container_request->set_id(request->jobid());
+
         container_request->set_interval(last_desc.deploy().interval());
         container_request->set_replica(last_desc.deploy().replica());
         BuildContainerDescription(last_desc, container_request->mutable_desc());
@@ -364,7 +369,7 @@ void AppMasterImpl::UpdateJob(::google::protobuf::RpcController* controller,
         Status status = job_manager_.PauseUpdate(request->jobid());
         if (status != proto::kOk) {
             response->mutable_error_code()->set_status(status);
-            response->mutable_error_code()->set_reason("appmaster pause update job error");
+            response->mutable_error_code()->set_reason(Status_Name(status));
             VLOG(10) << response->DebugString();
             done->Run();
             return;
@@ -516,6 +521,21 @@ void AppMasterImpl::FetchTask(::google::protobuf::RpcController* controller,
     return;
 }
 
+void AppMasterImpl::RecoverInstance(::google::protobuf::RpcController* controller,
+                                    const ::baidu::galaxy::proto::RecoverInstanceRequest* request,
+                                    ::baidu::galaxy::proto::RecoverInstanceResponse* response,
+                                    ::google::protobuf::Closure* done) {
+    Status status = job_manager_.RecoverPod(request->user(), request->jobid(), request->podid());
+    LOG(INFO) << "DEBUG: RecoverInstance req"
+        << request->DebugString()
+        << "DEBUG END";
+    if (status != kOk) {
+        LOG(WARNING) << "RecoverInstance failed, code: " << Status_Name(status);
+    }
+    response->mutable_error_code()->set_status(status);
+    done->Run();
+    return;
+}
 }
 }
 
