@@ -25,10 +25,10 @@ class ContainerManager {
 public:
     explicit ContainerManager(boost::shared_ptr<baidu::galaxy::resource::ResourceManager> resman);
     ~ContainerManager();
-    
+
     void Setup();
-    baidu::galaxy::util::ErrorCode CreateContainer(const ContainerId& id, 
-                const baidu::galaxy::proto::ContainerDescription& desc);
+    baidu::galaxy::util::ErrorCode CreateContainer(const ContainerId& id,
+            const baidu::galaxy::proto::ContainerDescription& desc);
 
     baidu::galaxy::util::ErrorCode ReleaseContainer(const ContainerId& id);
     void ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo);
@@ -38,14 +38,14 @@ public:
 
 private:
     baidu::galaxy::util::ErrorCode DependentVolums(const baidu::galaxy::proto::ContainerDescription& desc,
-                 std::map<std::string, std::string>& dv);
+            std::map<std::string, std::string>& dv);
     // key: source path, value: target path
-    baidu::galaxy::util::ErrorCode DependentVolums(const ContainerId& id, 
-                std::map<std::string, std::string>& volums,         // key: source; value: target
-                std::map<std::string, std::string>& check_volums);  // key: targe;  value: source, make sure uniq targe
+    baidu::galaxy::util::ErrorCode DependentVolums(const ContainerId& id,
+            std::map<std::string, std::string>& volums,         // key: source; value: target
+            std::map<std::string, std::string>& check_volums);  // key: targe;  value: source, make sure uniq targe
 
-    baidu::galaxy::util::ErrorCode CreateContainer_(const ContainerId& id, 
-                const baidu::galaxy::proto::ContainerDescription& desc);
+    baidu::galaxy::util::ErrorCode CreateContainer_(const ContainerId& id,
+            const baidu::galaxy::proto::ContainerDescription& desc);
 
     void KeepAliveRoutine();
     int Reload();

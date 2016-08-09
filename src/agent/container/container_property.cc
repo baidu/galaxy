@@ -52,9 +52,9 @@ std::string ContainerProperty::ToString() const {
         ss << "\n#data volum " << i << "\n";
         ss << data_volums_[i].ToString();
     }
-    return ss.str();
 
-   }
+    return ss.str();
+}
 }
 }
 }

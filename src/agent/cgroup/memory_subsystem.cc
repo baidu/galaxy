@@ -15,36 +15,33 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-MemorySubsystem::MemorySubsystem()
-{
+MemorySubsystem::MemorySubsystem() {
 }
 
-MemorySubsystem::~MemorySubsystem()
-{
+MemorySubsystem::~MemorySubsystem() {
 }
 
-std::string MemorySubsystem::Name()
-{
+std::string MemorySubsystem::Name() {
     return "memory";
 }
 
 
 baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix) {
     assert(NULL != metrix.get());
-
     boost::filesystem::path path(Path());
     path.append("memory.usage_in_bytes");
-
     baidu::galaxy::file::InputStreamFile in(path.string());
+
     if (!in.IsOpen()) {
         baidu::galaxy::util::ErrorCode ec = in.GetLastError();
         return ERRORCODE(-1, "open file(%s) failed: %s",
-                    path.string().c_str(),
-                    ec.Message().c_str());
+                path.string().c_str(),
+                ec.Message().c_str());
     }
 
     std::string data;
     baidu::galaxy::util::ErrorCode ec = in.ReadLine(data);
+
     if (ec.Code() != 0) {
         return ERRORCODE(-1, "read failed: %s", ec.Message().c_str());
     }
@@ -53,15 +50,14 @@ baidu::galaxy::util::ErrorCode MemorySubsystem::Collect(boost::shared_ptr<baidu:
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode MemorySubsystem::Construct()
-{
+baidu::galaxy::util::ErrorCode MemorySubsystem::Construct() {
     assert(!this->container_id_.empty());
     assert(NULL != this->cgroup_.get());
     std::string path = this->Path();
     boost::system::error_code ec;
 
-    if (!boost::filesystem::exists(path, ec) 
-                && !baidu::galaxy::file::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path, ec)
+            && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "failed in creating file %s: %s",
                 path.c_str(),
                 ec.message().c_str());
@@ -107,8 +103,7 @@ baidu::galaxy::util::ErrorCode MemorySubsystem::Construct()
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> MemorySubsystem::Clone()
-{
+boost::shared_ptr<Subsystem> MemorySubsystem::Clone() {
     boost::shared_ptr<Subsystem> ret(new MemorySubsystem());
     return ret;
 }

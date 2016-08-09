@@ -14,11 +14,11 @@ namespace baidu {
 namespace galaxy {
 
 namespace proto {
-    class ContainerMeta;
+class ContainerMeta;
 }
 
 namespace file {
-    class DictFile;
+class DictFile;
 }
 
 namespace container {
@@ -27,7 +27,7 @@ public:
     Serializer();
     ~Serializer();
     static std::string WorkKey(const std::string& group_id,
-                const std::string& container_id);
+            const std::string& container_id);
 
     baidu::galaxy::util::ErrorCode Setup(const std::string& path);
     baidu::galaxy::util::ErrorCode SerializeWork(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta);
@@ -40,7 +40,7 @@ public:
     //
     // meta must be not null as input parameter
     baidu::galaxy::util::ErrorCode Read(const std::string& key,
-                boost::shared_ptr<baidu::galaxy::proto::ContainerMeta>& meta);
+            boost::shared_ptr<baidu::galaxy::proto::ContainerMeta>& meta);
     baidu::galaxy::util::ErrorCode Delete(const std::string& key);
 private:
     boost::scoped_ptr<baidu::galaxy::file::DictFile> dictfile_;

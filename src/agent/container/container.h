@@ -59,7 +59,7 @@ private:
     int ConstructCgroup();
     int ConstructVolumGroup();
     int ConstructProcess();
-    
+
     int RunRoutine(void*);
     void ExportEnv(std::map<std::string, std::string>& env);
     void ExportEnv();

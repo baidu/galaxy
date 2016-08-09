@@ -11,7 +11,7 @@
 namespace baidu {
 namespace galaxy {
 namespace proto {
-    class CgroupMetrix;
+class CgroupMetrix;
 }
 
 namespace cgroup {

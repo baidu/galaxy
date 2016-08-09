@@ -26,24 +26,21 @@ namespace galaxy {
 namespace container {
 
 Process::Process() :
-    pid_(-1)
-{
+    pid_(-1) {
 }
 
-Process::~Process()
-{
+Process::~Process() {
 }
 
-pid_t Process::SelfPid()
-{
+pid_t Process::SelfPid() {
     return getpid();
 }
 
 
-baidu::galaxy::util::ErrorCode Process::Kill(pid_t pid)
-{
+baidu::galaxy::util::ErrorCode Process::Kill(pid_t pid) {
     int ret = ::kill(pid, SIGKILL);
     int err = errno;
+
     if (0 == ret) {
         return ERRORCODE_OK;
     }
@@ -55,20 +52,17 @@ baidu::galaxy::util::ErrorCode Process::Kill(pid_t pid)
     return PERRORCODE(-1, err, "failed in killing pid %d: ", (int)pid);
 }
 
-int Process::RedirectStderr(const std::string& path)
-{
+int Process::RedirectStderr(const std::string& path) {
     stderr_path_ = path;
     return 0;
 }
 
-int Process::RedirectStdout(const std::string& path)
-{
+int Process::RedirectStdout(const std::string& path) {
     stdout_path_ = path;
     return 0;
 }
 
-int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t flag)
-{
+int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t flag) {
     assert(!stderr_path_.empty());
     assert(!stdout_path_.empty());
     Context* context = new Context();
@@ -103,7 +97,6 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     context->self = this;
     context->routine = routine;
     context->parameter = param;
-
     const static int CLONE_FLAG = CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS | SIGCHLD;
     const static int CLONE_STACK_SIZE = 1024 * 1024;
     static char CLONE_STACK[CLONE_STACK_SIZE];
@@ -111,8 +104,8 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
             CLONE_STACK + CLONE_STACK_SIZE,
             CLONE_FLAG,
             context);
-
     int en = errno;
+
     if (pid != 0) {
         ::close(context->stdout_fd);
         ::close(context->stderr_fd);
@@ -127,18 +120,17 @@ int Process::Clone(boost::function<int (void*) > routine, void* param, int32_t f
     return pid_;
 }
 
-int Process::CloneRoutine(void* param)
-{
+int Process::CloneRoutine(void* param) {
     assert(NULL != param);
     Context* context = (Context*) param;
     assert(context->stdout_fd > 0);
     assert(context->stderr_fd > 0);
     assert(NULL != context->self);
     assert(NULL != context->routine);
-
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
     close(STDIN_FILENO);
+
     while (::dup2(context->stdout_fd, STDOUT_FILENO) == -1
             && errno == EINTR) {
     }
@@ -146,7 +138,6 @@ int Process::CloneRoutine(void* param)
     while (::dup2(context->stderr_fd, STDERR_FILENO) == -1
             && errno == EINTR) {
     }
-
 
     for (size_t i = 0; i < context->fds.size(); i++) {
         if (STDOUT_FILENO == context->fds[i]
@@ -170,19 +161,16 @@ int Process::CloneRoutine(void* param)
 
 
 
-int Process::Fork(boost::function<int (void*) > routine, void* param)
-{
+int Process::Fork(boost::function<int (void*) > routine, void* param) {
     assert(0);
     return -1;
 }
 
-pid_t Process::Pid()
-{
+pid_t Process::Pid() {
     return pid_;
 }
 
-int Process::Wait(int& status)
-{
+int Process::Wait(int& status) {
     if (pid_ <= 0) {
         return -1;
     }
@@ -194,8 +182,7 @@ int Process::Wait(int& status)
     return 0;
 }
 
-int Process::ListFds(pid_t pid, std::vector<int>& fd)
-{
+int Process::ListFds(pid_t pid, std::vector<int>& fd) {
     std::stringstream ss;
     ss << "/proc/" << (int)pid << "/fd";
     boost::filesystem::path path(ss.str());
@@ -205,9 +192,13 @@ int Process::ListFds(pid_t pid, std::vector<int>& fd)
         return -1;
     }
 
-    boost::filesystem::directory_iterator begin(path);
-    boost::filesystem::directory_iterator end;
+    boost::filesystem::directory_iterator begin(path, ec);
+    if (ec.value() != 0) {
+        return -1;
+    }
 
+    boost::filesystem::directory_iterator end;
+    //
     // exclude .. and .
     for (boost::filesystem::directory_iterator iter = begin; iter != end; iter++) {
         //std::string file_name = iter->filename();
