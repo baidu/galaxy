@@ -81,7 +81,7 @@ public:
             const baidu::galaxy::proto::ContainerDescription& desc);
 
     virtual ~IContainer();
-    
+
     static boost::shared_ptr<IContainer> NewContainer(const ContainerId& id,
             const baidu::galaxy::proto::ContainerDescription& desc);
     const ContainerId& Id() const;

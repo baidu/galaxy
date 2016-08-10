@@ -20,16 +20,13 @@ namespace resource {
 ResourceManager::ResourceManager() :
     cpu_(new CpuResource()),
     memory_(new MemoryResource()),
-    volum_(new VolumResource())
-{
+    volum_(new VolumResource()) {
 }
 
-ResourceManager::~ResourceManager()
-{
+ResourceManager::~ResourceManager() {
 }
 
-int ResourceManager::Load()
-{
+int ResourceManager::Load() {
     if (0 != cpu_->Load()) {
         LOG(WARNING) << "load cpu resource failed";
         return -1;
@@ -48,13 +45,11 @@ int ResourceManager::Load()
     return 0;
 }
 
-std::string ResourceManager::ToString()
-{
+std::string ResourceManager::ToString() {
     return "";
 }
 
-baidu::galaxy::util::ErrorCode ResourceManager::Allocate(const baidu::galaxy::proto::ContainerDescription& desc)
-{
+baidu::galaxy::util::ErrorCode ResourceManager::Allocate(const baidu::galaxy::proto::ContainerDescription& desc) {
     int64_t memroy_require = 0;
     int64_t cpu_millicores = 0;
     std::vector<const baidu::galaxy::proto::VolumRequired*> vv;
@@ -72,6 +67,7 @@ baidu::galaxy::util::ErrorCode ResourceManager::Allocate(const baidu::galaxy::pr
     }
 
     baidu::galaxy::util::ErrorCode ec = this->Allocate(vv);
+
     if (0 != ec.Code()) {
         cpu_->Release(cpu_millicores);
         memory_->Release(memroy_require);
@@ -82,13 +78,13 @@ baidu::galaxy::util::ErrorCode ResourceManager::Allocate(const baidu::galaxy::pr
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode ResourceManager::Allocate(std::vector<const baidu::galaxy::proto::VolumRequired*>& vv)
-{
+baidu::galaxy::util::ErrorCode ResourceManager::Allocate(std::vector<const baidu::galaxy::proto::VolumRequired*>& vv) {
     size_t m = 0;
-
     baidu::galaxy::util::ErrorCode ec;
+
     for (; m < vv.size(); m++) {
         ec = volum_->Allocat(*vv[m]);
+
         if (0 != ec.Code()) {
             break;
         }
@@ -98,6 +94,7 @@ baidu::galaxy::util::ErrorCode ResourceManager::Allocate(std::vector<const baidu
         for (size_t i = 0; i < m; i++) {
             volum_->Release(*vv[i]);
         }
+
         return ec;
     }
 
@@ -106,25 +103,27 @@ baidu::galaxy::util::ErrorCode ResourceManager::Allocate(std::vector<const baidu
 
 
 
-baidu::galaxy::util::ErrorCode ResourceManager::Release(const baidu::galaxy::proto::ContainerDescription& desc)
-{
+baidu::galaxy::util::ErrorCode ResourceManager::Release(const baidu::galaxy::proto::ContainerDescription& desc) {
     int64_t memroy_require = 0;
     int64_t cpu_millicores = 0;
     std::vector<const baidu::galaxy::proto::VolumRequired*> vv;
     CalResource(desc, cpu_millicores, memroy_require, vv);
     boost::mutex::scoped_lock lock(mutex_);
     int ret = cpu_->Release(cpu_millicores);
+
     if (0 != ret) {
         return ERRORCODE(-1, "release cpu resource failed");
     }
 
     ret = memory_->Release(memroy_require);
+
     if (0 != ret) {
         return ERRORCODE(-1, "release memory resource failed");
     }
 
     for (size_t i = 0; i < vv.size(); i++) {
         baidu::galaxy::util::ErrorCode ret = volum_->Release(*vv[i]);
+
         if (ret.Code() != 0) {
             return ERRORCODE(-1,
                     "release resource failed: %s",
@@ -135,14 +134,12 @@ baidu::galaxy::util::ErrorCode ResourceManager::Release(const baidu::galaxy::pro
     return ERRORCODE_OK;
 }
 
-int ResourceManager::Resource(boost::shared_ptr<void> resource)
-{
+int ResourceManager::Resource(boost::shared_ptr<void> resource) {
     assert(0);
     return -1;
 }
 
-boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetCpuResource()
-{
+boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetCpuResource() {
     uint64_t total = 0;
     uint64_t assigned = 0;
     cpu_->Resource(total, assigned);
@@ -152,8 +149,7 @@ boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetCpuResourc
     return ret;
 }
 
-boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetMemoryResource()
-{
+boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetMemoryResource() {
     uint64_t total = 0;
     uint64_t assigned = 0;
     memory_->Resource(total, assigned);
@@ -162,8 +158,7 @@ boost::shared_ptr<baidu::galaxy::proto::Resource> ResourceManager::GetMemoryReso
     ret->set_assigned(assigned);
     return ret;
 }
-void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> >& resource)
-{
+void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumResource> >& resource) {
     std::map<std::string, baidu::galaxy::resource::VolumResource::Volum> m;
     volum_->Resource(m);
     std::map<std::string, baidu::galaxy::resource::VolumResource::Volum>::iterator iter = m.begin();
@@ -183,8 +178,7 @@ void ResourceManager::GetVolumResource(std::vector<boost::shared_ptr<baidu::gala
 void ResourceManager::CalResource(const baidu::galaxy::proto::ContainerDescription& desc,
         int64_t& cpu_millicores,
         int64_t& memroy_require,
-        std::vector<const baidu::galaxy::proto::VolumRequired*>& vv)
-{
+        std::vector<const baidu::galaxy::proto::VolumRequired*>& vv) {
     cpu_millicores = 0L;
     memroy_require = 0L;
     vv.clear();

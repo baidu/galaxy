@@ -16,29 +16,25 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-CpuSubsystem::CpuSubsystem()
-{
+CpuSubsystem::CpuSubsystem() {
 }
 
-CpuSubsystem::~CpuSubsystem()
-{
+CpuSubsystem::~CpuSubsystem() {
 }
 
-std::string CpuSubsystem::Name()
-{
+std::string CpuSubsystem::Name() {
     return "cpu";
 }
 
-baidu::galaxy::util::ErrorCode CpuSubsystem::Construct()
-{
+baidu::galaxy::util::ErrorCode CpuSubsystem::Construct() {
     assert(NULL != cgroup_);
     assert(!container_id_.empty());
     const std::string cpu_path = this->Path();
     boost::filesystem::path path(cpu_path);
     boost::system::error_code ec;
 
-    if (!boost::filesystem::exists(path) 
-                && !baidu::galaxy::file::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path)
+            && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "failed in creating path %s: %s",
                 path.string().c_str(),
                 ec.message().c_str());
@@ -73,13 +69,11 @@ baidu::galaxy::util::ErrorCode CpuSubsystem::Construct()
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode CpuSubsystem::Collect(std::map<std::string, AutoValue>& stat)
-{
+baidu::galaxy::util::ErrorCode CpuSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> CpuSubsystem::Clone()
-{
+boost::shared_ptr<Subsystem> CpuSubsystem::Clone() {
     boost::shared_ptr<Subsystem> ret(new CpuSubsystem());
     return ret;
 }
