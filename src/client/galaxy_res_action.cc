@@ -1328,7 +1328,7 @@ bool ResAction::Status() {
     
     printf("cluster containers infomation\n");
     ::baidu::common::TPrinter other(3);
-    other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
+    other.AddRow(3, "total_groups", "total_containers", "in_safe_mode");
     other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
                     ::baidu::common::NumToString(response.total_containers).c_str(),
                     StringBool(response.in_safe_mode).c_str());
