@@ -278,7 +278,7 @@ void AppWorkerImpl::Quit() {
     return;
 }
 
-void AppWorkerImpl::Dump() {
+bool AppWorkerImpl::Dump() {
     MutexLock lock(&mutex_);
     LOG(WARNING) << "appworker dump for upgrading start";
     // 1.stop loops
@@ -296,23 +296,26 @@ void AppWorkerImpl::Dump() {
     appworker->set_endpoint(appmaster_endpoint_);
     // dump pod
     pod_manager_.DumpPod(appworker->mutable_pod_manager());
+    // LOG(WARNING) << "\n" << appworker->DebugString();
+
     // 3.serialize to file
     int fd = open(FLAGS_appworker_dump_file.c_str(),
                   O_CREAT | O_TRUNC | O_RDWR,
                   0644);
-    if(fd <= 0) {
-        LOG(WARNING) << "appworker dump file open failed";
-        exit(0);
+
+    bool ret = false;
+    if(fd > 0 && appworker->SerializeToFileDescriptor(fd)) {
+        ret = true;
+        LOG(WARNING) << "appworker dumped for upgrading ok";
+    } else {
+        LOG(WARNING) << "appworker dump file write failed";
     }
-    appworker->SerializeToFileDescriptor(fd);
-    LOG(WARNING) << "\n" << appworker->DebugString();
 
     delete appworker;
     appworker = NULL;
     close(fd);
-    LOG(WARNING) << "appworker dumped for upgrading ok";
 
-    return;
+    return ret;
 }
 
 void AppWorkerImpl::Load() {
@@ -362,7 +365,7 @@ void AppWorkerImpl::Load() {
     backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
     LOG(WARNING) << "appworker load for upgrading ok";
-    LOG(INFO) << "\n" << appworker->DebugString();
+    // LOG(INFO) << "\n" << appworker->DebugString();
 
     close(fd);
 }

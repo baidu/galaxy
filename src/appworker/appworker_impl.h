@@ -37,7 +37,7 @@ public:
     void Start(bool is_upgrade);
     void Quit();
     // upgrade
-    void Dump();
+    bool Dump();
     void Load();
 
 private:

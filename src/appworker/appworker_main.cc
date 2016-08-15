@@ -55,10 +55,9 @@ int main(int argc, char* argv[]) {
         if (s_quit) {
             appworker_impl->Quit();
         } else {
-            if (s_upgrade) {
+            if (s_upgrade && 0 == putenv("UPGRADE=1")) {
                 LOG(WARNING) << "appworker catch sig HUP, begin to upgrade";
-                if(0 == putenv("UPGRADE=1")) {
-                    appworker_impl->Dump();
+                if (appworker_impl->Dump()) {
                     ::execve(argv[0], argv, environ);
                     assert(false);
                 }
