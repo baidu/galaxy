@@ -296,7 +296,7 @@ bool AppWorkerImpl::Dump() {
     appworker->set_endpoint(appmaster_endpoint_);
     // dump pod
     pod_manager_.DumpPod(appworker->mutable_pod_manager());
-    // LOG(WARNING) << "\n" << appworker->DebugString();
+    LOG(WARNING) << "\n" << appworker->DebugString();
 
     // 3.serialize to file
     int fd = open(FLAGS_appworker_dump_file.c_str(),

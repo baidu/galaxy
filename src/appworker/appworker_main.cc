@@ -54,15 +54,21 @@ int main(int argc, char* argv[]) {
     while (true) {
         if (s_quit) {
             appworker_impl->Quit();
-        } else {
-            if (s_upgrade && 0 == putenv("UPGRADE=1")) {
-                LOG(WARNING) << "appworker catch sig HUP, begin to upgrade";
+        }
+
+        if (s_upgrade && 0 == setenv("UPGRADE", "1", 1)) {
+            LOG(WARNING) << "appworker catch sig HUP, begin to upgrade";
+
+            if (!baidu::galaxy::file::IsExists(argv[0])) {
+                LOG(WARNING) << "appworker binary not exist";
+            } else {
                 if (appworker_impl->Dump()) {
                     ::execve(argv[0], argv, environ);
                     assert(false);
                 }
             }
         }
+
         sleep(1);
     }
 
