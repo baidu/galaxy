@@ -63,6 +63,7 @@ public:
     int RebuildPod();
     int ReloadPod();
     int QueryPod(Pod& pod);
+    // upgrade
     int DumpPod(proto::PodManager* pod_manager);
     int LoadPod(const proto::PodManager& pod_manager);
     void StartLoop();
