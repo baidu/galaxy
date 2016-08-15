@@ -192,6 +192,13 @@ enum PodStatus {
     kPodTerminated = 10;
 }
 
+enum PodStage {
+    kPodStageCreating = 0;
+    kPodStageRebuilding = 1;
+    kPodStageReloading = 2;
+    kPodStageTerminating = 3;
+};
+
 enum ProcessStatus {
     kProcessRunning = 0;
     kProcessFinished = 1;

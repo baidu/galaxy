@@ -25,20 +25,9 @@ PodManager::PodManager() :
         background_pool_(10) {
     pod_.status = proto::kPodPending;
     pod_.reload_status = proto::kPodPending;
-    pod_.stage = kPodStageCreating;
+    pod_.stage = proto::kPodStageCreating;
     pod_.fail_count = 0;
-    background_pool_.DelayTask(
-        FLAGS_pod_manager_change_pod_status_interval,
-        boost::bind(&PodManager::LoopChangePodStatus, this)
-    );
-    background_pool_.DelayTask(
-        FLAGS_pod_manager_change_pod_status_interval,
-        boost::bind(&PodManager::LoopCheckPodService, this)
-    );
-    // background_pool_.DelayTask(
-    //     FLAGS_pod_manager_change_pod_status_interval,
-    //     boost::bind(&PodManager::LoopCheckPodHealth, this)
-    // );
+    pod_.health = proto::kOk;
 }
 
 PodManager::~PodManager() {
@@ -51,6 +40,21 @@ int PodManager::SetPodEnv(const PodEnv& pod_env) {
     pod_.pod_id = pod_env.pod_id;
 
     return 0;
+}
+
+void PodManager::StartLoop() {
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopChangePodStatus, this)
+    );
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopCheckPodService, this)
+    );
+//    background_pool_.DelayTask(
+//        FLAGS_pod_manager_change_pod_status_interval,
+//        boost::bind(&PodManager::LoopCheckPodHealth, this)
+//    );
 }
 
 int PodManager::SetPodDescription(const PodDescription& pod_desc) {
@@ -74,7 +78,7 @@ int PodManager::TerminatePod() {
         return 0;
     }
 
-    pod_.stage = kPodStageTerminating;
+    pod_.stage = proto::kPodStageTerminating;
     LOG(INFO)
             << "terminate pod, "
             << "current pod status: " << PodStatus_Name(pod_.status);
@@ -99,8 +103,13 @@ int PodManager::RebuildPod() {
         return -1;
     }
 
+    if (proto::kPodFinished == pod_.status) {
+        pod_.status = proto::kPodPending;
+        task_manager_.ClearTasks();
+    }
+
     if (proto::kPodPending != pod_.status) {
-        pod_.stage = kPodStageRebuilding;
+        pod_.stage = proto::kPodStageRebuilding;
 
         if (0 == DoStopPod()) {
             pod_.status = proto::kPodStopping;
@@ -156,6 +165,176 @@ int PodManager::QueryPod(Pod& pod) {
     return 0;
 }
 
+int PodManager::DumpPod(proto::PodManager* pod_manager) {
+    MutexLock lock(&mutex_);
+    background_pool_.Stop(false);
+
+    proto::Pod* pod = pod_manager->mutable_pod();
+    pod->set_pod_id(pod_.pod_id);
+    pod->set_status(pod_.status);
+    pod->set_reload_status(pod_.reload_status);
+    pod->set_stage(pod_.stage);
+    pod->set_fail_count(pod_.fail_count);
+    pod->mutable_desc()->CopyFrom(pod_.desc);
+    pod->set_health(pod_.health);
+    // services
+    std::vector<ServiceInfo>::iterator sit = pod_.services.begin();
+    for (; sit != pod_.services.end(); ++sit) {
+        proto::ServiceInfo* s = pod->add_services();
+        s->CopyFrom(*sit);
+    }
+
+    // env
+    proto::PodEnv* env = pod->mutable_env();
+    env->set_user(pod_.env.user);
+    env->set_workspace_path(pod_.env.workspace_path);
+    env->set_workspace_abspath(pod_.env.workspace_abspath);
+    env->set_job_id(pod_.env.job_id);
+    env->set_pod_id(pod_.env.pod_id);
+    env->set_ip(pod_.env.ip);
+    env->set_hostname(pod_.env.hostname);
+    // task_ids
+    std::vector<std::string>::iterator it;
+    it = pod_.env.task_ids.begin();
+    for (; it != pod_.env.task_ids.end(); ++it) {
+        std::string* task_id = env->add_task_ids();
+        *task_id = *it;
+    }
+    // cgroup_subsystems
+    it = pod_.env.cgroup_subsystems.begin();
+    for (; it != pod_.env.cgroup_subsystems.end(); ++it) {
+        std::string* cgroup_subsystem = env->add_cgroup_subsystems();
+        *cgroup_subsystem = *it;
+    }
+    // task_cgroup_paths
+    std::vector<std::map<std::string, std::string> >::iterator tit = \
+            pod_.env.task_cgroup_paths.begin();
+    for (; tit != pod_.env.task_cgroup_paths.end(); ++tit) {
+        std::map<std::string, std::string>::iterator tmit = tit->begin();
+        proto::CgroupPathMap* cgroup_path_map = env->add_task_cgroup_paths();
+
+        for (; tmit != tit->end(); ++tmit) {
+            proto::CgroupPath* cgroup_path = cgroup_path_map->add_cgroup_paths();
+            cgroup_path->set_cgroup(tmit->first);
+            cgroup_path->set_path(tmit->second);
+        }
+    }
+    // task_ports
+    std::vector<std::map<std::string, std::string> >::iterator pit = \
+            pod_.env.task_ports.begin();
+    for (; pit != pod_.env.task_ports.end(); ++pit) {
+        std::map<std::string, std::string>::iterator pmit = \
+            pit->begin();
+        proto::PortMap* port_map = env->add_task_ports();
+        for (; pmit != pit->end(); ++pmit) {
+            proto::Port* port = port_map->add_ports();
+            port->set_name(pmit->first);
+            port->set_port(pmit->second);
+        }
+    }
+
+    // dump task state
+    task_manager_.DumpTasks(pod_manager->mutable_task_manager());
+
+    return 0;
+}
+
+int PodManager::LoadPod(const proto::PodManager& pod_manager) {
+    MutexLock lock(&mutex_);
+    if (!pod_manager.has_pod()) {
+        return -1;
+    }
+
+    const proto::Pod& p = pod_manager.pod();
+    if (p.has_pod_id()) {
+        pod_.pod_id = p.pod_id();
+    }
+    if (p.has_status()) {
+        pod_.status = p.status();
+    }
+    if (p.has_reload_status()) {
+        pod_.reload_status = p.reload_status();
+    }
+    if (p.has_stage()) {
+        pod_.stage = p.stage();
+    }
+    if (p.has_fail_count()) {
+        pod_.fail_count = p.fail_count();
+    }
+    if (p.has_health()) {
+        pod_.health = p.health();
+    }
+    if (p.has_desc()) {
+        pod_.desc.CopyFrom(p.desc());
+    }
+    // services
+    for (int i = 0; i < p.services().size(); ++i) {
+        pod_.services.push_back(p.services(i));
+    }
+    // env
+    if (p.has_env()) {
+        const proto::PodEnv& e = p.env();
+        if (e.has_user()) {
+            pod_.env.user = e.user();
+        }
+        if (e.has_workspace_path()) {
+            pod_.env.workspace_path = e.workspace_path();
+        }
+        if (e.has_workspace_abspath()) {
+            pod_.env.workspace_abspath = e.workspace_abspath();
+        }
+        if (e.has_job_id()) {
+            pod_.env.job_id = e.job_id();
+        }
+        if (e.has_pod_id()) {
+            pod_.env.pod_id = e.pod_id();
+        }
+        if (e.has_ip()) {
+            pod_.env.ip = e.ip();
+        }
+        if (e.has_hostname()) {
+            pod_.env.hostname = e.hostname();
+        }
+        // env task_ids
+        for (int i = 0; i < e.task_ids().size(); ++i) {
+            pod_.env.task_ids.push_back(e.task_ids(i));
+        }
+        // env cgroup_subsystems
+        for (int i = 0; i < e.cgroup_subsystems().size(); ++i) {
+            pod_.env.cgroup_subsystems.push_back(e.cgroup_subsystems(i));
+        }
+        // env task_cgroup_paths
+        for (int i = 0; i < e.task_cgroup_paths().size(); ++i) {
+            const proto::CgroupPathMap& cgroup_path_map = e.task_cgroup_paths(i);
+            std::map<std::string, std::string> cgroup_paths;
+            for (int j = 0; j < cgroup_path_map.cgroup_paths().size(); ++j) {
+                cgroup_paths.insert(std::make_pair(
+                        cgroup_path_map.cgroup_paths(i).cgroup(),
+                        cgroup_path_map.cgroup_paths(i).path()));
+            }
+            pod_.env.task_cgroup_paths.push_back(cgroup_paths);
+        }
+        // env task_ports
+        for (int i = 0; i < e.task_ports().size(); ++i) {
+            const proto::PortMap& port_map = e.task_ports(i);
+            std::map<std::string, std::string> ports;
+            for (int j = 0; j < port_map.ports().size(); ++j) {
+                ports.insert(std::make_pair(
+                       port_map.ports(j).name(),
+                       port_map.ports(j).port()));
+            }
+            pod_.env.task_ports.push_back(ports);
+        }
+    }
+
+    // load task_manager
+    if (pod_manager.has_task_manager()) {
+        task_manager_.LoadTasks(pod_manager.task_manager());
+    }
+
+    return 0;
+}
+
 int PodManager::DoCreatePod() {
     mutex_.AssertHeld();
 
@@ -175,7 +354,7 @@ int PodManager::DoCreatePod() {
     }
 
     pod_.pod_id = pod_.env.pod_id;
-    pod_.stage = kPodStageCreating;
+    pod_.stage = proto::kPodStageCreating;
     pod_.fail_count = 0;
     LOG(INFO) << "create pod, task size: " << tasks_size;
 
@@ -192,10 +371,7 @@ int PodManager::DoCreatePod() {
         env.workspace_path = pod_.env.workspace_path;
         env.workspace_abspath = pod_.env.workspace_abspath;
 
-        LOG(INFO) << "task workspace: " << env.workspace_path;
-
         int ret = task_manager_.CreateTask(env, pod_.desc.tasks(i));
-
         if (0 != ret) {
             LOG(WARNING) << "create task fail, task: " << task_id;
             DoClearPod();
@@ -548,10 +724,10 @@ void PodManager::StoppingPodCheck() {
         LOG(WARNING) << "pod status change to kPodTerminated";
         pod_.status = proto::kPodTerminated;
 
-        if (kPodStageRebuilding == pod_.stage) {
+        if (proto::kPodStageRebuilding == pod_.stage) {
             LOG(WARNING) << "pod in rebuiding stage, pod status change to kPodPending";
             DoClearPod();
-            pod_.stage = kPodStageCreating;
+            pod_.stage = proto::kPodStageCreating;
             pod_.status = proto::kPodPending;
         }
     }
@@ -648,7 +824,7 @@ void PodManager::LoopChangePodReloadStatus() {
 
     case proto::kPodFinished:
         LOG(INFO) << "pod reload ok";
-        pod_.stage = kPodStageCreating;
+        pod_.stage = proto::kPodStageCreating;
         return;
 
     case proto::kPodFailed:
