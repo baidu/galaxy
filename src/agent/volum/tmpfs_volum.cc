@@ -21,24 +21,24 @@
 namespace baidu {
 namespace galaxy {
 namespace volum {
-TmpfsVolum::TmpfsVolum()
-{
+TmpfsVolum::TmpfsVolum() {
 }
 
 TmpfsVolum::~TmpfsVolum() {}
 
 baidu::galaxy::util::ErrorCode TmpfsVolum::Construct() {
     baidu::galaxy::util::ErrorCode err = Construct_();
+
     if (err.Code() == 0) {
         vc_.reset(new VolumCollector(this->TargetPath()));
         vc_->Enable(true);
         baidu::galaxy::collector::CollectorEngine::GetInstance()->Register(vc_);
     }
+
     return err;
 }
 
-baidu::galaxy::util::ErrorCode TmpfsVolum::Construct_()
-{
+baidu::galaxy::util::ErrorCode TmpfsVolum::Construct_() {
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     assert(baidu::galaxy::proto::kTmpfs == vr->medium());
     // create target dir
@@ -56,7 +56,8 @@ baidu::galaxy::util::ErrorCode TmpfsVolum::Construct_()
         return ERRORCODE(-1, "mount another path");
     }
 
-    if (!boost::filesystem::exists(target_path, ec) && !boost::filesystem::create_directories(target_path, ec)) {
+    if (!boost::filesystem::exists(target_path, ec)
+            && !baidu::galaxy::file::create_directories(target_path, ec)) {
         return ERRORCODE(-1, "failed in creating dirs(%s): %s",
                 target_path.string().c_str(),
                 ec.message().c_str());
@@ -71,26 +72,26 @@ baidu::galaxy::util::ErrorCode TmpfsVolum::Construct_()
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode TmpfsVolum::Destroy()
-{
+baidu::galaxy::util::ErrorCode TmpfsVolum::Destroy() {
     // do nothing
     if (vc_.get() != NULL) {
         vc_->Enable(false);
     }
+
     return Umount(this->TargetPath());
 }
 
-int64_t TmpfsVolum::Used()
-{
+int64_t TmpfsVolum::Used() {
     int64_t ret = 0L;
+
     if (NULL != vc_.get()) {
         ret = vc_->Size();
     }
+
     return ret;
 }
 
-std::string TmpfsVolum::ToString()
-{
+std::string TmpfsVolum::ToString() {
     return "";
 }
 

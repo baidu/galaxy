@@ -25,7 +25,7 @@ HealthChecker::HealthChecker() :
     running_(false),
     healthy_(true) {
 }
- 
+
 HealthChecker::~HealthChecker() {}
 
 bool HealthChecker::Healthy() {
@@ -53,8 +53,8 @@ void HealthChecker::LoadCgroup(const boost::shared_ptr<baidu::galaxy::cgroup::Su
 void HealthChecker::Setup() {
     assert(!volums_.empty());
     assert(!cgroups_.empty());
-
     running_ = true;
+
     if (!thread_.Start(boost::bind(&HealthChecker::CheckRoutine, this))) {
         LOG(FATAL) << "setup failed";
         assert(false);
@@ -62,7 +62,6 @@ void HealthChecker::Setup() {
 }
 
 void HealthChecker::CheckRoutine() {
-
     while (running_) {
         MMounter mounters;
         {
@@ -70,7 +69,6 @@ void HealthChecker::CheckRoutine() {
             healthy_ = true;
             last_error_ = ERRORCODE_OK;
         }
-
         baidu::galaxy::util::ErrorCode ec = baidu::galaxy::volum::ListMounters(mounters);
 
         if (ec.Code() != 0) {

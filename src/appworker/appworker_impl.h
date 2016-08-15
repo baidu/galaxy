@@ -36,7 +36,7 @@ public:
     void PrepareEnvs();
     void Start(bool is_upgrade);
     void Quit();
-    // used for hot update
+    // upgrade
     void Dump();
     void Load();
 

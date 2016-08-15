@@ -140,8 +140,6 @@ int TaskManager::DoStartTask(const std::string& task_id) {
             LOG(WARNING) << "command execute fail, command: " << context.cmd;
             return -1;
         }
-    } else {
-        LOG(WARNING) << "++++++++++++" << " no exe_package";
     }
 
     task->status = proto::kTaskRunning;
@@ -204,7 +202,6 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
     // task status switch
     std::string process_id;
     Process process;
-    LOG(INFO) << "=== task: " << task_id << ", status: " << it->second->status;
 
     switch (it->second->status) {
     case proto::kTaskDeploying: {
@@ -352,7 +349,7 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
     }
 
     task.task_id = it->second->task_id;
-    //task.desc.CopyFrom(it->second->desc);
+    task.desc.CopyFrom(it->second->desc);
     task.status = it->second->status;
     task.fail_retry_times = it->second->fail_retry_times;
 

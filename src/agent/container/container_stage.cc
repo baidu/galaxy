@@ -11,7 +11,6 @@ namespace galaxy {
 namespace container {
 
 ContainerStage::ContainerStage() {
-
 }
 
 ContainerStage::~ContainerStage() {

@@ -11,6 +11,7 @@
 
 #include "appworker_impl.h"
 #include "src/utils/setting_utils.h"
+#include "utils.h"
 
 static volatile bool s_quit = false;
 static volatile bool s_upgrade = false;
@@ -26,14 +27,17 @@ static void SignalHupHandler(int /*sig*/) {
 int main(int argc, char* argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, false);
     google::InitGoogleLogging(argv[0]);
-    baidu::galaxy::SetupLog("appworker");
+    std::string log_file = "appworker";
+    if (baidu::galaxy::file::Mkdir(".appworker")) {
+        log_file = ".appworker/appworker";
+    }
+    baidu::galaxy::SetupLog(log_file);
     google::SetStderrLogging(google::GLOG_INFO);
 
     signal(SIGTERM, SignalTermHandler);
     signal(SIGHUP, SignalHupHandler);
 
     baidu::galaxy::AppWorkerImpl* appworker_impl = new baidu::galaxy::AppWorkerImpl();
-
     // new start or upgrade
     bool is_upgrade = false;
     char* c_upgrade = getenv("UPGRADE");

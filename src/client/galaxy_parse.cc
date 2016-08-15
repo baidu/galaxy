@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <errno.h>
 #include <map>
 #include <boost/algorithm/string.hpp>
 #include "rapidjson/error/en.h"
@@ -704,7 +705,7 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
 int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescription* job, bool jump_task) {
     FILE *fd = fopen(conf.c_str(), "r");
     if (fd == NULL) {
-        fprintf(stderr, "%s is not existed\n", conf.c_str());
+        fprintf(stderr, "\nopen file [%s] error: value [%d]-->[%s]\n\n", conf.c_str(), errno, strerror(errno));
         return -1;
     }
     char buf[5120];
@@ -713,7 +714,7 @@ int BuildJobFromConfig(const std::string& conf, ::baidu::galaxy::sdk::JobDescrip
     doc.ParseStream<0>(frs);
     
     if (!doc.IsObject()) {
-        fprintf(stderr, "invalid config file, [%s] is not a correct json format file\n", conf.c_str());
+        fprintf(stderr, "\ninvalid config file, [%s] is not a correct json format file\n", conf.c_str());
         if (doc.HasParseError()) {
             int line = GetLineNumber(fd, doc.GetErrorOffset());
             fprintf(stderr, "\n\n[%s] error: %s\n", conf.c_str(), rapidjson::GetParseError_En(doc.GetParseError()));

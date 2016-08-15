@@ -18,7 +18,8 @@ DEFINE_string(volum_resource, "", "volum resource, \
 DEFINE_int64(cpu_resource, 0L, "max millicores galaxy can use");
 DEFINE_int64(memory_resource, 0L, "max memory(unit:byte) galaxy can use");
 
-
 DEFINE_string(cmd_line, "", "just for debu");
-
 DEFINE_int64(gc_delay_time, 43200, "");
+
+DEFINE_int64(volum_collect_cycle, 18000, "");
+DEFINE_int64(cgroup_collect_cycle, 5000, "");

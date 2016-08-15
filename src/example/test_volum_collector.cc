@@ -15,8 +15,10 @@
  **/
 
 #include <iostream>
-
+#include "gflags/gflags.h"
 #include "agent/volum/volum_collector.h"
+
+DECLARE_int64(volum_collect_cycle);
 
 int main(int argc, char** argv) {
     baidu::galaxy::volum::VolumCollector c(argv[1]);
