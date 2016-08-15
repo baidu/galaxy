@@ -33,7 +33,7 @@ private:
     int cycle_;
     std::string name_;
     std::string phy_path_;
-    
+
     boost::mutex mutex_;
     int64_t size_;
 };

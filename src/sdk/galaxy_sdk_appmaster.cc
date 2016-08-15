@@ -272,6 +272,7 @@ bool AppMasterImpl::ListJobs(const ListJobsRequest& request, ListJobsResponse* r
         const ::baidu::galaxy::proto::JobOverview& pb_job = pb_response.jobs(i); 
         JobOverview job;
         job.jobid = pb_job.jobid();
+        job.user = pb_job.user().user();
         job.running_num = pb_job.running_num();
         job.pending_num = pb_job.pending_num();
         job.deploying_num = pb_job.deploying_num();

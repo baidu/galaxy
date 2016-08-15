@@ -4,6 +4,7 @@
 
 #pragma once
 #include "util/error_code.h"
+#include "util/util.h"
 #include <boost/shared_ptr.hpp>
 #include <string>
 

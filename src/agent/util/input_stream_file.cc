@@ -11,7 +11,9 @@ namespace galaxy {
 namespace file {
 InputStreamFile::InputStreamFile(const std::string& path) :
     path_(path),
+    errno_(0),
     file_(NULL) {
+
     file_ = fopen(path.c_str(), "r");
     if (NULL == file_) {
         errno_ = errno;

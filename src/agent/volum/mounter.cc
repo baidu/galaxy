@@ -22,8 +22,7 @@
 namespace baidu {
 namespace galaxy {
 namespace volum {
-baidu::galaxy::util::ErrorCode MountProc(const std::string& target)
-{
+baidu::galaxy::util::ErrorCode MountProc(const std::string& target) {
     boost::filesystem::path path(target);
     boost::system::error_code ec;
 
@@ -42,8 +41,7 @@ baidu::galaxy::util::ErrorCode MountProc(const std::string& target)
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target)
-{
+baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target) {
     boost::filesystem::path source_path(source);
     boost::system::error_code ec;
 
@@ -74,8 +72,7 @@ baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::st
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly)
-{
+baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly) {
     boost::system::error_code ec;
     boost::filesystem::path target_path(target);
 
@@ -96,13 +93,11 @@ baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t si
     }
 
     LOG(INFO) << "mount tmpfs ok: " << target;
-
     return ERRORCODE_OK;
 }
 
 
-baidu::galaxy::util::ErrorCode Umount(const std::string& target_path)
-{
+baidu::galaxy::util::ErrorCode Umount(const std::string& target_path) {
     VLOG(10) << "to umount " << target_path;
     std::map<std::string, boost::shared_ptr<Mounter> > mounters;
     ListMounters(mounters);
@@ -121,18 +116,17 @@ baidu::galaxy::util::ErrorCode Umount(const std::string& target_path)
     mounters.clear();
     ListMounters(mounters);
     iter =  mounters.find(target_path);
+
     if (iter == mounters.end()) {
         LOG(INFO) << "umount successful " << target_path;
         return ERRORCODE_OK;
     }
 
     return ERRORCODE(-1, "umount path %s failed, which still exists",
-                target_path.c_str());
-
+            target_path.c_str());
 }
 
-baidu::galaxy::util::ErrorCode ListMounters(std::map<std::string, boost::shared_ptr<Mounter> >& mounters)
-{
+baidu::galaxy::util::ErrorCode ListMounters(std::map<std::string, boost::shared_ptr<Mounter> >& mounters) {
     mounters.clear();
     std::ifstream inf("/proc/mounts", std::ios::in);
 

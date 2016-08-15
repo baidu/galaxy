@@ -74,7 +74,6 @@ galaxy_client [--flagfile=flagfile]
 Usage:
       galaxy_client submit -f jobconfig(json format)
       galaxy_client update -f jobconfig(json format) -i id [-t breakpoint -o pause|continue|rollback]
-      galaxy_client stop -i id
       galaxy_client remove -i id
       galaxy_client list [-o cpu,mem,volums]
       galaxy_client show -i id [-o cpu,mem,volums]
@@ -174,12 +173,16 @@ Options:
         多断点更新：./galaxy_client update -i jobid -t 5 -o continue
         暂停更新：./galaxy_client update -i jobid -o pause
         回滚：./galaxy_client update -i jobid -o rollback
-
-### stop 停止一个job
-    参数：
-        1. -i (必选) 指定需要停止的jobid
-        2. --flagfile(可选)，指定flag文件，默认是./galaxy.flag
-    用法：./galaxy_client stop -i jobid
+    说明：
+        如果需要停止一个job且保留容器，请更新json文件中的exec_package选项中的version内容并将启动脚本内容改为下面的内容，使用命令./galaxy_client update -i jobid -f job.json
+```
+#!/bin/bash
+ 
+while true
+do
+    sleep 5
+done
+```
 
 ### remove 删除一个job
     参数：
