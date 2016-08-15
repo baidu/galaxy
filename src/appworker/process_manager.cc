@@ -284,6 +284,48 @@ int ProcessManager::RecreateProcess(const ProcessEnv& env,
     return ret;
 }
 
+int ProcessManager::DumpProcesses(proto::ProcessManager* process_manager) {
+    MutexLock scope_lock(&mutex_);
+    background_pool_.Stop(false);
+
+    std::map<std::string, Process*>::iterator it = processes_.begin();
+    for (; it != processes_.end(); ++it) {
+        proto::Process* process = process_manager->add_processes();
+        process->set_process_id(it->second->process_id);
+        process->set_pid(it->second->pid);
+        process->set_status(it->second->status);
+        process->set_exit_code(it->second->exit_code);
+        process->set_fail_retry_times(it->second->fail_retry_times);
+    }
+
+    return 0;
+}
+
+int ProcessManager::LoadProcesses(const proto::ProcessManager& process_manager) {
+    MutexLock scope_lock(&mutex_);
+    for (int i = 0; i < process_manager.processes().size(); ++i) {
+        const proto::Process& p = process_manager.processes(i);
+        Process* process = new Process();
+        if (p.has_process_id()) {
+            process->process_id = p.process_id();
+        }
+        if (p.has_pid()) {
+            process->pid = p.pid();
+        }
+        if (p.has_status()) {
+            process->status = p.status();
+        }
+        if (p.has_exit_code()) {
+            process->exit_code = p.exit_code();
+        }
+        if (p.has_fail_retry_times()) {
+            process->fail_retry_times = p.fail_retry_times();
+        }
+        processes_.insert(std::make_pair(process->process_id, process));
+    }
+    return 0;
+}
+
 void ProcessManager::LoopWaitProcesses() {
     MutexLock scope_lock(&mutex_);
     int status = 0;

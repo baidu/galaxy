@@ -26,6 +26,7 @@ DEFINE_string(appworker_workspace_abspath_env, "BAIDU_GALAXY_CONTAINER_WORKSPACE
 DEFINE_string(appworker_task_ids_env, "BAIDU_GALAXY_CONTAINER_CGROUP_IDS", "task ids env name");
 DEFINE_string(appworker_cgroup_subsystems_env, "BAIDU_GALAXY_CGROUP_SUBSYSTEMS", "cgroup subsystems env names");
 DEFINE_string(appworker_exit_file, ".exit", "appworker exit file");
+DEFINE_string(appworker_dump_file, ".dump", "appworker dump file");
 
 // pod_manager
 DEFINE_int32(pod_manager_change_pod_status_interval, 500, "pod manager check pod status change interval");

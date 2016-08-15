@@ -13,6 +13,7 @@
 #include <ins_sdk.h>
 
 #include "protocol/appmaster.pb.h"
+#include "protocol/appworker.pb.h"
 #include "rpc/rpc_client.h"
 #include "pod_manager.h"
 
@@ -33,8 +34,11 @@ public:
     AppWorkerImpl();
     ~AppWorkerImpl();
     void PrepareEnvs();
-    void Init();
+    void Start(bool is_upgrade);
     void Quit();
+    // used for hot update
+    void Dump();
+    void Load();
 
 private:
     void FetchTask();
