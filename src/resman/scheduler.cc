@@ -1146,6 +1146,9 @@ bool Scheduler::ManualSchedule(const AgentEndpoint& endpoint,
     for (it = agent_containers.rbegin();
          it != agent_containers.rend(); it++) {
         Container::Ptr poor_container = *it;
+        if (poor_container->require->container_type == proto::kVolumContainer) {
+            continue;
+        }
         if (!agent->TryPut(container_manual.get(), res_err)) {
             if (res_err == proto::kTagMismatch || res_err == proto::kPoolMismatch) {
                 fail_reason = "tag or pool mismatching";
