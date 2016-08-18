@@ -422,7 +422,7 @@ void AppWorkerImpl::FetchTask() {
 
     // exit or not, only when terminated, appworker exit
     if (proto::kPodTerminated == pod.status) {
-        LOG(INFO) << "pod terminated";
+        LOG(INFO) << "pod status is terminated";
         std::string value = boost::lexical_cast<std::string>(0);
         if (!quit_) {
             file::Write(FLAGS_appworker_exit_file, value);

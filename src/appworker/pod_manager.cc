@@ -88,11 +88,6 @@ int PodManager::RebuildPod() {
         return -1;
     }
 
-//    if (proto::kPodFinished == pod_.status) {
-//        pod_.status = proto::kPodPending;
-//        task_manager_.ClearTasks();
-//    }
-
     if (proto::kPodPending != pod_.status) {
         pod_.stage = proto::kPodStageRebuilding;
 
@@ -160,10 +155,10 @@ void PodManager::StartLoops() {
         FLAGS_pod_manager_change_pod_status_interval,
         boost::bind(&PodManager::LoopCheckPodService, this)
     );
-//    background_pool_.DelayTask(
-//        FLAGS_pod_manager_change_pod_status_interval,
-//        boost::bind(&PodManager::LoopCheckPodHealth, this)
-//    );
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopCheckPodHealth, this)
+    );
     task_manager_.StartLoops();
 }
 
@@ -909,7 +904,7 @@ void PodManager::PodHealthCheck() {
         }
     }
 
-    LOG(INFO) << "check pod health, task status: " << proto::TaskStatus_Name(task_status);
+    LOG(INFO) << "# check pod health, task status: " << proto::TaskStatus_Name(task_status);
 
     if (proto::kTaskRunning == task_status) {
         background_pool_.DelayTask(
@@ -938,7 +933,7 @@ void PodManager::PodHealthCheck() {
 
 int PodManager::DoClearPodHealthCheck() {
     mutex_.AssertHeld();
-    LOG(INFO) << "### clear pod health check";
+    LOG(INFO) << "clear pod health check";
     int tasks_size = pod_.desc.tasks().size();
     for (int i = 0; i < tasks_size; i++) {
         std::string task_id = pod_.pod_id + "_" + boost::lexical_cast<std::string>(i);

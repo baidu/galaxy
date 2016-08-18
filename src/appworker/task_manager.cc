@@ -847,7 +847,6 @@ int MakeProcessEnv(Task* task, ProcessEnv& env) {
     std::map<std::string, std::string>::iterator p_it = task->env.ports.begin();
 
     for (; p_it != task->env.ports.end(); ++p_it) {
-        LOG(INFO) << "GALAXY_PORT_" + p_it->first + "=" + p_it->second;
         env.envs.push_back("GALAXY_PORT_" + p_it->first + "=" + p_it->second);
     }
 
