@@ -49,7 +49,8 @@ int main(int argc, char* argv[]) {
             unsetenv("UPGRADE");
         }
     }
-    appworker_impl->Start(is_upgrade);
+    appworker_impl->Init(is_upgrade);
+    appworker_impl->StartLoops();
 
     while (true) {
         if (s_quit) {
@@ -61,10 +62,14 @@ int main(int argc, char* argv[]) {
 
             if (!baidu::galaxy::file::IsExists(argv[0])) {
                 LOG(WARNING) << "appworker binary not exist";
+                s_upgrade = false;
             } else {
+                appworker_impl->PauseLoops();
                 if (appworker_impl->Dump()) {
                     ::execve(argv[0], argv, environ);
-                    assert(false);
+                    // if execve fail, give up upgrade
+                    s_upgrade = false;
+                    appworker_impl->StartLoops();
                 }
             }
         }

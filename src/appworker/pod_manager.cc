@@ -42,21 +42,6 @@ int PodManager::SetPodEnv(const PodEnv& pod_env) {
     return 0;
 }
 
-void PodManager::StartLoop() {
-    background_pool_.DelayTask(
-        FLAGS_pod_manager_change_pod_status_interval,
-        boost::bind(&PodManager::LoopChangePodStatus, this)
-    );
-    background_pool_.DelayTask(
-        FLAGS_pod_manager_change_pod_status_interval,
-        boost::bind(&PodManager::LoopCheckPodService, this)
-    );
-//    background_pool_.DelayTask(
-//        FLAGS_pod_manager_change_pod_status_interval,
-//        boost::bind(&PodManager::LoopCheckPodHealth, this)
-//    );
-}
-
 int PodManager::SetPodDescription(const PodDescription& pod_desc) {
     MutexLock lock(&mutex_);
     pod_.desc.CopyFrom(pod_desc);
@@ -103,10 +88,10 @@ int PodManager::RebuildPod() {
         return -1;
     }
 
-    if (proto::kPodFinished == pod_.status) {
-        pod_.status = proto::kPodPending;
-        task_manager_.ClearTasks();
-    }
+//    if (proto::kPodFinished == pod_.status) {
+//        pod_.status = proto::kPodPending;
+//        task_manager_.ClearTasks();
+//    }
 
     if (proto::kPodPending != pod_.status) {
         pod_.stage = proto::kPodStageRebuilding;
@@ -137,8 +122,8 @@ int PodManager::ReloadPod() {
         pod_.reload_status = proto::kPodFailed;
         return -1;
     }
-    // TODO replace task desc
 
+    // TODO replace task desc
     pod_.reload_status = proto::kPodDeploying;
 
     // add change pod reload status loop
@@ -165,10 +150,32 @@ int PodManager::QueryPod(Pod& pod) {
     return 0;
 }
 
+void PodManager::StartLoops() {
+    MutexLock lock(&mutex_);
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopChangePodStatus, this)
+    );
+    background_pool_.DelayTask(
+        FLAGS_pod_manager_change_pod_status_interval,
+        boost::bind(&PodManager::LoopCheckPodService, this)
+    );
+//    background_pool_.DelayTask(
+//        FLAGS_pod_manager_change_pod_status_interval,
+//        boost::bind(&PodManager::LoopCheckPodHealth, this)
+//    );
+    task_manager_.StartLoops();
+}
+
+void PodManager::PauseLoops() {
+    MutexLock lock(&mutex_);
+    background_pool_.Stop(true);
+    task_manager_.PauseLoops();
+}
+
 int PodManager::DumpPod(proto::PodManager* pod_manager) {
     MutexLock lock(&mutex_);
-    background_pool_.Stop(false);
-
+    // dump states
     proto::Pod* pod = pod_manager->mutable_pod();
     pod->set_pod_id(pod_.pod_id);
     pod->set_status(pod_.status);
@@ -183,7 +190,6 @@ int PodManager::DumpPod(proto::PodManager* pod_manager) {
         proto::ServiceInfo* s = pod->add_services();
         s->CopyFrom(*sit);
     }
-
     // env
     proto::PodEnv* env = pod->mutable_env();
     env->set_user(pod_.env.user);
@@ -234,6 +240,7 @@ int PodManager::DumpPod(proto::PodManager* pod_manager) {
     }
 
     // dump task state
+    task_manager_.PauseLoops();
     task_manager_.DumpTasks(pod_manager->mutable_task_manager());
 
     return 0;

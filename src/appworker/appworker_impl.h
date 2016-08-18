@@ -33,12 +33,14 @@ class AppWorkerImpl {
 public:
     AppWorkerImpl();
     ~AppWorkerImpl();
-    void PrepareEnvs();
-    void Start(bool is_upgrade);
+    void ParseEnvs();
+    void Init(bool is_upgrade);
     void Quit();
     // upgrade
     bool Dump();
     void Load();
+    void StartLoops();
+    void PauseLoops();
 
 private:
     void FetchTask();

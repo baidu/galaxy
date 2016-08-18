@@ -62,6 +62,9 @@ public:
     int ClearProcesses();
     int RecreateProcess(const ProcessEnv& env,
                         const ProcessContext* context);
+    // upgrade
+    void StartLoops();
+    void PauseLoops();
     int DumpProcesses(proto::ProcessManager* process_manager);
     int LoadProcesses(const proto::ProcessManager& process_manager);
 

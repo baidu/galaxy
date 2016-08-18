@@ -68,7 +68,7 @@ AppWorkerImpl::~AppWorkerImpl() {
     backgroud_pool_.Stop(false);
 }
 
-void AppWorkerImpl::PrepareEnvs() {
+void AppWorkerImpl::ParseEnvs() {
     // 1.user
     char* c_user = getenv(FLAGS_appworker_user_env.c_str());
     if (NULL == c_user) {
@@ -248,23 +248,16 @@ void AppWorkerImpl::PrepareEnvs() {
     return;
 }
 
-void AppWorkerImpl::Start(bool is_upgrade) {
+void AppWorkerImpl::Init(bool is_upgrade) {
     if (is_upgrade) {
         Load();
     } else {
-        PrepareEnvs();
+        ParseEnvs();
     }
     LOG(INFO)
             << "appworker start, endpoint: " << endpoint_ << ", "
             << "hostname: " << hostname_ << ", "
             << "job_id: " << job_id_ << ", pod_id: " << pod_id_;
-
-    pod_manager_.StartLoop();
-
-    backgroud_pool_.DelayTask(
-        FLAGS_appworker_fetch_task_interval,
-        boost::bind(&AppWorkerImpl::FetchTask, this)
-    );
 
     return;
 }
@@ -281,9 +274,8 @@ void AppWorkerImpl::Quit() {
 bool AppWorkerImpl::Dump() {
     MutexLock lock(&mutex_);
     LOG(WARNING) << "appworker dump for upgrading start";
-    // 1.stop loops
-    backgroud_pool_.Stop(false);
-    // 2.save state
+
+    // save state
     proto::AppWorker* appworker = new proto::AppWorker;
     appworker->set_start_time(start_time_);
     appworker->set_update_time(update_time_);
@@ -294,11 +286,12 @@ bool AppWorkerImpl::Dump() {
     appworker->set_job_id(job_id_);
     appworker->set_pod_id(pod_id_);
     appworker->set_endpoint(appmaster_endpoint_);
+
     // dump pod
     pod_manager_.DumpPod(appworker->mutable_pod_manager());
     LOG(WARNING) << "\n" << appworker->DebugString();
 
-    // 3.serialize to file
+    // serialize to file
     int fd = open(FLAGS_appworker_dump_file.c_str(),
                   O_CREAT | O_TRUNC | O_RDWR,
                   0644);
@@ -319,7 +312,6 @@ bool AppWorkerImpl::Dump() {
 }
 
 void AppWorkerImpl::Load() {
-    MutexLock lock(&mutex_);
     LOG(WARNING) << "appworker load for updating start";
     // 1.serialize from file
     int fd = open(FLAGS_appworker_dump_file.c_str(), O_RDONLY);
@@ -368,6 +360,21 @@ void AppWorkerImpl::Load() {
     // LOG(INFO) << "\n" << appworker->DebugString();
 
     close(fd);
+}
+
+void AppWorkerImpl::StartLoops() {
+    MutexLock lock(&mutex_);
+    pod_manager_.StartLoops();
+    backgroud_pool_.DelayTask(
+        FLAGS_appworker_fetch_task_interval,
+        boost::bind(&AppWorkerImpl::FetchTask, this)
+    );
+}
+
+void AppWorkerImpl::PauseLoops() {
+    MutexLock lock(&mutex_);
+    backgroud_pool_.Stop(false);
+    pod_manager_.PauseLoops();
 }
 
 void AppWorkerImpl::UpdateAppMasterStub() {

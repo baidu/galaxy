@@ -405,10 +405,19 @@ int TaskManager::ClearTasks() {
     return 0;
 }
 
+void TaskManager::StartLoops() {
+    MutexLock lock(&mutex_);
+    process_manager_.StartLoops();
+}
+
+void TaskManager::PauseLoops() {
+    MutexLock lock(&mutex_);
+    process_manager_.PauseLoops();
+}
+
 int TaskManager::DumpTasks(proto::TaskManager* task_manager) {
     MutexLock lock(&mutex_);
-    background_pool_.Stop(false);
-    // set tasks
+    // dump tasks
     std::map<std::string, Task*>::iterator it = tasks_.begin();
     for (; it != tasks_.end(); ++it) {
         Task* t = it->second;

@@ -63,6 +63,8 @@ public:
     int QueryTaskStatus(const std::string& task_id, TaskStatus& task_status);
     int ClearTasks();
     // upgrade
+    void StartLoops();
+    void PauseLoops();
     int DumpTasks(proto::TaskManager* task_manager);
     int LoadTasks(const proto::TaskManager& task_manager);
     // reload

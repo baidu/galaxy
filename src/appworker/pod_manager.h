@@ -66,7 +66,8 @@ public:
     // upgrade
     int DumpPod(proto::PodManager* pod_manager);
     int LoadPod(const proto::PodManager& pod_manager);
-    void StartLoop();
+    void StartLoops();
+    void PauseLoops();
 
 private:
     int DoCreatePod();

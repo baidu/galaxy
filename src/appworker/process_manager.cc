@@ -284,9 +284,21 @@ int ProcessManager::RecreateProcess(const ProcessEnv& env,
     return ret;
 }
 
-int ProcessManager::DumpProcesses(proto::ProcessManager* process_manager) {
+void ProcessManager::StartLoops() {
+    MutexLock scope_lock(&mutex_);
+    background_pool_.DelayTask(
+        FLAGS_process_manager_loop_wait_interval,
+        boost::bind(&ProcessManager::LoopWaitProcesses, this)
+    );
+}
+
+void ProcessManager::PauseLoops() {
     MutexLock scope_lock(&mutex_);
     background_pool_.Stop(false);
+}
+
+int ProcessManager::DumpProcesses(proto::ProcessManager* process_manager) {
+    MutexLock scope_lock(&mutex_);
 
     std::map<std::string, Process*>::iterator it = processes_.begin();
     for (; it != processes_.end(); ++it) {
@@ -323,6 +335,7 @@ int ProcessManager::LoadProcesses(const proto::ProcessManager& process_manager) 
         }
         processes_.insert(std::make_pair(process->process_id, process));
     }
+
     return 0;
 }
 
