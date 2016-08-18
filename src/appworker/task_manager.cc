@@ -287,8 +287,9 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
             if (it->second->fail_retry_times < FLAGS_task_manager_task_max_fail_retry_times) {
                 LOG(INFO) << "task: " << task_id << " failed and retry";
                 it->second->fail_retry_times++;
-                DoStartTask(task_id);
-                break;
+                if (0 == DoStartTask(task_id)) {
+                    break;
+                }
             }
 
             LOG(INFO) << "task: " << task_id << " failed no retry";

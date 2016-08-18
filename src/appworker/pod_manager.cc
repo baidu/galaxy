@@ -685,7 +685,6 @@ void PodManager::RunningPodCheck() {
         if (task.status < task_status) {
             task_status = task.status;
         }
-
     }
 
     if (proto::kTaskRunning != task_status) {
