@@ -1088,7 +1088,11 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         container_group->last_sched_container_id = container->id;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
-            container->last_res_err = res_err;
+            if (container->last_res_err == proto::kResOk
+                || container->last_res_err == proto::kTagMismatch
+                || container->last_res_err == proto::kPoolMismatch) {
+                container->last_res_err = res_err;
+            }
             VLOG(10) << "try put fail: " << container->id 
                      << " agent:" << endpoint
                      << ", err:" << proto::ResourceError_Name(res_err); 
