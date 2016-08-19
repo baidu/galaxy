@@ -4,6 +4,9 @@
 
 #pragma once
 #include "util/error_code.h"
+#include <stdint.h>
+#include <vector>
+#include <string>
 
 
 namespace baidu {

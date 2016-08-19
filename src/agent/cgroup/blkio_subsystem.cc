@@ -18,27 +18,24 @@ namespace baidu {
 namespace galaxy {
 namespace cgroup {
 
-BlkioSubsystem::BlkioSubsystem()
-{
+BlkioSubsystem::BlkioSubsystem() {
 }
 
-BlkioSubsystem::~BlkioSubsystem()
-{
+BlkioSubsystem::~BlkioSubsystem() {
 }
 
-std::string BlkioSubsystem::Name()
-{
+std::string BlkioSubsystem::Name() {
     return "blkio";
 }
 
-baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct()
-{
+baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct() {
     assert(NULL != cgroup_);
     assert(!container_id_.empty());
     boost::system::error_code ec;
     boost::filesystem::path path(this->Path());
 
-    if (!boost::filesystem::exists(path, ec) && !boost::filesystem::create_directories(path, ec)) {
+    if (!boost::filesystem::exists(path, ec)
+            && !baidu::galaxy::file::create_directories(path, ec)) {
         return ERRORCODE(-1, "crate file %s failed:",
                 path.string().c_str(),
                 ec.message().c_str());
@@ -58,19 +55,16 @@ baidu::galaxy::util::ErrorCode BlkioSubsystem::Construct()
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Subsystem> BlkioSubsystem::Clone()
-{
+boost::shared_ptr<Subsystem> BlkioSubsystem::Clone() {
     boost::shared_ptr<Subsystem> ret(new BlkioSubsystem());
     return ret;
 }
 
-baidu::galaxy::util::ErrorCode BlkioSubsystem::Collect(std::map<std::string, AutoValue>& stat)
-{
+baidu::galaxy::util::ErrorCode BlkioSubsystem::Collect(std::map<std::string, AutoValue>& stat) {
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode BlkioSubsystem::GetDeviceNum(const std::string& path, int& major, int& minor)
-{
+baidu::galaxy::util::ErrorCode BlkioSubsystem::GetDeviceNum(const std::string& path, int& major, int& minor) {
     struct stat st;
 
     if (0 != ::stat(path.c_str(), &st)) {

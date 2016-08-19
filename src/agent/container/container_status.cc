@@ -17,14 +17,14 @@ std::set<baidu::galaxy::proto::ContainerStatus> ContainerStatus::kfinished_pre_s
 bool ContainerStatus::setup_ok_ = false;
 
 
-void ContainerStatus::Setup()
-{
+void ContainerStatus::Setup() {
     // kAllocating
     kallocating_pre_status_.insert(baidu::galaxy::proto::kContainerPending);
     // kReady
     kready_pre_status_.insert(baidu::galaxy::proto::kContainerPending);
     kready_pre_status_.insert(baidu::galaxy::proto::kContainerAllocating);
     kready_pre_status_.insert(baidu::galaxy::proto::kContainerReady);
+    kready_pre_status_.insert(baidu::galaxy::proto::kContainerDestroying); // delay destroy
     // kError
     kerror_pre_status_.insert(baidu::galaxy::proto::kContainerAllocating);
     kerror_pre_status_.insert(baidu::galaxy::proto::kContainerReady);
@@ -37,12 +37,10 @@ void ContainerStatus::Setup()
     kdestroying_pre_status_.insert(baidu::galaxy::proto::kContainerFinish);
     // kTerminated
     kterminated_pre_status_.insert(baidu::galaxy::proto::kContainerDestroying);
-
     // kFinished
     kfinished_pre_status_.insert(baidu::galaxy::proto::kContainerReady);
     kfinished_pre_status_.insert(baidu::galaxy::proto::kContainerAllocating);
     kfinished_pre_status_.insert(baidu::galaxy::proto::kContainerFinish);
-
     setup_ok_ = true;
 }
 
@@ -52,16 +50,13 @@ ContainerStatus::ContainerStatus(const std::string& container_id) :
     status_(baidu::galaxy::proto::kContainerPending),
     old_status_(baidu::galaxy::proto::kContainerAllocating),
     change_time_(0),
-    container_id_(container_id)
-{
+    container_id_(container_id) {
 }
 
-ContainerStatus::~ContainerStatus()
-{
+ContainerStatus::~ContainerStatus() {
 }
 
-baidu::galaxy::util::ErrorCode ContainerStatus::EnterAllocating()
-{
+baidu::galaxy::util::ErrorCode ContainerStatus::EnterAllocating() {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
 
@@ -72,31 +67,19 @@ baidu::galaxy::util::ErrorCode ContainerStatus::EnterAllocating()
     return Enter(ContainerStatus::kallocating_pre_status_, baidu::galaxy::proto::kContainerAllocating);
 }
 
-baidu::galaxy::util::ErrorCode ContainerStatus::EnterReady()
-{
+baidu::galaxy::util::ErrorCode ContainerStatus::EnterReady() {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
-
-    if (baidu::galaxy::proto::kContainerAllocating != status_
-            && baidu::galaxy::proto::kContainerReady != status_) {
-        return ERRORCODE(baidu::galaxy::util::kErrorNotAllowed, "container CANNOT change from %s to %s",
-                baidu::galaxy::proto::ContainerStatus_Name(status_).c_str(),
-                "kContainerReady"
-                                                );
-    }
-
     return Enter(kready_pre_status_, baidu::galaxy::proto::kContainerReady);
 }
 
-baidu::galaxy::util::ErrorCode ContainerStatus::EnterError()
-{
+baidu::galaxy::util::ErrorCode ContainerStatus::EnterError() {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
     return Enter(kerror_pre_status_, baidu::galaxy::proto::kContainerError);
 }
 
-baidu::galaxy::util::ErrorCode ContainerStatus::EnterDestroying()
-{
+baidu::galaxy::util::ErrorCode ContainerStatus::EnterDestroying() {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
 
@@ -109,8 +92,7 @@ baidu::galaxy::util::ErrorCode ContainerStatus::EnterDestroying()
     return Enter(kdestroying_pre_status_, baidu::galaxy::proto::kContainerDestroying);
 }
 
-baidu::galaxy::util::ErrorCode ContainerStatus::EnterTerminated()
-{
+baidu::galaxy::util::ErrorCode ContainerStatus::EnterTerminated() {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
     return Enter(kterminated_pre_status_, baidu::galaxy::proto::kContainerTerminated);
@@ -123,22 +105,22 @@ baidu::galaxy::util::ErrorCode ContainerStatus::EnterFinished() {
     return Enter(kfinished_pre_status_, baidu::galaxy::proto::kContainerFinish);
 }
 
-baidu::galaxy::util::ErrorCode  ContainerStatus::EnterErrorFrom(baidu::galaxy::proto::ContainerStatus prestatus)
-{
+baidu::galaxy::util::ErrorCode  ContainerStatus::EnterErrorFrom(baidu::galaxy::proto::ContainerStatus prestatus) {
     assert(ContainerStatus::setup_ok_);
     boost::mutex::scoped_lock lock(mutex_);
+
     if (status_ != prestatus) {
         return ERRORCODE(-1, "current status is %s, expect %s",
                 baidu::galaxy::proto::ContainerStatus_Name(status_).c_str(),
                 baidu::galaxy::proto::ContainerStatus_Name(prestatus).c_str()
                                                 );
     }
+
     return Enter(kerror_pre_status_, baidu::galaxy::proto::kContainerError);
 }
 
 baidu::galaxy::util::ErrorCode ContainerStatus::Enter(const std::set<baidu::galaxy::proto::ContainerStatus>& allow_set,
-        baidu::galaxy::proto::ContainerStatus target_status)
-{
+        baidu::galaxy::proto::ContainerStatus target_status) {
     std::set<baidu::galaxy::proto::ContainerStatus>::const_iterator iter = allow_set.find(status_);
 
     if (allow_set.end() == iter) {
@@ -156,15 +138,13 @@ baidu::galaxy::util::ErrorCode ContainerStatus::Enter(const std::set<baidu::gala
             baidu::galaxy::proto::ContainerStatus_Name(target_status).c_str());
 }
 
-baidu::galaxy::proto::ContainerStatus ContainerStatus::Status()
-{
+baidu::galaxy::proto::ContainerStatus ContainerStatus::Status() {
     boost::mutex::scoped_lock lock(mutex_);
     return status_;
 }
 
 bool ContainerStatus::CmpRetOld(const baidu::galaxy::proto::ContainerStatus status,
-        baidu::galaxy::proto::ContainerStatus* old)
-{
+        baidu::galaxy::proto::ContainerStatus* old) {
     boost::mutex::scoped_lock lock(mutex_);
 
     if (NULL != old) {

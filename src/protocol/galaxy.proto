@@ -94,11 +94,12 @@ message VolumResource {
 }
 
 message Volum {
-    optional string path = 1;
+    optional string path = 1;    // deveice_path(/home/disk1)----->(bind) path(/home/disk3)
     optional int64 used_size = 2;
     optional int64 assigned_size = 3;
     optional VolumMedium medium = 4;
     optional bool exclusive = 5;
+    optional string device_path = 6;
 }
 
 message CpuRequired {

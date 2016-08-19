@@ -4,19 +4,22 @@
 #include "volum_collector.h"
 #include "boost/filesystem/path.hpp"
 #include "boost/filesystem/operations.hpp"
+#include "gflags/gflags.h"
+
+DECLARE_int64(volum_collect_cycle);
+
 namespace baidu {
 namespace galaxy {
 namespace volum {
 VolumCollector::VolumCollector(const std::string& phy_path) :
     enable_(false),
-    cycle_(18000),
+    cycle_(FLAGS_volum_collect_cycle),
     name_(phy_path),
     phy_path_(phy_path),
     size_(0) {
 }
 
 VolumCollector::~VolumCollector() {
-
 }
 
 baidu::galaxy::util::ErrorCode VolumCollector::Collect() {
@@ -29,38 +32,40 @@ baidu::galaxy::util::ErrorCode VolumCollector::Collect() {
                 ec.message().c_str());
     }
 
-
     int64_t size = 0;
     int64_t count = 0;
     Du(path, size, count);
-
     boost::mutex::scoped_lock lock(mutex_);
     size_ = size;
     return ERRORCODE_OK;
 }
 
 void VolumCollector::Du(const boost::filesystem::path& p, int64_t& size, int64_t& count) {
-
     boost::system::error_code ec;
+
     if (boost::filesystem::is_regular(p, ec)) {
-        size =  boost::filesystem::file_size(p, ec);
-        count = 1;
+        size +=  boost::filesystem::file_size(p, ec);
+        count++;
         return;
     }
 
     boost::filesystem::directory_iterator end;
-    for (boost::filesystem::directory_iterator iter(p); iter != end; iter++) {
+    boost::filesystem::directory_iterator iter(p, ec);
+    if (ec.value() != 0) {
+        return;
+    }
+
+    for (; iter != end; iter++) {
         if (boost::filesystem::is_directory(iter->path(), ec)) {
             Du(iter->path(), size, count);
         } else if (boost::filesystem::is_symlink(iter->path(), ec)) {
             //do nothing just ingor
-        }
-        else if (boost::filesystem::is_regular(iter->path(), ec)) {
+        } else if (boost::filesystem::is_regular(iter->path(), ec)) {
             uint64_t s = boost::filesystem::file_size(iter->path(), ec);
+
             if (static_cast<uintmax_t>(-1) != s) {
                 size += s;
                 count++;
-
             }
         }
     }

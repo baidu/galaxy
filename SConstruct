@@ -54,10 +54,10 @@ env.Program('container_meta', container_meta_src)
 
 
 #example
-test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc', 'src/agent/agent_flags.cc']
+test_cpu_subsystem_src=['src/agent/cgroup/cpu_subsystem.cc', 'src/agent/cgroup/subsystem.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/util/path_tree.cc', 'src/example/test_cpu_subsystem.cc', 'src/agent/agent_flags.cc', 'src/agent/util/util.cc']
 env.Program('test_cpu_subsystem', test_cpu_subsystem_src)
 
-test_cgroup_src=Glob('src/agent/cgroup/*.cc') + ['src/example/test_cgroup.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc', 'src/agent/util/input_stream_file.cc', 'src/protocol/agent.pb.cc', 'src/agent/collector/collector_engine.cc']
+test_cgroup_src=Glob('src/agent/cgroup/*.cc') + ['src/example/test_cgroup.cc', 'src/protocol/galaxy.pb.cc', 'src/agent/agent_flags.cc', 'src/agent/util/input_stream_file.cc', 'src/protocol/agent.pb.cc', 'src/agent/collector/collector_engine.cc', 'src/agent/util/util.cc']
 env.Program('test_cgroup', test_cgroup_src)
 
 test_process_src=['src/example/test_process.cc', 'src/agent/container/process.cc']
@@ -73,6 +73,7 @@ test_galaxy_parse_src=['src/example/test_galaxy_parse.cc', 'src/client/galaxy_ut
 env.Program('test_galaxy_parse', test_galaxy_parse_src);
 
 env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
+#env.Program('test_b', ['src/example/test_boost.cc', 'src/agent/util/util.cc'])
 env.Program('test_appworker_utils', ['src/example/test_appworker_utils.cc', 'src/appworker/utils.cc'])
 
-#env.Program('test_volum_collector', ['src/example/test_volum_collector.cc', 'src/agent/volum/volum_collector.cc'])
+env.Program('test_volum_collector', ['src/example/test_volum_collector.cc', 'src/agent/volum/volum_collector.cc', 'src/agent/agent_flags.cc'])

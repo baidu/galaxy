@@ -24,22 +24,18 @@ Cgroup::Cgroup(const boost::shared_ptr<SubsystemFactory> factory) :
     factory_(factory) {
 }
 
-Cgroup::~Cgroup()
-{
+Cgroup::~Cgroup() {
 }
 
-void Cgroup::SetContainerId(const std::string& container_id)
-{
+void Cgroup::SetContainerId(const std::string& container_id) {
     container_id_ = container_id;
 }
 
-void Cgroup::SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup)
-{
+void Cgroup::SetDescrition(boost::shared_ptr<baidu::galaxy::proto::Cgroup> cgroup) {
     cgroup_ = cgroup;
 }
 
-baidu::galaxy::util::ErrorCode Cgroup::Construct()
-{
+baidu::galaxy::util::ErrorCode Cgroup::Construct() {
     assert(subsystem_.empty());
     std::vector<std::string> subsystems;
     factory_->GetSubsystems(subsystems);
@@ -61,6 +57,7 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
             } else if ("memory" == subsystems[i]) {
                 memory_ = ss;
             }
+
             subsystem_.push_back(ss);
         }
 
@@ -96,8 +93,6 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
         return ERRORCODE(-1, "");
     }
 
-
-
     collector_.reset(new CgroupCollector());
     collector_->SetCpuacctPath(cpu_acct_->Path() + "/cpuacct.stat");
     collector_->SetMemoryPath(memory_->Path() + "/memory.usage_in_bytes");
@@ -110,8 +105,7 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct()
 }
 
 // Fixme: freeze first, and than kill
-baidu::galaxy::util::ErrorCode Cgroup::Destroy()
-{
+baidu::galaxy::util::ErrorCode Cgroup::Destroy() {
     boost::mutex::scoped_lock lock(mutex_);
 
     if (collector_.get() != NULL) {
@@ -128,7 +122,7 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 
         if (0 != err.Code()) {
             return ERRORCODE(-1, "freeze failed: %s",
-                        err.Message().c_str());
+                       err.Message().c_str());
         }
 
         for (size_t i = 0; i < subsystem_.size(); i++) {
@@ -139,43 +133,42 @@ baidu::galaxy::util::ErrorCode Cgroup::Destroy()
 
         if (0 != err.Code()) {
             return ERRORCODE(-1,
-                        "thaw failed: %s",
-                        err.Message().c_str());
+                    "thaw failed: %s",
+                    err.Message().c_str());
         }
     }
 
     for (size_t i = 0; i < subsystem_.size(); i++) {
-
         baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Destroy();
 
         if (0 != ec.Code()) {
             return ERRORCODE(-1,
-                        "failed in destroying %s: %s",
-                        subsystem_[i]->Name().c_str(),
-                        ec.Message().c_str());
+                    "failed in destroying %s: %s",
+                    subsystem_[i]->Name().c_str(),
+                    ec.Message().c_str());
         }
     }
-    subsystem_.clear();
 
+    subsystem_.clear();
 
     if (NULL !=  freezer_.get()) {
         freezer_->Freeze();
         freezer_->Kill();
         freezer_->Thaw();
-
         baidu::galaxy::util::ErrorCode ec = freezer_->Destroy();
+
         if (0 != ec.Code()) {
             return ERRORCODE(-1, "failed in destroying freezer:",
                     ec.Message().c_str());
         }
+
         freezer_.reset();
     }
 
     return ERRORCODE_OK;
 }
 
-void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
-{
+void Cgroup::ExportEnv(std::map<std::string, std::string>& env) {
     std::vector<std::string> subsystems;
     factory_->GetSubsystems(subsystems);
     std::string value;
@@ -223,8 +216,7 @@ void Cgroup::ExportEnv(std::map<std::string, std::string>& env)
     env[ss.str()] = port_names;
 }
 
-std::string Cgroup::Id()
-{
+std::string Cgroup::Id() {
     return cgroup_->id();
 }
 
@@ -232,22 +224,23 @@ std::string Cgroup::Id()
 baidu::galaxy::util::ErrorCode Cgroup::Collect(boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> metrix) {
     assert(NULL != metrix);
     boost::mutex::scoped_lock lock(mutex_);
+
     for (size_t i = 0; i < subsystem_.size(); i++) {
         baidu::galaxy::util::ErrorCode ec = subsystem_[i]->Collect(metrix);
 
         if (ec.Code() != 0) {
-            return ERRORCODE(-1, "collect %s failed: %s", 
-                        subsystem_[i]->Name().c_str(),
-                        ec.Message().c_str());
+            return ERRORCODE(-1, "collect %s failed: %s",
+                    subsystem_[i]->Name().c_str(),
+                    ec.Message().c_str());
         }
     }
+
     return ERRORCODE_OK;
 }
 
 
 boost::shared_ptr<baidu::galaxy::proto::CgroupMetrix> Cgroup::Statistics() {
     return collector_->Statistics();
-    
 }
 
 }

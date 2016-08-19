@@ -15,23 +15,20 @@ namespace baidu {
 namespace galaxy {
 namespace volum {
 
-SymlinkVolum::SymlinkVolum()
-{
+SymlinkVolum::SymlinkVolum() {
 }
 
-SymlinkVolum::~SymlinkVolum()
-{
+SymlinkVolum::~SymlinkVolum() {
 }
 
 // FIX me: check link exist
-baidu::galaxy::util::ErrorCode SymlinkVolum::Construct()
-{
+baidu::galaxy::util::ErrorCode SymlinkVolum::Construct() {
     //const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     boost::system::error_code ec;
     boost::filesystem::path source_path(this->SourcePath());
 
     if (!boost::filesystem::exists(source_path, ec)
-            && !boost::filesystem::create_directories(source_path, ec)) {
+            && !baidu::galaxy::file::create_directories(source_path, ec)) {
         return ERRORCODE(-1, "failed in creating dir(%s): %s",
                 source_path.string().c_str(),
                 ec.message().c_str());
@@ -40,7 +37,7 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Construct()
     boost::filesystem::path target_path(this->TargetPath());
 
     if (!boost::filesystem::exists(target_path.parent_path(), ec)
-            && !boost::filesystem::create_directories(target_path.parent_path(), ec)) {
+            && !baidu::galaxy::file::create_directories(target_path.parent_path(), ec)) {
         return ERRORCODE(-1,
                 "failed in creating dir(%s): %s",
                 target_path.parent_path().string().c_str(),
@@ -89,8 +86,7 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Construct()
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode SymlinkVolum::Destroy()
-{
+baidu::galaxy::util::ErrorCode SymlinkVolum::Destroy() {
     boost::filesystem::path source_path(SourcePath());
     boost::filesystem::path target_path(TargetPath());
     boost::filesystem::path gc_source_path(SourceGcPath());
@@ -109,6 +105,7 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Destroy()
     }
 
     boost::filesystem::remove_all(target_path, ec);
+
     if (ec.value() != 0) {
         return ERRORCODE(-1, "failed in removing file(%s): %s",
                 target_path.c_str(),
@@ -116,6 +113,7 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Destroy()
     }
 
     boost::filesystem::create_symlink(gc_source_path, target_path, ec);
+
     if (ec.value() != 0) {
         return ERRORCODE(-1, "create_symlink(%s->%s) failed: %s",
                 gc_target_path.string().c_str(),
@@ -126,18 +124,15 @@ baidu::galaxy::util::ErrorCode SymlinkVolum::Destroy()
     return ERRORCODE_OK;
 }
 
-baidu::galaxy::util::ErrorCode SymlinkVolum::Gc()
-{
+baidu::galaxy::util::ErrorCode SymlinkVolum::Gc() {
     return ERRORCODE_OK;
 }
 
-int64_t SymlinkVolum::Used()
-{
+int64_t SymlinkVolum::Used() {
     return 0;
 }
 
-std::string SymlinkVolum::ToString()
-{
+std::string SymlinkVolum::ToString() {
     std::stringstream ss;
     ss << "Symlink: " << this->TargetPath() << " -> " << this->SourcePath() << "\t"
        << "Size: " << this->Description()->size();

@@ -22,38 +22,31 @@ namespace galaxy {
 namespace volum {
 
 Volum::Volum() :
-    gc_index_(-1)
-{
+    gc_index_(-1) {
 }
 
-Volum::~Volum()
-{
+Volum::~Volum() {
 }
 
-void Volum::SetDescription(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr)
-{
+void Volum::SetDescription(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr) {
     assert(NULL != vr.get());
     vr_ = vr;
 }
 
-void Volum::SetContainerId(const std::string& container_id)
-{
+void Volum::SetContainerId(const std::string& container_id) {
     container_id_ = container_id;
 }
 
-void Volum::SetGcIndex(int32_t index)
-{
+void Volum::SetGcIndex(int32_t index) {
     assert(index > 0);
     gc_index_ = index;
 }
 
-const std::string Volum::ContainerId() const
-{
+const std::string Volum::ContainerId() const {
     return container_id_;
 }
 
-const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Volum::Description() const
-{
+const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> Volum::Description() const {
     return vr_;
 }
 
@@ -64,15 +57,13 @@ std::string Volum::SourceRootPath() {
     return path.string();
 }
 
-std::string Volum::SourcePath()
-{
+std::string Volum::SourcePath() {
     boost::filesystem::path path(SourceRootPath());
     path.append(vr_->dest_path());
     return path.string();
 }
 
-std::string Volum::TargetPath()
-{
+std::string Volum::TargetPath() {
     boost::filesystem::path path(baidu::galaxy::path::ContainerRootPath(container_id_));
     path.append(vr_->dest_path());
     return path.string();
@@ -87,29 +78,25 @@ std::string Volum::SourceGcRootPath() {
     return path.string();
 }
 
-std::string Volum::SourceGcPath()
-{
+std::string Volum::SourceGcPath() {
     assert(gc_index_ >= 0);
     boost::filesystem::path path(SourceGcRootPath());
     path.append(vr_->dest_path());
     return path.string();
 }
 
-std::string Volum::TargetGcPath()
-{
+std::string Volum::TargetGcPath() {
     assert(gc_index_ >= 0);
     boost::filesystem::path path(baidu::galaxy::path::ContainerGcDir(ContainerId(), gc_index_));
     path.append(vr_->dest_path());
     return path.string();
 }
 
-baidu::galaxy::util::ErrorCode Volum::Destroy()
-{
+baidu::galaxy::util::ErrorCode Volum::Destroy() {
     return ERRORCODE_OK;
 }
 
-boost::shared_ptr<Volum> Volum::CreateVolum(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr)
-{
+boost::shared_ptr<Volum> Volum::CreateVolum(const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr) {
     assert(NULL != vr.get());
     boost::shared_ptr<Volum> ret;
 
