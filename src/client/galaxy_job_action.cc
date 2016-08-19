@@ -8,7 +8,7 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/filewritestream.h"
-
+#include <iostream>
 
 #include "galaxy_job_action.h"
 
@@ -1243,10 +1243,11 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     return true;
 }
     
-int JobAction::CalResPolicy(int64_t need_cpu, int64_t& need_mem, 
+int JobAction::CalResPolicy(int64_t need_cpu, int64_t need_mem, 
                       const ::baidu::galaxy::sdk::VolumRequired& workspace_volum,
                       const std::vector< ::baidu::galaxy::sdk::VolumRequired>& data_volums,
-                      const ::baidu::galaxy::sdk:: AgentStatistics& agent) {
+                      const ::baidu::galaxy::sdk:: AgentStatistics& agent,
+                      int* max_per_host) {
 
     //printf("old mem:%s\n", HumanReadableString(need_mem).c_str());
     if (agent.cpu.total - agent.cpu.assigned < need_cpu) { //cpu not enough
@@ -1270,6 +1271,16 @@ int JobAction::CalResPolicy(int64_t need_cpu, int64_t& need_mem,
     if (agent.memory.total - agent.memory.assigned < need_mem) {
         //printf("new mem:%s\n", HumanReadableString(need_mem).c_str());
         return -2;
+    }
+
+    int max_per_host_by_cpu = (agent.cpu.total - agent.cpu.assigned) / need_cpu;
+    int max_per_host_by_mem = (agent.memory.total - agent.memory.assigned) / need_mem;
+    std::cout << "cpu: " << agent.cpu.total - agent.cpu.assigned << "/" << need_cpu << "=" << max_per_host_by_cpu << std::endl;
+    std::cout << "mem: " << agent.memory.total - agent.memory.assigned << "/" << need_mem << "=" << max_per_host_by_mem << std::endl;
+    if (max_per_host_by_cpu >= max_per_host_by_mem) {
+        *max_per_host = max_per_host_by_mem;
+    } else {
+        *max_per_host = max_per_host_by_cpu;
     }
 
     return 0;
@@ -1298,6 +1309,17 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
         need_cpu += job.pod.tasks[i].cpu.milli_core;
         need_mem += job.pod.tasks[i].memory.size;
     }
+    
+    if (job.pod.workspace_volum.medium == ::baidu::galaxy::sdk::kTmpfs) {
+        need_mem += job.pod.workspace_volum.size;
+    }
+
+    for (size_t i = 0; i < job.pod.data_volums.size(); ++i) {
+        if (job.pod.data_volums[i].medium == ::baidu::galaxy::sdk::kTmpfs) {
+            need_mem += job.pod.data_volums[i].size;
+        }
+    }
+
     
     std::vector<std::string> options;
     ::baidu::common::SplitString(soptions, ",", &options);
@@ -1330,7 +1352,15 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
         int64_t count = 0;
         uint32_t ignore_tag = 0;
         uint32_t ignore_pool = 0;
+        int replica = 0;
+        int max_per_host = 0;
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            //agent not alive
+            if (response.agents[i].status == ::baidu::galaxy::sdk::kAgentAlive) {
+                continue;
+            }
+
+            //check tag
             std::string tags;
             bool tag_in = false;
             for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
@@ -1338,7 +1368,10 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
                 if (j != response.agents[i].tags.size() - 1) {
                     tags += ",";
                 }
-                if (job.deploy.tag == response.agents[i].tags[j]) {
+
+                if (job.deploy.tag.empty()) {
+                    tag_in = true;
+                } else if (!job.deploy.tag.empty() && job.deploy.tag == response.agents[i].tags[j]) {
                     tag_in = true;
                 }
             }
@@ -1347,23 +1380,31 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
                 continue;
             }
                 
+            //check pool
             if (find(job.deploy.pools.begin(), job.deploy.pools.end(), response.agents[i].pool) == job.deploy.pools.end()) {
                 ++ignore_pool;
                 continue;
             }
 
-            if (CalResPolicy(need_cpu, need_mem, job.pod.workspace_volum, job.pod.data_volums, response.agents[i]) != 0) {
+            //calculate resorce
+            int pods_on_host = 0;
+            if (CalResPolicy(need_cpu, need_mem, job.pod.workspace_volum, job.pod.data_volums, response.agents[i], &pods_on_host) != 0) {
                 continue;
             }
+            replica += pods_on_host;
+            if (pods_on_host > max_per_host) {
+                max_per_host = pods_on_host;
+            }
 
+            //cpu 
             std::string scpu;
-
             if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
                 scpu = ::baidu::common::NumToString(response.agents[i].cpu.total / 1000.0) + "/" +
                        ::baidu::common::NumToString(response.agents[i].cpu.assigned / 1000.0) + "/" +
                        ::baidu::common::NumToString(response.agents[i].cpu.used / 1000.0);
             }
 
+            //mem
             std::string smem;
             if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
 
@@ -1463,7 +1504,8 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
 
         printf("your job need cpu:[%s], memory:[%s].\n", 
                 ::baidu::common::NumToString(need_cpu/1000.0).c_str(), HumanReadableString(need_mem).c_str());
-        printf("%ld agents fit in your job.\n\n", count);
+        printf("[%ld] agents fit in your job.\n", count);
+        printf("proposal: max replica:[%d], max_per_host:[%d]\n\n", replica, max_per_host);
     } else {
         printf("List agents failed for reason %s:%s\n", 
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
