@@ -46,6 +46,7 @@ bool FillJobDescription(const JobDescription& sdk_job,
 void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescription& pb_job, JobDescription* job);
 
 std::string Strim(const std::string& str);
+bool CheckEndPoint(std::string& endpoint);
 
 } // end namespace sdk
 } // end namespace galaxy

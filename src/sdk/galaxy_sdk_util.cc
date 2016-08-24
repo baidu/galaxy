@@ -18,6 +18,44 @@ std::string Strim(const std::string& str) {
     return ::baidu::common::TrimString(str, split_symbol);
 }
 
+bool CheckNum(const int value) {
+    if (value < 0 || value > 255) {
+        return false;
+    }
+    return true;
+}
+
+bool CheckEndPoint(std::string& endpoint) {
+
+    size_t pos = endpoint.rfind(":");
+    if (pos == std::string::npos) {
+        fprintf(stderr, "endpoint format not correct, must be IP:Port\n");
+        return false;
+    }
+    std::string ip = Strim(endpoint.substr(0, pos));
+    int ip_1 = 0;
+    int ip_2 = 0;
+    int ip_3 = 0;
+    int ip_4 = 0;
+    char other = '\0';
+    int num = sscanf(ip.c_str(), "%d.%d.%d.%d%s", &ip_1, &ip_2, &ip_3, &ip_4, &other);
+    bool check_num = CheckNum(ip_1) && CheckNum(ip_2) && CheckNum(ip_3) && CheckNum(ip_4);
+    if (num != 4 || !check_num || other != '\0') {
+        fprintf(stderr, "Ip not correct\n");
+        return false;
+    }
+    std::string port = Strim(endpoint.substr(pos + 1));
+    if(port.empty() || std::string::npos != port.find_first_not_of("0123456789")) {
+        fprintf(stderr, "Port not correct\n");
+        return false;
+    }
+    endpoint = ::baidu::common::NumToString(ip_1) + "." 
+               + ::baidu::common::NumToString(ip_2) + "." 
+               + ::baidu::common::NumToString(ip_3) + "." 
+               + ::baidu::common::NumToString(ip_4) + ':' + port;
+    return true;
+}
+
 bool FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
     std::string name = Strim(sdk_user.user);
     if (name.empty()) {

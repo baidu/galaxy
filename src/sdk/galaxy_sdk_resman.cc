@@ -541,7 +541,7 @@ bool ResourceManagerImpl::AddAgent(const AddAgentRequest& request,
 
     std::string endpoint = Strim(request.endpoint);
 
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
@@ -580,7 +580,7 @@ bool ResourceManagerImpl::ShowAgent(const ShowAgentRequest& request, ShowAgentRe
 
     std::string endpoint = Strim(request.endpoint);
     
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
@@ -642,7 +642,7 @@ bool ResourceManagerImpl::RemoveAgent(const RemoveAgentRequest& request,
     }
 
     std::string endpoint = Strim(request.endpoint); 
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
@@ -674,7 +674,7 @@ bool ResourceManagerImpl::OnlineAgent(const OnlineAgentRequest& request,
 
     std::string endpoint = Strim(request.endpoint);
     
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     } 
@@ -707,7 +707,7 @@ bool ResourceManagerImpl::OfflineAgent(const OfflineAgentRequest& request,
     }
 
     std::string endpoint = Strim(request.endpoint);
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
@@ -803,7 +803,7 @@ bool ResourceManagerImpl::CreateTag(const CreateTagRequest& request, CreateTagRe
     bool ok = true;
     for(size_t i = 0; i < request.endpoint.size(); ++i) {
         std::string endpoint = Strim(request.endpoint[i]);
-        if (endpoint.empty()) {
+        if (endpoint.empty() || !CheckEndPoint(endpoint)) {
             ok =  false;
             break;
         }
@@ -933,7 +933,7 @@ bool ResourceManagerImpl::GetTagsByAgent(const GetTagsByAgentRequest& request,
     }
 
     std::string endpoint = Strim(request.endpoint);
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
@@ -970,7 +970,7 @@ bool ResourceManagerImpl::AddAgentToPool(const AddAgentToPoolRequest& request,
     }
     
     std::string endpoint = Strim(request.endpoint);
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
@@ -981,6 +981,7 @@ bool ResourceManagerImpl::AddAgentToPool(const AddAgentToPoolRequest& request,
         fprintf(stderr, "pool is needed\n");
         return false;
     }
+
     pb_request.set_pool(pool);
 
     bool ok = rpc_client_->SendRequest(res_stub_, 
@@ -1009,7 +1010,7 @@ bool ResourceManagerImpl::RemoveAgentFromPool(const RemoveAgentFromPoolRequest& 
     }
 
     std::string endpoint = Strim(request.endpoint);
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
@@ -1105,7 +1106,7 @@ bool ResourceManagerImpl::GetPoolByAgent(const GetPoolByAgentRequest& request,
     }
     
     std::string endpoint = Strim(request.endpoint);
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint is needed\n");
         return false;
     }
@@ -1401,7 +1402,7 @@ bool ResourceManagerImpl::Preempt(const PreemptRequest& request, PreemptResponse
     pb_request.set_container_group_id(id);
 
     std::string endpoint = Strim(request.endpoint);
-    if (endpoint.empty()) {
+    if (endpoint.empty() || !CheckEndPoint(endpoint)) {
         fprintf(stderr, "endpoint must not be empty\n");
         return false;
     }
