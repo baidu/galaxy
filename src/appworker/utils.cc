@@ -19,6 +19,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -909,43 +911,53 @@ std::string Md5Sum6(std::string dat) {
 
 namespace net {
 
+template <typename ElemT>
+struct HexTo {
+    ElemT value;
+    operator ElemT() const {return value;}
+    friend std::istream& operator>>(std::istream& in, HexTo& out) {
+        in >> std::hex >> out.value;
+        return in;
+    }
+};
+
+bool IsPortInProcFile(const int32_t& port, const std::string& file_name) {
+    bool ret = false;
+    std::ifstream net_file(file_name.c_str());
+    if (!net_file) {
+        return ret;
+    }
+
+    std::string line;
+    std::vector<std::string> parts;
+    while (getline(net_file, line)) {
+        boost::split(parts,
+                     line,
+                     boost::is_any_of(": "),
+                     boost::token_compress_on);
+        if (parts.size() > 3) {
+            try {
+                if (boost::lexical_cast<HexTo<int32_t> >(parts[3]) == port) {
+                    ret = true;
+                    break;
+                }
+            } catch (boost::bad_lexical_cast& e) {
+            }
+        }
+    }
+
+    return ret;
+}
+
 bool IsPortOpen(int32_t port) {
     bool ret = false;
+    std::string proc_net_tcp = "/proc/net/tcp";
+    std::string proc_net_udp = "/proc/net/udp";
 
-    std::string hostname = "localhost";
-
-    int sockfd;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-
-    do {
-        if (sockfd < 0) {
-            LOG(WARNING) << "opening socket fail";
-            break;
-        }
-
-        server = gethostbyname(hostname.c_str());
-
-        if (server == NULL) {
-            LOG(WARNING) << "find host fail, host: " << hostname;
-            break;
-        }
-
-        bzero((char *) &serv_addr, sizeof(serv_addr));
-        serv_addr.sin_family = AF_INET;
-        bcopy((char *)server->h_addr,
-              (char *)&serv_addr.sin_addr.s_addr,
-              server->h_length);
-        serv_addr.sin_port = htons(port);
-
-        if (connect(sockfd,(struct sockaddr *) &serv_addr, sizeof(serv_addr)) >= 0) {
-            ret = true;
-        }
-    } while (0);
-
-    if (sockfd >= 0) {
-        close(sockfd);
+    if (IsPortInProcFile(port, proc_net_tcp)) {
+        ret = true;
+    } else {
+        ret = IsPortInProcFile(port, proc_net_udp);
     }
 
     return ret;

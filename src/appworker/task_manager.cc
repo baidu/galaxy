@@ -752,7 +752,8 @@ int TaskManager::StartTaskHealthCheck(const std::string& task_id) {
     Task* task = it->second;
 
     if (task->desc.has_exe_package()
-            && task->desc.exe_package().has_health_cmd()) {
+            && task->desc.exe_package().has_health_cmd()
+            && task->desc.exe_package().health_cmd() != "") {
         ProcessContext context;
         context.process_id = task->task_id + "_check";
         context.cmd = task->desc.exe_package().health_cmd();
@@ -784,8 +785,9 @@ int TaskManager::CheckTaskHealth(const std::string& task_id, Task& task) {
 
     LOG(INFO) << "check health task, task: " << task_id;
 
-    if (!(it->second->desc.has_exe_package()
-            && it->second->desc.exe_package().has_health_cmd())) {
+    if (!it->second->desc.has_exe_package()
+            || !it->second->desc.exe_package().has_health_cmd()
+            || it->second->desc.exe_package().health_cmd() == "") {
         task.status = proto::kTaskFinished;
         return 0;
     }
