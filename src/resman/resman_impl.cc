@@ -687,7 +687,7 @@ void ResManImpl::UpdateContainerGroup(::google::protobuf::RpcController* control
             return;
         }
     } else {
-        if (new_meta.replica() < old_meta.replica()) {
+        if (new_meta.replica() < old_meta.replica() && old_meta.desc().container_type() == proto::kVolumContainer) {
             response->mutable_error_code()->set_status(proto::kUpdateContainerGroupFail);
             response->mutable_error_code()->set_reason("volum job cant not be scale down");
             done->Run();
