@@ -28,6 +28,7 @@ const std::string kGalaxyUsage = "galaxy_client.\n"
                                  //"      galaxy_client stop -i id\n"
                                  "      galaxy_client remove -i id\n"
                                  "      galaxy_client list [-o cpu,mem,volums]\n"
+                                 "      galaxy_client cal -f jobconfig(json format) [-o cpu,mem,volums]\n"
                                  "      galaxy_client show -i id [-o cpu,mem,volums -b(show meta)]\n"
                                  "      galaxy_client recover -i id -I podid\n"
                                  "      galaxy_client exec -i id -c cmd\n"
@@ -116,6 +117,8 @@ int main(int argc, char** argv) {
 
     } else if (strcmp(argv[1], "list") == 0) {
         ok = jobAction->ListJobs(FLAGS_o);
+    } else if (strcmp(argv[1], "cal") == 0) {
+        ok = jobAction->CalRes(FLAGS_f, FLAGS_o);
     } else if (strcmp(argv[1], "stop") == 0) { 
         if (FLAGS_i.empty()) {
             fprintf(stderr, "-i is needed\n");

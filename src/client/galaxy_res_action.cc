@@ -885,6 +885,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool,
         }
         ::baidu::common::TPrinter agents(headers.size());
         agents.AddRow(headers);
+        int64_t count = 0;
         for (uint32_t i = 0; i < response.agents.size(); ++i) {
             if (!pool.empty() && pool.compare(response.agents[i].pool) != 0) {
                 continue;
@@ -925,7 +926,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool,
                                 + HumanReadableString(response.agents[i].volums[j].volum.used) + " "
                                 + response.agents[i].volums[j].device_path;
                     if (j == 0) {
-                        values.push_back(::baidu::common::NumToString(i));
+                        values.push_back(::baidu::common::NumToString(count));
                         values.push_back(response.agents[i].endpoint);
                         values.push_back(StringAgentStatus(response.agents[i].status));
                         values.push_back(response.agents[i].pool);
@@ -938,6 +939,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool,
                             values.push_back(smem);
                         }
                         values.push_back(svolums);
+                        ++count;
                     } else {
                         int base_size = sizeof(array_headers) / sizeof(std::string);
                         for (int base_it = 0; base_it < base_size; ++base_it) {
@@ -956,7 +958,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool,
                 }
 
                 if (response.agents[i].volums.size() == 0) {
-                    values.push_back(::baidu::common::NumToString(i));
+                    values.push_back(::baidu::common::NumToString(count));
                     values.push_back(response.agents[i].endpoint);
                     values.push_back(StringAgentStatus(response.agents[i].status));
                     values.push_back(response.agents[i].pool);
@@ -970,11 +972,12 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool,
                     }
                     values.push_back("");
                     agents.AddRow(values);
+                    ++count;
                 }
             }
             
             if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
-                values.push_back(::baidu::common::NumToString(i));
+                values.push_back(::baidu::common::NumToString(count));
                 values.push_back(response.agents[i].endpoint);
                 values.push_back(StringAgentStatus(response.agents[i].status));
                 values.push_back(response.agents[i].pool);
@@ -987,6 +990,7 @@ bool ResAction::ListAgentsByTag(const std::string& tag, const std::string& pool,
                     values.push_back(smem);
                 }
                 agents.AddRow(values);
+                ++count;
             }
         }
         printf("%s\n", agents.ToString().c_str());
@@ -1328,7 +1332,7 @@ bool ResAction::Status() {
     
     printf("cluster containers infomation\n");
     ::baidu::common::TPrinter other(3);
-    other.AddRow(3, "total_cgroups", "total_containers", "in_safe_mode");
+    other.AddRow(3, "total_groups", "total_containers", "in_safe_mode");
     other.AddRow(3, ::baidu::common::NumToString(response.total_groups).c_str(), 
                     ::baidu::common::NumToString(response.total_containers).c_str(),
                     StringBool(response.in_safe_mode).c_str());

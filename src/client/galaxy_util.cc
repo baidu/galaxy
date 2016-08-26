@@ -532,6 +532,10 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         name = "example";
     }
 
+    if (num_data_volums != num_tasks) {
+        num_data_volums = num_tasks;
+    }
+
     rapidjson::Document document;
     rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
    
@@ -595,9 +599,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     }
 
     rapidjson::Value tasks(rapidjson::kArrayType);
-    /*if (num_tasks < 1) {
-        num_tasks = 1;
-    }*/
+    
     for (int i = 0; i < num_tasks; ++i) {
 
         rapidjson::Value cpu(rapidjson::kObjectType);
@@ -638,7 +640,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         obj_str.SetString(str.c_str(), allocator);
         package.AddMember("source_path", obj_str, allocator);
 
-        str = "/home/spider/" + ::baidu::common::NumToString(i);
+        str = "/home/work/exec/" + ::baidu::common::NumToString(i);
         obj_str.SetString(str.c_str(), allocator);
         package.AddMember("dest_path", obj_str, allocator);
         package.AddMember("version", "1.0.0", allocator);
@@ -659,7 +661,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
             rapidjson::Value package(rapidjson::kObjectType);
             package.AddMember("source_path", obj_str, allocator);
 
-            str = "/home/spider/"  + ::baidu::common::NumToString(i) + ::baidu::common::NumToString(j) + "/dict";
+            str = "/home/data/"  + ::baidu::common::NumToString(i) + "/" + ::baidu::common::NumToString(j);
             obj_str.SetString(str.c_str(), allocator);
             package.AddMember("dest_path", obj_str, allocator);
             package.AddMember("version", "1.0.0", allocator);
