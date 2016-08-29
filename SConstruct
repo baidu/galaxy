@@ -5,6 +5,7 @@ env_gen.Protoc(['src/protocol/galaxy.pb.h','src/protocol/galaxy.pb.cc'], 'src/pr
 env_gen.Protoc(['src/protocol/resman.pb.h','src/protocol/resman.pb.cc'], 'src/protocol/resman.proto')
 env_gen.Protoc(['src/protocol/agent.pb.h','src/protocol/agent.pb.cc'], 'src/protocol/agent.proto')
 env_gen.Protoc(['src/protocol/appmaster.pb.h','src/protocol/appmaster.pb.cc'], 'src/protocol/appmaster.proto')
+env_gen.Protoc(['src/protocol/appworker.pb.h','src/protocol/appworker.pb.cc'], 'src/protocol/appworker.proto')
 
 
 env = Environment(
@@ -21,7 +22,7 @@ env.Program('appmaster', Glob('src/appmaster/*.cc') + Glob('src/utils/*.cc')
             + ['src/protocol/appmaster.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/resman.pb.cc', 'src/naming/private_sdk.cc'])
 
 env.Program('appworker', Glob('src/appworker/*.cc') + Glob('src/utils/*.cc')
-            + ['src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc'])
+            + ['src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc', 'src/protocol/appworker.pb.cc'])
 
 env.Program('agent', Glob('src/agent/*.cc') + Glob('src/utils/*.cc') + Glob('src/agent/*/*.cc')
             + ['src/protocol/agent.pb.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/resman.pb.cc'])

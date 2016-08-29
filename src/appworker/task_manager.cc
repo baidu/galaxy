@@ -41,6 +41,8 @@ int TaskManager::CreateTask(const TaskEnv& task_env,
     task->task_id = task_env.task_id;
     task->desc.CopyFrom(task_desc);
     task->status = proto::kTaskPending;
+    task->prev_status = proto::kTaskPending;
+    task->reload_status = proto::kTaskPending;
     tasks_.insert(std::make_pair(task_env.task_id, task));
     return 0;
 }
@@ -285,8 +287,9 @@ int TaskManager::CheckTask(const std::string& task_id, Task& task) {
             if (it->second->fail_retry_times < FLAGS_task_manager_task_max_fail_retry_times) {
                 LOG(INFO) << "task: " << task_id << " failed and retry";
                 it->second->fail_retry_times++;
-                DoStartTask(task_id);
-                break;
+                if (0 == DoStartTask(task_id)) {
+                    break;
+                }
             }
 
             LOG(INFO) << "task: " << task_id << " failed no retry";
@@ -399,6 +402,154 @@ int TaskManager::ClearTasks() {
     tasks_.clear();
 
     process_manager_.ClearProcesses();
+
+    return 0;
+}
+
+void TaskManager::StartLoops() {
+    MutexLock lock(&mutex_);
+    process_manager_.StartLoops();
+}
+
+void TaskManager::PauseLoops() {
+    MutexLock lock(&mutex_);
+    process_manager_.PauseLoops();
+}
+
+int TaskManager::DumpTasks(proto::TaskManager* task_manager) {
+    MutexLock lock(&mutex_);
+    // dump tasks
+    std::map<std::string, Task*>::iterator it = tasks_.begin();
+    for (; it != tasks_.end(); ++it) {
+        Task* t = it->second;
+        proto::Task* task = task_manager->add_tasks();
+        task->set_task_id(t->task_id);
+        task->mutable_desc()->CopyFrom(t->desc);
+        task->set_status(t->status);
+        task->set_prev_status(t->prev_status);
+        task->set_reload_status(t->reload_status);
+        task->set_packages_size(t->packages_size);
+        task->set_fail_retry_times(it->second->fail_retry_times);
+        task->set_check_timeout_point(it->second->check_timeout_point);
+
+        // env
+        proto::TaskEnv* env = task->mutable_env();
+        TaskEnv e = t->env;
+        env->set_user(e.user);
+        env->set_job_id(e.job_id);
+        env->set_pod_id(e.pod_id);
+        env->set_task_id(e.task_id);
+        // env cgroup_subsystems
+        std::vector<std::string>::iterator cs_it = e.cgroup_subsystems.begin();
+        for (; cs_it != e.cgroup_subsystems.end(); ++cs_it) {
+            std::string* cgroup_subsystem = env->add_cgroup_subsystems();
+            *cgroup_subsystem = *cs_it;
+        }
+        // env cgroup_paths
+        std::map<std::string, std::string>::iterator cp_it = \
+            e.cgroup_paths.begin();
+        for (; cp_it != e.cgroup_paths.end(); ++cp_it) {
+            proto::CgroupPath* cgroup_path = env->add_cgroup_paths();
+            cgroup_path->set_cgroup(cp_it->first);
+            cgroup_path->set_path(cp_it->second);
+        }
+        // env ports
+        std::map<std::string, std::string>::iterator pit = e.ports.begin();
+        for (; pit != e.ports.end(); ++pit) {
+            proto::Port* port = env->add_ports();
+            port->set_name(pit->first);
+            port->set_port(pit->second);
+        }
+        // workspace_path
+        env->set_workspace_path(e.workspace_path);
+        env->set_workspace_abspath(e.workspace_abspath);
+    }
+
+    // dump process
+    process_manager_.DumpProcesses(task_manager->mutable_process_manager());
+
+    return 0;
+}
+
+int TaskManager::LoadTasks(const proto::TaskManager& task_manager) {
+    MutexLock lock(&mutex_);
+
+    for (int i = 0; i < task_manager.tasks().size(); ++i) {
+        const proto::Task t = task_manager.tasks(i);
+        Task* task = new Task();
+        if (t.has_task_id()) {
+            task->task_id = t.task_id();
+        }
+        if (t.has_desc()) {
+            task->desc.CopyFrom(t.desc());
+        }
+        if (t.has_status()) {
+            task->status = t.status();
+        }
+        if (t.has_prev_status()) {
+            task->prev_status = t.prev_status();
+        }
+        if (t.has_reload_status()) {
+            task->reload_status = t.reload_status();
+        }
+        if (t.has_packages_size()) {
+            task->packages_size = t.packages_size();
+        }
+        if (t.has_fail_retry_times()) {
+            task->fail_retry_times = t.fail_retry_times();
+        }
+        if (t.has_timeout_point()) {
+            task->timeout_point = t.timeout_point();
+        }
+        if (t.has_check_timeout_point()) {
+            task->check_timeout_point = t.check_timeout_point();
+        }
+        TaskEnv& env = task->env;
+        if (t.has_env()) {
+            const proto::TaskEnv& e = t.env();
+            if (e.has_user()) {
+                env.user = e.user();
+            }
+            if (e.has_job_id()) {
+                env.job_id = e.job_id();
+            }
+            if (e.has_pod_id()) {
+                env.pod_id = e.pod_id();
+            }
+            if (e.has_task_id()) {
+                env.task_id = e.task_id();
+            }
+            if (e.has_workspace_path()) {
+                env.workspace_path = e.workspace_path();
+            }
+            if (e.has_workspace_abspath()) {
+                env.workspace_abspath = e.workspace_abspath();
+            }
+            // env cgroup_subsystems
+            for (int j = 0; j < e.cgroup_subsystems().size(); ++j) {
+                env.cgroup_subsystems.push_back(e.cgroup_subsystems(i));
+            }
+            // env cgroup_paths
+            for (int j = 0; j < e.cgroup_paths().size(); ++j) {
+                const proto::CgroupPath& cgroup_path = e.cgroup_paths(j);
+                env.cgroup_paths.insert(std::make_pair(
+                            cgroup_path.cgroup(),
+                            cgroup_path.path()));
+            }
+            // env ports
+            for (int j = 0; j < e.ports().size(); ++j) {
+                const proto::Port& port = e.ports(j);
+                env.ports.insert(std::make_pair(port.name(), port.port()));
+            }
+        }
+
+        tasks_.insert(std::make_pair(task->task_id, task));
+    }
+
+    // dump process manager
+    if (task_manager.has_process_manager()) {
+        process_manager_.LoadProcesses(task_manager.process_manager());
+    }
 
     return 0;
 }
@@ -601,7 +752,8 @@ int TaskManager::StartTaskHealthCheck(const std::string& task_id) {
     Task* task = it->second;
 
     if (task->desc.has_exe_package()
-            && task->desc.exe_package().has_health_cmd()) {
+            && task->desc.exe_package().has_health_cmd()
+            && task->desc.exe_package().health_cmd() != "") {
         ProcessContext context;
         context.process_id = task->task_id + "_check";
         context.cmd = task->desc.exe_package().health_cmd();
@@ -633,8 +785,9 @@ int TaskManager::CheckTaskHealth(const std::string& task_id, Task& task) {
 
     LOG(INFO) << "check health task, task: " << task_id;
 
-    if (!(it->second->desc.has_exe_package()
-            && it->second->desc.exe_package().has_health_cmd())) {
+    if (!it->second->desc.has_exe_package()
+            || !it->second->desc.exe_package().has_health_cmd()
+            || it->second->desc.exe_package().health_cmd() == "") {
         task.status = proto::kTaskFinished;
         return 0;
     }
@@ -697,7 +850,6 @@ int MakeProcessEnv(Task* task, ProcessEnv& env) {
     std::map<std::string, std::string>::iterator p_it = task->env.ports.begin();
 
     for (; p_it != task->env.ports.end(); ++p_it) {
-        LOG(INFO) << "GALAXY_PORT_" + p_it->first + "=" + p_it->second;
         env.envs.push_back("GALAXY_PORT_" + p_it->first + "=" + p_it->second);
     }
 

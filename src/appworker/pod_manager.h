@@ -12,6 +12,7 @@
 #include <mutex.h>
 
 #include "protocol/appmaster.pb.h"
+#include "protocol/appworker.pb.h"
 #include "task_manager.h"
 
 namespace baidu {
@@ -21,6 +22,7 @@ typedef proto::PodDescription PodDescription;
 typedef proto::PodStatus PodStatus;
 typedef proto::ServiceInfo ServiceInfo;
 typedef proto::Status Status;
+typedef proto::PodStage PodStage;
 
 struct PodEnv {
     std::string user;
@@ -38,12 +40,6 @@ struct PodEnv {
 
 // when pod.stage == kPodRebuilding and pod.status == kPodTerminated,
 // set pod.status = kPodPending
-enum PodStage {
-    kPodStageCreating,
-    kPodStageRebuilding,
-    kPodStageReloading,
-    kPodStageTerminating
-};
 
 struct Pod {
     std::string pod_id;
@@ -67,6 +63,11 @@ public:
     int RebuildPod();
     int ReloadPod();
     int QueryPod(Pod& pod);
+    // upgrade
+    int DumpPod(proto::PodManager* pod_manager);
+    int LoadPod(const proto::PodManager& pod_manager);
+    void StartLoops();
+    void PauseLoops();
 
 private:
     int DoCreatePod();
