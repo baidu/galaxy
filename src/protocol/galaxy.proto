@@ -48,6 +48,7 @@ enum ResourceError {
     kPoolMismatch = 9;
     kTooManyPods = 10;
     kNoVolumContainer = 11;
+    kTooManyBatchPods = 12;
 }
 
 enum AuthorityAction {
