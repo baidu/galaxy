@@ -18,6 +18,7 @@
 DECLARE_int64(sched_interval);
 DECLARE_int64(container_group_gc_check_interval);
 DECLARE_bool(check_container_version);
+DECLARE_int32(max_batch_pods);
 
 namespace baidu {
 namespace galaxy {
@@ -42,6 +43,7 @@ Agent::Agent(const AgentEndpoint& endpoint,
     port_total_ = sMaxPort - sMinPort + 1;
     tags_ = tags;
     pool_name_ = pool_name;
+    batch_container_count_ = 0;
 }
 
 ContainerGroupId Agent::ExtractGroupId(const ContainerId& container_id) {
@@ -74,6 +76,9 @@ void Agent::SetAssignment(int64_t cpu_assigned,
             VLOG(10) << "free volum container: " << container->id << " of: "
                      << container->container_group_id << " on agent:"
                      << endpoint_;
+        }
+        if (container->priority == proto::kJobBatch) {
+            batch_container_count_ ++; 
         }
     }
 
@@ -164,6 +169,12 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         return false;
     }
 
+    if (container->priority == proto::kJobBatch &&
+        batch_container_count_ > FLAGS_max_batch_pods) {
+        err = proto::kTooManyBatchPods;
+        return false;
+    }
+
     return true;
 }
 
@@ -234,6 +245,10 @@ void Agent::Put(Container::Ptr container) {
             VLOG(10) << container->id << " use volum container: " << volum_container_id
                      << " of job: " << volum_job_id;
         }
+    }
+
+    if (container->priority == proto::kJobBatch) {
+        batch_container_count_ ++;
     }
 }
 
@@ -395,6 +410,10 @@ void Agent::Evict(Container::Ptr container) {
             }
         }
         container->allocated_volum_containers.clear();
+    }
+
+    if (container->priority == proto::kJobBatch) {
+        batch_container_count_ --;
     }
 }
 
@@ -1088,7 +1107,11 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         container_group->last_sched_container_id = container->id;
         ResourceError res_err;
         if (!agent->TryPut(container.get(), res_err)) {
-            container->last_res_err = res_err;
+            if (container->last_res_err == proto::kResOk
+                || container->last_res_err == proto::kTagMismatch
+                || container->last_res_err == proto::kPoolMismatch) {
+                container->last_res_err = res_err;
+            }
             VLOG(10) << "try put fail: " << container->id 
                      << " agent:" << endpoint
                      << ", err:" << proto::ResourceError_Name(res_err); 
