@@ -255,6 +255,14 @@ void JobManager::CheckPodAlive(PodInfo* pod, Job* job) {
             if(job->reloading_pods_.find(pod->podid()) != job->reloading_pods_.end()) {
                 job->reloading_pods_.erase(pod->podid());
             }
+            if (job->recreate_pods_.find(pod->podid()) != job->recreate_pods_.end()) {
+                if (job->desc_.deploy().interval() == 0) { 
+                    job->recreate_pods_.erase(pod->podid());
+                } else {
+                    job_checker_.DelayTask(job->desc_.deploy().interval() * 1000,
+                            boost::bind(&JobManager::EraseFormReCreateList, this, job->id_, pod->podid()));
+                }
+            }
             delete pod;
         }
         return;
@@ -290,7 +298,6 @@ Status JobManager::Add(const JobId& job_id, const JobDescription& job_desc, cons
                     job_desc.pod().tasks(i).services(j).health_check_type(),
                     job_desc.pod().tasks(i).services(j).health_check_script());
                 job->naming_sdk_[job_desc.pod().tasks(i).services(j).service_name()] = sdk;
-                sdk->Init();
             }
         }
     }
@@ -316,6 +323,7 @@ Status JobManager::Update(const JobId& job_id, const JobDescription& job_desc,
         return kJobNotFound;
     }
     Job* job = it->second;
+    job->updated_cnt_ = 0;
     std::string fsm_key = BuildFsmKey(job->status_, kUpdate);
     std::map<std::string, FsmTrans*>::iterator fsm_it = fsm_.find(fsm_key);
     if (fsm_it != fsm_.end()) {
@@ -614,7 +622,7 @@ Status JobManager::PodHeartBeat(Job* job, void* arg) {
                 LOG(WARNING) << "DEBUG: PodHeartBeat "
                 << "abandon worker : " << request->endpoint()
                 << "END DEBUG";
-                rlt_code = kTerminate;
+                rlt_code = kQuit;
             } else {
                 //worker replace
                 podinfo->set_endpoint(request->endpoint());
@@ -710,10 +718,16 @@ Status JobManager::TryRebuild(Job* job, PodInfo* podinfo) {
 Status JobManager::TryReCreate(Job* job, PodInfo* podinfo) {
     if (podinfo->status() == kPodPending) {
         return kOk;
-    } else if (job->recreate_pods_.size() >= job->desc_.deploy().step()) {
-        LOG(INFO) << "DEBUG: TryRebuild suspend "
+    } if (job->recreate_pods_.size() >= job->desc_.deploy().step()) {
+        LOG(INFO) << "DEBUG: TryReCreate suspend "
         << " deploying: " << job->recreate_pods_.size()
         << " step: " << job->desc_.deploy().step();
+        if (job->recreate_pods_.size() <= 3) {
+            for (std::set<PodId>::iterator it = job->recreate_pods_.begin();
+                    it != job->recreate_pods_.end(); it++) {
+                LOG(INFO) << " deploying podid : " << *it;
+            }
+        }
         return kSuspend;
     } else {        
         job->recreate_pods_.insert(podinfo->podid());
@@ -930,7 +944,7 @@ Status JobManager::PauseUpdatePod(Job* job, void* arg) {
                 LOG(WARNING) << "DEBUG: PodHeartBeat "
                 << "abandon worker : " << request->endpoint()
                 << "END DEBUG";
-                rlt_code = kTerminate;
+                rlt_code = kQuit;
             } else {
                 //worker replace
                 podinfo->set_endpoint(request->endpoint());
@@ -947,6 +961,7 @@ Status JobManager::PauseUpdatePod(Job* job, void* arg) {
         } else {
         //refresh
             RefreshPod(request, podinfo, job);
+            podinfo->set_update_time(request->update_time());
         }
     } else {
         //interval control
@@ -1135,6 +1150,7 @@ void JobManager::RebuildPods(Job* job,
         << " END DEBUG";
         podinfo = CreatePod(job, request->podid(), request->endpoint());
         RefreshPod((::baidu::galaxy::proto::FetchTaskRequest*)request, podinfo, job);
+        podinfo->set_update_time(request->update_time());
         if (job->status_ == kJobUpdating || job->status_ == kJobUpdatePause) {
             if (podinfo->update_time() == job->update_time_) {
                 job->updated_cnt_++;
@@ -1162,7 +1178,6 @@ void JobManager::ReloadJobInfo(const JobInfo& job_info) {
                     job->desc_.pod().tasks(i).services(j).health_check_type(),
                     job->desc_.pod().tasks(i).services(j).health_check_script());
                 job->naming_sdk_[job->desc_.pod().tasks(i).services(j).service_name()] = sdk;
-                sdk->Init();
             }
         }
     }
@@ -1225,10 +1240,12 @@ Status JobManager::GetJobInfo(const JobId& jobid, JobInfo* job_info) {
         PodInfo* pod = pod_it->second;
         job_info->add_pods()->CopyFrom(*pod);
     }
+#if 0
     for (pod_it = job->history_pods_.begin(); pod_it != job->history_pods_.end(); ++pod_it) {
         PodInfo* pod = pod_it->second;
         job_info->add_pods()->CopyFrom(*pod);
     }
+#endif
     VLOG(10) << "DEBUG GetJobInfo: " << job_info->DebugString()
         << "DEBUG END";
     return kOk;
