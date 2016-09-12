@@ -1,9 +1,11 @@
-[![Build Status](https://travis-ci.org/baidu/galaxy.svg?branch=galaxy3)](https://travis-ci.org/baidu/galaxy)
+# Galaxy
+[![Build Status](https://travis-ci.org/baidu/galaxy.svg?branch=master)](https://travis-ci.org/baidu/galaxy)  
+Copyright 2015, Baidu, Inc.  
 
-galaxy 3.0
+# 综述
+Galaxy是一个数据中心操作系统，目标是最大化资源的利用率与降低应用部署运维代价。
 
-Galaxy 3.0设计
-=============
+#Galaxy 3.0设计
 
 # 背景
 
