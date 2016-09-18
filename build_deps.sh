@@ -137,15 +137,14 @@ fi
 if [ ! -f "${FLAG_DIR}/gtest_1_7_0" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libgtest.a" ] \
     || [ ! -d "${DEPS_PREFIX}/include/gtest" ]; then
-    # wget --no-check-certificate https://googletest.googlecode.com/files/gtest-1.7.0.zip
-    rm -rf gtest_archive gtest-1.7.0.zip gtest-1.7.0
-    git clone --depth=1 https://github.com/xupeilin/gtest_archive
-    mv gtest_archive/gtest-1.7.0.zip .
-    unzip gtest-1.7.0.zip
-    cd gtest-1.7.0
-    ./configure ${DEPS_CONFIG}
+    rm -rf ./googletest-release-1.7.0
+    wget --no-check-certificate https://github.com/google/googletest/archive/release-1.7.0.tar.gz -O gtest_1_7_0.tar.gz
+    tar -xzf gtest_1_7_0.tar.gz
+    cd googletest-release-1.7.0
+    sed -i 's/-Wno-missing-field-initializers//g' cmake/internal_utils.cmake
+    cmake .
     make
-    cp -af lib/.libs/* ${DEPS_PREFIX}/lib
+    cp -af lib*.a ${DEPS_PREFIX}/lib
     cp -af include/gtest ${DEPS_PREFIX}/include
     cd -
     touch "${FLAG_DIR}/gtest_1_7_0"
