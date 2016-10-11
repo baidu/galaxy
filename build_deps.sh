@@ -72,6 +72,7 @@ if [ ! -f "${FLAG_DIR}/snappy_1_1_1" ] \
 fi
 
 # sofa-pbrpc
+:<<!
 if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libsofa-pbrpc.a" ] \
     || [ ! -d "${DEPS_PREFIX}/include/sofa/pbrpc" ]; then
@@ -93,7 +94,7 @@ if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
     cd ..
     touch "${FLAG_DIR}/sofa-pbrpc_1_0_0"
 fi
-
+!
 # cmake for gflags
 if ! which cmake ; then
     wget --no-check-certificate -O CMake-3.2.1.tar.gz https://github.com/Kitware/CMake/archive/v3.2.1.tar.gz
