@@ -1013,6 +1013,8 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     obj_str.SetString(StringJobType(response.job.desc.type).c_str(), allocator);
     root.AddMember("type", obj_str, allocator);
 
+    root.AddMember("v2_support", response.job.desc.v2_support, allocator);
+
     std::string volum_jobs;
     for (uint32_t i = 0; i < response.job.desc.volum_jobs.size(); ++i) {
         volum_jobs += response.job.desc.volum_jobs[i];

@@ -623,6 +623,12 @@ int ParseDocument(const rapidjson::Document& doc, ::baidu::galaxy::sdk::JobDescr
     job->name = doc["name"].GetString();
     boost::trim(job->name);
 
+    if (!doc.HasMember("v2_support")) {
+        job->v2_support = false;
+    } else {
+        job->v2_support = doc["v2_support"].GetBool();
+    }
+
     //type
     if (!doc.HasMember("type")) {
         fprintf(stderr, "type is required in config\n");

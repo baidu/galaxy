@@ -222,6 +222,7 @@ struct JobDescription {
     Deploy deploy;
     PodDescription pod;
     std::string run_user;
+    bool v2_support;
 };
 struct Cgroup {
     std::string id;
