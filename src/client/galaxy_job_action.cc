@@ -8,7 +8,7 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/filewritestream.h"
-
+#include <iostream>
 
 #include "galaxy_job_action.h"
 
@@ -126,6 +126,9 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
     } else if (operation.compare("rollback") == 0) {
         fprintf(stderr, "breakpoint update rollback\n");
         request.operate = baidu::galaxy::sdk::kUpdateJobRollback;
+    } else if (operation.compare("cancel") == 0) {
+        fprintf(stderr, "update cancel\n");
+        request.operate = baidu::galaxy::sdk::kUpdateJobCancel;
     } else if (operation.empty()) {
         if (update_break_count < 0) {
             fprintf(stderr, "update_break_count must not be less than 0\n");
@@ -140,7 +143,7 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
         request.operate = baidu::galaxy::sdk::kUpdateJobStart;
         request.job.deploy.update_break_count = update_break_count;
     } else {
-        fprintf(stderr, "update operation must be start, continue, rollback or default\n");
+        fprintf(stderr, "update operation must be start, continue, rollback, cancel or default\n");
         return false;
     }
 
@@ -903,8 +906,8 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
 }
 
 bool JobAction::RecoverInstance(const std::string& jobid, const std::string& podid) {
-    if (jobid.empty() || podid.empty()) {
-        fprintf(stderr, "jobid and podid are needed\n");
+    if (jobid.empty()) {
+        fprintf(stderr, "jobid is needed\n");
         return false;
     }
 
@@ -916,7 +919,11 @@ bool JobAction::RecoverInstance(const std::string& jobid, const std::string& pod
     baidu::galaxy::sdk::RecoverInstanceResponse response;
     request.user = user_;
     request.jobid = jobid;
-    request.podid = jobid + "." + podid;
+
+    if (!podid.empty()) {
+        request.podid = jobid + "." + podid;
+    }
+
     bool ret = app_master_->RecoverInstance(request, &response);
     if (ret) {
         printf("recover instance %s success\n", jobid.c_str());
@@ -1241,6 +1248,278 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     std::string str_json = buffer.GetString();
     fprintf(stdout, "%s\n", str_json.c_str());
     return true;
+}
+    
+int JobAction::CalResPolicy(int64_t need_cpu, int64_t need_mem, 
+                      const ::baidu::galaxy::sdk::VolumRequired& workspace_volum,
+                      const std::vector< ::baidu::galaxy::sdk::VolumRequired>& data_volums,
+                      const ::baidu::galaxy::sdk:: AgentStatistics& agent,
+                      int* max_per_host) {
+
+    //printf("old mem:%s\n", HumanReadableString(need_mem).c_str());
+    if (agent.cpu.total - agent.cpu.assigned < need_cpu) { //cpu not enough
+        return -1;
+    }
+
+    if (agent.memory.total - agent.memory.assigned < need_mem) {
+        return -2;
+    }
+
+    if (workspace_volum.medium == ::baidu::galaxy::sdk::kTmpfs) {
+        need_mem += workspace_volum.size;
+    }
+
+    for (size_t i = 0; i < data_volums.size(); ++i) {
+        if (data_volums[i].medium == ::baidu::galaxy::sdk::kTmpfs) {
+            need_mem += data_volums[i].size;
+        }
+    }
+
+    if (agent.memory.total - agent.memory.assigned < need_mem) {
+        //printf("new mem:%s\n", HumanReadableString(need_mem).c_str());
+        return -2;
+    }
+
+    int max_per_host_by_cpu = (agent.cpu.total - agent.cpu.assigned) / need_cpu;
+    int max_per_host_by_mem = (agent.memory.total - agent.memory.assigned) / need_mem;
+    std::cout << "cpu: " << agent.cpu.total - agent.cpu.assigned << "/" << need_cpu << "=" << max_per_host_by_cpu << std::endl;
+    std::cout << "mem: " << agent.memory.total - agent.memory.assigned << "/" << need_mem << "=" << max_per_host_by_mem << std::endl;
+    if (max_per_host_by_cpu >= max_per_host_by_mem) {
+        *max_per_host = max_per_host_by_mem;
+    } else {
+        *max_per_host = max_per_host_by_cpu;
+    }
+
+    return 0;
+}
+
+bool JobAction::CalRes(const std::string& json_file, const std::string& soptions) {
+    
+    if (json_file.empty()) {
+        fprintf(stderr, "json_file is needed\n");
+        return false;
+    }
+
+    if (!this->InitResman()) {
+        return false;
+    }
+    
+    ::baidu::galaxy::sdk::JobDescription job;
+    int ok = BuildJobFromConfig(json_file, &job);
+    if (ok != 0) {
+        return false;
+    }
+
+    int64_t need_cpu = 0;
+    int64_t need_mem = 0;
+    for(size_t i = 0; i < job.pod.tasks.size(); ++i) {
+        need_cpu += job.pod.tasks[i].cpu.milli_core;
+        need_mem += job.pod.tasks[i].memory.size;
+    }
+    
+    if (job.pod.workspace_volum.medium == ::baidu::galaxy::sdk::kTmpfs) {
+        need_mem += job.pod.workspace_volum.size;
+    }
+
+    for (size_t i = 0; i < job.pod.data_volums.size(); ++i) {
+        if (job.pod.data_volums[i].medium == ::baidu::galaxy::sdk::kTmpfs) {
+            need_mem += job.pod.data_volums[i].size;
+        }
+    }
+
+    
+    std::vector<std::string> options;
+    ::baidu::common::SplitString(soptions, ",", &options);
+
+
+    ::baidu::galaxy::sdk::ListAgentsRequest request;
+    ::baidu::galaxy::sdk::ListAgentsResponse response;
+    request.user = user_;
+
+    bool ret = resman_->ListAgents(request, &response);
+    if (ret) {
+        std::string array_headers[6] = {"", "endpoint", "status", "pool", "tags", "containers"};
+        std::vector<std::string> headers(array_headers, array_headers + 6);
+        if (find(options.begin(), options.end(), "cpu") != options.end()) {
+            headers.push_back("cpu(t/a/u)");
+        }
+        if (find(options.begin(), options.end(), "mem") != options.end()) {
+            headers.push_back("mem(t/a/u)");
+        }
+        if (find(options.begin(), options.end(), "volums") != options.end()) {
+            headers.push_back("vol(med/t/a/u/path)");
+        }
+        if (options.size() == 0) {
+            headers.push_back("cpu(t/a/u)");
+            headers.push_back("mem(t/a/u)");
+            headers.push_back("vol(med/t/a/u/path)");
+        }
+        ::baidu::common::TPrinter agents(headers.size());
+        agents.AddRow(headers);
+        int64_t count = 0;
+        uint32_t ignore_tag = 0;
+        uint32_t ignore_pool = 0;
+        int replica = 0;
+        int max_per_host = 0;
+        for (uint32_t i = 0; i < response.agents.size(); ++i) {
+            //agent not alive
+            if (response.agents[i].status == ::baidu::galaxy::sdk::kAgentAlive) {
+                continue;
+            }
+
+            //check tag
+            std::string tags;
+            bool tag_in = false;
+            for (uint32_t j = 0; j < response.agents[i].tags.size(); ++j) {
+                tags += response.agents[i].tags[j];
+                if (j != response.agents[i].tags.size() - 1) {
+                    tags += ",";
+                }
+
+                if (job.deploy.tag.empty()) {
+                    tag_in = true;
+                } else if (!job.deploy.tag.empty() && job.deploy.tag == response.agents[i].tags[j]) {
+                    tag_in = true;
+                }
+            }
+            if (!tag_in) {
+                ++ignore_tag;
+                continue;
+            }
+                
+            //check pool
+            if (find(job.deploy.pools.begin(), job.deploy.pools.end(), response.agents[i].pool) == job.deploy.pools.end()) {
+                ++ignore_pool;
+                continue;
+            }
+
+            //calculate resorce
+            int pods_on_host = 0;
+            if (CalResPolicy(need_cpu, need_mem, job.pod.workspace_volum, job.pod.data_volums, response.agents[i], &pods_on_host) != 0) {
+                continue;
+            }
+            replica += pods_on_host;
+            if (pods_on_host > max_per_host) {
+                max_per_host = pods_on_host;
+            }
+
+            //cpu 
+            std::string scpu;
+            if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
+                scpu = ::baidu::common::NumToString(response.agents[i].cpu.total / 1000.0) + "/" +
+                       ::baidu::common::NumToString(response.agents[i].cpu.assigned / 1000.0) + "/" +
+                       ::baidu::common::NumToString(response.agents[i].cpu.used / 1000.0);
+            }
+
+            //mem
+            std::string smem;
+            if (options.size() == 0 || find(options.begin(), options.end(), "mem") != options.end()) {
+
+                smem = HumanReadableString(response.agents[i].memory.total) + "/" +
+                       HumanReadableString(response.agents[i].memory.assigned) + "/" +
+                       HumanReadableString(response.agents[i].memory.used);
+            }
+            
+            std::vector<std::string> values;
+            if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
+                for (uint32_t j = 0; j < response.agents[i].volums.size(); ++j) {
+                    values.clear();
+                    std::string svolums;
+                    svolums +=  "vol_" + ::baidu::common::NumToString(j) + " "
+                                + StringVolumMedium(response.agents[i].volums[j].medium) + " "
+                                + HumanReadableString(response.agents[i].volums[j].volum.total) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.assigned) + "/"
+                                + HumanReadableString(response.agents[i].volums[j].volum.used) + " "
+                                + response.agents[i].volums[j].device_path;
+                    if (j == 0) {
+                        values.push_back(::baidu::common::NumToString(count));
+                        values.push_back(response.agents[i].endpoint);
+                        values.push_back(StringAgentStatus(response.agents[i].status));
+                        values.push_back(response.agents[i].pool);
+                        values.push_back(tags);
+                        values.push_back(::baidu::common::NumToString(response.agents[i].total_containers));
+                        if (!scpu.empty()) {
+                            values.push_back(scpu);
+                        }
+                        if (!smem.empty()) {
+                            values.push_back(smem);
+                        }
+                        values.push_back(svolums);
+                        ++count;
+                    } else {
+                        int base_size = sizeof(array_headers) / sizeof(std::string);
+                        for (int base_it = 0; base_it < base_size; ++base_it) {
+                            values.push_back("");
+                        }
+
+                        if (!scpu.empty()) {
+                            values.push_back("");
+                        }
+                        if (!smem.empty()) {
+                            values.push_back("");
+                        }
+                        values.push_back(svolums);
+                    }
+                    agents.AddRow(values);
+                }
+
+                if (response.agents[i].volums.size() == 0) {
+                    values.push_back(::baidu::common::NumToString(count));
+                    values.push_back(response.agents[i].endpoint);
+                    values.push_back(StringAgentStatus(response.agents[i].status));
+                    values.push_back(response.agents[i].pool);
+                    values.push_back(tags.c_str());
+                    values.push_back(::baidu::common::NumToString(response.agents[i].total_containers));
+                    if (!scpu.empty()) {
+                        values.push_back(scpu);
+                    }
+                    if (!smem.empty()) {
+                        values.push_back(smem);
+                    }
+                    values.push_back("");
+                    agents.AddRow(values);
+                    ++count;
+                }
+            }
+            
+            if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
+                values.push_back(::baidu::common::NumToString(count));
+                values.push_back(response.agents[i].endpoint);
+                values.push_back(StringAgentStatus(response.agents[i].status));
+                values.push_back(response.agents[i].pool);
+                values.push_back(tags.c_str());
+                values.push_back(::baidu::common::NumToString(response.agents[i].total_containers));
+                if (!scpu.empty()) {
+                    values.push_back(scpu);
+                }
+                if (!smem.empty()) {
+                    values.push_back(smem);
+                }
+                agents.AddRow(values);
+                ++count;
+            }
+        }
+        printf("%s\n", agents.ToString().c_str());
+
+        if (ignore_tag == response.agents.size()) {
+            printf("tag not exists\n");
+        }
+
+        if (ignore_tag + ignore_pool == response.agents.size()) {
+            printf("pools not exist\n");
+        }
+
+        printf("your job need cpu:[%s], memory:[%s].\n", 
+                ::baidu::common::NumToString(need_cpu/1000.0).c_str(), HumanReadableString(need_mem).c_str());
+        printf("[%ld] agents fit in your job.\n", count);
+        printf("proposal: max replica:[%d], max_per_host:[%d]\n\n", replica, max_per_host);
+    } else {
+        printf("List agents failed for reason %s:%s\n", 
+                    StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
+    }
+
+    return ret;
+
 }
 
 

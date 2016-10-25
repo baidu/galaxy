@@ -208,6 +208,7 @@ private:
     std::map<ContainerId, Container::Ptr> containers_;
     std::map<ContainerGroupId, int> container_counts_;
     std::map<ContainerGroupId, std::set<ContainerId> > volum_jobs_free_;
+    int32_t batch_container_count_;
 };
 
 struct ContainerGroupQueueLess {

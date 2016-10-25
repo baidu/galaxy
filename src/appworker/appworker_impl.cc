@@ -4,6 +4,8 @@
 
 #include "appworker_impl.h"
 
+#include <fcntl.h>
+
 #include <algorithm>
 #include <cctype>
 #include <boost/bind.hpp>
@@ -15,7 +17,6 @@
 #include <gflags/gflags.h>
 #include <timer.h>
 
-#include "protocol/appmaster.pb.h"
 #include "utils.h"
 
 DECLARE_string(nexus_addr);
@@ -23,6 +24,7 @@ DECLARE_string(nexus_root_path);
 DECLARE_string(appmaster_nexus_path);
 DECLARE_string(tag);
 DECLARE_string(appworker_exit_file);
+DECLARE_string(appworker_dump_file);
 DECLARE_string(appworker_user_env);
 DECLARE_string(appworker_workspace_path_env);
 DECLARE_string(appworker_workspace_abspath_env);
@@ -49,12 +51,9 @@ AppWorkerImpl::AppWorkerImpl() :
         nexus_(NULL),
         appmaster_stub_(NULL),
         backgroud_pool_(FLAGS_appworker_background_thread_pool_size) {
+    start_time_ = baidu::common::timer::get_micros();
     nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
     backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
-    backgroud_pool_.DelayTask(
-        FLAGS_appworker_fetch_task_interval,
-        boost::bind(&AppWorkerImpl::FetchTask, this)
-    );
 }
 
 AppWorkerImpl::~AppWorkerImpl() {
@@ -69,7 +68,7 @@ AppWorkerImpl::~AppWorkerImpl() {
     backgroud_pool_.Stop(false);
 }
 
-void AppWorkerImpl::PrepareEnvs() {
+void AppWorkerImpl::ParseEnvs() {
     // 1.user
     char* c_user = getenv(FLAGS_appworker_user_env.c_str());
     if (NULL == c_user) {
@@ -249,9 +248,12 @@ void AppWorkerImpl::PrepareEnvs() {
     return;
 }
 
-void AppWorkerImpl::Init() {
-    start_time_ = baidu::common::timer::get_micros();
-    PrepareEnvs();
+void AppWorkerImpl::Init(bool is_upgrade) {
+    if (is_upgrade) {
+        Load();
+    } else {
+        ParseEnvs();
+    }
     LOG(INFO)
             << "appworker start, endpoint: " << endpoint_ << ", "
             << "hostname: " << hostname_ << ", "
@@ -267,6 +269,112 @@ void AppWorkerImpl::Quit() {
     pod_manager_.TerminatePod();
 
     return;
+}
+
+bool AppWorkerImpl::Dump() {
+    MutexLock lock(&mutex_);
+    LOG(WARNING) << "appworker dump for upgrading start";
+
+    // save state
+    proto::AppWorker* appworker = new proto::AppWorker;
+    appworker->set_start_time(start_time_);
+    appworker->set_update_time(update_time_);
+    appworker->set_update_status(update_status_);
+    appworker->set_hostname(hostname_);
+    appworker->set_endpoint(endpoint_);
+    appworker->set_ip(ip_);
+    appworker->set_job_id(job_id_);
+    appworker->set_pod_id(pod_id_);
+    appworker->set_endpoint(appmaster_endpoint_);
+
+    // dump pod
+    pod_manager_.DumpPod(appworker->mutable_pod_manager());
+    LOG(WARNING) << "\n" << appworker->DebugString();
+
+    // serialize to file
+    int fd = open(FLAGS_appworker_dump_file.c_str(),
+                  O_CREAT | O_TRUNC | O_RDWR,
+                  0644);
+
+    bool ret = false;
+    if(fd > 0 && appworker->SerializeToFileDescriptor(fd)) {
+        ret = true;
+        LOG(WARNING) << "appworker dumped for upgrading ok";
+    } else {
+        LOG(WARNING) << "appworker dump file write failed";
+    }
+
+    delete appworker;
+    appworker = NULL;
+    close(fd);
+
+    return ret;
+}
+
+void AppWorkerImpl::Load() {
+    LOG(WARNING) << "appworker load for updating start";
+    // 1.serialize from file
+    int fd = open(FLAGS_appworker_dump_file.c_str(), O_RDONLY);
+    if(fd <= 0) {
+        LOG(WARNING) << "appworker dump file open failed";
+        exit(0);
+    }
+    proto::AppWorker* appworker = new proto::AppWorker;
+    appworker->ParseFromFileDescriptor(fd);
+    // load appworker
+    if (appworker->has_start_time()) {
+        start_time_ = appworker->start_time();
+    }
+    if (appworker->has_update_time()) {
+        update_time_ = appworker->update_time();
+    }
+    if (appworker->has_update_status()) {
+        update_status_ = appworker->update_status();
+    }
+    if (appworker->has_hostname()) {
+        hostname_ = appworker->hostname();
+    }
+    if (appworker->has_endpoint()) {
+        endpoint_ = appworker->endpoint();
+    }
+    if (appworker->has_ip()) {
+        ip_ = appworker->ip();
+    }
+    if (appworker->has_job_id()) {
+        job_id_ = appworker->job_id();
+    }
+    if (appworker->has_pod_id()) {
+        pod_id_ = appworker->pod_id();
+    }
+    if (appworker->has_appmaster_endpoint()) {
+        appmaster_endpoint_ = appworker->appmaster_endpoint();
+    }
+    // load pod_manager
+    if (appworker->has_pod_manager()) {
+        pod_manager_.LoadPod(appworker->pod_manager());
+    }
+
+    backgroud_pool_.AddTask(boost::bind(&AppWorkerImpl::UpdateAppMasterStub, this));
+    nexus_ = new ::galaxy::ins::sdk::InsSDK(FLAGS_nexus_addr);
+    LOG(WARNING) << "appworker load for upgrading ok";
+    // LOG(INFO) << "\n" << appworker->DebugString();
+
+    close(fd);
+}
+
+void AppWorkerImpl::StartLoops() {
+    MutexLock lock(&mutex_);
+    pod_manager_.StartLoops();
+    backgroud_pool_.DelayTask(
+        FLAGS_appworker_fetch_task_interval,
+        boost::bind(&AppWorkerImpl::FetchTask, this)
+    );
+}
+
+void AppWorkerImpl::PauseLoops() {
+    MutexLock lock(&mutex_);
+    backgroud_pool_.Stop(false);
+    pod_manager_.PauseLoops();
 }
 
 void AppWorkerImpl::UpdateAppMasterStub() {
@@ -314,7 +422,7 @@ void AppWorkerImpl::FetchTask() {
 
     // exit or not, only when terminated, appworker exit
     if (proto::kPodTerminated == pod.status) {
-        LOG(INFO) << "pod terminated";
+        LOG(INFO) << "pod status is terminated";
         std::string value = boost::lexical_cast<std::string>(0);
         if (!quit_) {
             file::Write(FLAGS_appworker_exit_file, value);
@@ -360,7 +468,7 @@ void AppWorkerImpl::FetchTask() {
                 << "status: " << proto::Status_Name(request->services(j).status());
     }
 
-    if (kPodStageReloading == pod.stage) {
+    if (proto::kPodStageReloading == pod.stage) {
         LOG(INFO) << "pod reload_status: " << proto::PodStatus_Name(pod.reload_status);
     }
 

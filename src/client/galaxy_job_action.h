@@ -28,6 +28,7 @@ public:
     bool ShowJob(const std::string& jobid, const std::string& soptions, bool show_meta);
     bool RecoverInstance(const std::string& jobid, const std::string& podid);
     bool ExecuteCmd(const std::string& jobid, const std::string& cmd);
+    bool CalRes(const std::string& json_file, const std::string& soptions);
     bool GenerateJson(const std::string& jobid);
 
 private:
@@ -38,6 +39,14 @@ private:
     static void* ListJobs(void* param);
     static void* ShowJob(void* param);
     static void* ShowContainerGroup(void* param);
+    //-1 cpu not enough
+    //-2 memory not enough
+    //-3 disk not enough
+    int CalResPolicy(int64_t need_cpu, int64_t need_mem, 
+               const ::baidu::galaxy::sdk::VolumRequired& workspace_volum,
+               const std::vector< ::baidu::galaxy::sdk::VolumRequired>& data_volums,
+               const ::baidu::galaxy::sdk::AgentStatistics& agent,
+               int* max_per_host);
 private:
     ::baidu::galaxy::sdk::AppMaster* app_master_;
     ::baidu::galaxy::sdk::User user_;

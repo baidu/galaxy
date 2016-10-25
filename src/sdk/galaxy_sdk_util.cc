@@ -18,6 +18,44 @@ std::string Strim(const std::string& str) {
     return ::baidu::common::TrimString(str, split_symbol);
 }
 
+bool CheckNum(const int value) {
+    if (value < 0 || value > 255) {
+        return false;
+    }
+    return true;
+}
+
+bool CheckEndPoint(std::string& endpoint) {
+
+    size_t pos = endpoint.rfind(":");
+    if (pos == std::string::npos) {
+        fprintf(stderr, "endpoint format not correct, must be IP:Port\n");
+        return false;
+    }
+    std::string ip = Strim(endpoint.substr(0, pos));
+    int ip_1 = 0;
+    int ip_2 = 0;
+    int ip_3 = 0;
+    int ip_4 = 0;
+    char other = '\0';
+    int num = sscanf(ip.c_str(), "%d.%d.%d.%d%s", &ip_1, &ip_2, &ip_3, &ip_4, &other);
+    bool check_num = CheckNum(ip_1) && CheckNum(ip_2) && CheckNum(ip_3) && CheckNum(ip_4);
+    if (num != 4 || !check_num || other != '\0') {
+        fprintf(stderr, "Ip not correct\n");
+        return false;
+    }
+    std::string port = Strim(endpoint.substr(pos + 1));
+    if(port.empty() || std::string::npos != port.find_first_not_of("0123456789")) {
+        fprintf(stderr, "Port not correct\n");
+        return false;
+    }
+    endpoint = ::baidu::common::NumToString(ip_1) + "." 
+               + ::baidu::common::NumToString(ip_2) + "." 
+               + ::baidu::common::NumToString(ip_3) + "." 
+               + ::baidu::common::NumToString(ip_4) + ':' + port;
+    return true;
+}
+
 bool FillUser(const User& sdk_user, ::baidu::galaxy::proto::User* user) {
     std::string name = Strim(sdk_user.user);
     if (name.empty()) {
@@ -149,7 +187,7 @@ bool ValidatePort(const std::vector<std::string>& vec_ports) {
             }
             ++int_port;
             if (vec_ports[i].compare(::baidu::common::NumToString(int_port)) != 0) {
-                fprintf(stderr, "ports are not correct in task, ports must be serial\n");
+                fprintf(stderr, "ports are not correct in task, ports must be serial:%s\n", vec_ports[i].c_str());
                 ok =  false;
                 break;
             }
@@ -177,9 +215,11 @@ bool FillPortRequired(const PortRequired& sdk_port, ::baidu::galaxy::proto::Port
 }
 
 bool FillCgroup(const Cgroup& sdk_cgroup, 
-                ::baidu::galaxy::proto::Cgroup* cgroup,
-                std::vector<std::string>& vec_port_names,
-                std::vector<std::string>& vec_ports) {
+                ::baidu::galaxy::proto::Cgroup* cgroup,  
+                std::vector<std::string>& vec_cgroups_ports) {
+
+    std::vector<std::string> vec_port_names;
+    std::vector<std::string> vec_ports;
     
     if (!FillCpuRequired(sdk_cgroup.cpu, cgroup->mutable_cpu())) {
         return false;
@@ -217,14 +257,15 @@ bool FillCgroup(const Cgroup& sdk_cgroup,
 
         //端口号不可重复
         if (sdk_cgroup.ports[i].port.compare("dynamic") != 0) {
-            it = find(vec_ports.begin(), vec_ports.end(), Strim(sdk_cgroup.ports[i].port));
-            if (it != vec_ports.end()) {
+            it = find(vec_cgroups_ports.begin(), vec_cgroups_ports.end(), Strim(sdk_cgroup.ports[i].port));
+            if (it != vec_cgroups_ports.end()) {
                 fprintf(stderr, "port in ports cannot be repeated\n");
                 ok = false;
                 break;
             }
         }
         vec_ports.push_back(Strim(sdk_cgroup.ports[i].port));
+        vec_cgroups_ports.push_back(Strim(sdk_cgroup.ports[i].port));
     }
 
     if (!ok) {
@@ -344,11 +385,11 @@ bool FillContainerDescription(const ContainerDescription& sdk_container,
         return false;
     }
 
-    std::vector<std::string> cgroups_vec_port_names; //端口名重复检测
+    //std::vector<std::string> cgroups_vec_port_names; //端口名重复检测
     std::vector<std::string> cgroups_vec_ports; //端口号重复检测
     for (uint32_t i = 0; i < sdk_container.cgroups.size(); ++i) {
         ::baidu::galaxy::proto::Cgroup* cgroup = container->add_cgroups();
-        if(!FillCgroup(sdk_container.cgroups[i], cgroup, cgroups_vec_port_names, cgroups_vec_ports)) {
+        if(!FillCgroup(sdk_container.cgroups[i], cgroup, cgroups_vec_ports)) {
             ok = false;
             break;
         }
@@ -449,10 +490,11 @@ bool FillService(const Service& sdk_service,
 
 bool FillTaskDescription(const TaskDescription& sdk_task,
         ::baidu::galaxy::proto::TaskDescription* task,
-        std::vector<std::string>& vec_port_names,
-        std::vector<std::string>& vec_ports,
+        std::vector<std::string>& vec_tasks_ports,
         std::vector<std::string>& vec_service_names) {
     
+    std::vector<std::string> vec_port_names;
+    std::vector<std::string> vec_ports;
     bool ok = true;
     if (!FillCpuRequired(sdk_task.cpu, task->mutable_cpu())) {
         return false;
@@ -483,14 +525,15 @@ bool FillTaskDescription(const TaskDescription& sdk_task,
         
         //端口号不可重复
         if (sdk_task.ports[i].port.compare("dynamic") != 0) {
-            it = find(vec_ports.begin(), vec_ports.end(), sdk_task.ports[i].port);
-            if (it != vec_ports.end()) {
+            it = find(vec_tasks_ports.begin(), vec_tasks_ports.end(), sdk_task.ports[i].port);
+            if (it != vec_tasks_ports.end()) {
                 fprintf(stderr, "port in ports cannot be repeated\n");
                 ok = false;
                 break;
             }
         }
         vec_ports.push_back(Strim(sdk_task.ports[i].port));
+        vec_tasks_ports.push_back(Strim(sdk_task.ports[i].port));
     }
 
     if (!ok) {
@@ -599,13 +642,14 @@ bool FillPodDescription(const PodDescription& sdk_pod,
         return false;
     }
 
-    std::vector<std::string> tasks_vec_port_names; //端口名重复检测
+    //std::vector<std::string> tasks_vec_port_names; //端口名重复检测
     std::vector<std::string> tasks_vec_ports; //端口号重复检测
     std::vector<std::string> vec_service_names; //service name重复值检测
     for (uint32_t i = 0; i < sdk_pod.tasks.size(); ++i) {
         ::baidu::galaxy::proto::TaskDescription* task = pod->add_tasks(); 
-        ok = FillTaskDescription(sdk_pod.tasks[i], task, tasks_vec_port_names, tasks_vec_ports, 
+        ok = FillTaskDescription(sdk_pod.tasks[i], task, tasks_vec_ports, 
                                  vec_service_names);
+
         if (!ok) {
             break;
         }

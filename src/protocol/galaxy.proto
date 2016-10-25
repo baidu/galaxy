@@ -48,6 +48,7 @@ enum ResourceError {
     kPoolMismatch = 9;
     kTooManyPods = 10;
     kNoVolumContainer = 11;
+    kTooManyBatchPods = 12;
 }
 
 enum AuthorityAction {
@@ -192,6 +193,13 @@ enum PodStatus {
     kPodStopping = 9;
     kPodTerminated = 10;
 }
+
+enum PodStage {
+    kPodStageCreating = 0;
+    kPodStageRebuilding = 1;
+    kPodStageReloading = 2;
+    kPodStageTerminating = 3;
+};
 
 enum ProcessStatus {
     kProcessRunning = 0;

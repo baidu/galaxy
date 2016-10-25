@@ -13,6 +13,7 @@
 #include <mutex.h>
 
 #include "protocol/galaxy.pb.h"
+#include "protocol/appworker.pb.h"
 
 namespace baidu {
 namespace galaxy {
@@ -61,6 +62,11 @@ public:
     int ClearProcesses();
     int RecreateProcess(const ProcessEnv& env,
                         const ProcessContext* context);
+    // upgrade
+    void StartLoops();
+    void PauseLoops();
+    int DumpProcesses(proto::ProcessManager* process_manager);
+    int LoadProcesses(const proto::ProcessManager& process_manager);
 
 private:
     void LoopWaitProcesses();

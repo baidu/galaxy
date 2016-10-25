@@ -13,6 +13,7 @@
 #include <thread_pool.h>
 
 #include "protocol/galaxy.pb.h"
+#include "protocol/appworker.pb.h"
 #include "process_manager.h"
 
 namespace baidu {
@@ -59,8 +60,13 @@ public:
     int StopTask(const std::string& task_id);
     int CleanTask(const std::string& task_id);
     int CheckTask(const std::string& task_id, Task& task);
-    int ClearTasks();
     int QueryTaskStatus(const std::string& task_id, TaskStatus& task_status);
+    int ClearTasks();
+    // upgrade
+    void StartLoops();
+    void PauseLoops();
+    int DumpTasks(proto::TaskManager* task_manager);
+    int LoadTasks(const proto::TaskManager& task_manager);
     // reload
     int DeployReloadTask(const std::string& task_id, const TaskDescription& task_desc);
     int StartReloadTask(const std::string& task_id);
