@@ -344,7 +344,7 @@ baidu::galaxy::util::ErrorCode Container::Destroy_() {
 
 int Container::RunRoutine(void*) {
     // mount root fs
-    bool v2_support = true;
+    bool v2_support = false;
     const baidu::galaxy::proto::ContainerDescription& desc = Description();
     if (desc.has_v2_support() && desc.v2_support()) {
         v2_support = true;
@@ -379,11 +379,10 @@ int Container::RunRoutine(void*) {
     //    return -1;
     //}
     std::cout << "su user " << desc_.run_user() << " sucessfully" << std::endl;
-    // export env
     // start appworker
-    //std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
-    std::string cmd_line = FLAGS_cmd_line;
-    //char* argv[] = {"cat", NULL};
+    // std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
+    // std::string cmd_line = FLAGS_cmd_line;
+    std::string cmd_line = desc_.cmd_line();
     cmd_line += " --tag=";
     cmd_line += Id().SubId();
     char* argv[] = {
@@ -393,6 +392,9 @@ int Container::RunRoutine(void*) {
         const_cast<char*>(cmd_line.c_str()),
         NULL
     };
+
+
+    // export env
     ExportEnv();
 
     std::cout << "start cmd: /bin/sh -c " << cmd_line.c_str() << std::endl;
