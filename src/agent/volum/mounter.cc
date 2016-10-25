@@ -22,7 +22,7 @@
 namespace baidu {
 namespace galaxy {
 namespace volum {
-baidu::galaxy::util::ErrorCode MountProc(const std::string& target) {
+baidu::galaxy::util::ErrorCode MountProc(const std::string& source, const std::string& target) {
     boost::filesystem::path path(target);
     boost::system::error_code ec;
 
@@ -34,8 +34,18 @@ baidu::galaxy::util::ErrorCode MountProc(const std::string& target) {
         return ERRORCODE(-1, "target(%s) is not directory", target.c_str());
     }
 
-    if (0 != ::mount("proc", target.c_str(), "proc", 0, NULL)) {
-        return PERRORCODE(-1, errno, "mount target(%s) failed", target.c_str());
+    if (!boost::filesystem::exists(source, ec)) {
+        return ERRORCODE(-1, "source(%s) donot exist", source.c_str());
+    }
+
+    if (!boost::filesystem::is_directory(source, ec)) {
+        return ERRORCODE(-1, "source(%s) is not directory", source.c_str());
+    }
+
+    if (0 != ::mount(source.c_str(), target.c_str(), "proc", 0, NULL)) {
+        return PERRORCODE(-1, errno, "mount %s->%s failed", 
+                    source.c_str(),
+                    target.c_str());
     }
 
     return ERRORCODE_OK;

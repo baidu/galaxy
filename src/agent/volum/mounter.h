@@ -13,7 +13,7 @@ namespace baidu {
 namespace galaxy {
 namespace volum {
 
-baidu::galaxy::util::ErrorCode MountProc(const std::string& target);
+baidu::galaxy::util::ErrorCode MountProc(const std::string& source, const std::string& target);
 baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::string& target);
 baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t size, bool readonly = false);
 baidu::galaxy::util::ErrorCode Umount(const std::string& target);

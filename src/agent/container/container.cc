@@ -344,7 +344,13 @@ baidu::galaxy::util::ErrorCode Container::Destroy_() {
 
 int Container::RunRoutine(void*) {
     // mount root fs
-    if (0 != volum_group_->MountRootfs()) {
+    bool v2_support = true;
+    const baidu::galaxy::proto::ContainerDescription& desc = Description();
+    if (desc.has_v2_support() && desc.v2_support()) {
+        v2_support = true;
+    }
+    
+    if (0 != volum_group_->MountRootfs(v2_support)) {
         std::cerr << "mount root fs failed" << std::endl;
         return -1;
     }
@@ -375,7 +381,7 @@ int Container::RunRoutine(void*) {
     std::cout << "su user " << desc_.run_user() << " sucessfully" << std::endl;
     // export env
     // start appworker
-    std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
+    //std::cout << "start cmd: /bin/sh -c " << desc_.cmd_line() << std::endl;
     std::string cmd_line = FLAGS_cmd_line;
     //char* argv[] = {"cat", NULL};
     cmd_line += " --tag=";
@@ -388,6 +394,8 @@ int Container::RunRoutine(void*) {
         NULL
     };
     ExportEnv();
+
+    std::cout << "start cmd: /bin/sh -c " << cmd_line.c_str() << std::endl;
     ::execv("/bin/sh", argv);
     std::cerr << "exec cmd " << cmd_line << " failed: " << strerror(errno) << std::endl;
     return -1;

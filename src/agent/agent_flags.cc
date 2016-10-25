@@ -1,6 +1,8 @@
 #include <gflags/gflags.h>
 
-DEFINE_string(mount_templat, "/proc,/etc,/home,/usr,/var,/dev,/boot,/bin", "mount templat");
+DEFINE_string(mount_templat, "", "mount templat");
+DEFINE_string(mount_cgroups, "", "mount templat");
+
 DEFINE_string(cgroup_root_path, "/cgroups", "cgroup root path");
 DEFINE_string(galaxy_root_path, "", "galaxy work path");
 
@@ -23,3 +25,4 @@ DEFINE_int64(gc_delay_time, 43200, "");
 
 DEFINE_int64(volum_collect_cycle, 18000, "");
 DEFINE_int64(cgroup_collect_cycle, 5000, "");
+DEFINE_string(v2_prefix, "/home/baidulinux/V2", "v2 prefix");

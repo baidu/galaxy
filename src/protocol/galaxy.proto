@@ -347,6 +347,7 @@ message ContainerDescription {
     repeated string volum_jobs = 11; // set by user: dependent volum jobs' id 
     repeated string volum_containers = 12; //set by Resman
     optional ContainerType container_type = 13 [default = kNormalContainer];
+    optional bool v2_support = 14 [default = false];
 }
 
 message ContainerMeta {

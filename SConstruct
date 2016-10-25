@@ -46,7 +46,7 @@ env.Program('agent_unittest', agent_unittest_src)
 cpu_tool_src = ['src/example/cpu_tool.cc']
 env.Program('cpu_tool', cpu_tool_src)
 
-jail_src = ['src/tools/gjail.cc', 'src/agent/util/input_stream_file.cc']
+jail_src = ['src/tools/gjail.cc', 'src/agent/util/input_stream_file.cc', 'src/agent/util/user.cc']
 env.Program('gjail', jail_src)
 
 container_meta_src = ['src/example/container_meta.cc','src/protocol/galaxy.pb.cc', 'src/agent/container/serializer.cc', 'src/agent/util/dict_file.cc']
