@@ -41,7 +41,7 @@ public:
     baidu::galaxy::util::ErrorCode  Destroy();
 
     int ExportEnv(std::map<std::string, std::string>& env);
-    int MountRootfs();
+    int MountRootfs(bool vs_support);
     baidu::galaxy::util::ErrorCode MountSharedVolum(const std::map<std::string, std::string>& sv);
     const boost::shared_ptr<Volum> WorkspaceVolum() const;
     const int DataVolumsSize() const;
@@ -52,6 +52,8 @@ private:
     boost::shared_ptr<Volum> Construct(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
     boost::shared_ptr<Volum> NewVolum(boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum);
 
+    int MountCgroups(const std::string& cg);
+    int MountDirs(const std::string& t, bool v2_support);
 
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> ws_description_;
     std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumRequired> > dv_description_;

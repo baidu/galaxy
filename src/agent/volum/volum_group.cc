@@ -21,6 +21,8 @@
 #include <iostream>
 
 DECLARE_string(mount_templat);
+DECLARE_string(mount_cgroups);
+DECLARE_string(v2_prefix);
 
 namespace baidu {
 namespace galaxy {
@@ -221,10 +223,91 @@ const boost::shared_ptr<Volum> VolumGroup::DataVolum(int i) const {
     return data_volum_[i];
 }
 
+int VolumGroup::MountDirs(const std::string& t, bool v2_support) {
+    std::vector<std::string> vm;
+    boost::split(vm, t, boost::is_any_of(","));
+    std::string container_path = baidu::galaxy::path::ContainerRootPath(container_id_);
+
+    for (size_t i = 0; i < vm.size(); i++) {
+        if (vm[i].empty()) {
+            continue;
+        }
+
+        boost::system::error_code ec;
+        boost::filesystem::path path(container_path);
+        path.append(vm[i]);
+        if (!boost::filesystem::exists(path, ec)
+                && !baidu::galaxy::file::create_directories(path, ec)) {
+            std::cerr << "create_directories failed: " << path.string() << ": " << ec.message() << std::endl;
+            return -1;
+        }
+
+        if (boost::filesystem::is_directory(path, ec)) {
+            std::cout << "create_directories sucessfully: " << path.string() << std::endl;
+        }
+
+        boost::filesystem::path vm_path;
+        if (v2_support) {
+            vm_path = FLAGS_v2_prefix;
+            vm_path.append(vm[i]);
+        } else {
+            vm_path = vm[i];
+        }
+
+        if ("/proc" == vm[i]) {
+            baidu::galaxy::util::ErrorCode errc = MountProc(vm_path.string(), path.string());
+
+            if (0 != errc.Code()) {
+                std::cerr << "mount " << vm[i] << "for container "
+                    << container_id_ << " failed " << errc.Message() << std::endl;
+                return -1;
+            }
+
+            std::cout << "mount successfully: " << vm_path.string() << " -> " << path.string() << std::endl;
+        } else {
+            baidu::galaxy::util::ErrorCode errc = MountDir(vm_path.string(), path.string());
+
+            if (0 != errc.Code()) {
+                std::cerr << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message() << std::endl;
+                return -1;
+            }
+
+            //LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
+            std::cout << "mount successfully: " << vm_path.string() << " -> " << path.string() << std::endl;
+        }
+    }
+
+    return 0;
+
+}
+
+int VolumGroup::MountRootfs(bool v2_support) {
+    int ret = MountDirs(FLAGS_mount_templat, v2_support);
+    if (0 != ret) {
+        return ret;
+    }
+
+    ret = MountDirs(FLAGS_mount_cgroups, false);
+    if (0 != ret) {
+        return ret;
+    }
+
+    if (v2_support) {
+        ret = MountDirs("top", true);
+    }
+    return ret;
+}
+
+/*
 // FIX: a single class
-int VolumGroup::MountRootfs() {
+int VolumGroup::MountRootfs(bool v2_support) {
+    v2_support = true;
     std::vector<std::string> vm;
     boost::split(vm, FLAGS_mount_templat, boost::is_any_of(","));
+    if (v2_support) {
+        vm.push_back("top");
+    }
+
     std::string container_path = baidu::galaxy::path::ContainerRootPath(container_id_);
 
     for (size_t i = 0; i < vm.size(); i++) {
@@ -236,6 +319,7 @@ int VolumGroup::MountRootfs() {
         boost::filesystem::path path(container_path);
         path.append(vm[i]);
 
+
         if (!boost::filesystem::exists(path, ec)
                 && !baidu::galaxy::file::create_directories(path, ec)) {
             std::cerr << "create_directories failed: " << path.string() << ": " << ec.message() << std::endl;
@@ -246,8 +330,17 @@ int VolumGroup::MountRootfs() {
             std::cout << "create_directories sucessfully: " << path.string() << std::endl;
         }
 
+
+        boost::filesystem::path vm_path;
+        if (v2_support) {
+            vm_path = FLAGS_v2_prefix;
+            vm_path.append(vm[i]);
+        } else {
+            vm_path = vm[i];
+        }
+
         if ("/proc" == vm[i]) {
-            baidu::galaxy::util::ErrorCode errc = MountProc(path.string());
+            baidu::galaxy::util::ErrorCode errc = MountProc(vm_path.string(), path.string());
 
             if (0 != errc.Code()) {
                 std::cerr << "mount " << vm[i] << "for container "
@@ -255,9 +348,9 @@ int VolumGroup::MountRootfs() {
                 return -1;
             }
 
-            std::cout << "mount successfully: " << vm[i] << " -> " << path.string() << std::endl;
+            std::cout << "mount successfully: " << vm_path.string() << " -> " << path.string() << std::endl;
         } else {
-            baidu::galaxy::util::ErrorCode errc = MountDir(vm[i], path.string());
+            baidu::galaxy::util::ErrorCode errc = MountDir(vm_path.string(), path.string());
 
             if (0 != errc.Code()) {
                 std::cerr << "mount " << vm[i] << "for container " << container_id_ << " failed " << errc.Message() << std::endl;
@@ -265,12 +358,12 @@ int VolumGroup::MountRootfs() {
             }
 
             //LOG(INFO) << "mount successfully: " << vm[i] << " -> " << path.string();
-            std::cout << "mount successfully: " << vm[i] << " -> " << path.string() << std::endl;
+            std::cout << "mount successfully: " << vm_path.string() << " -> " << path.string() << std::endl;
         }
     }
 
     return 0;
-}
+}*/
 
 baidu::galaxy::util::ErrorCode VolumGroup::MountDir_(const std::string& source,
         const std::string& target) {

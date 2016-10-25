@@ -36,7 +36,11 @@ int main(int argc, char** argv) {
             std::cerr << "create dir: " << path << " failed :" << ec.message(); 
         }
     } else if (action == "remove") {
+        try {
         boost::filesystem::remove_all(path, ec);
+        } catch(const std::exception& e){
+            std::cerr << e.what() << std::endl;
+        }
         if (ec.value() == 0) {
             std::cerr << path << " is removed successfully" << ec.message() << std::endl;
         } else {
