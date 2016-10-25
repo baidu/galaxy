@@ -711,6 +711,7 @@ bool FillJobDescription(const JobDescription& sdk_job,
         return false;
     }
     job->set_name(name);
+    job->set_v2_support(sdk_job.v2_support);
 
     //job->set_version(sdk_job.version); //不再需要
 
