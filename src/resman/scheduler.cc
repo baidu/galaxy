@@ -1109,7 +1109,8 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         if (!agent->TryPut(container.get(), res_err)) {
             if (container->last_res_err == proto::kResOk
                 || container->last_res_err == proto::kTagMismatch
-                || container->last_res_err == proto::kPoolMismatch) {
+                || container->last_res_err == proto::kPoolMismatch
+                || container->last_res_err == proto::kTooManyPods) {
                 container->last_res_err = res_err;
             }
             VLOG(10) << "try put fail: " << container->id 
