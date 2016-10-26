@@ -41,7 +41,7 @@ namespace galaxy {
 
 ResManImpl::ResManImpl() : scheduler_(new sched::Scheduler()),
                            safe_mode_(true),
-                           force_safe_mode_(false), 
+                           force_safe_mode_(false),
                            start_time_(0) {
     nexus_ = new InsSDK(FLAGS_nexus_addr);
 }
@@ -64,7 +64,7 @@ bool ResManImpl::Init() {
         const proto::AgentMeta& agent_meta = agent_it->second;
         pools_[agent_meta.pool()].insert(endpoint);
     }
-    
+
     std::map<std::string, proto::TagMeta> tag_map;
     load_ok = LoadObjects(sTagPrefix, tag_map);
     if (!load_ok) {
@@ -86,7 +86,7 @@ bool ResManImpl::Init() {
         LOG(WARNING) << "fail to load user meta";
         return false;
     }
-    
+
     ReloadUsersAuth();
     load_ok = LoadObjects(sContainerGroupPrefix, container_groups_);
     if (!load_ok) {
@@ -187,10 +187,15 @@ void ResManImpl::LeaveSafeMode(::google::protobuf::RpcController* controller,
                                ::google::protobuf::Closure* done) {
     MutexLock lock(&mu_);
     if (safe_mode_) {
-        safe_mode_ = false;
-        force_safe_mode_ = false;
-        scheduler_->Start();
-        response->mutable_error_code()->set_status(proto::kOk);
+        if (force_safe_mode_) {
+            safe_mode_ = false;
+            force_safe_mode_ = false;
+            scheduler_->Start();
+            response->mutable_error_code()->set_status(proto::kOk);
+        } else {
+            response->mutable_error_code()->set_status(proto::kError);
+            response->mutable_error_code()->set_reason("invalide op, cluster in auto safemode");
+        }
     } else {
         response->mutable_error_code()->set_status(proto::kError);
         response->mutable_error_code()->set_reason("invalid op, cluster is not in safe mode");
@@ -360,7 +365,8 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
         const std::set<std::string>& tags = agent_tags_[agent_endpoint];
         std::string pool_name = agent_meta.pool();
         sched::Agent::Ptr agent(new sched::Agent(agent_endpoint,
-                                                 cpu, memory,
+                                                 cpu,
+                                                 memory,
                                                  volums,
                                                  tags,
                                                  pool_name));
@@ -387,8 +393,8 @@ void ResManImpl::QueryAgentCallback(std::string agent_endpoint,
             return;
         }
         agent_stats_[agent_endpoint].info = response->agent_info();
-        if (!force_safe_mode_ && 
-            safe_mode_ && 
+        if (!force_safe_mode_ &&
+            safe_mode_ &&
             agent_stats_.size() > (double)agents_.size() * FLAGS_safe_mode_percent) {
             int64_t running_time = (common::timer::get_micros() - start_time_) / 1000000;
             LOG(INFO) << "running time: " << running_time << " seconds";

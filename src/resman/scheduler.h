@@ -98,7 +98,7 @@ struct Requirement {
                 total += volums[i].size();
             }
         }
-        return total;   
+        return total;
     }
     typedef boost::shared_ptr<Requirement> Ptr;
 };
@@ -174,10 +174,16 @@ public:
                    const std::set<std::string>& tags,
                    const std::string& pool_name);
     void SetAssignment(int64_t cpu_assigned,
+                       int64_t cpu_deep_assigned,
                        int64_t memory_assigned,
+                       int64_t memory_deep_assigned,
                        const std::map<DevicePath, VolumInfo>& volum_assigned,
                        const std::set<std::string> port_assigned,
                        const std::map<ContainerId, Container::Ptr>& containers);
+    void SetReserved(int64_t cpu_reserved,
+                     int64_t cpu_deep_reserved,
+                     int64_t memory_reserved,
+                     int64_t memory_deep_reserved);
     bool TryPut(const Container* container, ResourceError& err);
     void Put(Container::Ptr container);
     void Evict(Container::Ptr container);
@@ -199,8 +205,14 @@ private:
     std::string pool_name_;
     int64_t cpu_total_;
     int64_t cpu_assigned_;
+    int64_t cpu_reserved_;
+    int64_t cpu_deep_assigned_;
+    int64_t cpu_deep_reserved_;
     int64_t memory_total_;
     int64_t memory_assigned_;
+    int64_t memory_reserved_;
+    int64_t memory_deep_assigned_;
+    int64_t memory_deep_reserved_;
     std::map<DevicePath, VolumInfo> volum_total_;
     std::map<DevicePath, VolumInfo> volum_assigned_;
     std::set<std::string> port_assigned_;

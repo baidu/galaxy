@@ -385,7 +385,8 @@ void ProcessManager::LoopWaitProcesses() {
             LOG(INFO)
                     << "process: " << it->second->process_id << ", "
                     << "pid: " << pid << ", "
-                    << "exit code: " << it->second->exit_code;
+                    << "exit code: " << it->second->exit_code << ", "
+                    << "exit status: " << proto::ProcessStatus_Name(it->second->status);
             break;
         }
     }

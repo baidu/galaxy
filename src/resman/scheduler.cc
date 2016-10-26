@@ -20,6 +20,7 @@ DECLARE_int64(sched_interval);
 DECLARE_int64(container_group_gc_check_interval);
 DECLARE_bool(check_container_version);
 DECLARE_int32(max_batch_pods);
+DECLARE_double(reserved_percent);
 
 namespace baidu {
 namespace galaxy {
@@ -38,8 +39,14 @@ Agent::Agent(const AgentEndpoint& endpoint,
     endpoint_ = endpoint;
     cpu_total_ = cpu;
     cpu_assigned_ = 0;
+    cpu_reserved_ = 0;
+    cpu_deep_assigned_ = 0;
+    cpu_deep_reserved_ = 0;
     memory_total_ = memory;
     memory_assigned_ = 0;
+    memory_reserved_ = 0;
+    memory_deep_assigned_ = 0;
+    memory_deep_reserved_ = 0;
     volum_total_ = volums;
     port_total_ = sMaxPort - sMinPort + 1;
     tags_ = tags;
@@ -54,12 +61,16 @@ ContainerGroupId Agent::ExtractGroupId(const ContainerId& container_id) {
 }
 
 void Agent::SetAssignment(int64_t cpu_assigned,
+                          int64_t cpu_deep_assigned,
                           int64_t memory_assigned,
+                          int64_t memory_deep_assigned,
                           const std::map<DevicePath, VolumInfo>& volum_assigned,
                           const std::set<std::string> port_assigned,
                           const std::map<ContainerId, Container::Ptr>& containers) {
     cpu_assigned_ = cpu_assigned;
+    cpu_deep_assigned_ = cpu_deep_assigned;
     memory_assigned_ = memory_assigned;
+    memory_deep_assigned_ = memory_deep_assigned;
     volum_assigned_ =  volum_assigned;
     port_assigned_ = port_assigned;
     containers_ =  containers;
@@ -79,7 +90,7 @@ void Agent::SetAssignment(int64_t cpu_assigned,
                      << endpoint_;
         }
         if (container->priority == proto::kJobBatch) {
-            batch_container_count_ ++; 
+            batch_container_count_ ++;
         }
     }
 
@@ -93,15 +104,36 @@ void Agent::SetAssignment(int64_t cpu_assigned,
     }
 }
 
+void Agent::SetReserved(int64_t cpu_reserved,
+                        int64_t cpu_deep_reserved,
+                        int64_t memory_reserved,
+                        int64_t memory_deep_reserved) {
+    LOG(INFO)
+        << "# cpu_reserved: " << cpu_reserved
+        << ", cpu_deep_reserved: " << cpu_deep_reserved
+        << ", memory_reserved: " << memory_reserved
+        << ", memory_deep_reserved: " << memory_deep_reserved;
+    cpu_reserved_ = cpu_reserved;
+    cpu_deep_reserved_ = cpu_deep_reserved;
+    memory_reserved_ = memory_reserved;
+    memory_deep_reserved_ = memory_deep_reserved;
+}
 
 bool Agent::TryPut(const Container* container, ResourceError& err) {
+    LOG(INFO)
+        << "### TryPut, agent: " << endpoint_
+        << ", container: " << container->id
+        << ", cpu[a/r/da/dr]: "
+        << cpu_assigned_ << "," << cpu_reserved_ << "," << cpu_deep_assigned_ << "," << cpu_deep_reserved_
+        << ", mem[a/r/da/dr]: "
+        << memory_assigned_ << "," << memory_reserved_ << "," << memory_deep_assigned_ << "," << memory_deep_reserved_;
     if (!container->require->tag.empty() &&
         tags_.find(container->require->tag) == tags_.end()) {
         err = proto::kTagMismatch;
         return false;
     }
-    if (container->require->pool_names.find(pool_name_) 
-        == container->require->pool_names.end()) {
+    if (container->require->pool_names.find(pool_name_)
+            == container->require->pool_names.end()) {
         err = proto::kPoolMismatch;
         return false;
     }
@@ -114,17 +146,28 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
             if (cur_counts >= container->require->max_per_host) {
                 err = proto::kTooManyPods;
                 return false;
-            } 
+            }
         }
     }
 
-    if (container->require->CpuNeed() + cpu_assigned_ > cpu_total_) {
-        err = proto::kNoCpu;
-        return false;
-    }
-    if (container->require->MemoryNeed() + memory_assigned_ > memory_total_) {
-        err = proto::kNoMemory;
-        return false;
+    if (container->priority != proto::kJobBestEffort) {
+        if (container->require->CpuNeed() + cpu_assigned_ > cpu_total_) {
+            err = proto::kNoCpu;
+            return false;
+        }
+        if (container->require->MemoryNeed() + memory_assigned_ > memory_total_) {
+            err = proto::kNoMemory;
+            return false;
+        }
+    } else {
+        if (cpu_reserved_ + cpu_deep_assigned_ + container->require->CpuNeed() > cpu_total_) {
+            err = proto::kNoCpu;
+            return false;
+        }
+        if (memory_reserved_ + memory_deep_assigned_ + container->require->MemoryNeed() > memory_total_) {
+            err = proto::kNoMemory;
+            return false;
+        }
     }
 
     int64_t size_ramdisk = 0;
@@ -139,9 +182,16 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
         }
     }
 
-    if (size_ramdisk + memory_assigned_ + container->require->MemoryNeed()> memory_total_) {
-        err = proto::kNoMemoryForTmpfs;
-        return false;
+    if (container->priority != proto::kJobBestEffort) {
+        if (size_ramdisk + memory_assigned_ + container->require->MemoryNeed()> memory_total_) {
+            err = proto::kNoMemoryForTmpfs;
+            return false;
+        }
+    } else {
+        if (size_ramdisk + memory_assigned_ > memory_total_) {
+            err = proto::kNoMemoryForTmpfs;
+            return false;
+        }
     }
 
     std::vector<DevicePath> devices;
@@ -182,11 +232,16 @@ bool Agent::TryPut(const Container* container, ResourceError& err) {
 void Agent::Put(Container::Ptr container) {
     assert(container->status == kContainerPending);
     assert(container->allocated_agent.empty());
-    //cpu 
-    cpu_assigned_ += container->require->CpuNeed();
-    assert(cpu_assigned_ <= cpu_total_);
-    //memory
-    memory_assigned_ += container->require->MemoryNeed();
+    if (container->priority != proto::kJobBestEffort) {
+        //cpu
+        cpu_assigned_ += container->require->CpuNeed();
+        assert(cpu_assigned_ <= cpu_total_);
+        //memory
+        memory_assigned_ += container->require->MemoryNeed();
+    } else {
+        cpu_deep_assigned_ += container->require->CpuNeed();
+        memory_deep_assigned_ += container->require->MemoryNeed();
+    }
     int64_t size_ramdisk = 0;
     std::vector<proto::VolumRequired> volums_no_ramdisk;
     BOOST_FOREACH(const proto::VolumRequired& v, container->require->volums) {
@@ -359,12 +414,20 @@ void Agent::Evict(Container::Ptr container) {
         LOG(WARNING) << "invalid evict, no such container:" << container->id;
         return;
     }
-    //cpu 
-    cpu_assigned_ -= container->require->CpuNeed();
-    assert(cpu_assigned_ >= 0);
-    //memory
-    memory_assigned_ -= container->require->MemoryNeed();
-    assert(memory_assigned_ >= 0);
+    if (container->priority != proto::kJobBestEffort) {
+        //cpu 
+        cpu_assigned_ -= container->require->CpuNeed();
+        assert(cpu_assigned_ >= 0);
+        //memory
+        memory_assigned_ -= container->require->MemoryNeed();
+        assert(memory_assigned_ >= 0);
+    } else {
+        cpu_deep_assigned_ -= container->require->CpuNeed();
+        memory_deep_assigned_ -= container->require->MemoryNeed();
+        if (container->require->TmpfsNeed()) {
+            memory_assigned_ -= container->require->TmpfsNeed();
+        }
+    }
     int64_t size_ramdisk = 0;
     std::vector<proto::VolumRequired> volums_no_ramdisk;
     BOOST_FOREACH(const proto::VolumRequired& v, container->require->volums) {
@@ -515,9 +578,15 @@ void Scheduler::SetRequirement(Requirement::Ptr require,
 
 void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
     MutexLock locker(&mu_);
-    
+
     int64_t cpu_assigned = 0;
+    int64_t cpu_reserved = 0;
+    int64_t cpu_deep_assigned = 0;
+    int64_t cpu_deep_reserved = 0;
     int64_t memory_assigned = 0;
+    int64_t memory_reserved = 0;
+    int64_t memory_deep_assigned = 0;
+    int64_t memory_deep_reserved = 0;
     std::map<DevicePath, VolumInfo> volum_assigned;
     std::set<std::string> port_assigned;
     std::map<ContainerId, Container::Ptr> containers;
@@ -549,13 +618,13 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
                 continue;
             }
         }
-        
+
         container->allocated_ports.clear();
         container->allocated_volums.clear();
         container->allocated_volum_containers.clear();
 
-        Requirement::Ptr require(new Requirement());    
-        const proto::ContainerDescription& container_desc = container_info.container_desc();    
+        Requirement::Ptr require(new Requirement());
+        const proto::ContainerDescription& container_desc = container_info.container_desc();
         SetRequirement(require, container_desc);
         if (container_group->require->version == require->version) {
             require = container_group->require;
@@ -565,8 +634,25 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->priority = container_desc.priority();
         container->status = container_info.status();
         container->require = require;
-        cpu_assigned += require->CpuNeed();
-        memory_assigned += require->MemoryNeed();
+        if (container->priority != proto::kJobBestEffort) {
+            cpu_assigned += require->CpuNeed();
+            cpu_reserved += std::min(
+                static_cast<int64_t>(container_info.cpu_used() * FLAGS_reserved_percent),
+                require->CpuNeed());
+            memory_assigned += require->MemoryNeed();
+            memory_reserved += std::min(
+                static_cast<int64_t>(container_info.memory_used() * FLAGS_reserved_percent),
+                require->MemoryNeed());
+        } else {
+            cpu_deep_assigned += require->CpuNeed();
+            cpu_deep_reserved += std::min(
+                static_cast<int64_t>(container_info.cpu_used() * FLAGS_reserved_percent),
+                require->CpuNeed());
+            memory_deep_assigned += require->MemoryNeed();
+            memory_deep_reserved += std::min(
+                static_cast<int64_t>(container_info.memory_used() * FLAGS_reserved_percent),
+                require->MemoryNeed());
+        }
         for (int j = 0; j < container_desc.cgroups_size(); j++) {
             const proto::Cgroup& cgroup = container_desc.cgroups(j);
             for (int k = 0; k < cgroup.ports_size(); k++) {
@@ -598,6 +684,7 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
             data_volum.size = container_desc.data_volums(j).size();
             if (data_volum.medium == proto::kTmpfs) {
                 memory_assigned += data_volum.size;
+                memory_reserved += data_volum.size;
                 continue;
             }
             data_volum.exclusive = container_desc.data_volums(j).exclusive();
@@ -621,8 +708,14 @@ void Scheduler::AddAgent(Agent::Ptr agent, const proto::AgentInfo& agent_info) {
         container->allocated_agent = agent->endpoint_;
         ChangeStatus(container, container->status);
     }
-    agent->SetAssignment(cpu_assigned, memory_assigned, volum_assigned,
-                         port_assigned, containers);
+    agent->SetAssignment(
+        cpu_assigned, cpu_deep_assigned,
+        memory_assigned, memory_deep_assigned,
+        volum_assigned,
+        port_assigned,
+        containers);
+    agent->SetReserved(cpu_reserved, cpu_deep_reserved,
+                       memory_reserved, memory_deep_reserved);
     agents_[agent->endpoint_] = agent;
 }
 
@@ -1072,10 +1165,10 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
         if (agents_.empty()) {
             VLOG(16) << "no alive agents for scheduler.";
         }
-        sched_pool_.DelayTask(FLAGS_sched_interval, 
+        sched_pool_.DelayTask(FLAGS_sched_interval,
                     boost::bind(&Scheduler::ScheduleNextAgent, this, pre_endpoint));
         return;
-    }    
+    }
     std::map<AgentEndpoint, Agent::Ptr>::iterator it;
     it = agents_.upper_bound(pre_endpoint);
     if (it != agents_.end()) {
@@ -1099,7 +1192,7 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
             continue; // no pending pods
         }
         ContainerId last_id = container_group->last_sched_container_id;
-        ContainerMap::iterator container_it = 
+        ContainerMap::iterator container_it =
                 container_group->states[kContainerPending].upper_bound(last_id);
         if (container_it == container_group->states[kContainerPending].end()) {
             container_it = container_group->states[kContainerPending].begin();
@@ -1114,16 +1207,16 @@ void Scheduler::ScheduleNextAgent(AgentEndpoint pre_endpoint) {
                 || container->last_res_err == proto::kTooManyPods) {
                 container->last_res_err = res_err;
             }
-            VLOG(10) << "try put fail: " << container->id 
+            VLOG(10) << "try put fail: " << container->id
                      << " agent:" << endpoint
-                     << ", err:" << proto::ResourceError_Name(res_err); 
+                     << ", err:" << proto::ResourceError_Name(res_err);
             continue; //no feasiable
         }
         agent->Put(container);
         ChangeStatus(container, kContainerAllocating);
     }
     //scheduling round for the next agent
-    sched_pool_.DelayTask(FLAGS_sched_interval, 
+    sched_pool_.DelayTask(FLAGS_sched_interval,
                     boost::bind(&Scheduler::ScheduleNextAgent, this, endpoint));
 }
 
@@ -1228,7 +1321,7 @@ bool Scheduler::Update(const ContainerGroupId& container_group_id,
 }
 
 void Scheduler::MakeCommand(const std::string& agent_endpoint,
-                            const proto::AgentInfo& agent_info, 
+                            const proto::AgentInfo& agent_info,
                             std::vector<AgentCommand>& commands) {
     MutexLock locker(&mu_);
     if (stop_) {
@@ -1250,6 +1343,11 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
         return;
     }
     Agent::Ptr agent = it->second;
+
+    int64_t cpu_reserved = 0;
+    int64_t cpu_deep_reserved = 0;
+    int64_t memory_reserved = 0;
+    int64_t memory_deep_reserved = 0;
     ContainerMap containers_local = agent->containers_;
     std::map<ContainerId, ContainerStatus> remote_status;
     for (int i = 0; i < agent_info.container_info_size(); i++) {
@@ -1264,6 +1362,26 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
             commands.push_back(cmd);
             continue;
         }
+
+        // get reserved
+        if (it_local->second->priority != proto::kJobBestEffort) {
+            cpu_reserved += std::min(
+                static_cast<int64_t>(container_remote.cpu_used() * FLAGS_reserved_percent),
+                it_local->second->require->CpuNeed());
+            memory_reserved += it_local->second->require->TmpfsNeed();
+            memory_reserved += std::min(
+                static_cast<int64_t>(container_remote.memory_used() * FLAGS_reserved_percent),
+                it_local->second->require->MemoryNeed());
+        } else {
+            cpu_deep_reserved += std::min(
+                static_cast<int64_t>(container_remote.cpu_used() * FLAGS_reserved_percent),
+                it_local->second->require->CpuNeed());
+            memory_reserved += it_local->second->require->TmpfsNeed();
+            memory_deep_reserved += std::min(
+                static_cast<int64_t>(container_remote.memory_used() * FLAGS_reserved_percent),
+                it_local->second->require->MemoryNeed());
+        }
+
         const std::string& local_version = it_local->second->require->version;
         const std::string& remote_version = container_remote.container_desc().version();
         if (local_version != remote_version) {
@@ -1282,6 +1400,11 @@ void Scheduler::MakeCommand(const std::string& agent_endpoint,
         container_local->remote_info.mutable_volum_used()->CopyFrom(container_remote.volum_used());
         container_local->remote_info.mutable_port_used()->CopyFrom(container_remote.port_used());
     }
+
+    // set resource reserved
+    agent->SetReserved(cpu_reserved, cpu_deep_reserved,
+                       memory_reserved, memory_deep_reserved);
+
     BOOST_FOREACH(ContainerMap::value_type& pair, containers_local) {
         Container::Ptr container_local = pair.second;
         AgentCommand cmd;
@@ -1645,8 +1768,10 @@ void Scheduler::ShowUserAlloc(const std::string& user_name, proto::Quota& alloc)
         }
         int64_t replica = container_group->Replica();
         replica_alloc +=  replica;
-        cpu_alloc += container_group->require->CpuNeed() * replica;
-        memory_alloc += container_group->require->MemoryNeed() * replica;
+        if (container_group->priority != proto::kJobBestEffort) {
+            cpu_alloc += container_group->require->CpuNeed() * replica;
+            memory_alloc += container_group->require->MemoryNeed() * replica;
+        }
         memory_alloc += container_group->require->TmpfsNeed() * replica;
         disk_alloc += container_group->require->DiskNeed() * replica;
         ssd_alloc += container_group->require->SsdNeed() * replica;  
@@ -1676,8 +1801,12 @@ void Scheduler::MetaToQuota(const proto::ContainerGroupMeta& meta, proto::Quota&
     SetRequirement(require, meta.desc());
     int64_t replica = meta.replica();
     quota.set_replica(replica);
-    quota.set_millicore(require->CpuNeed() * replica);
-    quota.set_memory( (require->MemoryNeed() + require->TmpfsNeed()) * replica);
+    if (meta.desc().priority() != proto::kJobBestEffort) {
+        quota.set_millicore(require->CpuNeed() * replica);
+        quota.set_memory((require->MemoryNeed() + require->TmpfsNeed()) * replica);
+    } else {
+        quota.set_memory(require->TmpfsNeed() * replica);
+    }
     quota.set_disk(require->DiskNeed() * replica);
     quota.set_ssd(require->SsdNeed() * replica);
 }

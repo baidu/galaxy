@@ -11,3 +11,6 @@ DEFINE_int32(container_group_max_replica, 100000, "max replica allowed for one g
 DEFINE_double(safe_mode_percent, 0.85, "when agent alive percent bigger than this, leave safe mode");
 DEFINE_bool(check_container_version, false, "by default, AM will handle that");
 DEFINE_int32(max_batch_pods, 12, "max batch pods per agent");
+
+DEFINE_int32(overassign_level, 2, "overassign level: {0, 1, 2, 3}");
+DEFINE_double(reserved_percent, 2.0, "resource reserved percent");
