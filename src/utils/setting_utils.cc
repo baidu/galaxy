@@ -20,12 +20,10 @@ void SetupLog(const std::string& name) {
     }
     std::string log_filename = FLAGS_log_dir + "/" + program_name + ".INFO.";
     std::string wf_filename = FLAGS_log_dir + "/" + program_name + ".WARNING.";
-    std::string x_filename = FLAGS_log_dir + "/" + program_name + ".888WARNING.";
     google::SetLogDestination(google::INFO, log_filename.c_str());
     google::SetLogDestination(google::WARNING, wf_filename.c_str());
     google::SetLogDestination(google::ERROR, "");
     google::SetLogDestination(google::FATAL, "");
-    google::SetLogDestination(10, x_filename.c_str());
 
     google::SetLogSymlink(google::INFO, program_name.c_str());
     google::SetLogSymlink(google::WARNING, program_name.c_str());
