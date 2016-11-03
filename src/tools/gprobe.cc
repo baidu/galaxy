@@ -5,11 +5,14 @@
 #include "protocol/galaxy.pb.h"
 #include "protocol/agent.pb.h"
 #include "util/error_code.h"
+#include "util/util.h"
 #include "rpc/rpc_client.h"
 #include "boost/smart_ptr/shared_ptr.hpp"
 #include "pod_metrix.h"
 #include "agent/util/output_stream_file.h"
 #include <boost/scoped_ptr.hpp>
+#include <boost/system/error_code.hpp>
+#include <boost/filesystem/operations.hpp>
 
 #include <gflags/gflags.h>
 
@@ -51,6 +54,16 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    if (!FLAGS_a.empty() || FLAGS_w.empty()) {
+        std::string path = !FLAGS_a.empty() ? FLAGS_a : FLAGS_w;
+        boost::system::error_code ec;
+        if (!boost::filesystem::exists(path)
+                    && !baidu::galaxy::file::create_directories(path, ec)) {
+            std::cerr << "create directories failed:" << ec.message() << std::endl;
+            return -1;
+        }
+    }
+
     boost::scoped_ptr<baidu::galaxy::RpcClient> rpc(new baidu::galaxy::RpcClient());
     std::string endpoint;
     if (FLAGS_e.empty()) {
@@ -71,6 +84,7 @@ int main(int argc, char** argv) {
     int64_t last_output_time = baidu::common::timer::get_micros();
 
     while (true) {
+        last_output_time = baidu::common::timer::get_micros();
         baidu::galaxy::proto::QueryResponse qres;
 
         if (rpc->SendRequest(agent_stub, 
@@ -97,8 +111,6 @@ int main(int argc, char** argv) {
         } else {
             int64_t now = baidu::common::timer::get_micros();
             int64_t deta = now + FLAGS_t * 1000000L - last_output_time;
-            last_output_time = now;
-
             if (deta > 0) {
                 sleep(deta / 1000000L);
             }
