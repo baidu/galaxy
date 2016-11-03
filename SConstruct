@@ -50,6 +50,9 @@ env.Program('cpu_tool', cpu_tool_src)
 jail_src = ['src/tools/gjail.cc', 'src/agent/util/input_stream_file.cc', 'src/agent/util/user.cc']
 env.Program('gjail', jail_src)
 
+probe_src = ['src/tools/gprobe.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/agent.pb.cc', 'src/agent/util/output_stream_file.cc']
+env.Program('gprobe', probe_src)
+
 container_meta_src = ['src/example/container_meta.cc','src/protocol/galaxy.pb.cc', 'src/agent/container/serializer.cc', 'src/agent/util/dict_file.cc']
 env.Program('container_meta', container_meta_src)
 
