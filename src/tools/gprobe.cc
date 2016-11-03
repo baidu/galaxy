@@ -18,11 +18,12 @@
 
 #include <iostream>
 
-DEFINE_string(p, "1025", "used to decalre port of agent");
+DEFINE_string(p, "", "used to decalre port of agent");
 DEFINE_string(i, "", "used to declare pod id");
 DEFINE_string(w, "", "dir to write");
 DEFINE_string(a, "", "dir to append");
 DEFINE_string(h, "", "to print help");
+DEFINE_string(e, "", "endpoint");
 DEFINE_int32(t, -1, "");
 
 baidu::galaxy::util::ErrorCode CheckParameter();
@@ -51,7 +52,13 @@ int main(int argc, char** argv) {
     }
 
     boost::scoped_ptr<baidu::galaxy::RpcClient> rpc(new baidu::galaxy::RpcClient());
-    const std::string endpoint = "127.0.0.1:" + FLAGS_p;
+    std::string endpoint;
+    if (FLAGS_e.empty()) {
+        endpoint = "127.0.0.1:" + FLAGS_p;
+    } else {
+        endpoint = FLAGS_e;
+    }
+
     baidu::galaxy::proto::Agent_Stub* agent_stub = NULL;
 
     if (!rpc->GetStub(endpoint, &agent_stub)) {
@@ -72,6 +79,7 @@ int main(int argc, char** argv) {
                         &qres,
                         5,
                         1)) {
+            //std::cerr << qres.DebugString() << std::endl;
             std::map<std::string, boost::shared_ptr<baidu::galaxy::tools::PodMetrix> > metrix;
             ParseInfo(qres, metrix);
 
@@ -101,19 +109,28 @@ int main(int argc, char** argv) {
 }
 
 baidu::galaxy::util::ErrorCode CheckParameter() {
-    if (FLAGS_p.empty()) {
-        return ERRORCODE(-1, "port is not set");
+    if (FLAGS_p.empty() && FLAGS_e.empty()) {
+        return ERRORCODE(-1, "endpoint is not set");
+    }
+
+    if (!FLAGS_p.empty() && !FLAGS_e.empty()) {
+        return ERRORCODE(-1, "");
     }
 
     return ERRORCODE_OK;
 }
 
 void PrintHelp(const char* argv0) {
-    std::cout << "usage: " << argv0 << " -p port [ -i ] [ -w ] [ -a ]" << std::endl;
+    std::cout << "usage: " << argv0 << " -p port [ -i ] [ -w ] [ -a ] [ -e ]" << std::endl;
 }
 
 void ParseInfo(const baidu::galaxy::proto::QueryResponse& qres, std::map<std::string, boost::shared_ptr<baidu::galaxy::tools::PodMetrix> >& metrix) {
     const baidu::galaxy::proto::AgentInfo& ai = qres.agent_info();
+
+    std::map<std::string, int> cinfs; // index for container info
+    for (int k = 0; k < ai.container_info_size(); k++) {
+        cinfs[ai.container_info(k).id()] = k;
+    }
 
     for (int k = 0; k < ai.container_info_size(); k++) {
         const baidu::galaxy::proto::ContainerInfo& cinf = ai.container_info(k);
@@ -140,22 +157,48 @@ void ParseInfo(const baidu::galaxy::proto::QueryResponse& qres, std::map<std::st
         pm->rss_used_in_byte = cinf.memory_used();
         pm->cpu_used_in_millicore = cinf.cpu_used();
         // volum
-        std::map<std::string, int> cinfs;
+
+        std::map<std::string, int64_t> volume_total;
+        for (int i = 0; i < cdes.data_volums_size(); i++) {
+            volume_total[cdes.data_volums(i).dest_path()] = cdes.data_volums(i).size();
+        }
+        volume_total[cdes.workspace_volum().dest_path()] = cdes.workspace_volum().size();
 
         for (int i = 0; i < cinf.volum_used_size(); i++) {
             const baidu::galaxy::proto::Volum& vs = cinf.volum_used(i);
             boost::shared_ptr<baidu::galaxy::tools::PodMetrix::Volum> v(new baidu::galaxy::tools::PodMetrix::Volum);
             v->path = vs.path();
-            v->total_in_byte = vs.assigned_size();
             v->used_in_byte = vs.used_size();
+            
+            std::map<std::string, int64_t>::const_iterator iter = volume_total.find(v->path);
+            assert(iter != volume_total.end());
+            v->total_in_byte = iter->second;
             pm->volums.push_back(v);
         }
 
-        cinfs[cinf.id()] = k;
+        // parse volum jobs
+        // create volum index
+        std::map<std::string, int64_t> depend_volum_total_size;
 
-        // volum jobs处理依赖
-        for (int i = 0; i < cdes.volum_jobs_size(); i++) {
-            const std::string& vj = cdes.volum_jobs(i);
+        for (int i = 0; i < cdes.volum_containers_size(); i++) {
+             const std::string& vj = cdes.volum_containers(i);
+             std::map<std::string, int>::const_iterator iter = cinfs.find(vj);
+             assert(iter != cinfs.end());
+             assert(iter->second < ai.container_info_size());
+             const baidu::galaxy::proto::ContainerInfo& vci 
+                 = ai.container_info(iter->second); //volum container   info            
+
+             for (int j = 0; j < vci.container_desc().data_volums_size(); j++) {
+                 depend_volum_total_size[vci.container_desc().data_volums(j).dest_path()] 
+                     = vci.container_desc().data_volums(j).size(); 
+             }
+             depend_volum_total_size[vci.container_desc().workspace_volum().dest_path()]
+                 = vci.container_desc().workspace_volum().size();
+        }
+
+        //
+        for (int i = 0; i < cdes.volum_containers_size(); i++) {
+            const std::string& vj = cdes.volum_containers(i);
             std::map<std::string, int>::const_iterator iter = cinfs.find(vj);
 
             if (iter != cinfs.end()) {
@@ -167,8 +210,10 @@ void ParseInfo(const baidu::galaxy::proto::QueryResponse& qres, std::map<std::st
                     const baidu::galaxy::proto::Volum& vs = vci.volum_used(i);
                     boost::shared_ptr<baidu::galaxy::tools::PodMetrix::Volum> v(new baidu::galaxy::tools::PodMetrix::Volum);
                     v->path = vs.path();
-                    v->total_in_byte = vs.assigned_size();
                     v->used_in_byte = vs.used_size();
+                    std::map<std::string, int64_t>::const_iterator it = depend_volum_total_size.find(v->path);
+                    assert(it != depend_volum_total_size.end());
+                    v->total_in_byte = it->second;
                     pm->volums.push_back(v);
                 }
             }
@@ -184,6 +229,11 @@ void WriteMetrixesToFiles(std::map<std::string, boost::shared_ptr<baidu::galaxy:
     std::map<std::string, boost::shared_ptr<baidu::galaxy::tools::PodMetrix> >::const_iterator iter = metrix.begin();
 
     while (iter != metrix.end()) {
+        if (!FLAGS_i.empty() && FLAGS_i != iter->first) {
+            iter++;
+            continue;
+        }
+
         boost::shared_ptr<baidu::galaxy::file::OutputStreamFile> osf;
         std::string mode = append ? "a+" : "w";
         std::string path = dir_path + "/" + iter->first;
@@ -205,7 +255,12 @@ void PrintMetrixes(std::map<std::string, boost::shared_ptr<baidu::galaxy::tools:
     std::map<std::string, boost::shared_ptr<baidu::galaxy::tools::PodMetrix> >::const_iterator iter = metrix.begin();
 
     while (iter != metrix.end()) {
-        fprintf(stdout, iter->first.c_str());
+        if (!FLAGS_i.empty() && FLAGS_i != iter->first) {
+            iter++;
+            continue;
+        }
+
+        fprintf(stdout, "pod_id is: %s\n", iter->first.c_str());
         fprintf(stdout, "%s", iter->second->ToString().c_str());
         fflush(stdout);
         iter++;

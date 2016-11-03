@@ -56,8 +56,8 @@ public:
             std::string path = volums[i]->path;
             boost::algorithm::to_upper(path);
             boost::algorithm::replace_all(path, "/", "_");
-            ss << "GALAXY_DISK_" << path << "_TOTAL:" << volums[i]->total_in_byte << "\n"
-               << "GALAXY_DISK_" << path << "_USED:" << volums[i]->used_in_byte << "\n";
+            ss << "GALAXY_DISK" << path << "_TOTAL:" << volums[i]->total_in_byte << "\n"
+               << "GALAXY_DISK" << path << "_USED:" << volums[i]->used_in_byte << "\n";
         }
 
         return ss.str();
