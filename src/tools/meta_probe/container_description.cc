@@ -18,13 +18,11 @@
 #include "protocol/appmaster.pb.h"
 #include "boost/shared_ptr.hpp"
 #include <gflags/gflags.h>
-
+#include <stdio.h>
 #include <iostream>
 
 DEFINE_string(nexus_addr, "", "");
 DEFINE_string(nexus_path, "", "");
-DEFINE_string(start_key, "", "");
-DEFINE_string(end_key, "", "");
 
 void PrintHelp(const char* argv0);
 
@@ -40,7 +38,6 @@ int main(int argc, char** argv) {
     std::cerr << "====================================" << FLAGS_nexus_addr << "\n";
 
     while (!result->Done()) {
-        const std::string& key = result->Key();
         const std::string& value = result->Value();
 
         baidu::galaxy::proto::JobInfo job;
