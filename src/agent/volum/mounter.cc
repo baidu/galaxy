@@ -14,6 +14,7 @@
 
 #include <string>
 #include <fstream>
+#include <iostream>
 
 #ifndef MS_REC
 #define MS_REC 0x4000 /* 16384: Recursive loopback */
