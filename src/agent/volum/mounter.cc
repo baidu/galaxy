@@ -74,11 +74,11 @@ baidu::galaxy::util::ErrorCode MountDir(const std::string& source, const std::st
     }
 
     if (0 != ::mount(source.c_str(), target.c_str(), "", MS_BIND | MS_REC, NULL)) {
-        LOG(WARNING) << "mount failed: " << source << "->" << target;
+        std::cerr << "mount failed: " << source << "->" << target << std::endl;
         return PERRORCODE(-1, errno, "mount %s to %s failed", source.c_str(), target.c_str());
     }
 
-    LOG(INFO) << "mount ok: " << source << "->" << target;
+    std::cout << "mount ok: " << source << "->" << target << std::endl;
     return ERRORCODE_OK;
 }
 
@@ -102,7 +102,7 @@ baidu::galaxy::util::ErrorCode MountTmpfs(const std::string& target, uint64_t si
         return PERRORCODE(-1, errno, "mount tmpfs to %s failed", target.c_str());
     }
 
-    LOG(INFO) << "mount tmpfs ok: " << target;
+    std::cout << "mount tmpfs ok: " << target << std::endl;
     return ERRORCODE_OK;
 }
 
