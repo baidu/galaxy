@@ -53,8 +53,8 @@ env.Program('gjail', jail_src)
 probe_src = ['src/tools/gprobe/gprobe.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/agent.pb.cc', 'src/agent/util/output_stream_file.cc', 'src/agent/util/util.cc']
 env.Program('gprobe', probe_src)
 
-list_service_src = ['src/tools/meta_probe/container_description.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc']
-env.Program('gservice_list', list_service_src)
+get_service_from_nexus_src = ['src/tools/meta_probe/get_service_from_nexus.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc']
+env.Program('get_service_from_nexus', get_service_from_nexus_src)
 
 container_meta_src = ['src/example/container_meta.cc','src/protocol/galaxy.pb.cc', 'src/agent/container/serializer.cc', 'src/agent/util/dict_file.cc']
 env.Program('container_meta', container_meta_src)
