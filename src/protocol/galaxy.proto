@@ -192,6 +192,7 @@ enum PodStatus {
     kPodRunning = 8;
     kPodStopping = 9;
     kPodTerminated = 10;
+    kPodServiceUnavailable = 11;
 }
 
 enum PodStage {
