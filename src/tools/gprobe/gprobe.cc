@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    if (!FLAGS_a.empty() || FLAGS_w.empty()) {
+    if (!FLAGS_a.empty() || !FLAGS_w.empty()) {
         std::string path = !FLAGS_a.empty() ? FLAGS_a : FLAGS_w;
         boost::system::error_code ec;
         if (!boost::filesystem::exists(path)
