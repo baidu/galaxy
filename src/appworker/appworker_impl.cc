@@ -457,8 +457,13 @@ void AppWorkerImpl::FetchTask() {
 
     // copy services status
     for (unsigned i = 0; i < pod.services.size(); ++i) {
+        if (pod.status == proto::kPodRunning
+                && pod.services[i].status() != proto::kOk) {
+            pod.status = proto::kPodServiceUnavailable;
+        }
         request->add_services()->CopyFrom(pod.services[i]);
     }
+    LOG(INFO) << "++++++ " << proto::PodStatus_Name(pod.status);
 
     for (int j = 0; j < request->services().size(); ++j) {
         LOG(INFO)

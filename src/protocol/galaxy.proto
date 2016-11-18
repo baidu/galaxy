@@ -192,6 +192,7 @@ enum PodStatus {
     kPodRunning = 8;
     kPodStopping = 9;
     kPodTerminated = 10;
+    kPodServiceUnavailable = 11;
 }
 
 enum PodStage {
@@ -323,6 +324,7 @@ message JobDescription {
     optional string tag = 7;
     repeated string pool_names = 8;
     repeated string volum_jobs = 9;
+    optional bool v2_support = 10; 
 }
 
 
