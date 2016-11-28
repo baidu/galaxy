@@ -23,7 +23,7 @@ namespace baidu {
 namespace galaxy {
 namespace client {
 
-JobAction::JobAction() : app_master_(NULL), resman_(NULL) { 
+JobAction::JobAction() : app_master_(NULL), resman_(NULL) {
     user_.user = FLAGS_username;
     user_.token = FLAGS_token;
 }
@@ -49,7 +49,7 @@ bool JobAction::InitResman() {
 
 bool JobAction::Init() {
     std::string path = FLAGS_nexus_root + FLAGS_appmaster_path;
-    app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(FLAGS_nexus_addr, path); 
+    app_master_ = ::baidu::galaxy::sdk::AppMaster::ConnectAppMaster(FLAGS_nexus_addr, path);
     if (app_master_ == NULL) {
         return false;
     }
@@ -65,7 +65,7 @@ bool JobAction::SubmitJob(const std::string& json_file) {
     if(!this->Init()) {
         return false;
     }
-    
+
     ::baidu::galaxy::sdk::SubmitJobRequest request;
     ::baidu::galaxy::sdk::SubmitJobResponse response;
     request.user = user_;
@@ -87,19 +87,19 @@ bool JobAction::SubmitJob(const std::string& json_file) {
     if (ret) {
         printf("Submit job %s\n", response.jobid.c_str());
     } else {
-        printf("Submit job failed for reason %s:%s\n", StringStatus(response.error_code.status).c_str(), 
+        printf("Submit job failed for reason %s:%s\n", StringStatus(response.error_code.status).c_str(),
                     response.error_code.reason.c_str());
     }
     return ret;
 }
 
-bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid, 
+bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid,
                             const std::string& operation, uint32_t update_break_count) {
     if (jobid.empty()) {
         fprintf(stderr, "jobid is needed\n");
         return false;
     }
-    
+
     if(!this->Init()) {
         return false;
     }
@@ -151,7 +151,7 @@ bool JobAction::UpdateJob(const std::string& json_file, const std::string& jobid
     if (ret) {
         printf("Update job %s\n success", jobid.c_str());
     } else {
-        printf("Update job %s failed for reason %s:%s\n", 
+        printf("Update job %s failed for reason %s:%s\n",
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
 
@@ -163,7 +163,7 @@ bool JobAction::StopJob(const std::string& jobid) {
         fprintf(stderr, "jobid is needed\n");
         return false;
     }
-    
+
     if(!this->Init()) {
         return false;
     }
@@ -172,7 +172,7 @@ bool JobAction::StopJob(const std::string& jobid) {
     ::baidu::galaxy::sdk::StopJobResponse response;
     request.jobid = jobid;
     request.user = user_;
-    
+
     if (!GetHostname(&request.hostname)) {
         return false;
     }
@@ -181,7 +181,7 @@ bool JobAction::StopJob(const std::string& jobid) {
     if (ret) {
         printf("Stop job %s\n success", jobid.c_str());
     } else {
-        printf("Stop job %s failed for reason %s:%s\n", 
+        printf("Stop job %s failed for reason %s:%s\n",
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
 
@@ -193,7 +193,7 @@ bool JobAction::RemoveJob(const std::string& jobid) {
         fprintf(stderr, "jobid is needed\n");
         return false;
     }
-    
+
     if(!this->Init()) {
         return false;
     }
@@ -202,7 +202,7 @@ bool JobAction::RemoveJob(const std::string& jobid) {
     ::baidu::galaxy::sdk::RemoveJobResponse response;
     request.jobid = jobid;
     request.user = user_;
-    
+
     if (!GetHostname(&request.hostname)) {
         return false;
     }
@@ -211,7 +211,7 @@ bool JobAction::RemoveJob(const std::string& jobid) {
     if (ret) {
         printf("Remove job %s success\n", jobid.c_str());
     } else {
-        printf("Remove job %s failed for reason %s:%s\n", 
+        printf("Remove job %s failed for reason %s:%s\n",
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
@@ -228,7 +228,7 @@ struct ListJobParams {
     JobAction* action;
     ::baidu::galaxy::sdk::ListJobsRequest request;
     std::vector< ::baidu::galaxy::sdk::JobOverview>* jobs;
-    bool* ret; 
+    bool* ret;
 };
 
 void* JobAction::ListContainers(void* param) {
@@ -243,9 +243,9 @@ void* JobAction::ListContainers(void* param) {
         for (uint32_t i = 0; i < response.containers.size(); ++i) {
             container_params->containers->insert(make_pair(response.containers[i].id, response.containers[i]));
         }
-        *container_params->ret = true; 
+        *container_params->ret = true;
     } else {
-        printf("List containers failed for reason %s:%s\n", 
+        printf("List containers failed for reason %s:%s\n",
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return NULL;
@@ -263,9 +263,9 @@ void* JobAction::ListJobs(void* param) {
         for (uint32_t i = 0; i < response.jobs.size(); ++i) {
             job_params->jobs->push_back(response.jobs[i]);
         }
-        *job_params->ret = true; 
+        *job_params->ret = true;
     } else {
-        printf("List jobs failed for reason %s:%s\n", 
+        printf("List jobs failed for reason %s:%s\n",
                 StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return NULL;
@@ -274,7 +274,7 @@ void* JobAction::ListJobs(void* param) {
 bool JobAction::ListJobs(const std::string& soptions) {
     std::vector<std::string> options;
     ::baidu::common::SplitString(soptions, ",", &options);
-    
+
     ::baidu::galaxy::sdk::ListContainerGroupsRequest resman_request;
     resman_request.user = user_;
     std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics> containers;
@@ -283,12 +283,12 @@ bool JobAction::ListJobs(const std::string& soptions) {
     ::baidu::common::Thread container_thread;
     bool list_container = false;
     list_containers_params.action = this;
-    list_containers_params.ret = &list_container; 
+    list_containers_params.ret = &list_container;
     list_containers_params.containers = &containers;
     list_containers_params.request = resman_request;
-    
+
     container_thread.Start(ListContainers, &list_containers_params);
-    
+
     ::baidu::galaxy::sdk::ListJobsRequest request;
     request.user = user_;
     std::vector< ::baidu::galaxy::sdk::JobOverview> jobs;
@@ -298,13 +298,13 @@ bool JobAction::ListJobs(const std::string& soptions) {
     bool list_job = false;
     list_job_params.action = this;
     list_job_params.jobs = &jobs;
-    list_job_params.ret = &list_job; 
+    list_job_params.ret = &list_job;
     list_job_params.request = request;
     job_thread.Start(ListJobs, &list_job_params);
-    
+
     job_thread.Join();
     container_thread.Join();
-    
+
     if (!list_job || !list_container) {
         return false;
     }
@@ -348,7 +348,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
         std::string smem;
         std::string svolums;
 
-        std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>::iterator it 
+        std::map<std::string, ::baidu::galaxy::sdk::ContainerGroupStatistics>::iterator it
                                         = containers.find(jobs[i].jobid);
         if (it != containers.end()) {
             if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
@@ -399,7 +399,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
                         values.push_back(svolums);
                         values.push_back("");
                         values.push_back("");
-                    } 
+                    }
                     tp_jobs.AddRow(values);
                 }
                 if (it->second.volums.size() == 0) {
@@ -422,7 +422,7 @@ bool JobAction::ListJobs(const std::string& soptions) {
                     values.push_back(FormatDate(jobs[i].update_time));
                     tp_jobs.AddRow(values);
                 }
-            } 
+            }
             if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
                 values.push_back(::baidu::common::NumToString(i));
                 values.push_back(jobs[i].jobid);
@@ -489,7 +489,7 @@ void* JobAction::ShowJob(void* param) {
     if(!self->Init()) {
         return NULL;
     }
-    
+
     bool ret = self->app_master_->ShowJob(params->request, params->response);
     if (!ret) {
         printf("Show job failed for reason %s:%s\n",
@@ -517,7 +517,7 @@ void* JobAction::ShowContainerGroup(void* param) {
 }
 
 bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, bool show_meta) {
-    
+
     if (jobid.empty()) {
         fprintf(stderr, "jobid is needed\n");
         return false;
@@ -538,7 +538,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
     show_job_param.ret = &show_job;
     ::baidu::common::Thread job_thread;
     job_thread.Start(ShowJob, &show_job_param);
-    
+
     ::baidu::galaxy::sdk::ShowContainerGroupRequest resman_request;
     ::baidu::galaxy::sdk::ShowContainerGroupResponse resman_response;
     resman_request.user = user_;
@@ -554,13 +554,13 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
 
     job_thread.Join();
     container_thread.Join();
-    
+
     if (!show_job || !show_container) {
         return false;
     }
-    
+
     if (show_meta) {
-        printf("base infomation\n"); 
+        printf("base infomation\n");
         ::baidu::common::TPrinter base(5);
         base.AddRow(5, "id", "user", "status", "create_time", "update_time");
         base.AddRow(5, response.job.jobid.c_str(),
@@ -579,7 +579,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                             response.job.desc.run_user.c_str()
                         );
         printf("%s\n", desc_base.ToString().c_str());
-     
+
         printf("job description deploy infomation\n");
         std::string pools;
         for (size_t i = 0; i < response.job.desc.deploy.pools.size(); ++i) {
@@ -610,7 +610,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                                        StringBool(response.job.desc.pod.workspace_volum.readonly).c_str(),
                                        StringBool(response.job.desc.pod.workspace_volum.exclusive).c_str(),
                                        StringBool(response.job.desc.pod.workspace_volum.use_symlink).c_str()
-                                   );  
+                                   );
         printf("%s\n", desc_workspace_volum.ToString().c_str());
 
         printf("job description pod data_volums infomation\n");
@@ -624,7 +624,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                                    StringBool(response.job.desc.pod.data_volums[i].readonly).c_str(),
                                    StringBool(response.job.desc.pod.data_volums[i].exclusive).c_str(),
                                    StringBool(response.job.desc.pod.data_volums[i].use_symlink).c_str()
-                                );  
+                                );
         }
         printf("%s\n", desc_data_volums.ToString().c_str());
 
@@ -652,7 +652,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                                       + response.job.desc.pod.tasks[i].ports[j].port;
                                      //+ response.job.desc.pod.tasks[i].ports[j].real_port;
                 if (j == 0) {
-                     desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
+                     desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(),
                                            response.job.desc.pod.tasks[i].id.c_str(),
                                            scpu.c_str(),
                                            smem.c_str(),
@@ -672,10 +672,10 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                 }
 
             }
-         
+
             if (response.job.desc.pod.tasks[i].ports.size() == 0) {
-                 desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(), 
-                                      response.job.desc.pod.tasks[i].id.c_str(), 
+                 desc_task.AddRow(7, ::baidu::common::NumToString(i).c_str(),
+                                      response.job.desc.pod.tasks[i].id.c_str(),
                                       scpu.c_str(),
                                       smem.c_str(),
                                       stcp.c_str(),
@@ -756,9 +756,9 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
     ::baidu::common::TPrinter tp_pods(headers.size());
     tp_pods.AddRow(headers);
     for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
-        size_t pos = resman_response.containers[i].id.rfind("."); 
+        size_t pos = resman_response.containers[i].id.rfind(".");
         std::string podid(resman_response.containers[i].id, pos + 1, resman_response.containers[i].id.size()- (pos + 1));
-                
+
         std::string scpu;
         if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
             scpu = ::baidu::common::NumToString(resman_response.containers[i].cpu.assigned / 1000.0) + "/" +
@@ -784,8 +784,8 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                update_finish = "Yes";
            }
         }
-        
-        std::vector<std::string> values; 
+
+        std::vector<std::string> values;
         if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
             for (uint32_t j = 0; j < resman_response.containers[i].volums.size(); ++j) {
                 values.clear();
@@ -810,7 +810,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                     }
                     values.push_back(svolums);
                     values.push_back(pod_start_time);
-                    values.push_back(pod_update_time);     
+                    values.push_back(pod_update_time);
                 } else {
                     int base_size = sizeof(array_headers) / sizeof(std::string);
                     for (int base_it = 0; base_it < base_size; ++base_it) {
@@ -824,11 +824,11 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                     }
                     values.push_back(svolums);
                     values.push_back("");
-                    values.push_back("");    
+                    values.push_back("");
                 }
                 tp_pods.AddRow(values);
             }
-            
+
             if (resman_response.containers[i].volums.size() == 0) {
                 values.push_back(::baidu::common::NumToString(i));
                 values.push_back(podid);
@@ -846,7 +846,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                 }
                 values.push_back("");
                 values.push_back(pod_start_time);
-                values.push_back(pod_update_time);  
+                values.push_back(pod_update_time);
                 tp_pods.AddRow(values);
             }
         }
@@ -867,7 +867,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                 values.push_back(smem);
             }
             values.push_back(pod_start_time);
-            values.push_back(pod_update_time);  
+            values.push_back(pod_update_time);
             tp_pods.AddRow(values);
         }
     }
@@ -878,7 +878,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
     services.AddRow(6, "", "podid", "service_addr", "name", "port", "status");
 
     for (uint32_t i = 0; i < resman_response.containers.size(); ++i) {
-        size_t pos = resman_response.containers[i].id.rfind("."); 
+        size_t pos = resman_response.containers[i].id.rfind(".");
         std::string podid(resman_response.containers[i].id, pos + 1, resman_response.containers[i].id.size()- (pos + 1));
         for (uint32_t j = 0; j < pods[resman_response.containers[i].id].services.size(); ++j) {
             if (j == 0) {
@@ -896,7 +896,7 @@ bool JobAction::ShowJob(const std::string& jobid, const std::string& soptions, b
                                    pods[resman_response.containers[i].id].services[j].name.c_str(),
                                    pods[resman_response.containers[i].id].services[j].port.c_str(),
                                    StringStatus(pods[resman_response.containers[i].id].services[j].status).c_str()
-                               ); 
+                               );
             }
         }
     }
@@ -914,7 +914,7 @@ bool JobAction::RecoverInstance(const std::string& jobid, const std::string& pod
     if(!this->Init()) {
         return false;
     }
-    
+
     baidu::galaxy::sdk::RecoverInstanceRequest request;
     baidu::galaxy::sdk::RecoverInstanceResponse response;
     request.user = user_;
@@ -928,7 +928,7 @@ bool JobAction::RecoverInstance(const std::string& jobid, const std::string& pod
     if (ret) {
         printf("recover instance %s success\n", jobid.c_str());
     } else {
-        printf("recover instance %s failed for reason %s:%s\n", 
+        printf("recover instance %s failed for reason %s:%s\n",
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
@@ -940,7 +940,7 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
         fprintf(stderr, "jobid and cmd are needed\n");
         return false;
     }
-    
+
     if(!this->Init()) {
         return false;
     }
@@ -954,7 +954,7 @@ bool JobAction::ExecuteCmd(const std::string& jobid, const std::string& cmd) {
     if (ret) {
         printf("Execute job %s success\n", jobid.c_str());
     } else {
-        printf("Execute job %s failed for reason %s:%s\n", 
+        printf("Execute job %s failed for reason %s:%s\n",
                 jobid.c_str(), StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
     return ret;
@@ -971,7 +971,7 @@ std::string JobAction::StringUnit(int64_t num) {
         }
         v /= 1024;
         shift++;
-    }   
+    }
     return ::baidu::common::NumToString(v) + prefix[shift];
 }
 
@@ -990,7 +990,7 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     ::baidu::galaxy::sdk::ShowJobResponse response;
     request.user = user_;
     request.jobid = jobid;
-    
+
     bool ret =app_master_->ShowJob(request, &response);
     if (!ret) {
         printf("Show job failed for reason %s:%s\n",
@@ -1000,13 +1000,13 @@ bool JobAction::GenerateJson(const std::string& jobid) {
 
     rapidjson::Document document;
     rapidjson::Document::AllocatorType& allocator = document.GetAllocator();
-   
+
     //设置临时字符串使用
     rapidjson::Value obj_str(rapidjson::kStringType);
 
     //根节点
     rapidjson::Value root(rapidjson::kObjectType);
-    
+
     obj_str.SetString(response.job.desc.name.c_str(), allocator);
     root.AddMember("name", obj_str, allocator);
 
@@ -1068,12 +1068,12 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     workspace_volum.AddMember("readonly", job.pod.workspace_volum.readonly, allocator);
     workspace_volum.AddMember("exclusive", job.pod.workspace_volum.exclusive, allocator);
     workspace_volum.AddMember("use_symlink", job.pod.workspace_volum.use_symlink, allocator);
-    
+
     pod.AddMember("workspace_volum", workspace_volum, allocator);
 
     rapidjson::Value data_volums(rapidjson::kArrayType);
     for (uint32_t i = 0; i < job.pod.data_volums.size(); ++i) {
-    
+
         const ::baidu::galaxy::sdk::VolumRequired& sdk_data_volums = job.pod.data_volums[i];
         rapidjson::Value data_volum(rapidjson::kObjectType);
 
@@ -1104,8 +1104,8 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     for (uint32_t i = 0; i < job.pod.tasks.size(); ++i) {
         const ::baidu::galaxy::sdk::TaskDescription& sdk_task = job.pod.tasks[i];
         rapidjson::Value cpu(rapidjson::kObjectType);
-        cpu.AddMember("millicores", sdk_task.cpu.milli_core, allocator); 
-        cpu.AddMember("excess", sdk_task.cpu.excess, allocator); 
+        cpu.AddMember("millicores", sdk_task.cpu.milli_core, allocator);
+        cpu.AddMember("excess", sdk_task.cpu.excess, allocator);
 
         rapidjson::Value mem(rapidjson::kObjectType);
         obj_str.SetString(StringUnit(sdk_task.memory.size).c_str(), allocator);
@@ -1138,9 +1138,9 @@ bool JobAction::GenerateJson(const std::string& jobid) {
 
             ports.PushBack(port, allocator);
         }
-        
+
         rapidjson::Value package(rapidjson::kObjectType);
-        
+
         obj_str.SetString(sdk_task.exe_package.package.source_path.c_str(), allocator);
         package.AddMember("source_path", obj_str, allocator);
 
@@ -1164,7 +1164,7 @@ bool JobAction::GenerateJson(const std::string& jobid) {
             obj_str.SetString(sdk_task.exe_package.health_cmd.c_str(), allocator);
             exec_package.AddMember("health_cmd", "", allocator);
         }
-        
+
         exec_package.AddMember("package", package, allocator);
 
         rapidjson::Value data_packages(rapidjson::kArrayType);
@@ -1238,7 +1238,7 @@ bool JobAction::GenerateJson(const std::string& jobid) {
         }
 
         tasks.PushBack(task, allocator);
-        
+
     }
 
     pod.AddMember("tasks", tasks, allocator);
@@ -1251,8 +1251,8 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     fprintf(stdout, "%s\n", str_json.c_str());
     return true;
 }
-    
-int JobAction::CalResPolicy(int64_t need_cpu, int64_t need_mem, 
+
+int JobAction::CalResPolicy(int64_t need_cpu, int64_t need_mem,
                       const ::baidu::galaxy::sdk::VolumRequired& workspace_volum,
                       const std::vector< ::baidu::galaxy::sdk::VolumRequired>& data_volums,
                       const ::baidu::galaxy::sdk:: AgentStatistics& agent,
@@ -1296,7 +1296,7 @@ int JobAction::CalResPolicy(int64_t need_cpu, int64_t need_mem,
 }
 
 bool JobAction::CalRes(const std::string& json_file, const std::string& soptions) {
-    
+
     if (json_file.empty()) {
         fprintf(stderr, "json_file is needed\n");
         return false;
@@ -1305,7 +1305,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
     if (!this->InitResman()) {
         return false;
     }
-    
+
     ::baidu::galaxy::sdk::JobDescription job;
     int ok = BuildJobFromConfig(json_file, &job);
     if (ok != 0) {
@@ -1318,7 +1318,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
         need_cpu += job.pod.tasks[i].cpu.milli_core;
         need_mem += job.pod.tasks[i].memory.size;
     }
-    
+
     if (job.pod.workspace_volum.medium == ::baidu::galaxy::sdk::kTmpfs) {
         need_mem += job.pod.workspace_volum.size;
     }
@@ -1329,7 +1329,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
         }
     }
 
-    
+
     std::vector<std::string> options;
     ::baidu::common::SplitString(soptions, ",", &options);
 
@@ -1388,7 +1388,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
                 ++ignore_tag;
                 continue;
             }
-                
+
             //check pool
             if (find(job.deploy.pools.begin(), job.deploy.pools.end(), response.agents[i].pool) == job.deploy.pools.end()) {
                 ++ignore_pool;
@@ -1405,7 +1405,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
                 max_per_host = pods_on_host;
             }
 
-            //cpu 
+            //cpu
             std::string scpu;
             if (options.size() == 0 || find(options.begin(), options.end(), "cpu") != options.end()) {
                 scpu = ::baidu::common::NumToString(response.agents[i].cpu.total / 1000.0) + "/" +
@@ -1421,7 +1421,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
                        HumanReadableString(response.agents[i].memory.assigned) + "/" +
                        HumanReadableString(response.agents[i].memory.used);
             }
-            
+
             std::vector<std::string> values;
             if (options.size() == 0 || find(options.begin(), options.end(), "volums") != options.end()) {
                 for (uint32_t j = 0; j < response.agents[i].volums.size(); ++j) {
@@ -1483,7 +1483,7 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
                     ++count;
                 }
             }
-            
+
             if (options.size() != 0 && find(options.begin(), options.end(), "volums") == options.end()) {
                 values.push_back(::baidu::common::NumToString(count));
                 values.push_back(response.agents[i].endpoint);
@@ -1511,12 +1511,12 @@ bool JobAction::CalRes(const std::string& json_file, const std::string& soptions
             printf("pools not exist\n");
         }
 
-        printf("your job need cpu:[%s], memory:[%s].\n", 
+        printf("your job need cpu:[%s], memory:[%s].\n",
                 ::baidu::common::NumToString(need_cpu/1000.0).c_str(), HumanReadableString(need_mem).c_str());
         printf("[%ld] agents fit in your job.\n", count);
         printf("proposal: max replica:[%d], max_per_host:[%d]\n\n", replica, max_per_host);
     } else {
-        printf("List agents failed for reason %s:%s\n", 
+        printf("List agents failed for reason %s:%s\n",
                     StringStatus(response.error_code.status).c_str(), response.error_code.reason.c_str());
     }
 

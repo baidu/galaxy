@@ -58,7 +58,7 @@ public:
     bool AddAgentToPool(const std::string& endpoint, const std::string& pool);
     //暂时不需要
     bool RemoveAgentFromPool(const std::string& endpoint, const std::string& pool);
-    
+
 private:
     bool Init();
 

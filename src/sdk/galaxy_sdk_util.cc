@@ -713,8 +713,6 @@ bool FillJobDescription(const JobDescription& sdk_job,
     job->set_name(name);
     job->set_v2_support(sdk_job.v2_support);
 
-    //job->set_version(sdk_job.version); //不再需要
-
     if (sdk_job.type == kJobMonitor) {
         job->set_priority(::baidu::galaxy::proto::kJobMonitor);
     } else if (sdk_job.type == kJobService) {
@@ -727,7 +725,18 @@ bool FillJobDescription(const JobDescription& sdk_job,
         fprintf(stderr, "job type must be kJobService, kJobBatch, kJobBestEffort\n");
         return false;
     }
-    
+
+    if (sdk_job.volum_view == kVolumViewTypeEmpty) {
+        job->set_volum_view(::baidu::galaxy::proto::kVolumViewTypeEmpty);
+    } else if (sdk_job.volum_view == kVolumViewTypeInner) {
+        job->set_volum_view(::baidu::galaxy::proto::kVolumViewTypeInner);
+    } else if (sdk_job.volum_view == kVolumViewTypeExtra) {
+        job->set_volum_view(::baidu::galaxy::proto::kVolumViewTypeExtra);
+    } else {
+        fprintf(stderr, "job volum viewt must be kVolumViewTypeEmpty, kVolumViewTypeInner, kVolumVIewTypeExtra\n");
+        return false;
+    }
+
     for (size_t i = 0; i < sdk_job.volum_jobs.size(); ++i) {
         std::string volum_job = Strim(sdk_job.volum_jobs[i]);
         if (volum_job.empty()) {

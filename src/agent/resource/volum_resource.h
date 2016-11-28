@@ -42,7 +42,6 @@ public:
 private:
     baidu::galaxy::util::ErrorCode LoadVolum(const std::string& config, Volum& volum);
     std::map<std::string, Volum> resource_;
-
 };
 }
 }

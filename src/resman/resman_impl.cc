@@ -523,9 +523,9 @@ void ResManImpl::CreateContainerGroup(::google::protobuf::RpcController* control
         done->Run();
         return;
     }
-    std::string container_group_id = scheduler_->Submit(request->name(), 
-                                                        request->desc(), 
-                                                        request->replica(), 
+    std::string container_group_id = scheduler_->Submit(request->name(),
+                                                        request->desc(),
+                                                        request->replica(),
                                                         request->desc().priority(),
                                                         request->user().user());
     if (container_group_id == "") {

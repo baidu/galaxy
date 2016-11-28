@@ -18,6 +18,7 @@ class VolumRequired;
 }
 
 namespace volum {
+
 class Volum;
 
 class VolumGroup {
@@ -31,6 +32,7 @@ public:
     }
 
     void AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_volum);
+    void AddOriginVolum(const baidu::galaxy::proto::VolumRequired& origin_volum);
     void SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum);
     void SetContainerId(const std::string& container_id);
     std::string Id() {
@@ -57,15 +59,17 @@ private:
 
     boost::shared_ptr<baidu::galaxy::proto::VolumRequired> ws_description_;
     std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumRequired> > dv_description_;
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::VolumRequired> > ov_description_;
 
     std::vector<boost::shared_ptr<Volum> > data_volum_;
+    std::vector<boost::shared_ptr<Volum> > origin_volum_;
     boost::shared_ptr<Volum> workspace_volum_;
 
     std::string container_id_;
     int gc_index_;
     std::string user_;
-
 };
+
 }
 }
 }

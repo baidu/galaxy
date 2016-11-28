@@ -17,6 +17,8 @@ DEFINE_int32(keepalive_interval, 5000, "keep alive with RM");
 
 DEFINE_string(volum_resource, "", "volum resource, \
             format: filesystem:size_in_byte:mediu(DISK:SSD):mount_point, seperated by comma");
+DEFINE_string(extra_volum_resource, "", "extra volum resource, \
+            format: filesystem:size_in_byte:mediu(DISK:SSD):mount_point, seperated by comma");
 DEFINE_int64(cpu_resource, 0L, "max millicores galaxy can use");
 DEFINE_int64(memory_resource, 0L, "max memory(unit:byte) galaxy can use");
 

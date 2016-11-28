@@ -163,6 +163,11 @@ void AppMasterImpl::BuildContainerDescription(const ::baidu::galaxy::proto::JobD
     container_desc->set_priority(job_desc.priority());
     container_desc->set_run_user(job_desc.run_user());
     container_desc->set_version(job_desc.version());
+    if (job_desc.has_volum_view()) {
+        container_desc->set_volum_view(job_desc.volum_view());
+    } else {
+        container_desc->set_volum_view(::baidu::galaxy::proto::kVolumViewTypeEmpty);
+    }
     container_desc->set_max_per_host(job_desc.deploy().max_per_host());
     container_desc->set_tag(job_desc.deploy().tag());
     container_desc->set_cmd_line(FLAGS_appworker_cmdline);
@@ -216,7 +221,7 @@ void AppMasterImpl::SubmitJob(::google::protobuf::RpcController* controller,
     VLOG(10) <<  container_request->DebugString();
     VLOG(10) << "DEBUG END";
     proto::CreateContainerGroupResponse* container_response = new proto::CreateContainerGroupResponse();
-    
+
     boost::function<void (const proto::CreateContainerGroupRequest*,
                           proto::CreateContainerGroupResponse*, 
                           bool, int)> call_back;

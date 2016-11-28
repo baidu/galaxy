@@ -129,7 +129,7 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
     LOG(INFO) << "recv create container request: " << request->DebugString();
     int64_t x = baidu::common::timer::get_micros();
     std::cerr <<x<< "create " << request->id() << std::endl;
-    
+
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
 
@@ -224,7 +224,7 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
         }
     }
-    
+
     baidu::galaxy::proto::Resource* cpu_resource = ai->mutable_cpu_resource();
     cpu_resource->CopyFrom(*(rm_->GetCpuResource()));
     cpu_resource->set_used(cpu_used);

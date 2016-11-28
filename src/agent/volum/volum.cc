@@ -8,8 +8,8 @@
 #include "tmpfs_volum.h"
 #include "symlink_volum.h"
 #include "bind_volum.h"
+#include "origin_volum.h"
 #include "boost/lexical_cast/lexical_cast_old.hpp"
-
 
 #include <boost/smart_ptr/shared_ptr.hpp>
 #include <boost/filesystem/path.hpp>
@@ -102,10 +102,12 @@ boost::shared_ptr<Volum> Volum::CreateVolum(const boost::shared_ptr<baidu::galax
 
     if (vr->medium() == baidu::galaxy::proto::kTmpfs) {
         ret.reset(new TmpfsVolum());
-    } else if (vr->has_use_symlink() && vr->use_symlink()) {
-        ret.reset(new SymlinkVolum());
     } else {
-        ret.reset(new BindVolum());
+        if (vr->has_origin() && vr->origin()) {
+            ret.reset(new OriginVolum());
+        } else {
+            ret.reset(new BindVolum());
+        }
     }
 
     return ret;

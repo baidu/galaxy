@@ -214,6 +214,11 @@ struct PodDescription {
     std::vector<VolumRequired> data_volums;
     std::vector<TaskDescription> tasks;
 };
+enum VolumViewType {
+    kVolumViewTypeEmpty = 0,
+    kVolumViewTypeInner = 1,
+    kVolumViewTypeExtra = 2
+};
 struct JobDescription {
     std::string name;
     JobType type;
@@ -223,6 +228,7 @@ struct JobDescription {
     PodDescription pod;
     std::string run_user;
     bool v2_support;
+    VolumViewType volum_view;
 };
 struct Cgroup {
     std::string id;
