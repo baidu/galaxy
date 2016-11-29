@@ -56,8 +56,8 @@ env.Program('gprobe', probe_src)
 get_service_from_nexus_src = ['src/tools/meta_probe/get_service_from_nexus.cc', 'src/protocol/galaxy.pb.cc', 'src/protocol/appmaster.pb.cc']
 env.Program('get_service_from_nexus', get_service_from_nexus_src)
 
-get_user_meta_from_nexus_src = ['src/tools/meta_probe/get_user_meta_from_nexus.cc', 'src/protocol/galaxy.pb.cc']
-env.Program('get_user_meta_from_nexus', get_user_meta_from_nexus_src)
+#get_user_meta_from_nexus_src = ['src/tools/meta_probe/get_user_meta_from_nexus.cc', 'src/protocol/galaxy.pb.cc']
+#env.Program('get_user_meta_from_nexus', get_user_meta_from_nexus_src)
 
 container_meta_src = ['src/example/container_meta.cc','src/protocol/galaxy.pb.cc', 'src/agent/container/serializer.cc', 'src/agent/util/dict_file.cc']
 env.Program('container_meta', container_meta_src)
