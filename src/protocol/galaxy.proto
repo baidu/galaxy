@@ -400,6 +400,11 @@ message ContainerInfo {
 
     // statistics, eg: error cnt or other exceptions
     optional uint32 restart_counter = 10;
+
+    //
+    optional int64 memory_cache = 11;
+    optional int64 memory_rss = 12;
+    optional int64 memory_fail_cnt = 13;
 }
 
 ///////////////////////////////////////
