@@ -87,9 +87,3 @@ env.Program('test_filesystem', ['src/example/test_boost_filesystem.cc'])
 env.Program('test_appworker_utils', ['src/example/test_appworker_utils.cc', 'src/appworker/utils.cc'])
 
 env.Program('test_volum_collector', ['src/example/test_volum_collector.cc', 'src/agent/volum/volum_collector.cc', 'src/agent/agent_flags.cc'])
-
-
-######################## tmp #################
-test_glog_src=['src/example/test_glog.cc']
-env.Program('test_glog', test_glog_src)
-
