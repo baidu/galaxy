@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
-#include <cstring>
 #include <stdio.h>
-#include <string>
-#include <map>
-#include <vector>
+#include <unistd.h>
+#include <cstring>
 #include <fstream>
+#include <map>
+#include <string>
+#include <vector>
 #include "string_util.h"
 #include "galaxy_util.h"
 #include "rapidjson/prettywriter.h"
