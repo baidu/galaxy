@@ -45,6 +45,12 @@ void VolumGroup::AddDataVolum(const baidu::galaxy::proto::VolumRequired& data_vo
     dv_description_.push_back(volum);
 }
 
+void VolumGroup::AddOriginVolum(const baidu::galaxy::proto::VolumRequired& origin_volum) {
+    boost::shared_ptr<baidu::galaxy::proto::VolumRequired> volum(new baidu::galaxy::proto::VolumRequired());
+    volum->CopyFrom(origin_volum);
+    ov_description_.push_back(volum);
+}
+
 void VolumGroup::SetWorkspaceVolum(const baidu::galaxy::proto::VolumRequired& ws_volum) {
     ws_description_.reset(new baidu::galaxy::proto::VolumRequired);
     ws_description_->CopyFrom(ws_volum);
@@ -90,6 +96,34 @@ baidu::galaxy::util::ErrorCode VolumGroup::Construct() {
         return ec;
     }
 
+    // origin volum
+    for (size_t i = 0; i < ov_description_.size(); i++) {
+        boost::shared_ptr<Volum> v = Construct(ov_description_[i]);
+
+        if (v.get() == NULL) {
+            ec = ERRORCODE(-1,
+                    "construct origin volum(%s->%s) failed: ",
+                    ov_description_[i]->source_path().c_str(),
+                    ov_description_[i]->dest_path().c_str());
+            break;
+        }
+
+        origin_volum_.push_back(v);
+    }
+
+    if (origin_volum_.size() != ov_description_.size()) {
+        for (size_t i = 0; i < origin_volum_.size(); i++) {
+            baidu::galaxy::util::ErrorCode err = origin_volum_[i]->Destroy();
+
+            if (0 != err.Code()) {
+                LOG(WARNING) << "faild in destroying origin volum for container "
+                    << container_id_ << ": " << err.Message();
+            }
+        }
+
+        return ec;
+    }
+
     return ERRORCODE_OK;
 }
 
@@ -112,6 +146,16 @@ baidu::galaxy::util::ErrorCode VolumGroup::Destroy() {
         if (0 != ec.Code()) {
             return ERRORCODE(-1,
                     "failed in destroying workspace volum: %s",
+                    ec.Message().c_str());
+        }
+    }
+
+    for (size_t i = 0; i < origin_volum_.size(); i++) {
+        ec = origin_volum_[i]->Destroy();
+
+        if (0 != ec.Code()) {
+            return ERRORCODE(-1,
+                    "failed in destroying origin volum: %s",
                     ec.Message().c_str());
         }
     }

@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 #include <map>
-
 namespace baidu {
 namespace galaxy {
 namespace cgroup {
@@ -71,7 +70,6 @@ private:
     int64_t created_time_;
     int64_t destroy_time_;
     int64_t force_kill_time_;
-
 };
 
 } //namespace container

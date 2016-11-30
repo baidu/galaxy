@@ -52,6 +52,7 @@ private:
     boost::scoped_ptr<VolumResource> volum_;
 
 };
+
 }
 }
 }

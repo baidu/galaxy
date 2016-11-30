@@ -79,6 +79,7 @@ void ContainerManager::KeepAliveRoutine() {
                 iter++;
             }
         }
+        VLOG(10) << "keep alive routine";
         ::sleep(1);
     }
 }
@@ -111,6 +112,7 @@ baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer(const Container
             return ERRORCODE_OK;
         }
     }
+
     // allcate resource
     ec = res_man_->Allocate(desc);
 
@@ -220,6 +222,9 @@ baidu::galaxy::util::ErrorCode ContainerManager::ReleaseContainer(const Containe
 
 baidu::galaxy::util::ErrorCode ContainerManager::CreateContainer_(const ContainerId& id,
         const baidu::galaxy::proto::ContainerDescription& desc) {
+    VLOG(10)
+        << "container manager create container, volum_view:  "
+        << baidu::galaxy::proto::VolumViewType_Name(desc.volum_view());
     boost::shared_ptr<baidu::galaxy::container::IContainer> container
         = IContainer::NewContainer(id, desc);
     // dependent volum

@@ -40,6 +40,8 @@ DECLARE_string(agent_ip);
 DECLARE_string(agent_port);
 DECLARE_string(agent_hostname);
 DECLARE_string(cmd_line);
+DECLARE_string(volum_resource);
+DECLARE_string(extra_volum_resource);
 
 namespace baidu {
 namespace galaxy {
@@ -188,7 +190,6 @@ baidu::galaxy::util::ErrorCode Container::Construct_() {
     return ERRORCODE_OK;
 }
 
-
 baidu::galaxy::util::ErrorCode Container::Reload(boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> meta) {
     assert(!id_.Empty());
     created_time_ = meta->created_time();
@@ -267,6 +268,47 @@ int Container::ConstructVolumGroup() {
         volum_group_->AddDataVolum(desc_.data_volums(i));
     }
 
+    // origin volums
+    std::string volum_resource_string;
+    if (desc_.volum_view() == proto::kVolumViewTypeExtra && !FLAGS_extra_volum_resource.empty()) {
+        volum_resource_string = FLAGS_extra_volum_resource;
+    }
+
+    if (desc_.volum_view() == proto::kVolumViewTypeInner && !FLAGS_volum_resource.empty()) {
+        volum_resource_string = FLAGS_volum_resource;
+    }
+
+    std::vector<std::string> volum_vs;
+    boost::split(volum_vs, volum_resource_string, boost::is_any_of(","));
+
+    for (size_t i = 0; i < volum_vs.size(); i++) {
+        std::vector<std::string> v;
+        boost::split(v, volum_vs[i], boost::is_any_of(":"));
+
+        if (v.size() != 4) {
+            LOG(WARNING) << "spilt size is " << v.size() << ", expect 4";
+            continue;
+        }
+
+        boost::filesystem::path fs(v[0]);
+        boost::filesystem::path mt(v[3]);
+        boost::system::error_code ec;
+        if (!boost::filesystem::exists(fs, ec)
+                || !boost::filesystem::exists(mt, ec)) {
+            LOG(WARNING)
+                << fs.string().c_str() << " or "
+                << mt.string().c_str() <<  "donot exist";
+            continue;
+        }
+
+        // add description
+        proto::VolumRequired volum_desc;
+        volum_desc.set_source_path(mt.string());
+        volum_desc.set_dest_path("/galaxy" + mt.string());
+        volum_desc.set_origin(true);
+        volum_group_->AddOriginVolum(volum_desc);
+    }
+
     baidu::galaxy::util::ErrorCode ec = volum_group_->Construct();
 
     if (0 != ec.Code()) {
@@ -298,7 +340,6 @@ int Container::ConstructProcess() {
 
     return 0;
 }
-
 
 baidu::galaxy::util::ErrorCode Container::Destroy_() {
     // kill appwork
@@ -349,7 +390,7 @@ int Container::RunRoutine(void*) {
     if (desc.has_v2_support() && desc.v2_support()) {
         v2_support = true;
     }
-    
+
     if (0 != volum_group_->MountRootfs(v2_support)) {
         std::cerr << "mount root fs failed" << std::endl;
         return -1;
@@ -392,7 +433,6 @@ int Container::RunRoutine(void*) {
         const_cast<char*>(cmd_line.c_str()),
         NULL
     };
-
 
     // export env
     ExportEnv();
@@ -562,7 +602,6 @@ bool Container::Expired() {
     return now >= force_kill_time_;
 }
 
-
 bool Container::TryKill() {
     if (process_->Pid() > 0 && 0 == ::kill(process_->Pid(), SIGTERM)) {
         return true;
@@ -615,7 +654,6 @@ boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> Container::ContainerInfo(
 
     return ret;
 }
-
 
 boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> Container::ContainerMeta() {
     boost::shared_ptr<baidu::galaxy::proto::ContainerMeta> ret(new baidu::galaxy::proto::ContainerMeta());

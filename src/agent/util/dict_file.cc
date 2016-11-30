@@ -101,7 +101,6 @@ baidu::galaxy::util::ErrorCode DictFile::Read(const std::string& key, std::strin
     return ERRORCODE(kOk, "ok");
 }
 
-
 }
 }
 }
