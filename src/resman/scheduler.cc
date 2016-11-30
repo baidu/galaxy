@@ -13,6 +13,7 @@
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 #include "timer.h"
 
 DECLARE_int64(sched_interval);
