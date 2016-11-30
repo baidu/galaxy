@@ -19,6 +19,7 @@
 #include "boost/algorithm/string/predicate.hpp"
 #include "boost/algorithm/string/replace.hpp"
 #include "agent/volum/volum.h"
+#include "gflags/gflags.h"
 
 #include <glog/logging.h>
 #include <boost/lexical_cast/lexical_cast_old.hpp>
