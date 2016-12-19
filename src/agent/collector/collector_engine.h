@@ -122,7 +122,7 @@ private:
     bool running_;
     baidu::common::ThreadPool fast_collector_pool_;  // for fast
     baidu::common::ThreadPool collector_pool_;  // for slow
-    baidu::common::Thread main_collect_thread_;;
+    baidu::common::Thread main_collect_thread_;
 
 };
 }

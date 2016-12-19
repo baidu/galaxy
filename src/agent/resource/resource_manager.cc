@@ -56,14 +56,15 @@ baidu::galaxy::util::ErrorCode ResourceManager::Allocate(const baidu::galaxy::pr
     CalResource(desc, cpu_millicores, memroy_require, vv);
     boost::mutex::scoped_lock lock(mutex_);
 
-    // allocate cpu
-    if (0 != cpu_->Allocate(cpu_millicores)) {
-        return ERRORCODE(-1, "allocat cpu resource failed");
-    }
-
-    if (0 != memory_->Allocate(memroy_require)) {
-        cpu_->Release(cpu_millicores);
-        return ERRORCODE(-1, "allocat memory resource failed");
+    if (desc.priority() != proto::kJobBestEffort) {
+        // allocate cpu
+        if (0 != cpu_->Allocate(cpu_millicores)) {
+            return ERRORCODE(-1, "allocat cpu resource failed");
+        }
+        if (0 != memory_->Allocate(memroy_require)) {
+            cpu_->Release(cpu_millicores);
+            return ERRORCODE(-1, "allocat memory resource failed");
+        }
     }
 
     baidu::galaxy::util::ErrorCode ec = this->Allocate(vv);
@@ -109,16 +110,18 @@ baidu::galaxy::util::ErrorCode ResourceManager::Release(const baidu::galaxy::pro
     std::vector<const baidu::galaxy::proto::VolumRequired*> vv;
     CalResource(desc, cpu_millicores, memroy_require, vv);
     boost::mutex::scoped_lock lock(mutex_);
-    int ret = cpu_->Release(cpu_millicores);
+    if (desc.priority() != proto::kJobBestEffort) {
+        int ret = cpu_->Release(cpu_millicores);
 
-    if (0 != ret) {
-        return ERRORCODE(-1, "release cpu resource failed");
-    }
+        if (0 != ret) {
+            return ERRORCODE(-1, "release cpu resource failed");
+        }
 
-    ret = memory_->Release(memroy_require);
+        ret = memory_->Release(memroy_require);
 
-    if (0 != ret) {
-        return ERRORCODE(-1, "release memory resource failed");
+        if (0 != ret) {
+            return ERRORCODE(-1, "release memory resource failed");
+        }
     }
 
     for (size_t i = 0; i < vv.size(); i++) {
@@ -184,8 +187,10 @@ void ResourceManager::CalResource(const baidu::galaxy::proto::ContainerDescripti
     vv.clear();
 
     for (int i = 0; i < desc.cgroups_size(); i++) {
-        memroy_require += desc.cgroups(i).memory().size();
-        cpu_millicores += desc.cgroups(i).cpu().milli_core();
+        if (desc.priority() != proto::kJobBestEffort) {
+            memroy_require += desc.cgroups(i).memory().size();
+            cpu_millicores += desc.cgroups(i).cpu().milli_core();
+        }
     }
 
     vv.push_back(&desc.workspace_volum());

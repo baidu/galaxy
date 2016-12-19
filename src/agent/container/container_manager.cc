@@ -11,12 +11,18 @@
 #include "boost/bind.hpp"
 #include <glog/logging.h>
 
+DECLARE_int32(check_assign_interval);
+DECLARE_int64(cpu_resource);
+DECLARE_int64(memory_resource);
+DECLARE_int32(assign_level);
+
 namespace baidu {
 namespace galaxy {
 namespace container {
 
 ContainerManager::ContainerManager(boost::shared_ptr<baidu::galaxy::resource::ResourceManager> resman) :
     res_man_(resman),
+    check_assign_pool_(1),
     running_(false),
     serializer_(new Serializer()),
     container_gc_(new ContainerGc()) {
@@ -66,6 +72,11 @@ void ContainerManager::Setup() {
     LOG(INFO) << "setup container gc successful";
     running_ = true;
     this->keep_alive_thread_.Start(boost::bind(&ContainerManager::KeepAliveRoutine, this));
+    if (FLAGS_assign_level > 0) {
+        this->check_assign_pool_.DelayTask(
+            FLAGS_check_assign_interval,
+            boost::bind(&ContainerManager::CheckAssignRoutine, this));
+    }
 }
 
 void ContainerManager::KeepAliveRoutine() {
@@ -81,6 +92,90 @@ void ContainerManager::KeepAliveRoutine() {
         }
         VLOG(10) << "keep alive routine";
         ::sleep(1);
+    }
+}
+
+void ContainerManager::CheckAssignRoutine() {
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > cis;
+    ListContainers(cis, true);
+
+    int64_t cpu_used = 0L;
+    int64_t cpu_deep_assigned = 0L;
+    int64_t memory_used = 0L;
+    int64_t memory_deep_assigned = 0L;
+
+    for (size_t i = 0; i < cis.size(); i++) {
+        const baidu::galaxy::proto::ContainerDescription& desc = cis[i]->container_desc();
+        if (desc.priority() != baidu::galaxy::proto::kJobBestEffort) {
+            cpu_used += cis[i]->cpu_used();
+            memory_used += cis[i]->memory_used();
+        } else {
+            // calculate resource
+            for (int i = 0; i < desc.cgroups_size(); i++) {
+                cpu_deep_assigned += desc.cgroups(i).cpu().milli_core();
+                memory_deep_assigned += desc.cgroups(i).memory().size();
+            }
+            for (int i = 0; i < desc.data_volums_size(); i++) {
+                if (desc.data_volums(i).medium() == baidu::galaxy::proto::kTmpfs) {
+                    // tmpfs as assigned
+                    memory_deep_assigned += desc.data_volums(i).size();
+                }
+            }
+        }
+    }
+
+    VLOG(10)
+        << "### check assign routine"
+        << ", cpu_used: " << cpu_used
+        << ", cpu_deep_assigned: " << cpu_deep_assigned
+        << ", cpu: " << (cpu_used + cpu_deep_assigned)
+        << ", cpu_total: " << FLAGS_cpu_resource
+        << ", memory_used: " << memory_used
+        << ", memory_deep_assigned: " << memory_deep_assigned
+        << ", memory: " << (memory_used + memory_deep_assigned)
+        << ", memory_total: " << FLAGS_memory_resource;
+
+    if (memory_used + memory_deep_assigned > FLAGS_memory_resource) {
+        LOG(WARNING) << "memory_reserved is danger";
+        EvictAssignedContainer(cis, kEvictTypeMemory);
+    } else {
+        if (cpu_used + cpu_deep_assigned > FLAGS_cpu_resource) {
+            LOG(WARNING) << "cpu_reserved is danger";
+            EvictAssignedContainer(cis, kEvictTypeCpu);
+        }
+    }
+
+    check_assign_pool_.DelayTask(
+        FLAGS_check_assign_interval,
+        boost::bind(&ContainerManager::CheckAssignRoutine, this));
+}
+
+void ContainerManager::EvictAssignedContainer(
+        std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis,
+        EvictType evict_type) {
+    VLOG(10) << "evict assigned container, by: " << evict_type;
+
+    ContainerId container_id;
+    int64_t max_used = -1L;
+    for (size_t i = 0; i < cis.size(); i++) {
+        if (cis[i]->container_desc().priority() == baidu::galaxy::proto::kJobBestEffort) {
+            LOG(INFO) << "find best effort container: " << cis[i]->id();
+            if (kEvictTypeMemory == evict_type) {
+                if (cis[i]->memory_used() > max_used) {
+                    max_used = cis[i]->memory_used();
+                    container_id.SetGroupId(cis[i]->group_id()).SetSubId(cis[i]->id());
+                }
+            } else {
+                if (cis[i]->cpu_used() > max_used) {
+                    max_used = cis[i]->cpu_used();
+                    container_id.SetGroupId(cis[i]->group_id()).SetSubId(cis[i]->id());
+                }
+            }
+        }
+    }
+    if (!container_id.Empty()) {
+        VLOG(10) << "will evict: " << container_id.ToString();
+        ReleaseContainer(container_id);
     }
 }
 
@@ -352,31 +447,6 @@ int ContainerManager::Reload() {
     return 0;
 }
 
-
-baidu::galaxy::util::ErrorCode ContainerManager::CheckDescription(const baidu::galaxy::proto::ContainerDescription& desc) {
-    if ((desc.has_container_type()
-            && desc.container_type() == baidu::galaxy::proto::kVolumContainer)
-            || desc.volum_containers_size() == 0) {
-        return ERRORCODE_OK;
-    }
-
-    int size = desc.volum_containers_size();
-    boost::mutex::scoped_lock lock(mutex_);
-
-    for (int i = 0; i < size; i++) {
-        //std::string id = desc.volum_containers(i);
-        const ContainerId id;
-        std::map<ContainerId, boost::shared_ptr<baidu::galaxy::container::IContainer> >::iterator iter = work_containers_.find(id);
-
-        if (work_containers_.end() == iter) {
-            return ERRORCODE(-1, "%s donot exist", id.CompactId().c_str());
-        }
-    }
-
-    return ERRORCODE_OK;
-}
-
-
 baidu::galaxy::util::ErrorCode ContainerManager::DependentVolums(const baidu::galaxy::proto::ContainerDescription& desc,
         std::map<std::string, std::string>& dv) {
     if (desc.volum_containers_size() > 0) {
@@ -444,7 +514,6 @@ baidu::galaxy::util::ErrorCode ContainerManager::DependentVolums(const Container
 
     return ERRORCODE_OK;
 }
-
 
 }
 }

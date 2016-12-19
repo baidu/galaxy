@@ -96,7 +96,7 @@ void AgentImpl::Setup()
     LOG(INFO) << "init resource manager watcher successfully";
 
 
-   baidu::galaxy::collector::CollectorEngine::GetInstance()->Setup();
+    baidu::galaxy::collector::CollectorEngine::GetInstance()->Setup();
 
     heartbeat_pool_.AddTask(boost::bind(&AgentImpl::KeepAlive, this, FLAGS_keepalive_interval));
     LOG(INFO) << "start keep alive thread, interval is " << FLAGS_keepalive_interval << "ms";
@@ -128,7 +128,7 @@ void AgentImpl::CreateContainer(::google::protobuf::RpcController* controller,
 {
     LOG(INFO) << "recv create container request: " << request->DebugString();
     int64_t x = baidu::common::timer::get_micros();
-    std::cerr <<x<< "create " << request->id() << std::endl;
+    std::cerr << x << "create " << request->id() << std::endl;
 
     baidu::galaxy::container::ContainerId id(request->container_group_id(), request->id());
     baidu::galaxy::proto::ErrorCode* ec = response->mutable_code();
@@ -187,7 +187,6 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     ai->set_start_time(start_time_);
     ai->set_version(version_);
 
-
     bool full_report = false;
     if (request->has_full_report() && request->full_report()) {
         full_report = true;
@@ -206,8 +205,10 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
 
     std::map<std::string, int64_t> volum_used;
     for (size_t i = 0; i < cis.size(); i++) {
-        cpu_used += cis[i]->cpu_used();
-        memory_used += cis[i]->memory_used();
+        if (cis[i]->container_desc().priority() != baidu::galaxy::proto::kJobBestEffort) {
+            cpu_used += cis[i]->cpu_used();
+            memory_used += cis[i]->memory_used();
+        }
 
         for (int j = 0; j < cis[i]->volum_used_size(); j++) {
             if (cis[i]->volum_used(j).medium() == baidu::galaxy::proto::kTmpfs) {
@@ -258,7 +259,6 @@ void AgentImpl::Query(::google::protobuf::RpcController* controller,
     //std::cout << "query:" << response->DebugString() << std::endl;
     done->Run();
 }
-
 
 }
 }

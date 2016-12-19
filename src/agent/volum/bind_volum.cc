@@ -41,7 +41,6 @@ baidu::galaxy::util::ErrorCode BindVolum::Construct_() {
     const boost::shared_ptr<baidu::galaxy::proto::VolumRequired> vr = Description();
     assert(vr->medium() == baidu::galaxy::proto::kDisk
             || vr->medium() == baidu::galaxy::proto::kSsd);
-    assert(!vr->use_symlink());
     boost::system::error_code ec;
     boost::filesystem::path target_path(this->TargetPath());
 

@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
@@ -147,10 +149,19 @@ int ProcessManager::CreateProcess(const ProcessEnv& env,
 
             // if package exist
             if (!file::IsExists(download_context->package)) {
-                cmd = "wget --timeout=" + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
-                      + " -O " + download_context->package
-                      + " " + download_context->src_path
-                      + " && " + cmd;
+                // p2p or wget
+                if (boost::contains(download_context->src_path, "ftp://")
+                        || boost::contains(download_context->src_path, "http://")) {
+                    cmd = "wget --timeout=" + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
+                          + " -O " + download_context->package
+                          + " " + download_context->src_path
+                          + " && " + cmd;
+                } else {
+                    cmd = "gko3 down --hang-time " + boost::lexical_cast<std::string>(FLAGS_process_manager_download_timeout)
+                        + " -n " + download_context->package
+                        + " -i " + download_context->src_path
+                        + " && " + cmd;
+                }
             }
         }
 
@@ -374,7 +385,8 @@ void ProcessManager::LoopWaitProcesses() {
             LOG(INFO)
                     << "process: " << it->second->process_id << ", "
                     << "pid: " << pid << ", "
-                    << "exit code: " << it->second->exit_code;
+                    << "exit code: " << it->second->exit_code << ", "
+                    << "exit status: " << proto::ProcessStatus_Name(it->second->status);
             break;
         }
     }

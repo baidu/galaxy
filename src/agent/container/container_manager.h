@@ -9,9 +9,9 @@
 #include "serializer.h"
 
 #include "boost/shared_ptr.hpp"
-#include "boost/thread/mutex.hpp"
-
+#include "boost/thread/mutex.hpp" 
 #include "thread.h"
+#include "thread_pool.h"
 #include "container_gc.h"
 
 #include <map>
@@ -20,6 +20,11 @@
 namespace baidu {
 namespace galaxy {
 namespace container {
+
+enum EvictType {
+    kEvictTypeMemory = 1,
+    kEvictTypeCpu = 2
+};
 
 class ContainerManager {
 public:
@@ -33,9 +38,6 @@ public:
     baidu::galaxy::util::ErrorCode ReleaseContainer(const ContainerId& id);
     void ListContainers(std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis, bool fullinfo);
 
-    // check dependence
-    baidu::galaxy::util::ErrorCode CheckDescription(const baidu::galaxy::proto::ContainerDescription& desc);
-
 private:
     baidu::galaxy::util::ErrorCode DependentVolums(const baidu::galaxy::proto::ContainerDescription& desc,
             std::map<std::string, std::string>& dv);
@@ -48,6 +50,10 @@ private:
             const baidu::galaxy::proto::ContainerDescription& desc);
 
     void KeepAliveRoutine();
+    void CheckAssignRoutine();
+    void EvictAssignedContainer(
+        std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> >& cis,
+        EvictType evict_type);
     int Reload();
     void DumpProperty(boost::shared_ptr<IContainer> container);
 
@@ -58,8 +64,9 @@ private:
 
     ContainerStage stage_;
 
-    boost::unordered_map<ContainerId, boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > contianer_info_;
+    std::vector<boost::shared_ptr<baidu::galaxy::proto::ContainerInfo> > container_infos_;
     baidu::common::Thread keep_alive_thread_;
+    baidu::common::ThreadPool check_assign_pool_;
     bool running_;
 
     boost::shared_ptr<Serializer> serializer_;
