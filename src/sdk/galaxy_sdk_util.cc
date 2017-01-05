@@ -133,8 +133,16 @@ bool FillMemRequired(const MemoryRequired& sdk_mem,
         fprintf(stderr, "memory size must be greater than 0\n");
         return false;
     }
+
+    if (sdk_mem.excess && sdk_mem.use_galaxy_killer) {
+        fprintf(stderr, "mem.excess and mem.use_galaxy_killer cannot be true at the same time");
+        return false;
+    }
+
     mem->set_size(sdk_mem.size);
     mem->set_excess(sdk_mem.excess);
+    mem->set_use_galaxy_killer(sdk_mem.use_galaxy_killer);
+
     return true;
 }
 
@@ -682,6 +690,13 @@ bool FillDeploy(const Deploy& sdk_deploy, ::baidu::galaxy::proto::Deploy* deploy
         return false;
     }
     deploy->set_max_per_host(sdk_deploy.max_per_host);
+
+    if (sdk_deploy.stop_timeout > 120) {
+        fprintf(stderr, "stop timeout must be little than 120s\n");
+        fflush(stderr);
+        return false;
+    }
+    deploy->set_stop_timeout(sdk_deploy.stop_timeout);
     
     deploy->set_tag(Strim(sdk_deploy.tag));
 
@@ -829,6 +844,12 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     }
     job->version = pb_job.version();
     job->run_user = pb_job.run_user();
+
+    if (pb_job.has_v2_support() && pb_job.v2_support()) {
+        job->v2_support = true;
+    } else {
+        job->v2_support = false;
+    }
     
     for (int i = 0; i < pb_job.volum_jobs().size(); ++i) {
         job->volum_jobs.push_back(pb_job.volum_jobs(i)); 
@@ -840,6 +861,11 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
     job->deploy.max_per_host = pb_job.deploy().max_per_host();
     job->deploy.tag = pb_job.deploy().tag();
     job->deploy.update_break_count = pb_job.deploy().update_break_count(); 
+
+    if (pb_job.deploy().has_stop_timeout()) {
+        job->deploy.stop_timeout = pb_job.deploy().stop_timeout();
+    }
+
     for (int i = 0; i < pb_job.deploy().pools().size(); ++i) {
         job->deploy.pools.push_back(pb_job.deploy().pools(i));
     }
@@ -873,6 +899,9 @@ void PbJobDescription2SdkJobDescription(const ::baidu::galaxy::proto::JobDescrip
         task.cpu.excess = pb_job.pod().tasks(i).cpu().excess();
         task.memory.size = pb_job.pod().tasks(i).memory().size();
         task.memory.excess = pb_job.pod().tasks(i).memory().excess();
+        if (pb_job.pod().tasks(i).memory().has_use_galaxy_killer()) {
+            task.memory.use_galaxy_killer = pb_job.pod().tasks(i).memory().use_galaxy_killer();
+        }
         task.tcp_throt.recv_bps_quota = pb_job.pod().tasks(i).tcp_throt().recv_bps_quota();
         task.tcp_throt.recv_bps_excess = pb_job.pod().tasks(i).tcp_throt().recv_bps_excess();
         task.tcp_throt.send_bps_quota = pb_job.pod().tasks(i).tcp_throt().send_bps_quota();

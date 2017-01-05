@@ -88,14 +88,22 @@ struct Volum {
     int64_t assigned_size;
     VolumMedium medium;
 };
+
 struct CpuRequired {
     int64_t milli_core;
     bool excess;
 };
 struct MemoryRequired {
+    MemoryRequired() :
+        size(1024),
+        excess(false),
+        use_galaxy_killer(false) {}
+
     int64_t size;
     bool excess;
+    bool use_galaxy_killer;
 };
+
 struct TcpthrotRequired {
     int64_t recv_bps_quota;
     bool recv_bps_excess;
@@ -171,9 +179,13 @@ struct Package {
     std::string version;
 };
 struct ImagePackage {
+    ImagePackage() :
+        stop_timeout(30) {}
+
     Package package;
     std::string start_cmd;
     std::string stop_cmd;
+    int32_t stop_timeout;
     std::string health_cmd;
 };
 struct DataPackage {
@@ -181,6 +193,14 @@ struct DataPackage {
     std::string reload_cmd;
 };
 struct Deploy {
+    Deploy() : replica(1),
+    step(1),
+    interval(1),
+    max_per_host(1),
+    update_break_count(1),
+    stop_timeout(30) {
+    }
+
     uint32_t replica;
     uint32_t step;
     uint32_t interval;
@@ -188,6 +208,7 @@ struct Deploy {
     std::string tag;
     std::vector<std::string> pools;
     uint32_t update_break_count;
+    uint32_t stop_timeout;
 };
 struct Service {
     std::string service_name;

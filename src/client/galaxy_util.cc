@@ -560,6 +560,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
     deploy.AddMember("replica", 1, allocator);
     deploy.AddMember("step", 1, allocator);
     deploy.AddMember("interval", 1, allocator);
+    deploy.AddMember("stop_timeout", 30, allocator);
     deploy.AddMember("max_per_host", 1, allocator);
     deploy.AddMember("tag", "", allocator);
     deploy.AddMember("pools", "example,test", allocator);
@@ -611,6 +612,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         rapidjson::Value mem(rapidjson::kObjectType);
         mem.AddMember("size", "800M", allocator);
         mem.AddMember("excess", false, allocator);
+        mem.AddMember("use_galaxy_killer", false, allocator);
 
         rapidjson::Value tcp(rapidjson::kObjectType);
         tcp.AddMember("recv_bps_quota", "30M", allocator);
@@ -638,11 +640,11 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         
         rapidjson::Value package(rapidjson::kObjectType);
         
-        str = "ftp://***.baidu.com/home/users/***/exec/" + ::baidu::common::NumToString(i) + "/linkbase.tar.gz";;
+        str = "ftp://hostname/path/" + ::baidu::common::NumToString(i) + "/package.tar.gz";;
         obj_str.SetString(str.c_str(), allocator);
         package.AddMember("source_path", obj_str, allocator);
 
-        str = "/home/work/exec/" + ::baidu::common::NumToString(i);
+        str = "/home/work/" + ::baidu::common::NumToString(i);
         obj_str.SetString(str.c_str(), allocator);
         package.AddMember("dest_path", obj_str, allocator);
         package.AddMember("version", "1.0.0", allocator);
@@ -656,7 +658,7 @@ bool GenerateJson(int num_tasks, int num_data_volums, int num_ports,
         rapidjson::Value data_packages(rapidjson::kArrayType);
         for (int j = 0; j < num_data_packages; ++j) {
 
-            str = "ftp://***.baidu.com/home/users/***/data/" + ::baidu::common::NumToString(i)
+            str = "ftp://hostname/path/" + ::baidu::common::NumToString(i)
                   + ::baidu::common::NumToString(j) + "/linkbase.dict.tar.gz";
             obj_str.SetString(str.c_str(), allocator);
 

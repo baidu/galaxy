@@ -41,9 +41,14 @@ baidu::galaxy::util::ErrorCode Cgroup::Construct() {
     factory_->GetSubsystems(subsystems);
     assert(subsystems.size() > 0);
     bool ok = true;
+    bool use_galaxy_killer = false;
+    if (cgroup_->memory().has_use_galaxy_killer() 
+                && cgroup_->memory().use_galaxy_killer()) {
+        use_galaxy_killer = true;
+    }
 
     for (size_t i = 0; i < subsystems.size(); i++) {
-        boost::shared_ptr<Subsystem> ss = factory_->CreateSubsystem(subsystems[i]);
+        boost::shared_ptr<Subsystem> ss = factory_->CreateSubsystem(subsystems[i], use_galaxy_killer);
         assert(NULL != ss.get());
         ss->SetContainerId(container_id_);
         ss->SetCgroup(cgroup_);

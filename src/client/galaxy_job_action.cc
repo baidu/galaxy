@@ -1033,6 +1033,7 @@ bool JobAction::GenerateJson(const std::string& jobid) {
     deploy.AddMember("replica", job.deploy.replica, allocator);
     deploy.AddMember("step", job.deploy.step, allocator);
     deploy.AddMember("interval", job.deploy.interval, allocator);
+    deploy.AddMember("stop_timeout", job.deploy.stop_timeout, allocator);
     deploy.AddMember("max_per_host", job.deploy.max_per_host, allocator);
     obj_str.SetString(job.deploy.tag.c_str(), allocator);
     deploy.AddMember("tag", obj_str, allocator);
@@ -1111,6 +1112,7 @@ bool JobAction::GenerateJson(const std::string& jobid) {
         obj_str.SetString(StringUnit(sdk_task.memory.size).c_str(), allocator);
         mem.AddMember("size", obj_str, allocator);
         mem.AddMember("excess", sdk_task.memory.excess, allocator);
+        mem.AddMember("use_galaxy_killer", sdk_task.memory.use_galaxy_killer, allocator);
 
         rapidjson::Value tcp(rapidjson::kObjectType);
         obj_str.SetString(StringUnit(sdk_task.tcp_throt.recv_bps_quota).c_str(), allocator);

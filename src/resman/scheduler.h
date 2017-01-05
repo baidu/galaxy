@@ -27,6 +27,8 @@ using proto::kContainerDestroying;
 using proto::kContainerTerminated;
 using proto::kContainerFinish;
 using proto::ResourceError;
+using proto::kJobService;
+using proto::kDisk;
 
 typedef std::string AgentEndpoint;
 typedef std::string ContainerGroupId;
@@ -107,7 +109,7 @@ struct VolumInfo {
     proto::VolumMedium medium;
     bool exclusive;
     int64_t size;
-    VolumInfo() : exclusive(false), size(0) {}
+    VolumInfo() : medium(kDisk), exclusive(false), size(0) {}
 };
 
 struct Container {
@@ -122,7 +124,7 @@ struct Container {
     ResourceError last_res_err;
     proto::ContainerInfo remote_info;
     std::vector<ContainerId> allocated_volum_containers;
-    Container() : status(kContainerPending), last_res_err(proto::kResOk) {}
+    Container() : priority(proto::kJobService), status(kContainerPending), last_res_err(proto::kResOk) {}
     typedef boost::shared_ptr<Container> Ptr;
 };
 
@@ -150,15 +152,16 @@ struct ContainerGroup {
     int64_t submit_time;
     int64_t update_time;
     std::string last_sched_container_id;
-    ContainerGroup() : terminated(false),
+    ContainerGroup() : priority(kJobService),
+                       terminated(false),
                        update_interval(0),
                        last_update_time(0),
                        replica(0),
                        submit_time(0),
                        update_time(0) {};
     int Replica() const {
-        return states[kContainerPending].size() 
-               + states[kContainerAllocating].size() 
+        return states[kContainerPending].size()
+               + states[kContainerAllocating].size()
                + states[kContainerReady].size();
     }
     typedef boost::shared_ptr<ContainerGroup> Ptr;
@@ -255,8 +258,8 @@ public:
                         std::string& fail_reason);
 
     bool ChangeReplica(const ContainerGroupId& container_group_id, int replica);
-    
-    // @update_interval : 
+
+    // @update_interval :
     //      --- intervals between updateing two containers, in seconds
     bool Update(const ContainerGroupId& container_group_id,
                 const proto::ContainerDescription& container_desc,
@@ -266,7 +269,7 @@ public:
     void RemoveTag(const AgentEndpoint& endpoint, const std::string& tag);
     void SetPool(const AgentEndpoint& endpoint, const std::string& pool_name);
     void MakeCommand(const std::string& agent_endpoint,
-                     const proto::AgentInfo& agent_info, 
+                     const proto::AgentInfo& agent_info,
                      std::vector<AgentCommand>& commands);
     bool ListContainerGroups(std::vector<proto::ContainerGroupStatistics>& container_groups);
     bool ShowContainerGroup(const ContainerGroupId& container_group_id,
@@ -299,9 +302,9 @@ private:
     bool CheckTagAndPoolOnce(Agent::Ptr agent, Container::Ptr container);
     void CheckContainerGroupGC(ContainerGroup::Ptr container_group);
     bool RequireHasDiff(const Requirement* v1, const Requirement* v2);
-    void SetRequirement(Requirement::Ptr require, 
+    void SetRequirement(Requirement::Ptr require,
                         const proto::ContainerDescription& container_desc);
-    void SetVolumsAndPorts(const Container::Ptr& container, 
+    void SetVolumsAndPorts(const Container::Ptr& container,
                            proto::ContainerDescription& container_desc);
     std::string GetNewVersion();
     std::map<AgentEndpoint, Agent::Ptr> agents_;

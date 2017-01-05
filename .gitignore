@@ -2,7 +2,7 @@
 *.o
 *.a
 *.so
-*.pyc
+
 # Folders
 _obj
 _test
@@ -56,4 +56,5 @@ galaxy.flag
 *.INFO*
 *.WARNING*
 *.ERROR*
+*~
 galaxy.flag

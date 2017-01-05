@@ -20,7 +20,7 @@ public:
     static boost::shared_ptr<SubsystemFactory> GetInstance();
     void Setup();
 
-    boost::shared_ptr<Subsystem> CreateSubsystem(const std::string& name);
+    boost::shared_ptr<Subsystem> CreateSubsystem(const std::string& name, bool use_galaxy_killer = false);
     void GetSubsystems(std::vector<std::string>& subsystems);
 
 private:
@@ -28,6 +28,8 @@ private:
     SubsystemFactory* Register(Subsystem* malloc_subsystem);
     static boost::shared_ptr<SubsystemFactory> s_instance_;
     std::map<const std::string, boost::shared_ptr<Subsystem> > cgroups_seed_;
+    boost::shared_ptr<Subsystem> memory_;
+    boost::shared_ptr<Subsystem> galaxy_memory_;
 };
 
 } //namespace cgroup
