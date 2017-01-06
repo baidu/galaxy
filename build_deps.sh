@@ -75,9 +75,9 @@ fi
 if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libsofa-pbrpc.a" ] \
     || [ ! -d "${DEPS_PREFIX}/include/sofa/pbrpc" ]; then
-    wget --no-check-certificate -O sofa-pbrpc-1.0.0.tar.gz https://github.com/baidu/sofa-pbrpc/archive/v1.0.0.tar.gz
-    tar zxf sofa-pbrpc-1.0.0.tar.gz
-    cd sofa-pbrpc-1.0.0
+    wget --no-check-certificate -O sofa-pbrpc-1.1.2.tar.gz https://github.com/baidu/sofa-pbrpc/archive/v1.1.2.tar.gz
+    tar zxf sofa-pbrpc-1.1.2.tar.gz
+    cd sofa-pbrpc-1.1.2
     sed -i '/BOOST_HEADER_DIR=/ d' depends.mk
     sed -i '/PROTOBUF_DIR=/ d' depends.mk
     sed -i '/SNAPPY_DIR=/ d' depends.mk
@@ -86,7 +86,7 @@ if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
     echo "SNAPPY_DIR=${DEPS_PREFIX}" >> depends.mk
     echo "PREFIX=${DEPS_PREFIX}" >> depends.mk
     cd src
-    PROTOBUF_DIR=${DEPS_PREFIX} sh compile_proto.sh
+    #PROTOBUF_DIR=${DEPS_PREFIX} sh compile_proto.sh
     cd ..
     make -j4
     make install
@@ -185,7 +185,7 @@ if [ ! -f "${FLAG_DIR}/ins" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libins_sdk.a" ] \
     || [ ! -f "${DEPS_PREFIX}/include/ins_sdk.h" ]; then
     rm -rf ins
-    git clone https://github.com/fxsjy/ins
+    git clone https://github.com/baidu/ins
     cd ins
     sed -i "s|^PREFIX=.*|PREFIX=${DEPS_PREFIX}|" Makefile
     sed -i "s|^PROTOC=.*|PROTOC=${DEPS_PREFIX}/bin/protoc|" Makefile

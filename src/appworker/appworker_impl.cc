@@ -306,7 +306,9 @@ bool AppWorkerImpl::Dump() {
 
     delete appworker;
     appworker = NULL;
-    close(fd);
+    if (fd >= 0) {
+        close(fd);
+    }
 
     return ret;
 }

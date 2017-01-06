@@ -75,6 +75,7 @@ int main(int argc, char* argv[])
     while (!s_quit) {
         sleep(1);
     }
+    _exit(0);
 
     return 0;
 }

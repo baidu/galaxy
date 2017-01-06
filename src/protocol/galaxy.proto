@@ -111,6 +111,7 @@ message CpuRequired {
 message MemoryRequired {
     optional int64 size = 1;
     optional bool excess = 2;
+    optional bool use_galaxy_killer = 3;
 }
 
 message TcpthrotRequired {
@@ -265,6 +266,7 @@ message Deploy {
     optional string tag = 5;
     repeated string pools = 6;
     optional uint32 update_break_count = 7;
+    optional int32 stop_timeout = 8;
 }
 
 message Service {

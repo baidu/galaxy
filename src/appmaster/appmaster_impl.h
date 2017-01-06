@@ -25,6 +25,7 @@ using ::baidu::galaxy::proto::kUpdateJobContinue;
 using ::baidu::galaxy::proto::kUpdateJobStart;
 using ::baidu::galaxy::proto::kUpdateJobRollback;
 using ::baidu::galaxy::proto::kUpdateJobPause;
+using ::baidu::galaxy::proto::kUpdateJobCancel;
 using ::baidu::galaxy::proto::kNormalContainer;
 
 class AppMasterImpl : public baidu::galaxy::proto::AppMaster {
@@ -73,6 +74,11 @@ public:
                         const ::baidu::galaxy::proto::RecoverInstanceRequest* request,
                         ::baidu::galaxy::proto::RecoverInstanceResponse* response,
                         ::google::protobuf::Closure* done);
+
+    void UpdateJobUser(::google::protobuf::RpcController* controller,
+                        const ::baidu::galaxy::proto::UpdateJobUserRequest* request,
+                        ::baidu::galaxy::proto::UpdateJobUserResponse* response,
+                        ::google::protobuf::Closure* done);
 private:
     void BuildContainerDescription(const JobDescription& job_desc,
                                   ::baidu::galaxy::proto::ContainerDescription* container_desc);
@@ -82,7 +88,7 @@ private:
                                        const proto::CreateContainerGroupRequest* request,
                                        proto::CreateContainerGroupResponse* response,
                                        bool failed, int err) ;
-    void UpdateContainerGroupCallBack(JobDescription job_desc, 
+    void UpdateContainerGroupCallBack(JobDescription job_desc,
                                      proto::UpdateJobResponse* update_response,
                                      ::google::protobuf::Closure* done,
                                      const proto::UpdateContainerGroupRequest* request,

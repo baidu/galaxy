@@ -18,6 +18,7 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 
 #include "utils.h"
 #include "protocol/galaxy.pb.h"

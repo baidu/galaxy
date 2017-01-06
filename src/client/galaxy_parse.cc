@@ -53,6 +53,13 @@ int ParseDeploy(const rapidjson::Value& deploy_json, ::baidu::galaxy::sdk::Deplo
         fprintf(stderr, "pools is needed in deploy\n");
         return -1;
     }
+
+    deploy->stop_timeout = 30;
+    if (deploy_json.HasMember("stop_timeout")) {
+        deploy->stop_timeout = deploy_json["stop_timeout"].GetInt();
+        assert(deploy->stop_timeout >= 0);
+    }
+
     std::string str_pools = deploy_json["pools"].GetString();
     boost::trim(str_pools);
 
@@ -194,6 +201,11 @@ int ParseMem(const rapidjson::Value& mem_json, ::baidu::galaxy::sdk::MemoryRequi
         mem->excess = false;
     } else {
         mem->excess = mem_json["excess"].GetBool();
+    }
+
+    mem->use_galaxy_killer = false;
+    if (mem_json.HasMember("use_galaxy_killer")) {
+        mem->use_galaxy_killer = mem_json["use_galaxy_killer"].GetBool();
     }
 
     return 0;

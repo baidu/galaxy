@@ -86,6 +86,7 @@ baidu::galaxy::util::ErrorCode DictFile::Scan(const std::string& begin_key,
         it->Next();
     }
 
+    delete it;
     return ERRORCODE_OK;
 }
 

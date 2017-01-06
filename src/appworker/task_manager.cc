@@ -369,6 +369,17 @@ int TaskManager::CleanTask(const std::string& task_id) {
 
     std::string process_id;
 
+    // clean timeout stop process
+    if (it->second->status == proto::kTaskStopping) {
+        process_id = task_id + "_stop";
+        Process process;
+        if (0 == process_manager_.QueryProcess(process_id, process)
+                && process.status == proto::kProcessRunning) {
+            process_manager_.KillProcess(process_id);
+            LOG(INFO) << "clean task timeout stop process";
+        }
+    }
+
     switch (it->second->prev_status) {
     case proto::kTaskDeploying:
         LOG(INFO) << "clean deploying task";
