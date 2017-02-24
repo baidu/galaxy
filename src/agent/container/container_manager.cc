@@ -431,6 +431,8 @@ int ContainerManager::Reload() {
             LOG(WARNING) << "allocat failed for container " << id.CompactId()
                          << " reason is:" << ec.Message();
             return -1;
+        } else {
+            LOG(WARNING) << "allocate success for container " << id.CompactId();
         }
 
         boost::shared_ptr<IContainer> container = IContainer::NewContainer(id, metas[i]->container());

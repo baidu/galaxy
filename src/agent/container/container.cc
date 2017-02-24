@@ -287,7 +287,7 @@ int Container::ConstructVolumGroup() {
         boost::split(v, volum_vs[i], boost::is_any_of(":"));
 
         if (v.size() != 4) {
-            LOG(WARNING) << "spilt size is " << v.size() << ", expect 4";
+            LOG(WARNING) << "spilt size is " << v.size() << ", expect 4, vs " << volum_vs[i];
             continue;
         }
 
@@ -335,8 +335,10 @@ int Container::ConstructProcess() {
     pid_t pid = process_->Clone(boost::bind(&Container::RunRoutine, this, _1), NULL, 0);
 
     if (pid <= 0) {
-        LOG(INFO) << "fail in clonning appwork process for container " << id_.CompactId();
+        LOG(INFO) << "fail in cloning appwork process for container " << id_.CompactId();
         return -1;
+    } else {
+        LOG(INFO) << "success in cloning appworker process, pid " << pid;
     }
 
     return 0;
