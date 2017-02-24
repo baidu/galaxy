@@ -37,9 +37,9 @@
 #include <string>
 
 
-#ifndef setns
-#define setns(fd) syscall(308, 0, fd)
-#endif
+//#ifndef setns
+//#define setns(fd) syscall(308, 0, fd)
+//#endif
 
 DEFINE_string(w, "/home/galaxy3/agent/work_dir", "");
 DEFINE_string(i, "", "");
@@ -163,8 +163,8 @@ baidu::galaxy::util::ErrorCode GotoJail() {
         return ERRORCODE(-1, "open %s failed", buf);
     }
 
-    if (setns(fd) == -1) {
-        return ERRORCODE(-1, "setns(%s) failed", buf);
+    if (setns(fd, 0) == -1) {
+        return ERRORCODE(-1, "setns(%s) failed, fd(%d), err(%s)", buf, fd, strerror(errno));
     }
 
     snprintf(buf, sizeof buf, "/proc/%d/ns/mnt", appworker_pid);
@@ -173,7 +173,7 @@ baidu::galaxy::util::ErrorCode GotoJail() {
         return ERRORCODE(-1, "open %s failed", buf);
     }
 
-    if (setns(fd) == -1) {
+    if (setns(fd, 0) == -1) {
         return ERRORCODE(-1, "setns(%s) failed", buf);
     }
 
