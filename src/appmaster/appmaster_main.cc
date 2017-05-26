@@ -11,6 +11,7 @@
 #include <sofa/pbrpc/pbrpc.h>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include "ip_utils.h"
 #include "setting_utils.h"
 #include "util.h"
 #include "appmaster_impl.h"
@@ -28,7 +29,7 @@ int main(int argc, char* argv[]) {
     baidu::galaxy::SetupLog("appmaster");
     baidu::galaxy::AppMasterImpl * appmaster = new baidu::galaxy::AppMasterImpl();
     appmaster->Init();
-    std::string appmaster_endpoint = ::baidu::common::util::GetLocalHostName() + ":" +FLAGS_appmaster_port;
+    std::string appmaster_endpoint = baidu::galaxy::GetLocalHostAddr() + ":" +FLAGS_appmaster_port;
     bool nexus_ok = appmaster->RegisterOnNexus(appmaster_endpoint);
     if (!nexus_ok) {
         LOG(WARNING) << "fail to register AppMaster on nexus";

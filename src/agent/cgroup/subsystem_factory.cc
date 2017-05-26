@@ -44,9 +44,9 @@ SubsystemFactory* SubsystemFactory::Register(Subsystem* malloc_subsystem) {
 void SubsystemFactory::Setup() {
     this->Register(new baidu::galaxy::cgroup::CpuSubsystem())
     ->Register(new baidu::galaxy::cgroup::FreezerSubsystem())
-    ->Register(new baidu::galaxy::cgroup::TcpThrotSubsystem())
-    ->Register(new baidu::galaxy::cgroup::CpuacctSubsystem())
-    ->Register(new baidu::galaxy::cgroup::NetclsSubsystem());
+//    ->Register(new baidu::galaxy::cgroup::TcpThrotSubsystem())
+    ->Register(new baidu::galaxy::cgroup::CpuacctSubsystem());
+//    ->Register(new baidu::galaxy::cgroup::NetclsSubsystem());
 }
 
  

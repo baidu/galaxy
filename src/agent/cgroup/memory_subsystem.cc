@@ -75,30 +75,30 @@ baidu::galaxy::util::ErrorCode MemorySubsystem::Construct() {
                 err.Message().c_str());
     }
 
-    int64_t excess_mode = this->cgroup_->memory().excess() ? 1L : 0L;
-    boost::filesystem::path excess_mode_path = path;
-    excess_mode_path.append("memory.excess_mode");
-    err = baidu::galaxy::cgroup::Attach(excess_mode_path.c_str(),
-            excess_mode,
-            false);
+//    int64_t excess_mode = this->cgroup_->memory().excess() ? 1L : 0L;
+//    boost::filesystem::path excess_mode_path = path;
+//    excess_mode_path.append("memory.excess_mode");
+//    err = baidu::galaxy::cgroup::Attach(excess_mode_path.c_str(),
+//            excess_mode,
+//            false);
+//
+//    if (0 != err.Code()) {
+//        return ERRORCODE(-1,
+//                "attch memory.excess_mode failed: %s",
+//                err.Message().c_str());
+//    }
 
-    if (0 != err.Code()) {
-        return ERRORCODE(-1,
-                "attch memory.excess_mode failed: %s",
-                err.Message().c_str());
-    }
-
-    boost::filesystem::path kill_mode_path = path;
-    kill_mode_path.append("memory.kill_mode");
-    err = baidu::galaxy::cgroup::Attach(kill_mode_path.c_str(),
-            0L,
-            false);
-
-    if (0 != err.Code()) {
-        return ERRORCODE(-1,
-                "attch memory.kill_mode failed: %s",
-                err.Message().c_str());
-    }
+//    boost::filesystem::path kill_mode_path = path;
+//    kill_mode_path.append("memory.kill_mode");
+//    err = baidu::galaxy::cgroup::Attach(kill_mode_path.c_str(),
+//            0L,
+//            false);
+//
+//    if (0 != err.Code()) {
+//        return ERRORCODE(-1,
+//                "attch memory.kill_mode failed: %s",
+//                err.Message().c_str());
+//    }
 
     return ERRORCODE_OK;
 }
