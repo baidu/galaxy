@@ -24,9 +24,9 @@ killall resman
 killall agent
 
 # 5.stop nexus
-killall ins
+killall nexus
 
-rm -rf ./ins ./appmaster ./appworker ./resman ./agent ./galaxy_client ./galaxy_res_client
-rm -rf /ins.flag ./galaxy.flag
+rm -rf ./nexus ./appmaster ./appworker ./resman ./agent ./galaxy_client ./galaxy_res_client
+rm -rf ./nexus.flag ./galaxy.flag
 rm -rf ./binlog *.log *.INFO* *.WARNING*
 rm -rf ./data ./gc_dir/ ./work_dir/
