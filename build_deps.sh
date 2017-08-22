@@ -72,12 +72,12 @@ if [ ! -f "${FLAG_DIR}/snappy_1_1_1" ] \
 fi
 
 # sofa-pbrpc
-if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
+if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_1_3" ] \
     || [ ! -f "${DEPS_PREFIX}/lib/libsofa-pbrpc.a" ] \
     || [ ! -d "${DEPS_PREFIX}/include/sofa/pbrpc" ]; then
-    wget --no-check-certificate -O sofa-pbrpc-1.1.2.tar.gz https://github.com/baidu/sofa-pbrpc/archive/v1.1.2.tar.gz
-    tar zxf sofa-pbrpc-1.1.2.tar.gz
-    cd sofa-pbrpc-1.1.2
+    wget --no-check-certificate -O sofa-pbrpc-1.1.3.tar.gz https://github.com/baidu/sofa-pbrpc/archive/v1.1.3.tar.gz
+    tar zxf sofa-pbrpc-1.1.3.tar.gz
+    cd sofa-pbrpc-1.1.3
     sed -i '/BOOST_HEADER_DIR=/ d' depends.mk
     sed -i '/PROTOBUF_DIR=/ d' depends.mk
     sed -i '/SNAPPY_DIR=/ d' depends.mk
@@ -91,7 +91,7 @@ if [ ! -f "${FLAG_DIR}/sofa-pbrpc_1_0_0" ] \
     make -j4
     make install
     cd ..
-    touch "${FLAG_DIR}/sofa-pbrpc_1_0_0"
+    touch "${FLAG_DIR}/sofa-pbrpc_1_1_3"
 fi
 
 # cmake for gflags
@@ -188,10 +188,13 @@ if [ ! -f "${FLAG_DIR}/ins" ] \
     git clone https://github.com/baidu/ins
     cd ins
     sed -i "s|^PREFIX=.*|PREFIX=${DEPS_PREFIX}|" Makefile
-    sed -i "s|^PROTOC=.*|PROTOC=${DEPS_PREFIX}/bin/protoc|" Makefile
+    export PROTOC=${DEPS_PREFIX}/bin/protoc
+    export SNAPPY_PATH=${DEPS_PREFIX}
     export BOOST_PATH=${DEPS_PREFIX}/boost_1_57_0
-    make -j4 ins >/dev/null && make -j4 install_sdk >/dev/null
-    mkdir -p output/bin && cp ins output/bin
+    export GFLAGS_PATH=${DEPS_PREFIX}
+    export PROTOBUF_PATH=${DEPS_PREFIX}
+    export PBRPC_PATH=${DEPS_PREFIX}
+    make -j4 >/dev/null && make -j4 install_sdk >/dev/null
     cd -
     touch "${FLAG_DIR}/ins"
 fi

@@ -16,7 +16,7 @@ function assert_process_ok() {
 }
 
 # copy files
-cp -rf ../thirdsrc/ins/output/bin/ins ./
+cp -rf ../thirdsrc/ins/output/bin/nexus ./
 cp -rf ../resman ./
 cp -rf ../agent ./
 cp -rf ../appmaster ./
@@ -24,18 +24,18 @@ cp -rf ../appworker ./
 cp -rf ../galaxy_client ./
 cp -rf ../galaxy_res_client ./
 
-# prepare ins.flag
-echo "--cluster_members=$SERVERS" >ins.flag
+# prepare nexus.flag
+echo "--cluster_members=$SERVERS" >nexus.flag
 
 # 1.start nexus
 echo "start nexus"
-nohup ./ins --flagfile=ins.flag --server_id=1 >/dev/null 2>&1 &
-nohup ./ins --flagfile=ins.flag --server_id=2 >/dev/null 2>&1 &
-nohup ./ins --flagfile=ins.flag --server_id=3 >/dev/null 2>&1 &
-nohup ./ins --flagfile=ins.flag --server_id=4 >/dev/null 2>&1 &
-nohup ./ins --flagfile=ins.flag --server_id=5 >/dev/null 2>&1 &
+nohup ./nexus --flagfile=nexus.flag --server_id=1 >/dev/null 2>&1 &
+nohup ./nexus --flagfile=nexus.flag --server_id=2 >/dev/null 2>&1 &
+nohup ./nexus --flagfile=nexus.flag --server_id=3 >/dev/null 2>&1 &
+nohup ./nexus --flagfile=nexus.flag --server_id=4 >/dev/null 2>&1 &
+nohup ./nexus --flagfile=nexus.flag --server_id=5 >/dev/null 2>&1 &
 sleep 10
-assert_process_ok "./ins --flagfile=ins.flag"
+assert_process_ok "./nexus --flagfile=nexus.flag"
 
 # prepare galaxy.flag
 echo "--logbufsecs=0"                                                             >> galaxy.flag
